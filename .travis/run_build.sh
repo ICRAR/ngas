@@ -26,6 +26,7 @@
 #
 # DB                the database used in this run (sqlite3, mysql, postgresql)
 # TRAVIS_BUILD_DIR  the directory where the sources are located
+# TRAVIS_OS_NAME    the OS under which we are running (linux, osx)
 #
 
 cd ${TRAVIS_BUILD_DIR}
@@ -35,11 +36,27 @@ fail() {
 	exit 1
 }
 
+# In OSX we need to brew install some things
+#
+# Most notably, Travis doesn't support python builds in OSX,
+# but the brew packages that come preinstalled in the virtual machines
+# include python 2.7. We sill need to get ourselves a
+# virtualenv though and manually source it whenever we use it.
+if [ "${TRAVIS_OS_NAME}" = "osx" ]
+then
+	brew install berkeley-db || fail "Failed to brew install packages"
+
+	# Now create ourselves a virtualenv please and go in there
+	./create_venv.sh ./osx_venv || fail "Failed to create virtual environment"
+	source ./osx_venv/bin/activate
+fi
+
 EUSER="Failed to create database user ngas"
 EPASS="Failed to change password"
 EDB="Failed to create database ngas"
 EPERM="Failed to grant priviledges to user ngas on database ngas"
 ECREAT="Failed to create the ngas database schema on database ngas"
+EPIP="Failed to install pip packages"
 
 # The python packages we need to install either because NGAS itself needs them,
 # or because it's what we need to communicate with our database engine
@@ -87,5 +104,17 @@ elif [[ "$DB" == "postgresql" ]]; then
 fi
 # sqlite3 we doesn't require preparation or any extra modules
 
-pip install $PIP_PACKAGES
+# MacOS needs again a bit more of preparation
+if [ "${TRAVIS_OS_NAME}" = "osx" ]
+then
+	cellar_dir="`brew --cellar`"
+	db_dir="${cellar_dir}/berkeley-db/`ls -tr1 ${cellar_dir}/berkeley-db | tail -n 1`"
+
+	export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1
+	export BERKELEYDB_DIR="${db_dir}"
+	export CFLAGS="$CFLAGS -I${db_dir}/include"
+	export LDFLAGS="$LDFLAGS -L${db_dir}/lib"
+fi
+
+pip install $PIP_PACKAGES || fail "$EPIP"
 ./build.sh -d -c

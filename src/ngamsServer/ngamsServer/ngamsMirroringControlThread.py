@@ -43,7 +43,6 @@ import base64
 import contextlib
 import copy
 import functools
-import httplib
 import logging
 import os
 import random
@@ -750,28 +749,23 @@ def initMirroring(srvObj):
 
     # Restore the previous state of the mirroring from the DB Mirroring Queue
     # (if the service was interrupted).
-    mirQCursor = srvObj.getDb().dumpMirroringQueue(srvObj.getHostId())
-    while (True):
-        mirReqInfoList = mirQCursor.fetch(10000)
-        if (not mirReqInfoList): break
-        for mirReqInfo in mirReqInfoList:
-            mirReqObj = srvObj.getDb().unpackMirReqSqlResult(mirReqInfo)
-            logger.debug("Restoring Mirroring Request: %s", mirReqObj.genSummary())
-            # Add entry in the Mirroring DBM Queue?
-            if (mirReqObj.getStatusAsNo() in
-                (ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED_NO,
-                 ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE_NO)):
-                addEntryMirQueue(srvObj, mirReqObj)
-            # Add entry in the Error DBM Queue?
-            elif (mirReqObj.getStatusAsNo() ==
-                  ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO):
-                addEntryErrQueue(srvObj, mirReqObj)
-            # Add entry in the Completed DBM Queue?
-            elif (mirReqObj.getStatusAsNo() in
-                  (ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_MIR_NO,
-                   ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_REP_NO,
-                   ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_ABANDON_NO)):
-                addEntryComplQueue(srvObj, mirReqObj, updateDb = False)
+    for mirReqObj in srvObj.getDb().dumpMirroringQueue(srvObj.getHostId()):
+        logger.debug("Restoring Mirroring Request: %s", mirReqObj.genSummary())
+        # Add entry in the Mirroring DBM Queue?
+        if (mirReqObj.getStatusAsNo() in
+            (ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED_NO,
+             ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE_NO)):
+            addEntryMirQueue(srvObj, mirReqObj)
+        # Add entry in the Error DBM Queue?
+        elif (mirReqObj.getStatusAsNo() ==
+              ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO):
+            addEntryErrQueue(srvObj, mirReqObj)
+        # Add entry in the Completed DBM Queue?
+        elif (mirReqObj.getStatusAsNo() in
+              (ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_MIR_NO,
+               ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_REP_NO,
+               ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_ABANDON_NO)):
+            addEntryComplQueue(srvObj, mirReqObj, updateDb = False)
 
 
 def retrieveFileList(srvObj,

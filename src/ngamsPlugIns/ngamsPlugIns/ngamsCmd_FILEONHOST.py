@@ -31,7 +31,7 @@ Check if a file does exist on this host (no forwarding, no proxy, no database ch
 
 import os
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT
 
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
@@ -53,10 +53,10 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         filePath = reqPropsObj.getHttpPar('file_path')
         if (os.path.exists(filePath)):
             errMsg = 'YES'
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg, NGAMS_TEXT_MT)
+            httpRef.send_data(errMsg, NGAMS_TEXT_MT)
         else:
             errMsg = 'NO'
-            srvObj.httpReply(reqPropsObj, httpRef, 404, errMsg, NGAMS_TEXT_MT)
+            httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=404)
     else:
         errMsg = 'INVALID PARAMS'
-        srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)

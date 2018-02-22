@@ -93,7 +93,7 @@ def printLabel(srvObj,
                 diskId, label)
 
 
-def handleCmdLabel(srvObj,
+def handleCmd(srvObj,
                    reqPropsObj,
                    httpRef):
     """
@@ -178,11 +178,7 @@ def handleCmdLabel(srvObj,
                          "relabel=<Disk ID>&new_label=<Label>", "LABEL"])
         raise Exception(errMsg)
 
-    msg = "Successfully handled command LABEL"
-    srvObj.reply(reqPropsObj.setCompletionTime(), httpRef, NGAMS_HTTP_SUCCESS,
-                 NGAMS_SUCCESS, msg)
-    srvObj.updateRequestDb(reqPropsObj)
-    logger.info(msg)
+    return "Successfully handled command LABEL"
 
 
 # EOF

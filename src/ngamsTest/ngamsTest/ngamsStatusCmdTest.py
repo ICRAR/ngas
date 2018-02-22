@@ -31,10 +31,8 @@
 This module contains the Test Suite for the STATUS Command.
 """
 
-import sys
-
-from ngamsTestLib import ngamsTestSuite, getClusterName, getNcu11, runTest, \
-    sendPclCmd
+from ngamsLib.ngamsCore import toiso8601
+from ngamsTestLib import ngamsTestSuite, getNcu11, sendPclCmd
 
 
 class ngamsStatusCmdTest(ngamsTestSuite):
@@ -111,9 +109,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster((8000, 8011))
         statObj = sendPclCmd(port=8000).\
                   get_status("STATUS", pars=[["host_id", getNcu11()]])
         refMsg = "Successfully handled command STATUS"
@@ -149,9 +145,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster((8000, 8011))
         srcFile = "src/TinyTestFile.fits"
         client = sendPclCmd(port=8011)
         client.archive(srcFile)
@@ -165,20 +159,19 @@ class ngamsStatusCmdTest(ngamsTestSuite):
             self.checkEqual(refMsg, statObj.getMessage(), "Illegal status " +\
                             "returned for STATUS/File Access Command")
 
-def run():
-    """
-    Run the complete test.
+    def test_filelist(self):
+        """Checks that the STATUS command handles the file_list option correctly"""
 
-    Returns:   Void.
-    """
-    runTest(["ngamsStatusCmdTest"])
+        self.prepExtSrv()
+        client = sendPclCmd()
+        start = toiso8601()
 
+        def run_checks():
+            self.assertStatus(client.status(output='tmp/list.xml.gz', pars=(('file_list', 1),)))
+            self.assertStatus(client.status(output='tmp/list.xml.gz', pars=(('file_list', 1), ('from_ingestion_date', start))))
+            self.assertStatus(client.status(output='tmp/list.xml.gz', pars=(('file_list', 1), ('from_ingestion_date', start), ('unique', 1))))
 
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF
+        # Checks should be scucessfull with and wihtout files archived
+        run_checks()
+        self.assertArchive('src/SmallFile.fits', 'application/octet-stream')
+        run_checks()

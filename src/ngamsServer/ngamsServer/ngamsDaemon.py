@@ -32,7 +32,7 @@ import lockfile.pidlockfile
 
 from ngamsLib import ngamsConfig, ngamsHighLevelLib
 from ngamsLib.ngamsCore import get_contact_ip
-from ngamsServer import ngamsServer
+from . import ngamsServer
 
 
 def err(s):
@@ -187,3 +187,6 @@ def main(args=sys.argv):
         exitCode = 1
 
     sys.exit(exitCode)
+
+if __name__ == '__main__':
+    main(sys.argv)

@@ -58,7 +58,8 @@ def genDapiSuccessStat(diskId,
                        relPath,
                        slotId,
                        fileExists,
-                       completeFilename):
+                       completeFilename,
+                       crc=None):
     """
     Generates a plug-in status in a format expected by the NG/AMS Server.
 
@@ -88,7 +89,7 @@ def genDapiSuccessStat(diskId,
 
     Returns:           NG/AMS DAPI Status Object (ngamsDapiStatus).
     """
-    return ngamsDapiStatus.ngamsDapiStatus().\
+    status = ngamsDapiStatus.ngamsDapiStatus().\
            setStatus(NGAMS_SUCCESS).setDiskId(diskId).\
            setRelFilename(relFilename).setFileId(fileId).\
            setFileVersion(fileVersion).\
@@ -96,6 +97,8 @@ def genDapiSuccessStat(diskId,
            setUncomprSize(uncomprSize).setCompression(compression).\
            setRelPath(relPath).setSlotId(slotId).\
            setFileExists(fileExists).setCompleteFilename(completeFilename)
+    status.crc = crc
+    return status
 
 
 def genRegPiSuccessStat(diskId,

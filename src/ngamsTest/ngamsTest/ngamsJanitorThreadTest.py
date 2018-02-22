@@ -31,9 +31,7 @@
 This module contains the Test Suite for the NG/AMS Janitor Thread.
 """
 
-import sys
-
-from ngamsTestLib import ngamsTestSuite, runTest
+from ngamsTestLib import ngamsTestSuite
 
 
 class ngamsJanitorThreadTest(ngamsTestSuite):
@@ -70,22 +68,3 @@ class ngamsJanitorThreadTest(ngamsTestSuite):
         ...
         """
         # TODO: Implement ngamsJanitorThreadTest()!!!!
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsJanitorThreadTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

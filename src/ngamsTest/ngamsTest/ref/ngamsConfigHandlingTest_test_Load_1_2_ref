@@ -3,11 +3,7 @@
 
 <NgamsCfg Id="ngamsCfg-Test">
   <ArchiveHandling ArchiveUnits="-----" BackLogBufferDirectory="/tmp/ngamsTest/NGAS" BackLogBuffering="1" FreeSpaceDiskChangeMb="20" Id="ArchiveHandling-Test" MinFreeSpaceWarningMb="0" PathPrefix="saf" Replication="1"/>
-  <Authorization Enable="0" Id="Authorization-Test">
-    <User Commands="*" Name="ngas" Password="bmdhcw=="/>
-    <User Name="ngasmgr" Password="bmdhc21ncg=="/>
-    <User Name="ngas-int" Password="bmdhcy1pbnQ="/>
-  </Authorization>
+  <Authorization Enable="0" Id="Authorization-Test"/>
   <DataCheckThread Active="0" ChecksumPlugIn="ngamsGenCrc32" ChecksumPlugInPars="" DiskSeq="SEQUENTIAL" FileSeq="SEQUENTIAL" ForceNotif="1" Id="DataCheckThread-Test" LogSummary="1" MaxProcs="4" MinCycle="00T00:03:00" Prio="25" Scan="0"/>
   <Header Context="NG/AMS" Name="ngamsCfg.xml" Release="1.0" Revision="TEST-REVISION" Source="jknudstr@eso.org" Type="NGAMS-TEST-BASE-CONFIGURATION">
     <Description/>
@@ -111,8 +107,8 @@
       <StorageSetRef StorageSetId="FitsStorage3"/>
     </Stream>
   </Streams>
-  <SubscriptionDef AutoUnsubscribe="0" BackLogExpTime="28T00:00:00" Enable="1" Id="SubscriptionDef-Test" SuspensionTime="0T00:03:00">
-    <Subscription FilterPlugIn="ngamsMimeTypeFilterPI" FilterPlugInPars="mime_types=image/x-fits|application/x-cfits" HostId="DEFINE" PortNo="8888" Priority="0" SubscriberUrl="http://DEFINE:8888/ARCHIVE"/>
+  <SubscriptionDef AutoUnsubscribe="0" BackLogExpTime="28T00:00:00" Enable="0" Id="SubscriptionDef-Test" SuspensionTime="0T00:03:00">
+    <Subscription FilterPlugIn="ngamsMimeTypeFilterPI" FilterPlugInPars="mime_types=image/x-fits|application/x-cfits|application/octet-stream" HostId="DEFINE" PortNo="8888" Priority="0" SubscriberUrl="http://DEFINE:8888/ARCHIVE"/>
   </SubscriptionDef>
   <SystemPlugIns DiskSyncPlugIn="ngamsDiskSyncPlugIn" DiskSyncPlugInPars="controllers=1/2" Id="SystemPlugIns-Std" LabelPrinterPlugIn="ngamsNullLabelPrinterPlugIn" LabelPrinterPlugInPars="-" OfflinePlugIn="ngamsLinuxOfflinePlugIn" OfflinePlugInPars="unmount=0" OnlinePlugIn="ngamsLinuxOnlinePlugIn" OnlinePlugInPars="uri=http://localhost:1080/technical.html,                                    module=3w-xxxx,old_format=1"/>
 </NgamsCfg>

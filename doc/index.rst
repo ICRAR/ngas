@@ -14,7 +14,9 @@ Contents:
    introduction
    install
    post_installation
-   running
    server
+   background
+   plugins-index
    commands-index
    configuration
+   api

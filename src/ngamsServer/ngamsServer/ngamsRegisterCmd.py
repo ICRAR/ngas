@@ -40,11 +40,10 @@ import time
 
 from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
     NGAMS_REGISTER_CMD, mvFile, getFileCreationTime, \
-    NGAMS_FILE_STATUS_OK, genLog, NGAMS_SUCCESS, \
-    NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, NGAMS_TEXT_MT, \
+    NGAMS_FILE_STATUS_OK, genLog, NGAMS_SUCCESS, NGAMS_XML_MT, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
     NGAMS_VOLUME_INFO_FILE, NGAMS_REGISTER_THR, \
-    NGAMS_HTTP_SUCCESS, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
+    NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint, toiso8601
 from ngamsLib import ngamsDbm, ngamsReqProps, ngamsFileInfo, ngamsDbCore, \
     ngamsHighLevelLib, ngamsDiskUtils, ngamsLib, ngamsFileList, \
@@ -131,11 +130,6 @@ def _registerExec(srvObj,
         if (reqPropsObj.hasHttpPar("notif_email")):
             emailNotif = 1
 
-    # Create a temporary BSD DB to hold information about each file
-    # referred to by its complete filename.
-    fileInfoDbmName = tmpFilePat + "_DB_FILE_INFO"
-    fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, writePerm = 1)
-
     # Create the temporary BSD DB to contain the information for the
     # Email Notification Message.
     if (emailNotif):
@@ -212,24 +206,18 @@ def _registerExec(srvObj,
 
             # Check if this file is already registered on this disk. In case
             # yes, it is not registered again.
-            cursorObj = None
-            cursorObj = srvObj.getDb().\
-                        getFileSummary1(srvObj.getHostId(), [piRes.getDiskId()],
-                                        [piRes.getFileId()])
+            files = srvObj.db.getFileSummary1(srvObj.getHostId(), [piRes.getDiskId()],
+                                              [piRes.getFileId()])
             fileRegistered = 0
-            while (1):
-                tmpFileList = cursorObj.fetch(100)
-                if (not tmpFileList): break
-                for tmpFileInfo in tmpFileList:
-                    tmpMtPt = tmpFileInfo[ngamsDbCore.SUM1_MT_PT]
-                    tmpFilename = tmpFileInfo[ngamsDbCore.SUM1_FILENAME]
-                    tmpComplFilename = os.path.normpath(tmpMtPt + "/" +\
-                                                        tmpFilename)
-                    if (tmpComplFilename == filename):
-                        fileRegistered = 1
-                        break
-                time.sleep(0.010)
-            del cursorObj
+            for tmpFileInfo in files:
+                tmpMtPt = tmpFileInfo[ngamsDbCore.SUM1_MT_PT]
+                tmpFilename = tmpFileInfo[ngamsDbCore.SUM1_FILENAME]
+                tmpComplFilename = os.path.normpath(tmpMtPt + "/" +\
+                                                    tmpFilename)
+                if (tmpComplFilename == filename):
+                    fileRegistered = 1
+                    break
+
             if (fileRegistered):
                 fileRejectCount += 1
                 tmpMsgForm = "REJECTED: File with File ID/Version: %s/%d " +\
@@ -307,10 +295,6 @@ def _registerExec(srvObj,
             msg = msg + ". Time: %.3fs." % (regTime)
             logger.info(msg, extra={'to_syslog': 1})
         except Exception as e:
-            try:
-                if (cursorObj): del cursorObj
-            except:
-                pass
             errMsg = genLog("NGAMS_ER_FILE_REG_FAILED", [filename, str(e)])
             logger.error(errMsg)
             if (emailNotif):
@@ -338,8 +322,6 @@ def _registerExec(srvObj,
     if (emailNotif): regDbm.sync()
     del fileListDbm
     rmFile(fileListDbmName + "*")
-    del fileInfoDbm
-    rmFile(fileInfoDbmName + "*")
 
     # Final update of the Request Status.
     if (reqPropsObj):
@@ -382,10 +364,7 @@ def _registerExec(srvObj,
                                       "REGISTER command status report").\
                                       addFileList(regStat)
             statRep = status.genXmlDoc()
-            statRep = ngamsHighLevelLib.\
-                      addDocTypeXmlDoc(srvObj, statRep,
-                                       NGAMS_XML_STATUS_ROOT_EL,
-                                       NGAMS_XML_STATUS_DTD)
+            statRep = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, statRep)
             mimeType = NGAMS_XML_MT
         else:
             # Generate a 'simple' ASCII report.
@@ -693,14 +672,11 @@ def register(srvObj,
     # Send reply if possible.
     if (httpRef):
         xmlStat = status.genXmlDoc(0, 0, 0, 1, 0)
-        xmlStat = ngamsHighLevelLib.\
-                  addDocTypeXmlDoc(srvObj, xmlStat, NGAMS_XML_STATUS_ROOT_EL,
-                                   NGAMS_XML_STATUS_DTD)
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, xmlStat,
-                            0, NGAMS_XML_MT, len(xmlStat), [], 1)
+        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
+        httpRef.send_data(xmlStat, NGAMS_XML_MT)
 
 
-def handleCmdRegister(srvObj,
+def handleCmd(srvObj,
                       reqPropsObj,
                       httpRef):
     """

@@ -33,13 +33,12 @@ This module contains the Test Suite for the REGISTER Command.
 
 import os
 import shutil
-import sys
 import time
 
 from ngamsLib import ngamsFileInfo
 from ngamsLib.ngamsCore import checkCreatePath, getHostName, NGAMS_REGISTER_CMD
 from ngamsTestLib import ngamsTestSuite, sendExtCmd, saveInFile, \
-    filterDbStatus1, runTest
+    filterDbStatus1
 
 
 class ngamsRegisterCmdTest(ngamsTestSuite):
@@ -111,22 +110,3 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         saveInFile(fileInfoTmp, filterDbStatus1(tmpFileObj.dumpBuf()))
         self.checkFilesEq(fileInfoRef, fileInfoTmp,
                           "Incorrect info in DB for registered file")
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsRegisterCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

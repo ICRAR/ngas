@@ -30,15 +30,15 @@
 """
 Dynamic loadable command to query the DB associated with the NG/AMS instance.
 """
-# import markup TODO: This is for HTML formatting
 
-import cPickle, json, decimal
+import cPickle
+import json
+import decimal
 import logging
 import os
 
 from ngamsLib import ngamsDbm, ngamsDbCore
-from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, TRACE, NGAMS_TEXT_MT, \
-    NGAMS_HTTP_SUCCESS, rmFile
+from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, TRACE, NGAMS_TEXT_MT, rmFile
 
 
 logger = logging.getLogger(__name__)
@@ -321,8 +321,8 @@ def handleCmd(srvObj,
             mimeType = NGAMS_PYTHON_LIST_MT
 
         # Return the data.
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                            finalRes, 0, mimeType)
+        httpRef.send_data(finalRes, mimeType)
+
     elif (fetch):
         cursorDbmFilename = genCursorDbmName(srvObj.getCfg().\
                                              getRootDirectory(), cursorId)
@@ -352,8 +352,8 @@ def handleCmd(srvObj,
 
             # Return the data.
             # TODO: Make it possible to return ASCII List + XML.
-            srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                                str(resSet), 0, NGAMS_PYTHON_LIST_MT)
+            httpRef.send_data(str(resSet), NGAMS_PYTHON_LIST_MT)
+
         except Exception, e:
             msg = "Error fetching from cursor with ID: %s. Error: %s"
             raise Exception, msg % (cursorId, str(e))
@@ -366,14 +366,11 @@ def handleCmd(srvObj,
 
         # Make the query in a cursor and dump the results into the DBM.
         curObj = srvObj.getDb().dbCursor(query, args=args)
-        while (True):
-            resSet = curObj.fetch(1000)
-            if (not resSet): break
-            for res in resSet:
+        with curObj:
+            for res in curObj.fetch(1000):
                 cursorDbm.addIncKey(res)
         cursorDbm.add(CURSOR_IDX, 0)
         cursorDbm.sync()
-        del curObj
         del cursorDbm
         # TODO: In this case no reply is generated??
     else:

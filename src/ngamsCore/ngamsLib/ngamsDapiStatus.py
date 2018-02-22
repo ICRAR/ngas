@@ -56,6 +56,7 @@ class ngamsDapiStatus:
         self.__ioTime            = 0
         self.__fileExists        = -1
         self.__completeFilename  = ""
+        self.crc = None
 
 
     def setStatus(self,
@@ -366,12 +367,7 @@ class ngamsDapiStatus:
         return self.__completeFilename
 
 
-    def toString(self):
-        """
-        Generate an ASCII buffer with the contents of the object.
-
-        Returns:   String buffer with status of object contents (string).
-        """
+    def __repr__(self):
         return "Status: " + self.getStatus() + ", " +\
                "Disk ID: " + self.getDiskId() + ", " +\
                "Relative Filename: " + self.getRelFilename() + ", " +\

@@ -8,13 +8,6 @@ NgamsCfg.ArchiveHandling[1].PathPrefix                 : saf
 NgamsCfg.ArchiveHandling[1].Replication                : 1
 NgamsCfg.Authorization[1].Enable                       : 0
 NgamsCfg.Authorization[1].Id                           : Authorization-Test
-NgamsCfg.Authorization[1].User[1].Commands             : *
-NgamsCfg.Authorization[1].User[1].Name                 : ngas
-NgamsCfg.Authorization[1].User[1].Password             : bmdhcw==
-NgamsCfg.Authorization[1].User[2].Name                 : ngasmgr
-NgamsCfg.Authorization[1].User[2].Password             : bmdhc21ncg==
-NgamsCfg.Authorization[1].User[3].Name                 : ngas-int
-NgamsCfg.Authorization[1].User[3].Password             : bmdhcy1pbnQ=
 NgamsCfg.DataCheckThread[1].Active                     : 0
 NgamsCfg.DataCheckThread[1].ChecksumPlugIn             : ngamsGenCrc32
 NgamsCfg.DataCheckThread[1].DiskSeq                    : SEQUENTIAL
@@ -181,10 +174,10 @@ NgamsCfg.Streams[1].Stream[7].StorageSetRef[2].StorageSetId: FitsStorage2
 NgamsCfg.Streams[1].Stream[7].StorageSetRef[3].StorageSetId: FitsStorage3
 NgamsCfg.SubscriptionDef[1].AutoUnsubscribe            : 0
 NgamsCfg.SubscriptionDef[1].BackLogExpTime             : 28T00:00:00
-NgamsCfg.SubscriptionDef[1].Enable                     : 1
+NgamsCfg.SubscriptionDef[1].Enable                     : 0
 NgamsCfg.SubscriptionDef[1].Id                         : SubscriptionDef-Test
 NgamsCfg.SubscriptionDef[1].Subscription[1].FilterPlugIn: ngamsMimeTypeFilterPI
-NgamsCfg.SubscriptionDef[1].Subscription[1].FilterPlugInPars: mime_types=image/x-fits|application/x-cfits
+NgamsCfg.SubscriptionDef[1].Subscription[1].FilterPlugInPars: mime_types=image/x-fits|application/x-cfits|application/octet-stream
 NgamsCfg.SubscriptionDef[1].Subscription[1].HostId     : DEFINE
 NgamsCfg.SubscriptionDef[1].Subscription[1].PortNo     : 8888
 NgamsCfg.SubscriptionDef[1].Subscription[1].Priority   : 0

@@ -19,6 +19,8 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+import os
+
 from setuptools import setup, find_packages
 
 with open('../../VERSION') as vfile:
@@ -26,6 +28,14 @@ with open('../../VERSION') as vfile:
         if "ngamsNGAMS_SW_VER" in line:
             version = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]
             break
+
+
+install_requires = ['ngamsCore', 'python-daemon', 'pysendfile', 'netifaces>=0.10.6']
+
+# Users might opt out from depending on crc32c
+# Our code is able to cope with that situation already
+if 'NGAS_NO_CRC32C' not in os.environ:
+    install_requires.append('crc32c>=1.2')
 
 setup(
     name='ngamsServer',
@@ -43,12 +53,7 @@ setup(
     package_data = {
         'ngamsServer'  : ['README', '*.txt'],
     },
-    install_requires=[
-        'crc32c',
-        'ngamsCore',
-        'python-daemon',
-        'pysendfile',
-    ],
+    install_requires=install_requires,
     # No spaces allowed between the '='s
     entry_points= {
         'console_scripts':[

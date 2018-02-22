@@ -27,11 +27,11 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  14/11/2001  Created
 #
-
 """
 Contains utility functions used in connection with the handling of
 the file archiving.
 """
+import collections
 import contextlib
 import cPickle
 import glob
@@ -39,6 +39,7 @@ import logging
 import os
 import random
 import time
+import urllib
 
 from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
     NGAMS_FILE_STATUS_OK, TRACE, NGAMS_NOTIF_DISK_SPACE,\
@@ -46,7 +47,9 @@ from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
     NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile,\
     NGAMS_NOTIF_NO_DISKS, mvFile, NGAMS_PICKLE_FILE_EXT,\
     rmFile, NGAMS_SUCCESS, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
-    getHostName, loadPlugInEntryPoint
+    getHostName, loadPlugInEntryPoint, checkCreatePath, NGAMS_HTTP_HDR_CHECKSUM,\
+    NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE,\
+    NGAMS_NOTIF_ERROR
 from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib,\
     ngamsHttpUtils
 from ngamsLib import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
@@ -54,15 +57,197 @@ import ngamsFileUtils
 import ngamsCacheControlThread
 
 
+logger = logging.getLogger(__name__)
+
 # Dictionary to keep track of disk space warnings issued.
 _diskSpaceWarningDic = {}
 
-logger = logging.getLogger(__name__)
+VOLUME_STRATEGY_RANDOM = 0
+VOLUME_STRATEGY_STREAMS = 1
+
+def _random_target_volume(srv):
+
+    # Get a random volume from the list of available volumes
+    # This should balance load the disk utilization
+    res = srv.getDb().getAvailableVolumes(srv.getHostId())
+    if not res:
+        return None
+
+    # Shuffle the results.
+    res = list(res)
+    random.shuffle(res)
+    return ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(res[0])
+
+def _stream_target_volume(srvObj, mimeType, file_uri, size):
+    try:
+        return ngamsDiskUtils.findTargetDisk(srvObj.getHostId(),
+                                             srvObj.getDb(), srvObj.getCfg(),
+                                             mimeType, 0, caching=0,
+                                             reqSpace=size)
+    except Exception as e:
+        errMsg = str(e) + ". Attempting to archive file: %s" % file_uri
+        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_NO_DISKS,
+                                  "NO DISKS AVAILABLE", errMsg)
+        raise
+
+
+class eof_found(Exception):
+    """Throw by archive_contents if the EOF is found while reading the incoming data"""
+    pass
+
+class too_much_data(Exception):
+    """Throw by archive_contents if the EOF is found while reading the incoming data"""
+    pass
+
+archiving_results = collections.namedtuple('archiving_results',
+                                           'size rtime wtime crctime totaltime crcname crc')
+
+def archive_contents(out_fname, fin, fsize, block_size, crc_name, skip_crc=False):
+    """
+    Archives the contents read from `fin` (a file-like object with .read()
+    support) and writes it to file `out_fname`, which is opened in write mode
+    and truncated. While reading the data its checksum is calculated using the
+    checksum method indicated by `crc_variant`.
+
+    This method returns an archiving_results tuple populated with all the
+    corresponding fields.
+    """
+
+    # Get the CRC method to be used and initialize CRC value
+    crc_info = None
+    crc_m = None
+    crc = None
+    if not skip_crc:
+        crc_info = ngamsFileUtils.get_checksum_info(crc_name)
+        if crc_info:
+            crc_m = crc_info.method
+            crc = crc_info.init
+
+    crctime = 0
+    rtime = 0
+    wtime = 0
+    readin = 0
+
+    logger.debug("Saving data in file: %s", out_fname)
+
+    start = time.time()
+    with open(out_fname, 'wb') as fout:
+        while readin < fsize:
+
+            left = fsize - readin
+
+            # Read
+            rstart = time.time()
+            buff = fin.read(block_size if left >= block_size else left)
+            rtime += time.time() - rstart
+            readin += len(buff)
+
+            if not buff:
+                raise eof_found("Only read %d out of %d bytes (%d bytes missing)"
+                                % (readin, fsize, fsize - readin))
+
+            # Write
+            wstart = time.time()
+            fout.write(buff)
+            wtime += time.time() - wstart
+
+            # CRC
+            if crc_m:
+                crcstart = time.time()
+                crc = crc_m(buff, crc)
+                crctime += time.time() - crcstart
+
+    if crc_info:
+        crc = crc_info.final(crc)
+
+        # rtobar, 31 Aug 2017
+        #
+        # I've added these two lines here to ensure that the contents of the
+        # file are actually safe on disk at this stage, but it's commented out
+        # for the moment because I'm not fully sure this is the best place to do
+        # this. It probably is because any problem that occurs later without
+        # doing an explicit fsync() here would mean that not *all* the data
+        # might have been saved to disk.
+        #
+        # On the other hand, the NGAS code already invokes a disk-sync plug-in
+        # after each file archival (which syncs *the whole disk*!) if the
+        # backlog buffering feature is on (which seems to be the case, at least
+        # in our MWA setups). This later full-disk sync seems unnecessary
+        # (backlog buffering or not), and it looks to me that an unconditional
+        # fsync() is really what we want. Still, I prefer not to rush and try
+        # to understand the reasoning behind the current approach (performance
+        # is the only thing I can think of) before doing any changes.
+        #
+        # All the above means also that if I enable these two lines I'll simply
+        # remove the full disk sync logic.
+
+#        # Make sure all the content has been flushed from user-space caches...
+#        fout.flush()
+#        # ... and hits the disk
+#        os.fsync(fout.fileno())
+
+    total_time = time.time() - start
+
+    if readin > fsize:
+        raise too_much_data("Read %d bytes of data, but advertised size was %d (%d bytes too many)"
+                            % (readin, fsize, readin - fsize))
+
+    # Avoid divide by zeros later on, let's say it took us 1 [us] to do this
+    if total_time == 0.0:
+        total_time = 0.000001
+
+    return archiving_results(readin, rtime, wtime, crctime, total_time, crc_name, crc)
+
+
+def archive_contents_from_request(out_fname, cfg, req, rfile, skip_crc=False, transfer=None):
+    """
+    Inspects the given configuration and request objects, and calls
+    archive_contents with the required arguments.
+    """
+
+    checkCreatePath(os.path.dirname(out_fname))
+
+    # The CRC variant is configured in the server, but can be overridden
+    # in a per-request basis
+    if 'crc_variant' in req:
+        variant = req['crc_variant']
+    else:
+        variant = cfg.getCRCVariant()
+    crc_name = ngamsFileUtils.get_checksum_name(variant)
+
+    def http_transfer(req, out_fname, crc_name, skip_crc):
+        block_size = cfg.getBlockSize()
+        size = req.getSize()
+        return archive_contents(out_fname, rfile, size, block_size, crc_name, skip_crc)
+
+    transfer = transfer or http_transfer
+    result = transfer(req, out_fname, crc_name, skip_crc=skip_crc)
+
+    req.incIoTime(result.rtime + result.wtime)
+    req.setBytesReceived(result.size)
+    ingestRate = result.size / result.totaltime / 1024. / 1024.
+
+    # Compare checksum if required
+    checksum = req.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
+    checksum_info = ngamsFileUtils.get_checksum_info(variant)
+    if checksum and result.crc is not None:
+        if not checksum_info.equals(checksum, result.crc):
+            msg = 'Checksum error for file %s, local crc = %s, but remote crc = %s' % (req.getFileUri(), str(result.crc), checksum)
+            raise Exception(msg)
+        else:
+            logger.info("%s CRC checked, OK!", req.getFileUri())
+
+    logger.debug('File size: %d; Transfer time: %.4f s; CRC time: %.4f s; write time %.4f s',
+                 result.size, result.totaltime, result.crctime, result.wtime)
+    logger.info('Saved data in file: %s. Bytes received: %d. Time: %.4f s. Rate: %.2f MB/s. Checksum (%s): %s',
+                out_fname, result.size, result.totaltime, ingestRate, str(result.crcname), str(result.crc))
+
+    return result
 
 def updateFileInfoDb(srvObj,
                      piStat,
                      checksum,
-                     checksumPlugIn):
+                     checksumPlugIn, sync_disk=True, ingestion_rate=None):
     """
     Update the information for the file in the NGAS DB.
 
@@ -81,19 +266,33 @@ def updateFileInfoDb(srvObj,
 
     # Check that the file is really contained in the final location as
     # indicated by the information in the File Info Object.
-    try:
-        ngamsFileUtils.syncCachesCheckFiles(srvObj,
-                                            [piStat.getCompleteFilename()])
-    except Exception as e:
-        errMsg = "Severe error occurred! Cannot update information in " +\
-                 "NGAS DB (ngas_files table) about file with File ID: " +\
-                 piStat.getFileId() + " and File Version: " +\
-                 str(piStat.getFileVersion()) + ", since file is not found " +\
-                 "in the indicated, final storage location! Check system! " +\
-                 "Error: " + str(e)
-        raise Exception(errMsg)
+    if sync_disk:
+        try:
+            ngamsFileUtils.syncCachesCheckFiles(srvObj,
+                                                [piStat.getCompleteFilename()])
+        except Exception, e:
+            errMsg = "Severe error occurred! Cannot update information in " +\
+                     "NGAS DB (ngas_files table) about file with File ID: " +\
+                     piStat.getFileId() + " and File Version: " +\
+                     str(piStat.getFileVersion()) + ", since file is not found " +\
+                     "in the indicated, final storage location! Check system! " +\
+                     "Error: " + str(e)
+            raise Exception(errMsg)
 
-    if (piStat.getStatus() == NGAMS_FAILURE): return
+    if (piStat.getStatus() == NGAMS_FAILURE):
+        return
+
+    # If there was a previous version of this file, and it had a container associated with it
+    # associate the new version with the container too
+    containerId = None
+    file_version = piStat.getFileVersion()
+    if file_version > 1:
+        fileInfo = ngamsFileInfo.ngamsFileInfo()
+        fileInfo.read(srvObj.getHostId(),srvObj.getDb(), piStat.getFileId(),
+                      fileVersion=(file_version - 1))
+        containerId = fileInfo.getContainerId()
+        prevSize = fileInfo.getUncompressedFileSize()
+
     now = time.time()
     creDate = getFileCreationTime(piStat.getCompleteFilename())
     fileInfo = ngamsFileInfo.ngamsFileInfo().\
@@ -109,10 +308,21 @@ def updateFileInfoDb(srvObj,
                setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
                setFileStatus(NGAMS_FILE_STATUS_OK).\
                setCreationDate(creDate).\
-               setIoTime(piStat.getIoTime())
+               setIoTime(piStat.getIoTime()).\
+               setIgnore(0)
+    if ingestion_rate is not None:
+        fileInfo.setIngestionRate(ingestion_rate)
+
     fileInfo.write(srvObj.getHostId(), srvObj.getDb())
     logger.debug("Updated file info in NGAS DB for file with ID: %s", piStat.getFileId())
 
+    # Update the container size with the new size
+    if containerId:
+        newSize = fileInfo.getUncompressedFileSize()
+        srvObj.getDb().addFileToContainer(containerId, piStat.getFileId(), True)
+        srvObj.getDb().addToContainerSize(containerId, (newSize - prevSize))
+
+    return fileInfo
 
 def replicateFile(dbConObj,
                   ngamsCfgObj,
@@ -234,7 +444,8 @@ def issueDiskSpaceWarning(srvObj,
 
 
 def checkDiskSpace(srvObj,
-                   mainDiskId):
+                   mainDiskId,
+                   mainDiskInfo=None):
     """
     Check the amount of disk space on the disk with the given ID. Both the
     Main Disk and the Replication Disk are taken into account.
@@ -253,8 +464,9 @@ def checkDiskSpace(srvObj,
     logger.debug("Checking disk space for disk with ID: %s", mainDiskId)
 
     # Get info Main Disk
-    mainDiskInfo = ngamsDiskInfo.ngamsDiskInfo()
-    mainDiskInfo.read(srvObj.getDb(), mainDiskId)
+    if mainDiskInfo is None:
+        mainDiskInfo = ngamsDiskInfo.ngamsDiskInfo()
+        mainDiskInfo.read(srvObj.getDb(), mainDiskId)
     availSpaceMbMain = getDiskSpaceAvail(mainDiskInfo.getMountPoint(),
                                          smart=False)
 
@@ -357,7 +569,9 @@ def checkDiskSpace(srvObj,
 def postFileRecepHandling(srvObj,
                           reqPropsObj,
                           resultPlugIn,
-                          cksum = None):
+                          tgtDiskInfo,
+                          cksum=None, sync_disk=True, ingestion_rate=None,
+                          do_replication=True):
     """
     The function carries out the action needed after a file has been received
     for archiving. This consists of updating the information about the
@@ -375,29 +589,47 @@ def postFileRecepHandling(srvObj,
     Returns:        Disk info object containing the information about
                     the Main File (ngasDiskInfo).
     """
-    logger.debug("Data returned from Data Archiving Plug-In: %s", resultPlugIn.toString())
+
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("Data returned from Data Archiving Plug-In: %r", resultPlugIn)
 
     # if checksum is already supplied then do not calculate it from the plugin
     if (cksum == None):
         # Calculate checksum (if plug-in specified).
         checksumPlugIn = srvObj.getCfg().getChecksumPlugIn()
         if (checksumPlugIn != ""):
-            logger.debug("Invoking Checksum Plug-In: %s to handle file: %s",
+            logger.info("Invoking Checksum Plug-In: %s to handle file: %s",
                          checksumPlugIn, resultPlugIn.getCompleteFilename())
             plugInMethod = loadPlugInEntryPoint(checksumPlugIn)
             checksum = plugInMethod(srvObj, resultPlugIn.getCompleteFilename(), 0)
-            logger.debug("Result: %s", checksum)
+            logger.info("Result: %s", checksum)
         else:
             checksum = ''
             checksumPlugIn = ''
     else:
         checksum, checksumPlugIn = cksum
 
-    # Update information for Main File/Disk in DB.
-    updateFileInfoDb(srvObj, resultPlugIn, checksum, checksumPlugIn)
-    mainDiskInfo = ngamsDiskUtils.updateDiskStatusDb(srvObj.getDb(),
-                                                     resultPlugIn)
+    # Update information for File in DB.
+    fileInfo = updateFileInfoDb(srvObj, resultPlugIn, checksum, checksumPlugIn,
+                     sync_disk=sync_disk, ingestion_rate=ingestion_rate)
     ngamsLib.makeFileReadOnly(resultPlugIn.getCompleteFilename())
+
+    # Update information about main disk
+    # TODO: This doesn't handle (yet) the fact that we might be overwriting
+    #       an existing file (and therefore the number of files shouldn't go up),
+    #       the new amount of available space, and the accumulated amount of
+    #       I/O spent on the disk (who cares?). We are only updated these values
+    #       on the disk object in memory, while on the database we perform only
+    #       certain updates.
+    #       The routine commented below did all this, but it reads from the DB
+    #       and then writes back again, which is not exactly great either.
+    if not resultPlugIn.getFileExists():
+        tgtDiskInfo.setNumberOfFiles(tgtDiskInfo.getNumberOfFiles() + 1)
+    tgtDiskInfo.setBytesStored(tgtDiskInfo.getBytesStored() + resultPlugIn.getFileSize())
+    tgtDiskInfo.setTotalDiskWriteTime(tgtDiskInfo.getTotalDiskWriteTime() + resultPlugIn.getIoTime())
+    srvObj.getDb().updateDiskInfo(resultPlugIn.getFileSize(), resultPlugIn.getDiskId())
+#     mainDiskInfo = ngamsDiskUtils.updateDiskStatusDb(srvObj.getDb(),
+#                                                      resultPlugIn)
 
     # If running as a cache archive, update the Cache New Files DBM
     # with the information about the new file.
@@ -417,14 +649,15 @@ def postFileRecepHandling(srvObj,
 
     # Now handle the Replication Disk - if there is a corresponding Replication
     # Disk for the Main Disk and if not replication was disabled by the DAPI.
-    if (srvObj.getCfg().getReplication()):
+    if do_replication and srvObj.getCfg().getReplication():
         srvObj.test_BeforeRepFile()
         assocSlotId = srvObj.getCfg().getAssocSlotId(resultPlugIn.getSlotId())
         if ((not reqPropsObj.getNoReplication()) and (assocSlotId != "")):
             resRep = replicateFile(srvObj.getDb(), srvObj.getCfg(),
                                    srvObj.getDiskDic(), resultPlugIn)
             srvObj.test_BeforeDbUpdateRepFile()
-            updateFileInfoDb(srvObj, resRep, checksum, checksumPlugIn)
+            updateFileInfoDb(srvObj, resRep, checksum, checksumPlugIn,
+                             sync_disk=sync_disk)
             ngamsDiskUtils.updateDiskStatusDb(srvObj.getDb(), resRep)
 
         # Inform the caching service about the new file.
@@ -437,22 +670,11 @@ def postFileRecepHandling(srvObj,
                                                         fileVersion, filename)
 
     # Check if we should change to next disk.
-    checkDiskSpace(srvObj, resultPlugIn.getDiskId())
+    checkDiskSpace(srvObj, resultPlugIn.getDiskId(), tgtDiskInfo)
 
-    # Generate a File Info Object for the file stored.
-    fileInfo = ngamsFileInfo.ngamsFileInfo()
-    fileInfo.read(srvObj.getHostId(),
-                  srvObj.getDb(), resultPlugIn.getFileId(),
-                  resultPlugIn.getFileVersion())
-    mainDiskInfo.addFileObj(fileInfo)
-
-    # Trigger the Data Susbcription Thread to make it check if there are
-    # files to deliver to the new Subscriber.
-    srvObj.addSubscriptionInfo([(resultPlugIn.getFileId(),
-                                 resultPlugIn.getFileVersion())], [])
-
-    logger.debug("Handled file with URI: %s successfully", reqPropsObj.getSafeFileUri())
-    return mainDiskInfo
+    # Return these to the user in a status document
+    tgtDiskInfo.addFileObj(fileInfo)
+    return tgtDiskInfo
 
 
 def archiveFromFile(srvObj,
@@ -529,7 +751,7 @@ def archiveFromFile(srvObj,
         mvFile(reqPropsObjLoc.getStagingFilename(),
                resMain.getCompleteFilename())
 
-        postFileRecepHandling(srvObj, reqPropsObjLoc, resMain)
+        postFileRecepHandling(srvObj, reqPropsObjLoc, resMain, trgDiskInfo)
     except Exception as e:
         # If another error occurrs, than one qualifying for Back-Log
         # Buffering the file, we have to log an error.
@@ -664,9 +886,7 @@ def checkBackLogBuffer(srvObj):
                 rmFile(pickleObjFile)
 
 
-def cleanUpStagingArea(srvObj,
-                       reqPropsObj,
-                       tmpStagingFilename,
+def cleanUpStagingArea(tmpStagingFilename,
                        stagingFilename,
                        tmpReqPropsFilename,
                        reqPropsFilename):
@@ -680,12 +900,6 @@ def cleanUpStagingArea(srvObj,
 
     If the client requested wait=1, all files are deleted.
 
-    srvObj:                Reference to NG/AMS server class object
-                           (ngamsServer).
-
-    reqPropsObj:           Request Property object to keep track of actions
-                           done during the request handling (ngamsReqProps).
-
     tmpStagingFilename:    Temporary Staging File (string).
 
     stagingFilename:       Staging File (string).
@@ -696,7 +910,6 @@ def cleanUpStagingArea(srvObj,
 
     Returns:               Void.
     """
-    T = TRACE()
 
     # All Staging Files can be deleted.
     stgFiles = [tmpStagingFilename, stagingFilename, tmpReqPropsFilename,
@@ -707,32 +920,116 @@ def cleanUpStagingArea(srvObj,
             rmFile(stgFile)
 
 
-def dataHandler(srvObj,
-                reqPropsObj,
-                httpRef):
+def archiveInitHandling(srvObj, reqPropsObj, httpRef, do_probe=False, try_to_proxy=False):
     """
-    Data handler that takes care of the handling in connection
-    with archiving a data file.
+    Handle the initialization of the ARCHIVE Command.
 
-    srvObj:        Reference to NG/AMS server class object (ngamsServer).
+    For a description of the signature: Check handleCmdArchive().
 
-    reqPropsObj:   Request Property object to keep track of actions done
-                   during the request handling (ngamsReqProps).
-
-    httpRef:       Reference to the HTTP request handler
-                   object (ngamsHttpRequestHandler).
-
-    Returns:       Disk info object with status for Main Disk
-                   where data file was stored (ngamsDiskInfo).
+    Returns:   Mime-type of the request or None if the request has been
+               handled and reply sent back (string|None).
     """
-    T = TRACE()
+
+    # Is this NG/AMS permitted to handle Archive Requests?
+    if (not srvObj.getCfg().getAllowArchiveReq()):
+        errMsg = genLog("NGAMS_ER_ILL_REQ", ["Archive"])
+        raise Exception, errMsg
+    srvObj.checkSetState("Archive Request", [NGAMS_ONLINE_STATE],
+                         [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
+                         NGAMS_ONLINE_STATE, NGAMS_BUSY_SUBSTATE,
+                         updateDb=False)
+
+    # Ensure we have the mime-type.
+    mimeType = reqPropsObj.getMimeType()
+    if not mimeType:
+        mimeType = ngamsHighLevelLib.\
+                   determineMimeType(srvObj.getCfg(), reqPropsObj.getFileUri())
+        reqPropsObj.setMimeType(mimeType)
+
+    # This is a request probing for capability of handling the request.
+    if do_probe:
+        try:
+            ngamsDiskUtils.findTargetDisk(srvObj.getHostId(),
+                                          srvObj.getDb(), srvObj.getCfg(),
+                                          mimeType, sendNotification=0)
+            msg = genLog("NGAMS_INFO_ARCH_REQ_OK",
+                         [mimeType, getHostName()])
+        except Exception:
+            msg = genLog("NGAMS_ER_ARCH_REQ_NOK",
+                         [mimeType, getHostName()])
+
+        httpRef.send_status(msg)
+        return
+
+    # Check if the URI is correctly set.
+    if not reqPropsObj.getFileUri():
+        errMsg = genLog("NGAMS_ER_MISSING_URI")
+        raise Exception(errMsg)
+
+    # Act possibly as proxy for the Achive Request?
+    # TODO: Support maybe HTTP redirection also for Archive Requests.
+    if (try_to_proxy and
+        srvObj.getCfg().getStreamFromMimeType(mimeType).getHostIdList()):
+        host_id, host, port = findTargetNode(srvObj, mimeType)
+        if host_id != srvObj.getHostId():
+            httpRef.proxy_request(host_id, host, port)
+            return None
+
+    return mimeType
+
+def dataHandler(srv, request, httpRef, volume_strategy=VOLUME_STRATEGY_STREAMS,
+                pickle_request=True, sync_disk=True, do_replication=True,
+                transfer=None):
+
+    # Choose the method to select which volume will host the incoming data
+    if volume_strategy == VOLUME_STRATEGY_RANDOM:
+        find_target_disk = _random_target_volume
+    elif volume_strategy == VOLUME_STRATEGY_STREAMS:
+        def find_target_disk(srv):
+            mimeType = request.getMimeType()
+            file_uri = request.getFileUri()
+            size = request.getSize()
+            return _stream_target_volume(srv, mimeType, file_uri, size)
+    else:
+        raise Exception("Unknown volume selection strategy: %d", volume_strategy)
+
+    # Thin wrapper around _dataHandler to send notifications, just in case
+    try:
+        _dataHandler(srv, request, httpRef, find_target_disk,
+                     pickle_request=pickle_request, sync_disk=sync_disk,
+                     do_replication=do_replication, transfer=transfer)
+    except Exception as e:
+        try:
+            errMsg = genLog("NGAMS_ER_ARCHIVE_PUSH_REQ",
+                            [request.getSafeFileUri(), str(e)])
+            ngamsNotification.notify(srv.getHostId(), srv.getCfg(), NGAMS_NOTIF_ERROR,
+                                     "PROBLEM ARCHIVE HANDLING", errMsg)
+        except:
+            logger.exception('Unexpected error while trying to notify archiving error')
+        raise
+
+def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
+                pickle_request, sync_disk, do_replication, transfer):
+
+    cfg = srvObj.getCfg()
+
+    # GET means pull, POST is push
+    if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
+        logger.info("Handling archive pull request")
+        handle = urllib.urlopen(reqPropsObj.getFileUri())
+        # urllib.urlopen will attempt to get the content-length based on the URI
+        # i.e. file, ftp, http
+        reqPropsObj.setSize(handle.info()['Content-Length'])
+        rfile = handle
+    else:
+        logger.info("Handling archive push request")
+        rfile = httpRef.rfile
 
     logger.info(genLog("NGAMS_INFO_ARCHIVING_FILE", [reqPropsObj.getFileUri()]), extra={'to_syslog': True})
 
     if reqPropsObj.getSize() <= 0:
         raise Exception('Content-Length is 0')
 
-    baseName = os.path.basename(reqPropsObj.getFileUri())
     mimeType = reqPropsObj.getMimeType()
     archiving_start = time.time()
 
@@ -743,86 +1040,99 @@ def dataHandler(srvObj,
     try:
 
         # Generate target filename. Remember to set this in the Request Object.
-        try:
-            trgDiskInfo = ngamsDiskUtils.\
-                          findTargetDisk(srvObj.getHostId(),
-                                         srvObj.getDb(), srvObj.getCfg(),
-                                         mimeType, 0, caching=0,
-                                         reqSpace=reqPropsObj.getSize())
-            reqPropsObj.setTargDiskInfo(trgDiskInfo)
-        except Exception as e:
-            errMsg = str(e) + ". Attempting to archive file: " +\
-                      reqPropsObj.getSafeFileUri()
-            ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_NO_DISKS,
-                                      "NO DISKS AVAILABLE", errMsg)
+        trgDiskInfo = find_target_disk(srvObj)
+        reqPropsObj.setTargDiskInfo(trgDiskInfo)
+        if trgDiskInfo is None:
+            errMsg = "No disk volumes are available for ingesting any files."
             raise Exception(errMsg)
 
         # Generate Staging Filename + Temp Staging File + save data in this
         # file. Also Org. Staging Filename is created, Processing Staging
         # Filename and the Temp. Req. Props. File and Req. Props. File.
-        storageSetId = trgDiskInfo.getStorageSetId()
         tmpStagingFilename, stagingFilename,\
                             tmpReqPropsFilename,\
                             reqPropsFilename = ngamsHighLevelLib.\
-                            genStagingFilename(srvObj.getCfg(), reqPropsObj,
-                                               srvObj.getDiskDic(),
-                                               storageSetId,
-                                               reqPropsObj.getFileUri(),
+                            genStagingFilename(cfg, reqPropsObj,
+                                               trgDiskInfo, reqPropsObj.getFileUri(),
                                                genTmpFiles=1)
-        # Save the data into the Temp. Staging File.
-        ioTime = ngamsHighLevelLib.saveInStagingFile(srvObj.getCfg(),
-                                                     reqPropsObj,
-                                                     tmpStagingFilename,
-                                                     trgDiskInfo)
-        srvObj.test_AfterSaveInStagingFile()
-        logger.debug("Iotime returned from saveInStagingFile: %6.2f", ioTime)
-        reqPropsObj.incIoTime(ioTime)
-        logger.debug("Create Temporary Request Properties File: %s", tmpReqPropsFilename)
-        tmpReqPropsObj = reqPropsObj.clone().setReadFd(None).setWriteFd(None).\
-                         setTargDiskInfo(None)
-        ngamsLib.createObjPickleFile(tmpReqPropsFilename, tmpReqPropsObj)
-        srvObj.test_AfterCreateTmpPropFile()
+
+        # Check if we can directly perform checksum calculation at reception time;
+        # otherwise we must postpone it until the data archiving plug-in is executed,
+        # since it can potentially change the data.
+        # This method is optional, in which case it is assumed the data is not
+        # changed
+        skip_crc = False
+        plugIn = srvObj.getMimeTypeDic()[mimeType]
+        modifies = loadPlugInEntryPoint(plugIn,
+                                        entryPointMethodName='modifies_content',
+                                        returnNone=True)
+        if modifies and modifies(srvObj, reqPropsObj):
+            skip_crc = True
+
+        try:
+            ngamsHighLevelLib.acquireDiskResource(cfg, trgDiskInfo.getSlotId())
+            archive_result = archive_contents_from_request(tmpStagingFilename, cfg, reqPropsObj,
+                                                           rfile, skip_crc=skip_crc, transfer=transfer)
+        finally:
+            ngamsHighLevelLib.releaseDiskResource(cfg, trgDiskInfo.getSlotId())
+
         logger.debug("Move Temporary Staging File to Processing Staging File: %s -> %s",
                      tmpStagingFilename, stagingFilename)
         mvFile(tmpStagingFilename, stagingFilename)
-        logger.debug("Move Temporary Request Properties File to Request " + \
-                     "Properties File: %s -> %s",
-                     tmpReqPropsFilename, reqPropsFilename)
-        mvFile(tmpReqPropsFilename, reqPropsFilename)
+
+        # Pickle the request object if necessary
+        if pickle_request:
+            srvObj.test_AfterSaveInStagingFile()
+            logger.debug("Create Temporary Request Properties File: %s", tmpReqPropsFilename)
+            tmpReqPropsObj = reqPropsObj.clone().setTargDiskInfo(None)
+            ngamsLib.createObjPickleFile(tmpReqPropsFilename, tmpReqPropsObj)
+            srvObj.test_AfterCreateTmpPropFile()
+            logger.debug("Move Temporary Request Properties File to Request " + \
+                         "Properties File: %s -> %s",
+                         tmpReqPropsFilename, reqPropsFilename)
+            mvFile(tmpReqPropsFilename, reqPropsFilename)
 
         # Synchronize the file caches to ensure the files have been stored
         # on the disk and check that the files are accessible.
         # This sync is only relevant if back-log buffering is on.
-        if (srvObj.getCfg().getBackLogBuffering()):
+        if sync_disk and cfg.getBackLogBuffering():
             ngamsFileUtils.syncCachesCheckFiles(srvObj, [stagingFilename,
                                                          reqPropsFilename])
 
         # Invoke the Data Archiving Plug-In.
-        plugIn = srvObj.getMimeTypeDic()[mimeType]
+        # In case the plug-in modifies data, it can return the checksum of this
+        # modified data (only if it makes sense from a performance point of
+        # view, the default final option of re-reading the final file may be
+        # the only way). In that case they need to know the checksum method to
+        # use, which we pass down via the 'crc_name' parameter (which we later
+        # remove).
         plugInMethod = loadPlugInEntryPoint(plugIn)
 
         logger.info("Invoking DAPI: %s to handle data for file with URI: %s",
                     plugIn, os.path.basename(reqPropsObj.getFileUri()))
         srvObj.test_BeforeDapiInvocation()
+
         timeBeforeDapi = time.time()
-        resMain = plugInMethod(srvObj, reqPropsObj)
+        reqPropsObj.addHttpPar('crc_name', archive_result.crcname)
+        plugin_result = plugInMethod(srvObj, reqPropsObj)
+        del reqPropsObj.getHttpParsDic()['crc_name']
         srvObj.test_AfterDapiInvocation()
-        logger.debug("Invoked DAPI: %s. Time: %.3fs.",plugIn, (time.time() - timeBeforeDapi))
+        logger.debug("Invoked DAPI: %s. Time: %.3fs.", plugIn, (time.time() - timeBeforeDapi))
 
         # Move the file to final destination.
         ioTime = mvFile(reqPropsObj.getStagingFilename(),
-                        resMain.getCompleteFilename())
+                        plugin_result.getCompleteFilename())
         reqPropsObj.incIoTime(ioTime)
         srvObj.test_AfterMovingStagingFile()
 
         # Remember to set the final IO time in the plug-in status object.
-        resMain.setIoTime(reqPropsObj.getIoTime())
+        plugin_result.setIoTime(reqPropsObj.getIoTime())
 
     except Exception as e:
         if (str(e).find("NGAMS_ER_DAPI_BAD_FILE") != -1):
             errMsg = "Problems during archiving! URI: " +\
                      reqPropsObj.getFileUri() + ". Exception: " + str(e)
-            cleanUpStagingArea(srvObj, reqPropsObj, tmpStagingFilename,
+            cleanUpStagingArea(tmpStagingFilename,
                                stagingFilename, tmpReqPropsFilename,
                                reqPropsFilename)
         elif (str(e).find("NGAMS_ER_DAPI_RM") != -1):
@@ -836,8 +1146,7 @@ def dataHandler(srvObj,
                 logger.warning("Removing Staging File: %s", stgFile)
                 rmFile(stgFile)
             errMsg += " Error from DAPI: " + str(e)
-        elif (ngamsHighLevelLib.performBackLogBuffering(srvObj.getCfg(),
-                                                        reqPropsObj, e)):
+        elif (ngamsHighLevelLib.performBackLogBuffering(cfg, reqPropsObj, e)):
             backLogBufferFiles(srvObj, stagingFilename, reqPropsFilename)
             errMsg = genLog("NGAMS_WA_BUF_DATA",
                             [reqPropsObj.getFileUri(), str(e)])
@@ -851,12 +1160,32 @@ def dataHandler(srvObj,
             # Another error ocurred.
             errMsg = "Error encountered handling file: " + str(e)
             logger.error(errMsg)
-            cleanUpStagingArea(srvObj, reqPropsObj, tmpStagingFilename,
+            cleanUpStagingArea(tmpStagingFilename,
                                stagingFilename, tmpReqPropsFilename,
                                reqPropsFilename)
-        raise Exception(errMsg)
+        raise
 
-    diskInfo = postFileRecepHandling(srvObj, reqPropsObj, resMain)
+    # Backwards compatibility for the ARCHIVE command based on plug-in'ed CRCs
+    crc_name = archive_result.crcname
+    if reqPropsObj.getCmd() == 'ARCHIVE' and crc_name == 'crc32':
+        crc_name = 'ngamsGenCrc32'
+
+    # Checksum could have been calculated during archiving or by the DAPI
+    # Worst case scenario: we calculate it now at the very end by re-reading
+    # the stating file
+    cksum = None
+    if archive_result.crc is not None:
+        cksum = (archive_result.crc, crc_name)
+    elif plugin_result.crc is not None:
+        cksum = (plugin_result.crc, crc_name)
+    elif crc_name is None:
+        cksum = (None, None)
+
+    intestion_rate = archive_result.totaltime / reqPropsObj.getSize()
+    diskInfo = postFileRecepHandling(srvObj, reqPropsObj, plugin_result,
+                                     reqPropsObj.getTargDiskInfo(), cksum=cksum,
+                                     sync_disk=sync_disk, ingestion_rate=intestion_rate,
+                                     do_replication=do_replication)
     msg = genLog("NGAMS_INFO_FILE_ARCHIVED", [reqPropsObj.getSafeFileUri()])
     msg = msg + ". Time: %.3fs" % (time.time() - archiving_start)
     logger.info(msg, extra={'to_syslog': True})
@@ -866,8 +1195,16 @@ def dataHandler(srvObj,
     logger.debug("Removing Request Properties File: %s", reqPropsFilename)
     if (reqPropsFilename): rmFile(reqPropsFilename)
 
-    return diskInfo
+    # Request after-math
+    srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
+    msg = "Successfully handled Archive %s Request for data file with URI: %s"
+    msg = msg % ('Pull' if reqPropsObj.is_GET() else 'Push', reqPropsObj.getSafeFileUri())
+    logger.info(msg)
 
+    httpRef.send_ingest_status(msg, diskInfo)
+
+    # After a successful archiving we notify the archive event subscribers
+    srvObj.fire_archive_event(plugin_result.getFileId(), plugin_result.getFileVersion())
 
 def findTargetNode(srvObj, mimeType):
     """
@@ -935,7 +1272,7 @@ def findTargetNode(srvObj, mimeType):
             if "NGAMS_INFO_ARCH_REQ_OK" in statObj.getMessage():
                 logMsg = "Found remote Archiving Unit: %s:%d to handle " +\
                          "Archive Request for data file with mime-type: %s"
-                logger.debug(logMsg, host, port, mimeType)
+                logger.info(logMsg, host, port, mimeType)
                 return hostId, host, port
 
             logMsg = "Remote Archiving Unit: %s:%d rejected to/" +\

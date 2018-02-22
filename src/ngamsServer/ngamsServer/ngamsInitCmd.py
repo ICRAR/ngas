@@ -34,13 +34,12 @@ Function + code to handle the INIT command.
 import logging
 
 import ngamsSrvUtils
-from ngamsLib.ngamsCore import NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
+from ngamsLib.ngamsCore import NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE
 
 
 logger = logging.getLogger(__name__)
 
-def handleCmdInit(srvObj,
+def handleCmd(srvObj,
                   reqPropsObj,
                   httpRef):
     """
@@ -62,10 +61,7 @@ def handleCmdInit(srvObj,
     ngamsSrvUtils.handleOffline(srvObj, reqPropsObj)
     ngamsSrvUtils.handleOnline(srvObj, reqPropsObj)
     logger.info("NG/AMS initialized!")
-    srvObj.reply(reqPropsObj.setCompletionTime(), httpRef, NGAMS_HTTP_SUCCESS,
-                 NGAMS_SUCCESS, "Successfully handled command INIT")
-    srvObj.updateRequestDb(reqPropsObj)
-    logger.info("Successfully handled command INIT!")
 
+    return "Successfully handled command INIT"
 
 # EOF

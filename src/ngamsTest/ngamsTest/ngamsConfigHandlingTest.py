@@ -34,11 +34,10 @@ DB is tested.
 """
 
 import re
-import sys
 
 from ngamsLib import ngamsConfig, ngamsDb
 from ngamsTestLib import delNgasTbls, ngamsTestSuite, \
-    saveInFile, sendPclCmd, filterDbStatus1, runTest, db_aware_cfg
+    saveInFile, sendPclCmd, filterDbStatus1, db_aware_cfg
 
 
 dbIdAttr = 'Db-Test'
@@ -79,7 +78,8 @@ def _cleanXmlDoc(xmlDicDump, filter_pattern):
 def without_db_element(s):
     lines = []
     for l in s.split('\n'):
-        if l.strip().startswith('<Db '):
+        stripped = l.strip()
+        if stripped.startswith('<Db ') or stripped.startswith('<SessionSql ') or stripped.startswith('</Db>'):
             continue
         lines.append(l)
     return '\n'.join(lines)
@@ -128,7 +128,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         cfgObj.storeVal(revAttr, "TEST-REVISION", "ngamsCfg-Test")
 
         self.point_to_sqlite_database(cfgObj, createDatabase)
-        dbObj = ngamsDb.from_config(cfgObj)
+        dbObj = ngamsDb.from_config(cfgObj, maxpool=1)
         if (delDbTbls): delNgasTbls(dbObj)
         cfgObj.writeToDb(dbObj)
 
@@ -311,22 +311,3 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
                           "returned for Archive Push Request")
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsConfigHandlingTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

@@ -20,40 +20,26 @@
 #
 #******************************************************************************
 """
-NGAS Command Plug-In, implementing a Archive PULL Command using BBCP
-
-This works by calling archiveFromFile, which in turn takes care of all the handling
-
-Usgae example with wget:
-
-wget -O BARCHIVE.xml "http://ngas.ddns.net:7777/BBCPARC?fileUri=/home/ngas/NGAS/log/LogFile.nglog"
-
-Usage example with curl to send file from Pawsey to MIT:
-
-curl --connect-timeout 7200 eor-12.mit.edu:7777/BBCPARC?fileUri=ngas%40146.118.84.67%3A/mnt/mwa01fs/MWA/testfs/KNOPPIX_V7.2.0DVD-2013-06-16-EN.iso\&bport=7790\&bwinsize=%3D32m\&bnum_streams=12\&mimeType=application/octet-stream
+NGAS Command Plug-In, implementing a Archive Pull Command using BBCP
 """
 
 from collections import namedtuple
 import logging
 import os
-import time
 import subprocess
-import struct
+import time
 from urlparse import urlparse
 
-from ngamsLib import ngamsHighLevelLib
-from ngamsLib.ngamsCore import checkCreatePath, genLog, TRACE, \
-    NGAMS_SUCCESS, mvFile, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_BUSY_SUBSTATE, getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_STAGING_DIR, \
-    loadPlugInEntryPoint, genUniqueId
-from ngamsServer import ngamsArchiveUtils, ngamsCacheControlThread
+from ngamsLib.ngamsCore import checkCreatePath, getFileSize
+from ngamsServer import ngamsArchiveUtils, ngamsFileUtils
 
 
 logger = logging.getLogger(__name__)
 
 bbcp_param = namedtuple('bbcp_param', 'port, winsize, num_streams, checksum')
 
-def bbcpFile(srcFilename, targFilename, bparam):
+
+def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
     """
     Use bbcp tp copy file <srcFilename> to <targFilename>
 
@@ -85,10 +71,20 @@ def bbcpFile(srcFilename, targFilename, bparam):
     ssh_src = ['-S', 'ssh -x -a -oBatchMode=yes -oFallBackToRsh=no %4 %I -l %U %H bbcp']
 
     # perform checksum on host and compare to target. If it's different bbcp will fail.
-    cmd_checksum = ['-e', '-E', 'c32z=/dev/stdout']
+    if not skip_crc and crc_name is not None:
+        cmd_checksum = ['-e', '-E']
+        if crc_name in ('crc32', 'crc32z'):
+            # c32z is the zip-flavor of CRC32
+            # c32 is the POSIX flavour, which yields a different result
+            cmd_checksum.append('c32z=/dev/stdout')
+        elif crc_name == 'crc32c':
+            cmd_checksum.append('c32c=/dev/stdout')
+        else:
+            raise Exception("Unsupported checksum method in BBCP: %s" % (crc_name,))
+
     cmd_list = ['bbcp', '-f', '-V'] + ssh_src + cmd_checksum + fw + ns + ['-P', '2'] + pt + [srcFilename, targFilename]
 
-    logger.debug("Executing external command: %s", subprocess.list2cmdline(cmd_list))
+    logger.info("Executing external command: %s", subprocess.list2cmdline(cmd_list))
 
     p1 = subprocess.Popen(cmd_list, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     checksum_out, out = p1.communicate()
@@ -97,110 +93,20 @@ def bbcpFile(srcFilename, targFilename, bparam):
         raise Exception, "bbcp returncode: %d error: %s" % (p1.returncode, out)
 
     # extract c32 zip variant checksum from output and convert to signed 32 bit integer
-    bbcp_checksum = struct.unpack('!i', checksum_out.split(' ')[2].decode('hex'))
+    crc_info = ngamsFileUtils.get_checksum_info(crc_name)
+    bbcp_checksum = crc_info.from_bytes(checksum_out.split(' ')[2].decode('hex'))
 
-    logger.debug('BBCP final message: %s', out.split('\n')[-2]) # e.g. "1 file copied at effectively 18.9 MB/s"
-    logger.debug("File: %s copied to filename: %s", srcFilename, targFilename)
+    logger.info('BBCP final message: %s', out.split('\n')[-2]) # e.g. "1 file copied at effectively 18.9 MB/s"
+    logger.info("File: %s copied to filename: %s", srcFilename, targFilename)
 
-    return str(bbcp_checksum[0]), 'ngamsGenCrc32'
-
-
-def archiveFromFile(srvObj,
-                    bparam,
-                    reqPropsObj):
-    """
-    Archive a file directly from a file as source.
-
-    srvObj:          Reference to NG/AMS Server Object (ngamsServer).
-
-    filename:        Name of file to archive (string).
-
-    bparam:          BBCP parameter (named tuple)
-
-    reqPropsObj:     Request Property object to keep track of actions done
-                     during the request handling (ngamsReqProps).
-
-    Returns:         Execution result object of DAPI
-    """
-    T = TRACE()
-
-    reqPropsObjLoc = reqPropsObj
-    filename = reqPropsObj.getFileUri()
-
-    logger.info("Archiving file: %s", filename)
-
-    # If no target disk is defined, find one suitable disk.
-    if reqPropsObjLoc.getTargDiskInfo() is None:
-        trgDiskInfo = ngamsArchiveUtils.ngamsDiskUtils.\
-                        findTargetDisk(srvObj.getHostId(),
-                                         srvObj.getDb(),
-                                         srvObj.getCfg(),
-                                         reqPropsObjLoc.getMimeType(),
-                                         0)
-
-        reqPropsObjLoc.setTargDiskInfo(trgDiskInfo)
-
-    stagingFile = os.path.join('/',
-                               reqPropsObjLoc.getTargDiskInfo().getMountPoint(),
-                               NGAMS_STAGING_DIR,
-                               '{0}{1}{2}'.format(genUniqueId(), '___', os.path.basename(filename)))
-
-    reqPropsObjLoc.setStagingFilename(stagingFile)
-
-    st = time.time()
-
-    # perform the bbcp transfer, we will always return the checksum
-    bbcp_checksum = bbcpFile(filename, stagingFile, bparam)
-
-    reqPropsObjLoc.setSize(os.path.getsize(stagingFile))
-    reqPropsObjLoc.setBytesReceived(reqPropsObjLoc.getSize())
-
-    iorate = reqPropsObjLoc.getSize()/(time.time() - st)
-
-    plugIn = srvObj.getMimeTypeDic()[reqPropsObjLoc.getMimeType()]
-    logger.info("Invoking DAPI: %s to handle file: %s", plugIn, stagingFile)
-    plugInMethod = loadPlugInEntryPoint(plugIn)
-    resMain = plugInMethod(srvObj, reqPropsObjLoc)
-
-    mvFile(reqPropsObjLoc.getStagingFilename(), resMain.getCompleteFilename())
-
-    diskInfo = ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain, bbcp_checksum)
-
-    return (resMain, trgDiskInfo, iorate)
+    return str(bbcp_checksum[0])
 
 
-def handleCmd(srvObj,
-              reqPropsObj,
-              httpRef):
-    """
-    Handle the Quick Archive (QARCHIVE) Command.
-
-    srvObj:         Reference to NG/AMS server class object (ngamsServer).
-
-    reqPropsObj:    Request Property object to keep track of actions done
-                    during the request handling (ngamsReqProps).
-
-    httpRef:        Reference to the HTTP request handler
-                    object (ngamsHttpRequestHandler).
-
-    Returns:        (fileId, filePath) tuple.
-    """
-    T = TRACE()
-
-    # Check if the URI is correctly set.
-    logger.debug("Check if the URI is correctly set.")
-    logger.debug("ReqPropsObj status: %s", reqPropsObj.getObjStatus())
-
-    parsDic = reqPropsObj.getHttpParsDic()
-
-    if not parsDic.has_key('fileUri') or not parsDic['fileUri']:
-        errMsg = genLog("NGAMS_ER_MISSING_URI")
-        raise Exception(errMsg)
+def get_params(request):
 
     # exclude pulling files from these locations
     invalid_paths = ('/dev', '/var', '/usr', '/opt', '/etc')
-    file_uri = parsDic['fileUri']
-    uri = file_uri
+    uri = request.getFileUri()
 
     if uri.lower().startswith('ssh://'):
         uri = uri[6:]
@@ -212,93 +118,62 @@ def handleCmd(srvObj,
     uri = 'ssh://' + uri
     uri_parsed = urlparse(uri)
     if uri_parsed.path.lower().startswith(invalid_paths):
-        errMsg = genLog("NGAMS_ER_ILL_URI", [file_uri,
-                                            "Archive Pull Request"])
-        raise Exception(errMsg)
+        raise Exception('Requested to pull file from exluded location')
 
-    reqPropsObj.setFileUri(file_uri)
-
-    if not parsDic.has_key('mimeType') or not parsDic['mimeType']:
-        mimeType = ngamsHighLevelLib.determineMimeType(srvObj.getCfg(), 
-                                                       reqPropsObj.getFileUri())
-        reqPropsObj.setMimeType(mimeType)
-    else:
-        reqPropsObj.setMimeType(parsDic['mimeType'])
-
-    # Is this NG/AMS permitted to handle Archive Requests?
-    logger.debug("Is this NG/AMS permitted to handle Archive Requests?")
-
-    if not srvObj.getCfg().getAllowArchiveReq():
-        errMsg = genLog("NGAMS_ER_ILL_REQ", ["Archive"])
-        raise Exception, errMsg
-
-    srvObj.checkSetState("Archive Request", [NGAMS_ONLINE_STATE],
-                         [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
-                         NGAMS_ONLINE_STATE, NGAMS_BUSY_SUBSTATE,
-                         updateDb=False)
-
-    reqPropsObj.incIoTime(0)
-    reqPropsObj.setNoReplication(1)
-
+    # Collect BBCP parameters
     port = None
     winsize = None
     num_streams = None
     checksum = None
 
-    if parsDic.has_key('bport'):
-        port = int(parsDic['bport'])
+    if 'bport' in request:
+        port = int(request['bport'])
 
-    if parsDic.has_key('bwinsize'):
-        winsize = parsDic['bwinsize']
+    if 'bwinsize' in request:
+        winsize = request['bwinsize']
 
-    if parsDic.has_key('bnum_streams'):
-        num_streams = int(parsDic['bnum_streams'])
+    if 'bnum_streams' in request:
+        num_streams = int(request['bnum_streams'])
 
-    if parsDic.has_key('bchecksum'):
-        checksum = parsDic['bchecksum']
+    if 'bchecksum' in request:
+        checksum = request['bchecksum']
 
-    bparam = bbcp_param(port, winsize, num_streams, checksum)
-
-    (resDapi, targDiskInfo, iorate) = archiveFromFile(srvObj, bparam, reqPropsObj)
-
-    # Inform the caching service about the new file.
-    logger.debug("Inform the caching service about the new file.")
-    if (srvObj.getCachingActive()):
-        diskId      = resDapi.getDiskId()
-        fileId      = resDapi.getFileId()
-        fileVersion = 1
-        filename    = resDapi.getRelFilename()
-        ngamsCacheControlThread.addEntryNewFilesDbm(srvObj, diskId, fileId,
-                                                   fileVersion, filename)
-
-    # Update disk info in NGAS Disks.
-    logger.debug("Update disk info in NGAS Disks.")
-    srvObj.getDb().updateDiskInfo(resDapi.getFileSize(), resDapi.getDiskId())
-
-    # Check if the disk is completed.
-    # We use an approximate estimate for the remaning disk space to avoid
-    # to read the DB.
-    logger.debug("Check available space in disk")
-    availSpace = getDiskSpaceAvail(targDiskInfo.getMountPoint(), smart=False)
-    if (availSpace < srvObj.getCfg().getFreeSpaceDiskChangeMb()):
-        targDiskInfo.setCompleted(1).setCompletionDate(time.time())
-        targDiskInfo.write(srvObj.getDb())
-
-    # Request after-math ...
-    srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
-    msg = "Successfully handled Archive Pull Request for data file " +\
-          "with URI: %s"
-    logger.info(msg, reqPropsObj.getSafeFileUri())
-    srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                       NGAMS_SUCCESS, msg, targDiskInfo)
-
-    # Trigger Subscription Thread. This is a special version for MWA, in which we simply swapped MIRRARCHIVE and QARCHIVE
-    # chen.wu@icrar.org
-    logger.debug("triggering SubscriptionThread for file %s", resDapi.getFileId())
-    srvObj.addSubscriptionInfo([(resDapi.getFileId(),
-                                 resDapi.getFileVersion())], [])
-    srvObj.triggerSubscriptionThread()
+    return bbcp_param(port, winsize, num_streams, checksum)
 
 
-    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()),
-            iorate)
+def bbcp_transfer(request, out_fname, crc_name, skip_crc):
+
+    bparam = get_params(request)
+
+    # perform the bbcp transfer, we will always return the checksum
+    start = time.time()
+    checksum = bbcpFile(request.getFileUri(), out_fname, bparam, crc_name, skip_crc)
+    size = getFileSize(out_fname)
+    totaltime = time.time() - start
+
+    # Feedback the file size into the request object now that we know it,
+    # just in case we need it later
+    request.setSize(size)
+
+    # Artificially split the total time between read and write (+ 0 crc),
+    # we don't actually know how much was spent on what
+    half = totaltime / 2
+    return ngamsArchiveUtils.archiving_results(size, half, half, 0, totaltime, crc_name, checksum)
+
+
+def handleCmd(srvObj, reqPropsObj, httpRef):
+    """
+    Handle the BBCP Command.
+    """
+
+    mimeType = ngamsArchiveUtils.archiveInitHandling(srvObj, reqPropsObj, httpRef,
+                                                     do_probe=False, try_to_proxy=False)
+
+    if not mimeType:
+        return
+
+    ngamsArchiveUtils.dataHandler(srvObj, reqPropsObj, httpRef,
+                                  volume_strategy=ngamsArchiveUtils.VOLUME_STRATEGY_RANDOM,
+                                  pickle_request=False, sync_disk=False,
+                                  do_replication=False,
+                                  transfer=bbcp_transfer)

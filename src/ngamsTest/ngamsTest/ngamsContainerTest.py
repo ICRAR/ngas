@@ -23,11 +23,10 @@
 import os
 import random
 import string
-import sys
 
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE, toiso8601
 from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
-from ngamsTestLib import sendPclCmd, ngamsTestSuite, runTest
+from ngamsTestLib import sendPclCmd, ngamsTestSuite
 
 
 class ngamsContainerTest(ngamsTestSuite):
@@ -342,19 +341,3 @@ class ngamsContainerTest(ngamsTestSuite):
 				self.assertEquals(getFileSize(f), getFileSize(files2[idx]))
 			elif os.path.isdir(f):
 				self._assertEqualsDir(f, files2[idx])
-
-def run():
-	"""
-	Run the complete test.
-
-	Returns:   Void.
-	"""
-	runTest(["ngamsContainerTest"])
-
-if __name__ == "__main__":
-	"""
-	Main program executing the test cases of the module test.
-	"""
-	runTest(sys.argv)
-
-# EOF

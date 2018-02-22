@@ -43,6 +43,7 @@ import functools
 import logging
 import os
 import random
+import shutil
 import socket
 import sys
 import time
@@ -57,8 +58,8 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NG
     NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD, \
     NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT, \
     NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD, \
-    NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE, \
-    NGAMS_IDLE_SUBSTATE, getNgamsLicense, toiso8601, NGAMS_CONT_MT
+    NGAMS_HTTP_REDIRECT, getNgamsVersion, \
+    getNgamsLicense, toiso8601, NGAMS_CONT_MT
 
 
 logger = logging.getLogger(__name__)
@@ -68,25 +69,6 @@ def is_known_pull_url(s):
            s.startswith('http:') or \
            s.startswith('https:') or \
            s.startswith('ftp:')
-
-def _dummy_stat(host_id, status, msg, data=None):
-    stat = ngamsStatus.ngamsStatus().\
-           setDate(toiso8601()).\
-           setVersion(getNgamsVersion()).setHostId(host_id).\
-           setStatus(status).\
-           setMessage(msg).\
-           setState(NGAMS_ONLINE_STATE).\
-           setSubState(NGAMS_IDLE_SUBSTATE)
-    if data:
-        stat.setData(data)
-    return stat
-
-def _dummy_success_stat(host_id, data=None):
-    return _dummy_stat(host_id, NGAMS_SUCCESS, "Successfully handled request", data)
-
-def _dummy_failure_stat(host_id, cmd):
-    logger.debug("HTTP status != 200, creating dummy NGAS_FAILURE status")
-    return _dummy_stat(host_id, NGAMS_FAILURE, "Failed to handle command %s" % (cmd,))
 
 class ngamsPClient:
     """
@@ -432,7 +414,7 @@ class ngamsPClient:
             handler = ngamsMIMEMultipart.FilesystemWriterHandler(1024, basePath=targetDir)
             parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, resp, size, 65536)
             parser.parse()
-            return _dummy_success_stat(host_id)
+            return ngamsStatus.dummy_success_stat(host_id)
 
     def exit(self):
         """
@@ -585,7 +567,7 @@ class ngamsPClient:
         with contextlib.closing(resp):
 
             if resp.status != NGAMS_HTTP_SUCCESS:
-                return ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read(), 1)
+                return ngamsStatus.to_status(resp, host_id, 'RETRIEVE')
 
             # If the target path is a directory, take the filename
             # of the incoming data as the filename
@@ -604,10 +586,10 @@ class ngamsPClient:
                 for buf in iter(readf, ''):
                     f.write(buf)
 
-            return _dummy_success_stat(host_id)
+            return ngamsStatus.dummy_success_stat(host_id)
 
 
-    def status(self, pars=[]):
+    def status(self, pars=[], output=None):
         """
         Request a general status from the NG/AMS Server
         associated to the object.
@@ -615,6 +597,16 @@ class ngamsPClient:
         Returns:     NG/AMS Status object (ngamsStatus).
         """
         T = TRACE()
+
+        if 'file_list' in [p[0] for p in pars]:
+            resp, host, port = self._get(NGAMS_STATUS_CMD, pars=pars)
+            if resp.status != NGAMS_HTTP_SUCCESS:
+                return ngamsStatus.to_status(resp, '%s:%d' % (host, port), 'STATUS')
+
+            output = output or 'file_list.xml.gz'
+            with open(output, 'wb') as fout, contextlib.closing(resp):
+                shutil.copyfileobj(resp, fout)
+            return ngamsStatus.dummy_success_stat("%s:%d" % (host, port))
 
         return self.get_status(NGAMS_STATUS_CMD, pars=pars)
 
@@ -624,7 +616,8 @@ class ngamsPClient:
                   priority = None,
                   startDate = None,
                   filterPlugIn = None,
-                  filterPlugInPars = None):
+                  filterPlugInPars = None,
+                  pars=[]):
         """
         Subscribe to data from a Data Provider.
 
@@ -647,7 +640,8 @@ class ngamsPClient:
 
         Returns:            NG/AMS Status object (ngamsStatus).
         """
-        pars = [("url", url)]
+        pars = list(pars)
+        pars.append(("url", url))
         if priority is not None:
             pars.append(("priority", priority))
         if startDate:
@@ -683,16 +677,7 @@ class ngamsPClient:
         host_id = "%s:%d" % (host, port)
 
         # If the reply is a ngamsStatus document read it and return it
-        data = resp.read()
-        if data and "<?xml" in data:
-            logger.debug("Parsing incoming HTTP data as ngamsStatus")
-            return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
-
-        # Otherwise, and depending on the HTTP code, we create either
-        # a dummy successful or failed status object
-        if resp.status != NGAMS_HTTP_SUCCESS:
-            return _dummy_failure_stat(host_id, cmd)
-        return _dummy_success_stat(host_id, data)
+        return ngamsStatus.to_status(resp, host_id, cmd)
 
     def _get(self, cmd, pars=[], hdrs=[]):
         """
@@ -897,6 +882,9 @@ def main():
     mtype = opts.mime_type
     pars = [p.split('=') for p in opts.param]
     if cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']:
+        if not opts.file_uri:
+            msg = "Must specify parameter --file-uri for a ARCHIVE/QARCHIVE commands"
+            raise Exception(msg)
         pars += [('file_version', opts.file_version)] if opts.file_version is not None else []
         stat = client.archive(opts.file_uri, mtype, opts.async, opts.no_versioning, cmd=cmd, pars=pars)
     elif cmd == "CARCHIVE":
@@ -940,14 +928,22 @@ def main():
     elif (cmd == NGAMS_REMDISK_CMD):
         stat = client.remDisk(opts.disk_id, opts.execute)
     elif (cmd == NGAMS_REMFILE_CMD):
-        stat = client.remFile(opts.disk_id, opts.file_id, opts.file_version, opts.execute)
+        stat = client.remFile(diskId=opts.disk_id, fileId=opts.file_id,
+                              fileVersion=opts.file_version, execute=opts.execute)
     elif (cmd == NGAMS_RETRIEVE_CMD):
-        stat = client.retrieve(opts.file_id, opts.file_version, pars, opts.output,
-                               opts.p_plugin, opts.p_plugin_pars)
+        stat = client.retrieve(opts.file_id, opts.file_version, pars=pars,
+                               targetFile=opts.output, processing=opts.p_plugin,
+                               processingPars=opts.p_plugin_pars)
     elif (cmd == NGAMS_STATUS_CMD):
-        stat = client.status()
+        stat = client.status(pars, opts.output)
     elif (cmd == NGAMS_SUBSCRIBE_CMD):
-        stat = client.subscribe(opts.url, opts.priority, opts.start_date, opts.f_plugin, opts.f_plugin_pars)
+        if not opts.url:
+            raise Exception("Must specify parameter --url for a SUBSCRIBE commands")
+        stat = client.subscribe(url=opts.url, priority=opts.priority,
+                                startDate=opts.start_date,
+                                filterPlugIn=opts.f_plugin,
+                                filterPlugInPars=opts.f_plugin_pars,
+                                pars=pars)
     elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
         stat = client.unsubscribe(opts.url)
     else:

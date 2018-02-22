@@ -32,25 +32,23 @@
 Contains the Test Suite for the ARCHIVE Command.
 """
 
+import contextlib
 import cPickle
+import functools
 import getpass
 import glob
 import os
 import subprocess
-import sys
-import urllib
-import httplib
 from multiprocessing.pool import ThreadPool
 from unittest.case import skip, skipIf
-from contextlib import closing
 
 from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
-    NGAMS_SUCCESS, getDiskSpaceAvail, mvFile
+    NGAMS_SUCCESS, getDiskSpaceAvail, mvFile, NGAMS_FAILURE
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
-    ngamsCore
+    ngamsCore, ngamsHttpUtils
 from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
-    saveInFile, filterDbStatus1, sendPclCmd, pollForFile, getClusterName, \
-    sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, runTest, \
+    saveInFile, filterDbStatus1, sendPclCmd, pollForFile, \
+    sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
     copyFile, genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp
 from ngamsServer import ngamsFileUtils
 
@@ -62,9 +60,11 @@ _checkMail = False
 # used by the ngamsFitsPlugIn is nowhere to be found (even on the internet...)
 _check_fits_checksums = False
 
+_crc32c_available = False
 _test_checksums = True
 try:
     import crc32c
+    _crc32c_available = True
 except ImportError:
     _test_checksums = False
 
@@ -72,6 +72,23 @@ try:
     _space_available_for_big_file_test = getDiskSpaceAvail('/tmp', format="GB") >= 4.1
 except:
     _space_available_for_big_file_test = False
+
+
+class generated_file(object):
+    """A file-like object generated on the fly"""
+
+    def __init__(self, size):
+        self._size = size
+        self._read_bytes = 0
+    def __len__(self):
+        return self._size
+    def read(self, n):
+        if self._read_bytes == self._size:
+            return b''
+        n = min(n, self._size - self._read_bytes)
+        self._read_bytes += n
+        return b'\0' * n
+
 
 class ngamsArchiveCmdTest(ngamsTestSuite):
     """
@@ -380,7 +397,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfgPars = [["NgamsCfg.Streams[1].Stream[2].PlugIn",
                     "ngamsTest.ngamsRaiseEx_NGAMS_ER_DAPI_1"],
                    ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:05:00"],
-                   ['NgamsCfg.Server[1].UseRequestDb', 'true']]
+                   ['NgamsCfg.Server[1].RequestDbBackend', 'memory']]
         self.prepExtSrv(cfgProps=cfgPars)
         statObj = sendPclCmd().archive("src/SmallFile.fits")
         tmpFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
@@ -390,7 +407,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         fo = open(reqPropsFile)
         tmpReqPropObj = cPickle.load(fo)
         fo.close()
-        tmpFile = saveInFile(None, filterDbStatus1(tmpReqPropObj.dumpBuf()))
+        tmpFile = saveInFile(None, filterDbStatus1(tmpReqPropObj.dumpBuf(),
+                                                   filterTags=['RequestId']))
         refFile = "ref/test_BackLogBuf_01_02_ref"
         self.checkFilesEq(refFile, tmpFile, "Unexpected contents of " +\
                           "Back-Log Buffered Req. Prop. File")
@@ -408,7 +426,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfgPars = [["NgamsCfg.Permissions[1].AllowArchiveReq", "1"],
                    ["NgamsCfg.ArchiveHandling[1].BackLogBuffering", "1"],
                    ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:05"]]
-        cfgObj, dbObj = self.prepExtSrv(delDirs=0, clearDb=0, cfgProps=cfgPars, skip_database_creation=True)
+        cfgObj, dbObj = self.prepExtSrv(delDirs=0, clearDb=0, cfgProps=cfgPars)
         pollForFile("/tmp/ngamsTest/NGAS/back-log/*", 0, timeOut=30)
         filePat = "/tmp/ngamsTest/NGAS/%s/saf/2001-05-08/1/" +\
                   "TEST.2001-05-08T15:25:00.123.fits.gz"
@@ -537,9 +555,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster((8000, 8011))
         sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileUri = "http://127.0.0.1:8011/RETRIEVE?file_id=" +\
                   "TEST.2001-05-08T15:25:00.123&file_version=1"
@@ -710,7 +726,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         subprocess.call(['chmod', '-R', 'a+rwx', repDiskPath], shell=False)
         self.assertEquals(ngamsCore.NGAMS_FAILURE, statObj.getStatus())
         msg = "Incorrect status returned for Archive Push Request/Replication Disk read-only"
-        self.assertEquals(4011, int(statObj.getMessage().split(":")[1]), msg) # NGAMS_ER_ARCHIVE_PUSH_REQ:4011
+        self.assertEquals(3025, int(statObj.getMessage().split(":")[1]), msg) # NGAMS_AL_CP_FILE:3025
 
 
     def test_ErrHandling_3(self):
@@ -1193,12 +1209,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         #extProps = [["NgamsCfg.Log[1].LocalLogLevel", "5"]]
         extProps = []
         self.prepExtSrv(port=8000, cfgFile=nmuCfg, cfgProps=extProps)
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8001, None, None, getHostName()],
-                          [8002, None, None, getHostName()],
-                          [8003, None, None, getHostName()],
-                          [8004, None, None, getHostName()]],
-                         createDatabase = False)
+        self.prepCluster(ports, createDatabase = False)
         noOfNodes = len(ports)
         nodeCount = 0
         counts = {p: 0 for p in ports}
@@ -1259,11 +1270,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             cfg.storeVal(attr, "%s:%d" % (getHostName(), port))
             idx += 1
         cfg.save(tmpCfgFile, 0)
-        self.prepCluster(tmpCfgFile,
-                         [[8000, None, None, getClusterName()],
-                          [8001, None, None, getClusterName()],
-                          [8002, None, None, getClusterName()],
-                          [8003, None, None, getClusterName()]])
+        self.prepCluster(ports, cfg_file=tmpCfgFile)
 
         noOfNodes = len(ports)
         nodeCount = 0
@@ -1313,12 +1320,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ports = range(8001, 8005)
         ncuCfg = self._genArchProxyCfg(self.__STREAM_LIST, ports)
         _, dbObj = self.prepExtSrv(port=8000, cfgFile=ncuCfg)
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8001, None, None, getHostName()],
-                          [8002, None, None, getHostName()],
-                          [8003, None, None, getHostName()],
-                          [8004, None, None, getHostName()]],
-                          createDatabase = False)
+        self.prepCluster(ports, createDatabase = False)
         # Set all Disks in unit <Host>:8002 to completed.
         dbObj.query2("UPDATE ngas_disks SET completed=1 WHERE host_id={0}", args=("%s:8002" % getHostName(),))
         # Set <Host>:8004 to Offline.
@@ -1435,88 +1437,65 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv(cfgFile = 'src/ngamsCfg.xml')
 
-        host = 'localhost:8888'
-        method = 'GET'
-        cmd = 'QARCHIVE'
+        http_get = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE')
 
+        # No filename given
         params = {'filename': '',
                   'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
+        with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 400, None)
             self.checkEqual('NGAMS_ER_MISSING_URI' in resp.read(), True, None)
 
+        # No mime-type given
         params = {'filename': 'test',
                   'mime_type': ''}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
+        with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 400, None)
             self.checkEqual('NGAMS_ER_UNKNOWN_MIME_TYPE' in resp.read(), True, None)
 
+        # File is zero-length
         test_file = 'tmp/zerofile.fits'
         open(test_file, 'a').close()
         params = {'filename': test_file,
                   'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, open(test_file, 'rb'), {})
-            resp = conn.getresponse()
+        with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 400, None)
             self.checkEqual('Content-Length is 0' in resp.read(), True, None)
 
-        test_file = 'src/SmallFile.fits'
-        params = {'filename': test_file,
-                  'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, open(test_file, 'rb'), {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 200, None)
-
         # Invalid file_version parameter, is not a number
-        test_file = 'file:/bin/cp'
-        params = {'filename': '{0}/?file_version={1}'.format(test_file, 'test'),
-                  'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 400, None)
-            self.checkEqual('file_version is not an integer' in resp.read(), True, None)
-
-        # The same as above, but file_version is a normal HTTP parameters
-        # instead of being embedded as part of the filename parameter
-        test_file = 'file:/bin/cp'
-        params = {'filename': test_file,
+        params = {'filename': 'src/SmallFile.fits',
                   'file_version': 'test',
                   'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
+        with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.assertEqual(400, resp.status)
             self.assertIn('invalid literal for int() with base 10', resp.read())
 
-        # Archive file with a different name
-        test_file = 'file:/bin/cp'
-        params = {'filename': '{0}?file_id={1}'.format(test_file, 'test'),
+        # All is fine
+        params = {'filename': 'src/SmallFile.fits',
                   'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
+        with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 200, None)
+
+
+    def test_long_archive_quick_fail(self):
+        """Tries to archive a huge file, but the server fails quickly and closes the connection"""
+
+        self.prepExtSrv()
+
+        # The server fails quickly due to an unknown exception, so no content
+        # is actually read by the server other than the headers
+        test_file = 'dummy_name.unknown_ext'
+        params = {'filename': test_file}
+
+        status, _, _, data = ngamsHttpUtils.httpPost('localhost', 8888, 'ARCHIVE',
+                                               generated_file((2**32)+12),
+                                               mimeType='ngas/archive-request',
+                                               pars=params, timeout=120)
+
+        self.assertNotEqual(status, 200)
+        status = ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
+        self.assertStatus(status, expectedStatus=NGAMS_FAILURE)
+
 
     @skipIf(not _space_available_for_big_file_test,
             "Not enough disk space available to run this test " + \
@@ -1524,33 +1503,20 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
     def test_QArchive_big_file(self):
 
         self.prepExtSrv()
-        cmd = 'QARCHIVE'
-        host = '127.0.0.1:8888'
-        method = 'POST'
-
-        # Archive large file
-        class generated_file(object):
-            def __init__(self, size):
-                self._size = size
-                self._read_bytes = 0
-            def __len__(self):
-                return self._size
-            def read(self, n):
-                if self._read_bytes == self._size:
-                    return b''
-                n = min(n, self._size - self._read_bytes)
-                self._read_bytes += n
-                return b'\0' * n
 
         test_file = 'dummy_name.fits'
         params = {'filename': test_file,
                   'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 120)) as conn:
-            conn.request(method, selector, generated_file((2**32)+12), {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 200, None)
+
+        # For a quicker test
+        if _crc32c_available:
+            params['crc_variant'] = 'crc32c'
+
+        status,_,_,_ = ngamsHttpUtils.httpPost('localhost', 8888, 'QARCHIVE',
+                                               generated_file((2**32)+12),
+                                               mimeType='application/octet-stream',
+                                               pars=params, timeout=120)
+        self.checkEqual(status, 200, None)
 
     def test_filename_with_colons(self):
 
@@ -1620,7 +1586,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # (i.e., the checksums are correctly checked, both new and old ones)
         # In the case we asked for no checksum (file_version==5)
         # we check that the checksum is now calculated
-        for version in range(1, 6):
+        for version in range(1, 7):
             stat = client.get_status('CHECKFILE', pars=[("file_id", file_id), ("file_version", version)])
             self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
             if version == 5:
@@ -1631,6 +1597,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
     @skip("Run manually when necessary")
     def test_performance_of_crc32(self):
 
+        client = sendPclCmd(timeout=120)
         kb = 2 ** 10
         for log_blockSize_kb in xrange(8):
 
@@ -1647,18 +1614,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                         f.seek(size)
                         f.write('a')
 
-                    params = {'filename': test_file,
-                      'mime_type': 'application/octet-stream'}
+                    params = {}
                     if crc32_variant is not None:
                         params['crc_variant'] = crc32_variant
-                    params = urllib.urlencode(params)
-                    selector = '{0}?{1}'.format('QARCHIVE', params)
-                    with closing(httplib.HTTPConnection('localhost:8888', timeout = 120)) as conn:
-                        conn.request('GET', selector, open(test_file, 'rb'), {})
-                        resp = conn.getresponse()
-                        self.checkEqual(resp.status, 200, None)
 
-                        os.unlink(test_file)
+                    file_uri = 'file://' + os.path.normpath(os.path.abspath(test_file))
+                    stat = client.archive(file_uri, mimeType='application/octet-stream',
+                                          pars=params, cmd='QARCHIVE')
+                    self.assertEqual(NGAMS_SUCCESS, stat.getStatus())
+                    os.unlink(test_file)
 
             self.terminateAllServer()
 
@@ -1668,6 +1632,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         kb = 2 ** 10
         size = 100 * kb * kb
         test_file = 'tmp/largefile'
+        file_uri = 'file://' + os.path.normpath(os.path.abspath(test_file))
         with open(test_file, 'wb') as f:
             f.seek(size)
             f.write('a')
@@ -1683,40 +1648,18 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                 self.prepExtSrv(cfgProps=[['NgamsCfg.Server[1].BlockSize', blockSize]])
                 for crc32_variant in (0, 1):
 
-                    params = {'filename': test_file,
-                      'mime_type': 'application/octet-stream'}
+                    params = {}
                     if crc32_variant is not None:
                         params['crc_variant'] = crc32_variant
-                    params = urllib.urlencode(params)
-                    selector = '{0}?{1}'.format('QARCHIVE', params)
 
-                    def submit_file(test_file):
-                        with closing(httplib.HTTPConnection('localhost:8888', timeout = 120)) as conn:
-                            conn.request('GET', selector, open(test_file, 'rb'), {})
-                            resp = conn.getresponse()
-                            self.checkEqual(resp.status, 200, None)
+                    def submit_file(file_uri):
+                        return sendPclCmd().archive(file_uri, mimeType='application/octet-stream',
+                                                    pars=params, cmd='QARCHIVE')
 
-                    tp.map(submit_file, [test_file]*nfiles)
+                    for stat in tp.map(submit_file, [file_uri]*nfiles):
+                        self.assertEqual(NGAMS_SUCCESS, stat.getStatus())
 
                 tp.close()
                 self.terminateAllServer()
 
         os.unlink(test_file)
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsArchiveCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

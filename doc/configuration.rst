@@ -22,7 +22,21 @@ Contains the overall server configuration.
   will bind itself to ``127.0.0.1``. To bind the server to all interfaces
   ``0.0.0.0`` can be set.
 * *Port*: The port to bind the server to. It defaults to 7777 if unspecified.
-* *PluginsPath*: A directory where NGAS plug-ins can be loaded from.
+* *MaxSimReqs*: The maximum number of requests the server can be serving
+  at a given time. If a new request comes in and the server has reached
+  the limit already, it will respond with an ``503`` HTTP code.
+* *PluginsPath*: A colon-separated list of directories
+  where external python code, like NGAS plug-ins or database drivers,
+  can be loaded from.
+* *Proxy*: Whether this server should act as a proxy when serving requests that
+  are addressed to a different server within the same cluster (``1``)
+  or not (``0``).
+  See :ref:`server.proxy` for details.
+* *RequestDbBackend*: The implementation of the request database
+  that should be used.
+  Allowed values are ``memory``, ``bsddb`` and ``null``.
+  See :ref:`server.request_db` for details.
+  Defaults to ``null``.
 
 .. _config.db:
 
@@ -46,6 +60,16 @@ This element contains the database connection parameters.
   The latter was used by some particular combinations
   of old versions of the NGAS code and database engines,
   while the former is the default nowadays.
+* *SessionSql*:
+  Zero or more XML sub-elements,
+  each with an ``sql`` attribute denoting
+  an SQL statement that will be executed whenever
+  a physical connection is established
+  by the connection pool to the database server.
+  Usually these will not be required,
+  but can be useful, for instance,
+  if one needs to execute a command
+  to switch to a different database.
 
 The rest of the attributes on the *Db* element
 are used as keyword arguments to create connection
@@ -76,6 +100,67 @@ work as described above,
 while ``host``, ``dbname``, ``user`` and ``password``
 are keyword arguments accepted by the ``psycopg2.connect`` method.
 
+
+.. _config.commands:
+
+Commands
+--------
+
+This element lists user-defined command plug-ins.
+For details on commands in general
+see the :doc:`commands overview <commands-index>` section.
+For details on command plug-ins
+see the :doc:`commands plug-in <plugins/commands>` section.
+
+The ``Comands`` element contains zero or more
+XML sub-elements named ``Command``,
+each of which must define the following attributes:
+
+* *Name*: The command name, case-sensitive.
+* *Module*: The python module implementing this command.
+
+
+.. _config.storage_sets:
+
+StorageSets
+-----------
+
+Lists the storage sets (i.e., groups of disks) available to NGAS.
+Inside the ``StorageSets`` element one or many ``StorageSet`` elements
+can be found, each one listing the following attributes:
+
+ * *StorageSetId*: The name this storage set can be referenced by.
+ * *MainDiskSlotId*: The name of the directory where the data will be stored.
+   If a relative path is given, it is considered to be relative to the NGAS
+   root directory.
+ * *RepDiskSlotId*: The name of the directory where the data will be replicated.
+   If a relative path is given, it is considered to be relative to the NGAS
+   root directory.
+
+For an explanation on volumes, main/replication disks,
+directories and storage sets
+please read :ref:`server.storage`.
+
+.. _config.streams:
+
+Streams
+-------
+
+Lists the mappings from data types to storage sets.
+This element contains one or more ``Stream`` elements,
+each of which lists the following attributes:
+
+ * *MimeType*: The data type of this stream.
+ * *PlugIn*: The plug-in used to process incoming data of this type.
+ * *PlugInPars*: An optional, comma-separated, key=value string
+   with parameters that can be communicated to the plug-in.
+
+References to storage sets are included by adding ``StorageSetRef``
+sub-elements, each of which should have a ``StorageSetId`` attribute
+pointing to the corresponding storage set.
+
+For an explanation on streams please read :ref:`server.storage`.
+
 .. _config.archivehandling:
 
 ArchiveHandling
@@ -87,13 +172,22 @@ Contains archiving-related configuration.
    See :ref:`server.crc` for details.
    If not specified the server will use the ``crc32`` variant. If specified,
    ``0`` means ``crc32`` and ``1`` means ``crc32c``.
+ * *EventHandlerPlugIn*: Zero or more sub-elements defining additional modules
+   that will handle :ref:`archiving events <server.archiving_events>`.
+   Each element should have a ``Name`` attribute with the fully-qualified
+   class name implementing :doc:`the plug-in <plugins/archiving_events>`,
+   and an optional ``PlugInPars`` attribute
+   with a comma-separated ``key=value`` definitions,
+   which are passed down to the class constructor as keyword arguments.
 
+
+.. _config.janthread:
 
 JanitorThread
 -------------
 
 The ``JanitorThread`` element defines the behavior
-of the :ref:`Janitor Thread <janthread>`
+of the :ref:`Janitor Thread <bg.janitor_thread>`
 (now actually implemented as a separate process).
 The following attributes are available:
 
@@ -103,6 +197,35 @@ The following attributes are available:
  * *PlugIn*: An XML sub-element with a *Name* attribute, naming a python module
    where a Janitor plug-in resides. Multiple *Plugin* elements can be defined.
 
+.. _config.datacheck_thread:
+
+DataCheckThread
+---------------
+
+The ``DataCheckThread`` element defines the behavior
+of the :ref:`bg.datacheck_thread`.
+The following attributes are available:
+
+ * *Active*: Whether the data-check thread should be allowed to run or not.
+ * *MaxProcs*: Maximum number of worker processes used to carry out the data
+   checking work load.
+ * *MinCycle*: The time to leave between data-check cycles.
+ * *ForceNotif*: Forces the sending of a notification report after each
+   data-check cycle, even if not problems were found.
+ * *Scan*: Whether files should be scanned only (1) or actually checksumed (0).
+
+The following attributes are present in old configuration files
+but are not used anymore: *FileSeq*, *DiskSeq*, *LogSummary*, *Prio*.
+
+Finally, the *ChecksumPlugIn* attribute
+names the plug-in that should calculate the checksum of the new file
+being archived by the ``ARCHIVE`` command.
+This attribute will disappear in future versions
+when ``ARCHIVE`` starts performing checksum calculation
+on the incoming data as it arrives
+(similar to how ``QARCHIVE`` works)
+in favor of the ``ArchiveHandling.CRCVariant`` attribute
+(see `ArchiveHandling`).
 
 .. _config.log:
 
@@ -134,3 +257,24 @@ contains the details to configure the server logging output.
   attribute with the fully-qualified module name implementing the plug-in inside
   a ``run`` method, and a ``PlugInPars`` element with a comma-separated,
   ``key=value`` pairs.
+
+.. _config.authorization:
+
+Authorization
+-------------
+
+The ``Authorization`` element defines the authentication and authorization rules
+that the NGAS server will follow when receiving commands from clients.
+For details see :ref:`server.authorization`.
+
+The ``Authorization`` element has an ``Enable`` attribute
+which determines whether authentication and authorization
+is enabled (``1``) or not (``0``).
+Zero or more ``User`` XML sub-elements
+also describe a different user recognized by NGAS.
+Each ``User`` element should have the following attributes:
+
+* *Name*: The username.
+* *Password*: The base64-encoded password.
+* *Commands*: A comma-separated list of commands this user is allowed to
+  execute. The special value ``*`` is interpreted as all commands.

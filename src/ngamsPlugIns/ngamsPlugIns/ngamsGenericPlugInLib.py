@@ -32,12 +32,12 @@ Contains various utilities for building NGAS Plug-Ins.
 """
 
 import base64
+import contextlib
 import logging
-import httplib
 import os
 import urllib
 
-from ngamsLib import ngamsPlugInApi
+from ngamsLib import ngamsPlugInApi, ngamsHttpUtils
 from ngamsLib.ngamsCore import TRACE, getHostName, genLog
 
 
@@ -142,31 +142,20 @@ def notifyRegistrationService(srvObj, svrStatus = 'online'):
         host_name = getHostName()
         host_port = srvObj.getCfg().getPortNo()
 
-        params = urllib.urlencode({'ngas_host': host_name, 'ngas_port': host_port, 'status': svrStatus})
-        headers = {"Content-Type": "application/x-www-form-urlencoded","Accept": "text/plain"}
-        conn = httplib.HTTPConnection(regsvr_host+':'+regsvr_port)
-        try:
-            conn.request("POST", regsvr_path, params, headers)
-            response = conn.getresponse()
-            #print response.status, response.reason
-            if (response.status != 200):
-                errMsg = "Problem notifying registration service! Error " + response.reason
+        body = urllib.urlencode({'ngas_host': host_name, 'ngas_port': host_port, 'status': svrStatus})
+        hdrs = {"Accept": "text/plain"}
+        resp = ngamsHttpUtils.httpPost(regsvr_host, regsvr_port, regsvr_path, body,
+                                       mimeType='application/x-www-form-urlencoded',
+                                       hdrs=hdrs, timeout=10)
+        with contextlib.closing(resp):
+            if resp.status != 200:
+                errMsg = "Problem notifying registration service! Error " + resp.reason
                 errMsg = genLog(errTag, [errMsg])
                 logger.error(errMsg)
                 #raise Exception, errMsg
             else:
                 logger.debug("Successfully notified registration service: %s", svrStatus)
-                data = response.read() #for debug
-                print data #for debug
-        except Exception, e:
-            errMsg = "Cannot connect to the registration service " +\
-                         ": %s" % str(e)
-            errMsg = genLog(errTag, [errMsg])
-            logger.error(errMsg)
-        finally:
-            if (conn is not None):
-                conn.close()
-
+                logger.info(resp.read())
 
     return
 

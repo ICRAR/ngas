@@ -31,11 +31,8 @@
 Function + code to handle the RETRIEVE Command.
 """
 
-import errno
-import io
 import logging
 import os
-import select
 import shutil
 import socket
 import time
@@ -48,202 +45,10 @@ from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize, \
     NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, checkCreatePath, NGAMS_RETRIEVE_CMD, \
     NGAMS_PROC_STREAM, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
-import ngamsSrvUtils, ngamsFileUtils
-
+import ngamsSrvUtils, ngamsFileUtils, pysendfile
 
 
 logger = logging.getLogger(__name__)
-
-################################################################################
-# SENDFILE BEGINS
-################################################################################
-# Wrap the sendfile module into a sendfile method that is usable and that is
-# aware of socket timeouts
-# This code came originally from the creator of the sendfile python module,
-# Giampaolo Rodola:
-#
-# http://grodola.blogspot.com/2014/06/python-and-sendfile.html
-
-try:
-    memoryview  # py 2.7 only
-except NameError:
-    memoryview = lambda x: x
-
-if os.name == 'posix':
-    import sendfile as pysendfile  # requires "pip install pysendfile"
-else:
-    pysendfile = None
-
-
-_RETRY = frozenset((errno.EAGAIN, errno.EALREADY, errno.EWOULDBLOCK,
-                    errno.EINPROGRESS))
-
-
-class _GiveupOnSendfile(Exception):
-    pass
-
-
-if pysendfile is not None:
-
-    def _sendfile_use_sendfile(sock, file, offset=0, count=None):
-        _check_sendfile_params(sock, file, offset, count)
-        sockno = sock.fileno()
-        try:
-            fileno = file.fileno()
-        except (AttributeError, io.UnsupportedOperation) as err:
-            raise _GiveupOnSendfile(err)  # not a regular file
-        try:
-            fsize = os.fstat(fileno).st_size
-        except OSError:
-            raise _GiveupOnSendfile(err)  # not a regular file
-        if not fsize:
-            return 0  # empty file
-        blocksize = fsize if not count else count
-
-        timeout = sock.gettimeout()
-        if timeout == 0:
-            raise ValueError("non-blocking sockets are not supported")
-        # poll/select have the advantage of not requiring any
-        # extra file descriptor, contrarily to epoll/kqueue
-        # (also, they require a single syscall).
-        if hasattr(select, 'poll'):
-            if timeout is not None:
-                timeout *= 1000
-            pollster = select.poll()
-            pollster.register(sockno, select.POLLOUT)
-
-            def wait_for_fd():
-                if pollster.poll(timeout) == []:
-                    raise socket._socket.timeout('timed out')
-        else:
-            # call select() once in order to solicit ValueError in
-            # case we run out of fds
-            try:
-                select.select([], [sockno], [], 0)
-            except ValueError:
-                raise _GiveupOnSendfile(err)
-
-            def wait_for_fd():
-                fds = select.select([], [sockno], [], timeout)
-                if fds == ([], [], []):
-                    raise socket._socket.timeout('timed out')
-
-        total_sent = 0
-        # localize variable access to minimize overhead
-        os_sendfile = pysendfile.sendfile
-        try:
-            while True:
-                if timeout:
-                    wait_for_fd()
-                if count:
-                    blocksize = count - total_sent
-                    if blocksize <= 0:
-                        break
-                try:
-                    sent = os_sendfile(sockno, fileno, offset, blocksize)
-                except OSError as err:
-                    if err.errno in _RETRY:
-                        # Block until the socket is ready to send some
-                        # data; avoids hogging CPU resources.
-                        wait_for_fd()
-                    else:
-                        if total_sent == 0:
-                            # We can get here for different reasons, the main
-                            # one being 'file' is not a regular mmap(2)-like
-                            # file, in which case we'll fall back on using
-                            # plain send().
-                            raise _GiveupOnSendfile(err)
-                        raise err
-                else:
-                    if sent == 0:
-                        break  # EOF
-                    offset += sent
-                    total_sent += sent
-            return total_sent
-        finally:
-            if total_sent > 0 and hasattr(file, 'seek'):
-                file.seek(offset)
-else:
-    def _sendfile_use_sendfile(sock, file, offset=0, count=None):
-        raise _GiveupOnSendfile(
-            "sendfile() not available on this platform")
-
-
-def _sendfile_use_send(sock, file, offset=0, count=None):
-    _check_sendfile_params(sock, file, offset, count)
-    if sock.gettimeout() == 0:
-        raise ValueError("non-blocking sockets are not supported")
-    if offset:
-        file.seek(offset)
-    blocksize = min(count, 8192) if count else 8192
-    total_sent = 0
-    # localize variable access to minimize overhead
-    file_read = file.read
-    sock_send = sock.send
-    try:
-        while True:
-            if count:
-                blocksize = min(count - total_sent, blocksize)
-                if blocksize <= 0:
-                    break
-            data = memoryview(file_read(blocksize))
-            if not data:
-                break  # EOF
-            while True:
-                try:
-                    sent = sock_send(data)
-                except OSError as err:
-                    if err.errno in _RETRY:
-                        continue
-                    raise
-                else:
-                    total_sent += sent
-                    if sent < len(data):
-                        data = data[sent:]
-                    else:
-                        break
-        return total_sent
-    finally:
-        if total_sent > 0 and hasattr(file, 'seek'):
-            file.seek(offset + total_sent)
-
-
-def _check_sendfile_params(sock, file, offset, count):
-    if 'b' not in getattr(file, 'mode', 'b'):
-        raise ValueError("file should be opened in binary mode")
-    if not sock.type & socket.SOCK_STREAM:
-        raise ValueError("only SOCK_STREAM type sockets are supported")
-    if count is not None:
-        if not isinstance(count, int):
-            raise TypeError(
-                "count must be a positive integer (got %s)" % repr(count))
-        if count <= 0:
-            raise ValueError(
-                "count must be a positive integer (got %s)" % repr(count))
-
-
-def sendfile(sock, file, offset=0, count=None):
-    """sendfile(sock, file[, offset[, count]]) -> sent
-
-    Send a *file* over a connected socket *sock* until EOF is
-    reached by using high-performance sendfile(2) and return the
-    total number of bytes which were sent.
-    *file* must be a regular file object opened in binary mode.
-    If sendfile() is not available (e.g. Windows) or file is
-    not a regular file socket.send() will be used instead.
-    *offset* tells from where to start reading the file.
-    If specified, *count* is the total number of bytes to transmit
-    as opposed to sending the file until EOF is reached.
-    File position is updated on return or also in case of error in
-    which case file.tell() can be used to figure out the number of
-    bytes which were sent.
-    The socket must be of SOCK_STREAM type.
-    Non-blocking sockets are not supported.
-    """
-    try:
-        return _sendfile_use_sendfile(sock, file, offset, count)
-    except _GiveupOnSendfile:
-        return _sendfile_use_send(sock, file, offset, count)
 
 ################################################################################
 # SENDFILE ENDS
@@ -289,7 +94,7 @@ def performStaging(srvObj, reqPropsObj, httpRef, filename):
     except socket.timeout:
         errMsg = 'Staging timed out: %s' % filename
         logger.warning(errMsg)
-        srvObj.httpReply(reqPropsObj, httpRef, 504, errMsg, NGAMS_TEXT_MT)
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=504)
         raise
 
 
@@ -386,72 +191,23 @@ def genReplyRetrieve(srvObj,
 
     Returns:         Void.
     """
-    T = TRACE()
 
     # Send back reply with the result queried.
     try:
-        # TODO: Make possible to send back several results - use multipart
-        # mime-type message -- for now only one result is sent back.
+
         resObj = statusObjList[0].getResultObject(0)
-        #info(3, "Getting block size for retrieval")
-        blockSize = srvObj.getCfg().getBlockSize()
-        mimeType = resObj.getMimeType()
-        dataSize = resObj.getDataSize()
-        refFilename = resObj.getRefFilename()
 
-        # See if client requested partial content
-        # This applies (currently) to files only
-        start_byte = 0
-        if reqPropsObj.retrieve_offset > 0 and resObj.getObjDataType() == NGAMS_PROC_FILE:
-            start_byte = reqPropsObj.retrieve_offset
+        if resObj.getObjDataType() == NGAMS_PROC_FILE:
+            # See if client requested partial content
+            # This applies (currently) to files only
+            start_byte = 0
+            if reqPropsObj.retrieve_offset > 0:
+                start_byte = reqPropsObj.retrieve_offset
 
-        logger.info("Sending data back to requestor. Reference filename: %s. Size: %d. Starting byte: %d",
-                     refFilename, dataSize, start_byte)
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0,
-                            mimeType, (dataSize - start_byte))
-        contDisp = "attachment; filename=\"%s\"" % refFilename
-        logger.debug("Sending header: Content-Disposition: %s", contDisp)
-        httpRef.send_header('Content-Disposition', contDisp)
-        if start_byte:
-            httpRef.send_header('Accept-Ranges', 'bytes')
-            httpRef.send_header("Content-Range", "bytes %d-%d/%d" % (start_byte, dataSize - 1, dataSize))
-        httpRef.wfile.write("\n")
-
-        if reqPropsObj.hasHttpPar("send_buffer"):
-            try:
-                sendBufSize = int(reqPropsObj.getHttpPar("send_buffer"))
-                httpRef.wfile._sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF,sendBufSize)
-            except Exception as ee:
-                logger.warning('Fail to reset the send_buffer size: %s', str(ee))
-
-        # Send back data from the memory buffer, from the result file, or
-        # from HTTP socket connection.
-        if resObj.getObjDataType() == NGAMS_PROC_DATA:
-            logger.debug("Sending data in buffer to requestor ...")
-            httpRef.wfile.write(resObj.getDataRef())
-        elif resObj.getObjDataType() == NGAMS_PROC_FILE:
-            logger.debug("Reading data block-wise from file and sending to requestor ...")
-            # use kernel zero-copy file send if available
-            dataref = resObj.getDataRef()
-            with open(dataref, 'rb') as fd:
-                st = time.time()
-                sendfile(httpRef.wfile._sock, fd, start_byte)
-                howlong = time.time() - st
-                logger.debug("Retrieval transfer rate = %.0f Bytes/s for file %s",
-                             dataSize / howlong, refFilename)
+            httpRef.send_file(resObj.getDataRef(), resObj.getMimeType(),
+                              start_byte=start_byte, fname=resObj.getRefFilename())
         else:
-            # NGAMS_PROC_STREAM - read the data from the File Object in
-            # blocks and send it directly to the requestor.
-            logger.debug("Routing data from foreign location to requestor ...")
-            dataSent = 0
-            dataToSent = dataSize
-            while (dataSent < dataToSent):
-                tmpData = resObj.getDataRef().read(blockSize)
-                httpRef.wfile.write(tmpData)
-                dataSent += len(tmpData)
-
-        logger.debug("HTTP reply sent to: %s", str(httpRef.client_address))
-        reqPropsObj.setSentReply(1)
+            httpRef.send_data(resObj.getDataRef(), resObj.getMimeType(), fname=resObj.getRefFilename())
 
     finally:
         cleanUpAfterProc(statusObjList)
@@ -571,22 +327,20 @@ def _handleCmdRetrieve(srvObj,
         tmpPars = ngamsLib.parseHttpHdr(hdrs["content-disposition"])
         dataFilename = tmpPars["filename"]
 
-        # Generate fake ngamsDppiStatus object.
-        resultObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_STREAM,
-                                                    mimeType, conn,
-                                                    dataFilename, procDir,
-                                                    dataSize)
-        procResult = [ngamsDppiStatus.ngamsDppiStatus().addResult(resultObj)]
+        data = ngamsHttpUtils.sizeaware(conn, dataSize)
+        httpRef.send_data(data, mimeType, fname=dataFilename)
+        return
+
     else:
         # No proxy mode: A redirection HTTP response is generated.
-        srvObj.httpRedirReply(reqPropsObj, httpRef, ipAddress, port)
+        httpRef.redirect(ipAddress, port)
         return
 
     # Send back reply with the result(s) queried and possibly processed.
     genReplyRetrieve(srvObj, reqPropsObj, httpRef, procResult)
 
 
-def handleCmdRetrieve(srvObj,
+def handleCmd(srvObj,
                       reqPropsObj,
                       httpRef):
     """

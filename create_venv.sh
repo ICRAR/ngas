@@ -109,7 +109,7 @@ then
 		wget "$VIRTUALENV_URL" || error "Failed to download virtualenv"
 	elif [[ ! -z "$(command -v curl 2> /dev/null)" ]]
 	then
-		curl "$VIRTUALENV_URL" || error "Failed to download virtualenv"
+		curl "$VIRTUALENV_URL" -o virtualenv-15.0.3.tar.gz || error "Failed to download virtualenv"
 	else
 		error "Can't find a download tool (tried wget and curl), cannot download virtualenv"
 	fi

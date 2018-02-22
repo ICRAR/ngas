@@ -40,7 +40,7 @@ curl 146.118.84.67:7778/UPDATECONFIGPAR?config_param=NgamsCfg.Server%5B1%5D.Bloc
 import logging
 import traceback
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT
 
 
 logger = logging.getLogger(__name__)
@@ -71,10 +71,10 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             srvObj.getCfg().storeVal(config_param, config_value)
             warnMsg = "WARNING - this only changes the in-memory XML doc, but not the actual configuration file!!"
             errMsg = "Successfully changed the parameter '%s' to its new value '%s'. %s \n" % (config_param, srvObj.getCfg().getVal(config_param), warnMsg)
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg, NGAMS_TEXT_MT)
-        except Exception, ee:
+            httpRef.send_data(errMsg, NGAMS_TEXT_MT)
+        except Exception:
             errMsg = traceback.format_exc()
-            srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
+            httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)
     else:
         errMsg = 'INVALID PARAMS, need both config_param and config_value\n'
-        srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)

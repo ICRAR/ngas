@@ -27,9 +27,3 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # jknudstr  11/06/2001  Created
-
-import pkg_resources
-
-__doc__ = pkg_resources.resource_string(__name__, 'README')
-
-# EOF

@@ -52,7 +52,7 @@ def get_logfile_handler_plugins(cfg):
 
     return _lh_plugins
 
-def run(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt):
 
     cfg = srvObj.getCfg()
     logdir = os.path.dirname(cfg.getLocalLogFile())
@@ -70,7 +70,7 @@ def run(srvObj, stopEvt, jan_to_srv_queue):
         # Connect to the server and send a pull ARCHIVE request
         if cfg.getArchiveRotatedLogfiles():
             file_uri = "file://" + fname
-            host, port = srvObj.get_endpoint()
+            host, port = srvObj.get_self_endpoint()
             ngamsPClient.ngamsPClient(host, port).archive(file_uri, 'ngas/nglog')
 
         # Do additional things with our logfiles

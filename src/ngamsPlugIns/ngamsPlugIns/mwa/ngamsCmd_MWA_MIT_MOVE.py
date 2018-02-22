@@ -112,14 +112,14 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if (not os.path.exists(filename)):
         errMsg = 'File does not exist: %s' % filename
         logger.warning(errMsg)
-        srvObj.httpReply(reqPropsObj, httpRef, 501, errMsg, NGAMS_TEXT_MT)
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=501)
         return
 
     parDic = reqPropsObj.getHttpParsDic()
     for rp in required_params:
         if (not parDic.has_key(rp)):
             errMsg = 'Parameter missing: %s' % rp
-            srvObj.httpReply(reqPropsObj, httpRef, 502, errMsg, NGAMS_TEXT_MT)
+            httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=502)
             return
     logger.debug('Moving file %s', filename)
 
@@ -133,25 +133,25 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if (not isMWAVisFile(fileId)):
         errMsg = 'Not MWA visibilty file: %' % (fileId)
         logger.warning(errMsg)
-        srvObj.httpReply(reqPropsObj, httpRef, 503, errMsg, NGAMS_TEXT_MT)
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=503)
         return
     """
     if (fileOnHost(srvObj, fileId, tgtHost)):
         errMsg = "File %s already on host %s" % (fileId, tgtHost)
         warning(errMsg)
-        srvObj.httpReply(reqPropsObj, httpRef, 200, errMsg, NGAMS_TEXT_MT) # make it correct
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT) # make it correct
         return
     """
     if (debug):
         logger.debug('Only for file movment debugging, return now')
-        srvObj.httpReply(reqPropsObj, httpRef, 200, 'DEBUG ONLY', NGAMS_TEXT_MT)
+        httpRef.send_data('DEBUG ONLY', NGAMS_TEXT_MT)
         return
 
     fileCRC = getCRCFromFile(filename)
     if (fileCRC != crcDb):
         errMsg = 'File %s on source host %s already corrupted, moving request rejected' % (filename, srvObj.getHostId().replace(':', '-'))
         logger.warning(errMsg)
-        srvObj.httpReply(reqPropsObj, httpRef, 504, errMsg, NGAMS_TEXT_MT)
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=504)
         return
 
     sendUrl = 'http://%s:7777/QARCHIVE' % tgtHost
@@ -190,18 +190,14 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if (not deliver_success):
         errMsg = 'File %s failed to be moved to %s: %s' % (fileId, tgtHost, last_deliv_err)
         logger.warning(errMsg)
-        srvObj.httpReply(reqPropsObj, httpRef, 505, errMsg, NGAMS_TEXT_MT)
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=505)
         return
 
     try:
-        ngamsDiscardCmd._discardFile(srvObj, diskId, fileId, fileVersion, execute = 1,
-                                     tmpFilePat = srvObj.getCfg().getRootDirectory() + '/tmp/')
+        ngamsDiscardCmd._discardFile(srvObj, diskId, fileId, fileVersion, execute = 1)
     except Exception, e1:
         logger.warning('Fail to remove file %s: %s', filename, str(e1))
-        srvObj.httpReply(reqPropsObj, httpRef, 200, 'Remove error: %s' % str(e1).replace('\n', '--'), NGAMS_TEXT_MT)
+        httpRef.send_data('Remove error: %s' % str(e1).replace('\n', '--'), NGAMS_TEXT_MT)
         return
 
-
-    srvObj.httpReply(reqPropsObj, httpRef, 200, MOVE_SUCCESS, NGAMS_TEXT_MT)
-
-
+    httpRef.send_data(MOVE_SUCCESS, NGAMS_TEXT_MT)

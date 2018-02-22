@@ -38,7 +38,7 @@ import logging
 import os
 import types
 
-from   ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
+from   ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
 import ngamsConfigBase, ngamsSubscriber
 import ngamsStorageSet, ngamsStream, ngamsMirroringSource
 
@@ -242,6 +242,10 @@ class ngamsConfig:
 
         Returns:   Reference to object itself.
         """
+
+        # SQL statements to execute at connection-establishment time
+        self.session_sqls = []
+
         # Mime-type mappings (attributes in the MimeTypes Element).
         self.__mimeType2ExtDic         = {}
         self.__ext2MimeTypeDic         = {}
@@ -252,11 +256,14 @@ class ngamsConfig:
         # List of Stream Objects.
         self.__streamList              = []
 
+        # List of command plug-ins
+        self.cmd_plugins               = {}
+
         # Data Processing Plug-Ins, indexed by name
         self.dppi_plugins              = {}
 
-        # Janitor process Plug-Ins
-        self.__janitorPlugIns          = []
+        # Archiving event Plug-Ins
+        self.archive_evt_plugins       = {}
 
         # Logfile handler Plug-Ins
         self.logfile_handler_plugins   = []
@@ -414,6 +421,24 @@ class ngamsConfig:
         if (self.getLocalLogFile()):
             checkCreatePath(os.path.dirname(self.getLocalLogFile()))
 
+        # Get session SQL statements
+        db_obj = self.__cfgMgr.getXmlObj('Db[1]')
+        logger.debug('Unpacking SessionSql elements')
+        attr_fmt = 'Db[1].SessionSql[%d].sql'
+        for idx in range(1, len(db_obj.getSubElList()) + 1):
+            sql = self.getVal(attr_fmt % idx)
+            self.session_sqls.append(sql)
+
+        # Get command plug-ins
+        commands_obj = self.__cfgMgr.getXmlObj('Commands[1]')
+        if commands_obj:
+            logger.debug('Unpacking Commands element')
+            cmdattr_fmt = 'Commands[1].Command[%d].%s'
+            for idx in range(1, len(commands_obj.getSubElList()) + 1):
+                name = self.getVal(cmdattr_fmt % (idx, 'Name'))
+                module = self.getVal(cmdattr_fmt % (idx, 'Module'))
+                self.cmd_plugins[name] = module
+
         # Get Mime-types.
         mimeTypesObj = self.__cfgMgr.getXmlObj("MimeTypes[1]")
         if (mimeTypesObj):
@@ -524,6 +549,22 @@ class ngamsConfig:
                 name = self.getVal(name_path % (idx1,))
                 self.__janitorPlugIns.append(name)
 
+        # Get info about Archive event Plug-Ins
+        archive_handling = self.__cfgMgr.getXmlObj('ArchiveHandling[1]')
+        if archive_handling:
+            name_pattern = 'ArchiveHandling[1].EventHandlerPlugIn[%d].Name'
+            pars_pattern = 'ArchiveHandling[1].EventHandlerPlugIn[%d].PlugInPars'
+            for idx1 in range(1, (len(archive_handling.getSubElList()) + 1)):
+                name = self.getVal(name_pattern % idx1)
+                pars = self.getVal(pars_pattern % idx1)
+
+                # Make sure the plug-in name is valid
+                parts = name.split('.')
+                module, clazz = '.'.join(parts[:-1]), parts[-1]
+                if not module or not clazz:
+                    raise ValueError("module or classname missing in EventHandlerPlugIn.Name definition")
+                self.archive_evt_plugins[(module, clazz)] = pars
+
         # Get info about logfile handler plug-ins
         logObj = self.__cfgMgr.getXmlObj('Log[1]')
         if logObj:
@@ -555,18 +596,26 @@ class ngamsConfig:
 
         # Get info about the subscribers.
         subscrDefObj = self.__cfgMgr.getXmlObj("SubscriptionDef[1]")
-        if (subscrDefObj):
+        if (subscrDefObj and self.getSubscrEnable()):
             logger.debug("Unpacking SubscriptionDef Element ...")
             fm = "SubscriptionDef[1].Subscription[%d].%s"
             for idx in range(1, (len(subscrDefObj.getSubElList()) + 1)):
                 subscr_id = self.getVal(fm % (idx, "SubscriberId"))
                 if subscr_id == None:
                     subscr_id = ""
+
+                # Still support the old SubscriberUrl, but prefer Command
+                url_tag = fm % (idx, "SubscriberUrl")
+                cmd_tag = fm % (idx, "Command")
+                if self.getVal(url_tag) and not self.getVal(cmd_tag):
+                    logger.warning("%s is deprecated. Use %s instead", url_tag, cmd_tag)
+                    cmd_tag = url_tag
+
                 tmpSubscrObj = ngamsSubscriber.ngamsSubscriber(\
                     self.getVal(fm % (idx, "HostId")),
                     self.getVal(fm % (idx, "PortNo")),
                     self.getVal(fm % (idx, "Priority")),
-                    self.getVal(fm % (idx, "SubscriberUrl")),
+                    self.getVal(cmd_tag),
                     "",
                     self.getVal(fm % (idx, "FilterPlugIn")),
                     self.getVal(fm % (idx, "FilterPlugInPars")),
@@ -666,7 +715,7 @@ class ngamsConfig:
         Returns:  NGAS Simulation Flag (integer).
         """
         par = "Server[1].Simulation"
-        return getInt(par, self.getVal(par))
+        return getInt(par, self.getVal(par), 0)
 
 
     def getRootDirectory(self):
@@ -738,18 +787,6 @@ class ngamsConfig:
         """
         par = "Server[1].TimeOut"
         return getInt(par, self.getVal(par), None)
-
-    def getSwVersion(self):
-        """
-        Get the SW Version.
-
-        Returns:   Reference to object itself.
-        """
-        swVersion = self.getVal("Server[1].SwVersion")
-        if ((not swVersion) or (swVersion == "None")):
-            return ""
-        else:
-            return swVersion
 
     def getPluginsPath(self):
         """
@@ -845,9 +882,10 @@ class ngamsConfig:
         Defines the CRC Variant to use.
 
         Returns: -1: Don't perform any CRC calculation at all
-                 0: crc32 (using python's binascii implementation)
+                 0: crc32 (using python's binascii implementation w/o masking)
                  1: crc32c (using Intel's SSE 4.2 implementation via our
                     custom crc32c module)
+                 2: crc32z (using python's binascii implementation w/ masking)
         """
         par = "ArchiveHandling[1].CRCVariant"
         return getInt(par, self.getVal(par), 0)
@@ -1041,6 +1079,9 @@ class ngamsConfig:
         par = "Db[1].MaxPoolConnections"
         return getInt(par, self.getVal(par), 7)
 
+    def getDbSessionSql(self):
+        """SQL commands to run whenever a connection is established"""
+        return self.session_sqls
 
     def getDbParameters(self):
         """
@@ -1051,7 +1092,7 @@ class ngamsConfig:
         dbEl = self.__cfgMgr.getXmlObj("Db[1]")
         params = {}
         for attr in dbEl.getAttrList():
-            name = attr.getName()
+            name = str(attr.getName())
             val = attr.getValue()
             if name in ('Id', 'Interface', 'Snapshot', 'UseFileIgnore', 'MaxPoolConnections'):
                 continue
@@ -1338,17 +1379,7 @@ class ngamsConfig:
         Returns:     Data Check Scan Flag (integer/0|1).
         """
         par = "DataCheckThread[1].Scan"
-        return getInt(par, self.getVal(par))
-
-
-    def getDataCheckPrio(self):
-        """
-        Return the Data Check Service priority.
-
-        Returns:     Data Check priority (integer).
-        """
-        par = "DataCheckThread[1].Prio"
-        return getInt(par, self.getVal(par))
+        return getInt(par, self.getVal(par), 1)
 
 
     def getDataCheckMinCycle(self):
@@ -1358,34 +1389,6 @@ class ngamsConfig:
         Returns:     Data Check  Minimum Cycle Time (string).
         """
         return self.getVal("DataCheckThread[1].MinCycle")
-
-
-    def getDataCheckDiskSeq(self):
-        """
-        Return the Data Check Service Disk Check Sequence.
-
-        Returns:     Data Check Disk Sequence (string).
-        """
-        return self.getVal("DataCheckThread[1].DiskSeq")
-
-
-    def getDataCheckFileSeq(self):
-        """
-        Return the Data Check Service File Check Sequence.
-
-        Returns:     Data Check File Sequence (string).
-        """
-        return self.getVal("DataCheckThread[1].FileSeq")
-
-
-    def getDataCheckLogSummary(self):
-        """
-        Return the Data Check Service log summary flag.
-
-        Returns:     Data Check log summarry (integer).
-        """
-        par = "DataCheckThread[1].LogSummary"
-        return getInt(par, self.getVal(par))
 
 
     def getStreamList(self):
@@ -1498,16 +1501,6 @@ class ngamsConfig:
         Returns:  Local Log Level (integer).
         """
         par = "Log[1].LocalLogLevel"
-        return getInt(par, self.getVal(par))
-
-
-    def getLogBufferSize(self):
-        """
-        Return the size of the internal log buffer.
-
-        Returns:  Size of internal log buffer (integer).
-        """
-        par = "Log[1].LogBufferSize"
         return getInt(par, self.getVal(par))
 
 
@@ -2083,6 +2076,14 @@ class ngamsConfig:
         return self.__mirSrcObjList
 
 
+    def getCachingEnabled(self):
+        """Whether the server is configured to operate in caching mode (default: False)"""
+        try:
+            return int(self.getVal("Caching[1].Enable")) == 1
+        except:
+            return False
+
+
     def getCachingPeriod(self):
         """
         Return the period for checking the cache holding.
@@ -2117,18 +2118,6 @@ class ngamsConfig:
                              self.getCheckRep())
         checkIfSetInt("Server.BlockSize", self.getBlockSize(),
                       self.getCheckRep())
-        if (self.getSwVersion()):
-            if ((self.getSwVersion().strip() != "") and
-                (self.getSwVersion().strip() != getNgamsVersionRaw().strip())):
-                errMsg = "The SW Version defined in the NG/AMS " +\
-                         "Configuration: " + self.getSwVersion() + " " +\
-                         "is not compatible with the SW Version of the " +\
-                         "NG/AMS installation used: " + getNgamsVersionRaw() +\
-                         ". Configuration parameter: Server.SwVersion."
-                errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
-                raise Exception(errMsg)
-        checkIfZeroOrOne("Server.Simulation", self.getSimulation(),
-                         self.getCheckRep())
         if (checkIfSetStr("Server.RootDirectory",
                           self.getRootDirectory(), self.getCheckRep())):
             # Check if a legal root directory specified.
@@ -2286,12 +2275,8 @@ class ngamsConfig:
                           self.getDataCheckMaxProcs(), self.getCheckRep())
             checkIfZeroOrOne("DataCheckThread.DataCheckScan",
                              self.getDataCheckScan(), self.getCheckRep())
-            checkIfSetInt("DataCheckThread.DataCheckPrio",
-                          self.getDataCheckPrio(), self.getCheckRep())
             checkIfSetStr("DataCheckThread.DataCheckMinCycle",
                           self.getDataCheckMinCycle(), self.getCheckRep())
-            checkIfZeroOrOne("DataCheckThread.DataCheckLogSummary",
-                             self.getDataCheckLogSummary(), self.getCheckRep())
         logger.debug("Checked DataCheckThread Element")
 
         logger.debug("Check Log Element ...")
@@ -2455,13 +2440,17 @@ class ngamsConfig:
         return os.path.normpath(self.getBackLogBufferDirectory() + "/" +\
                                 NGAMS_BACK_LOG_DIR)
 
-    def getUseRequestDb(self):
+    def getRequestDbBackend(self):
         """
         Returns whether the server should keep a request database or not.
         """
-        val = self.getVal("Server[1].UseRequestDb")
-        if val is not None:
-            val = boolean_value(val)
-        if val is None:
-            return False
+        val = self.getVal("Server[1].RequestDbBackend")
+
+        # Check and normalize
+        allowed_values = (None, '', 'null', 'bsddb', 'memory')
+        if val not in allowed_values:
+            raise Exception('RequestDbBackend %s not one of %s' % (val, allowed_values))
+        if not val:
+            val = 'null'
+
         return val

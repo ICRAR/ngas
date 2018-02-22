@@ -34,11 +34,11 @@ This module contains test utilities used to build the NG/AMS Functional Tests.
 
 import collections
 import contextlib
+import errno
 import functools
 import getpass
 import glob
 import gzip
-import importlib
 import logging
 import multiprocessing.pool
 import os
@@ -74,16 +74,8 @@ logging_levels = {
     logging.INFO: 3,
     logging.DEBUG: 4,
     logging.NOTSET: 5,
-    0: logging.CRITICAL,
-    1: logging.ERROR,
-    2: logging.WARNING,
-    3: logging.INFO,
-    4: logging.DEBUG,
-    5: logging.NOTSET
 }
 
-# Global parameters to control the test run.
-_noCleanUp   = 0
 
 # Pool used to start/shutdown servers in parallel
 srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
@@ -94,6 +86,9 @@ STD_DISK_STAT_FILT = ["AccessDate", "AvailableMb", "CreationDate", "Date",
                       "ModificationDate", "TotalDiskWriteTime", "Version"]
 AUTH               = "bmdhczpuZ2Fz"
 
+
+# this_dir, which we use in a few places to refer to files, etc
+this_dir = os.path.normpath(os.path.abspath(pkg_resources.resource_filename(__name__, '.')))  # @UndefinedVariable
 
 ###########################################################################
 
@@ -211,13 +206,6 @@ def execCmd(cmd,
     return (exitCode, out)
 
 
-def getClusterName():
-    """
-    Return the name of the simulated cluster.
-    """
-    return "%s:8000" % getHostName()
-
-
 def getNmu():
     """
     Return the name of the Main Node for the simulated cluster.
@@ -266,6 +254,7 @@ def waitReqCompl(clientObj,
     return res
 
 
+_noCleanUp   = int(os.environ.get('NGAS_TESTS_NO_CLEANUP', 0))
 def setNoCleanUp(noCleanUp):
     """
     Set the No Clean Up Flag.
@@ -322,8 +311,8 @@ def cmpFiles(refFile,
         fo = open(testFile, "w")
         for line in testFileLines: fo.write(line)
         fo.close()
-    _, out, _ = ngamsCoreExecCmd(['diff', refFile, testFile], shell="False")
-    return out
+    _, out, err = ngamsCoreExecCmd(['diff', refFile, testFile], shell=False)
+    return out + err
 
 
 def pollForFile(pattern,
@@ -591,7 +580,9 @@ def filterDbStatus1(statBuf,
             (line.find("IngestionRate") == 0) or
             (line.find("ContainerId") == 0) or
             (line.find("ModificationDate:") == 0) or
-            (line.find("ModificationDate:") == 0) or
+            (line.find("BytesStored:") == 0) or
+            (line.find("FileSize:") == 0) or
+            (line.find("Checksum:") == 0) or
             (line.find("AccessDate:") == 0)):
             continue
         skipLine = 0
@@ -707,78 +698,6 @@ def flushEmailQueue():
     mailList.reverse()
     for mailNo in mailList:
         recvEmail(mailNo)
-
-
-def runTest(argv):
-    """
-    Parses and executes the test according to the command line
-    parameters given.
-
-    argv:     Arguments given on command line (tuple).
-
-    Returns:  Void.
-    """
-    testModuleName = argv[0].split('/')[-1].split(".")[0]
-    tests = []
-    silentExit = 0
-    verboseLevel = 0
-    skip = None
-    idx = 1
-    while idx < len(argv):
-        par = argv[idx].upper()
-        try:
-            if (par == "-V"):
-                idx += 1
-                verboseLevel = int(argv[idx])
-            elif (par == "-TESTS"):
-                idx += 1
-                tests = argv[idx].split(",")
-            elif (par == "-NOCLEANUP"):
-                setNoCleanUp(1)
-            elif (par == "-SKIP"):
-                idx += 1
-                skip = argv[idx]
-            else:
-                correctUsage()
-                silentExit = 1
-                sys.exit(1)
-            idx += 1
-        except Exception, e:
-            if (not silentExit):
-                print "Illegal input parameters: " + str(e) + "\n"
-                correctUsage()
-            sys.exit(1)
-
-    logging.root.addHandler(logging.NullHandler())
-    if verboseLevel:
-        logging.root.addHandler(logging.StreamHandler(stream=sys.stdout))
-        logging.root.setLevel(logging_levels[verboseLevel-1])
-
-    skipDic = {}
-    if (skip):
-        for testCase in skip.split(","): skipDic[testCase.strip()] = 1
-
-    # Always ensure that the local "tmp" directory exists
-    if not os.path.isdir("tmp"):
-        if os.path.exists("tmp"):
-            raise Exception("./tmp exists and is not a directory, cannot continue")
-        os.mkdir("tmp")
-
-    # Execute the test.
-    testModule = importlib.import_module(testModuleName)
-    testClass = getattr(testModule, testModuleName)
-    if (tests == []):
-        # No specific test specified - run all tests.
-        testSuite = unittest.makeSuite(testClass)
-    elif (skipDic != {}):
-        print "TODO: IMPLEMENT SKIP PARAMETER FOR TEST SUITES!"
-        sys.exit(1)
-    else:
-        testSuite = unittest.TestSuite()
-        for testCase in tests:
-            testSuite.addTest(testClass(testCase))
-    res = ngamsTextTestRunner(sys.stdout, 1, 0).run(testSuite)
-    sys.exit(0 if res.wasSuccessful() else 1)
 
 
 def writeFitsKey(filename,
@@ -929,7 +848,7 @@ def getThreadId(logFile,
     for tag in tagList[1:]:
         grepCmd += " | grep %s" % tag
     out = subprocess.check_output(grepCmd, shell=True)
-    tid =  out.split("[")[1].split("]")[0].strip()
+    tid =  out.split("[")[2].split("]")[0].strip()
     return tid
 
 def unzip(infile, outfile):
@@ -942,7 +861,7 @@ def unzip(infile, outfile):
 # END: Utility functions
 ###########################################################################
 
-ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir'])
+ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir', 'cfg_file', 'daemon'])
 
 class ngamsTestSuite(unittest.TestCase):
     """
@@ -970,18 +889,22 @@ class ngamsTestSuite(unittest.TestCase):
         self.assertIsNotNone(status)
         self.assertEquals(expectedStatus, status.getStatus())
 
+    def assertArchive(self, fname, mimeType=None, port=8888, timeout=5, pars=[], cmd='ARCHIVE'):
+        stat = sendPclCmd(port, timeOut=timeout).archive(fname, mimeType=mimeType, pars=pars, cmd=cmd)
+        self.assertStatus(stat)
+
     def prepExtSrv(self,
                    port = 8888,
                    delDirs = 1,
                    clearDb = 1,
                    autoOnline = 1,
+                   cache = False,
                    cfgFile = "src/ngamsCfg.xml",
-                   multipleSrvs = 0,
                    cfgProps = [],
                    dbCfgName = None,
                    srvModule = None,
-                   skip_database_creation = False,
-                   force=False):
+                   force=False,
+                   daemon = False):
         """
         Prepare a standard server object, which runs as a separate process and
         serves via the standard HTTP interface.
@@ -996,9 +919,6 @@ class ngamsTestSuite(unittest.TestCase):
 
         cfgFile:       Configuration file to use when executing the
                        server (string).
-
-        multipleSrvs:  If set to 1, this means that multiple servers might
-                       be running on the node (integer/0|1).
 
         cfgProps:      With this parameter it is possible to set specific
                        cfg. parameters before starting the server. This
@@ -1027,6 +947,9 @@ class ngamsTestSuite(unittest.TestCase):
         """
         T = TRACE(3)
 
+        if srvModule and daemon:
+            raise ValueError("srvModule cannot be used in daemon mode")
+
         verbose = logging_levels[logger.getEffectiveLevel()] + 1
 
         if (dbCfgName):
@@ -1034,10 +957,8 @@ class ngamsTestSuite(unittest.TestCase):
             # extract the configuration information from the DB to
             # create a complete temporary cfg. file.
             cfgObj = db_aware_cfg(cfgFile)
-            dbObj = ngamsDb.from_config(cfgObj)
-            cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, dbObj)
-            del dbObj
-            dbObj = None
+            with contextlib.closing(ngamsDb.from_config(cfgObj, maxpool=1)) as db:
+                cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, db)
             logger.debug("Successfully read configuration from database, root dir is %s", cfgObj2.getRootDirectory())
             cfgFile = saveInFile(None, cfgObj2.genXmlDoc(0))
 
@@ -1046,16 +967,18 @@ class ngamsTestSuite(unittest.TestCase):
         # Change what needs to be changed, like the position of the Sqlite
         # database file when necessary, the custom configuration items, and the
         # port number
-        self.point_to_sqlite_database(cfgObj, not multipleSrvs and not dbCfgName and not skip_database_creation)
+        self.point_to_sqlite_database(cfgObj, not dbCfgName and clearDb)
         if (cfgProps):
             for cfgProp in cfgProps:
                 # TODO: Handle Cfg. Group ID.
                 cfgObj.storeVal(cfgProp[0], cfgProp[1])
         cfgObj.storeVal("NgamsCfg.Server[1].PortNo", str(port))
+        if cache:
+            cfgObj.storeVal("NgamsCfg.Caching[1].Enable", '1')
 
         # Now connect to the database and perform any cleanups before we start
         # the server, like removing existing NGAS dirs and clearing tables
-        dbObj = ngamsDb.from_config(cfgObj)
+        dbObj = ngamsDb.from_config(cfgObj, maxpool=1)
         if (delDirs):
             logger.debug("Deleting NG/AMS directories ...")
             delNgamsDirs(cfgObj)
@@ -1064,19 +987,23 @@ class ngamsTestSuite(unittest.TestCase):
             delNgasTbls(dbObj)
 
         # Dump configuration into the filesystem so the server can pick it up
-        tmpCfg = genTmpFilename("CFG_") + ".xml"
+        tmpCfg = os.path.abspath(genTmpFilename("CFG_") + ".xml")
         cfgObj.save(tmpCfg, 0)
 
         # Execute the server as an external process.
-        srvModule = srvModule or 'ngamsServer.ngamsServer'
-        this_dir = os.path.normpath(pkg_resources.resource_filename(__name__, '.'))  # @UndefinedVariable
+        if daemon:
+            srvModule = 'ngamsServer.ngamsDaemon'
+        else:
+            srvModule = srvModule or 'ngamsServer.ngamsServer'
+
         parent_dir = os.path.dirname(this_dir)
         execCmd  = [sys.executable, '-m', srvModule]
-        execCmd += ["-cfg", os.path.abspath(tmpCfg), "-v", str(verbose)]
+        if daemon:
+            execCmd += ['start']
+        execCmd += ["-cfg", tmpCfg, "-v", str(verbose)]
         execCmd += ['-path', parent_dir]
         if force:        execCmd.append('-force')
         if autoOnline:   execCmd.append("-autoOnline")
-        if multipleSrvs: execCmd.append("-multipleSrvs")
         if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
 
         logger.info("Starting external NG/AMS Server in port %d with command: %s", port, " ".join(execCmd))
@@ -1084,34 +1011,86 @@ class ngamsTestSuite(unittest.TestCase):
             srvProcess = subprocess.Popen(execCmd, shell=False)
 
         # We have to wait until the server is serving.
-        server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory())
-        pCl = sendPclCmd(port=port)
+        server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory(), tmpCfg, daemon)
+        pCl = sendPclCmd(port=port, timeOut=5)
+
+        def give_up():
+            try:
+                self.termExtSrv(server_info)
+            except:
+                pass
+
+        # A daemon server should start rather quickly, as it forks out the actual
+        # server process and then exists (with a 0 status when successful)
+        if server_info.daemon:
+            srvProcess.wait()
+            if srvProcess.poll() != 0:
+                give_up()
+                raise Exception("Daemon server failed to start")
+
         startTime = time.time()
         while True:
 
-            # Check if the server actually didn't start up correctly
-            ecode = srvProcess.poll()
-            if ecode is not None:
-                raise Exception("Server exited with code %d during startup" % (ecode,))
-
-            # "ping" the server
-            try:
-                stat = pCl.status()
-            except socket.error:
-                logger.debug("Polled server - not yet running ...")
-                time.sleep(0.2)
-                continue
-
-            # Check the status is what we expect
-            state = "ONLINE" if autoOnline else "OFFLINE"
-            logger.debug("Test server running - State: %s", state)
-            if stat.getState() == state:
-                break
-
             # Took too long?
             if ((time.time() - startTime) >= 20):
-                self.termExtSrv(server_info)
+                give_up()
                 raise Exception("Server did not start correctly within 20 [s]")
+
+            # Check if the server actually didn't start up correctly
+            if not server_info.daemon:
+                ecode = srvProcess.poll()
+                if ecode is not None:
+                    raise Exception("Server exited with code %d during startup" % (ecode,))
+
+            # "ping" the server and check that the status is what we expect
+            try:
+                stat = pCl.status()
+                state = "ONLINE" if autoOnline else "OFFLINE"
+                logger.debug("Test server running - State: %s", state)
+                if stat.getState() == state:
+                    break
+            except Exception as e:
+
+                # Not up yet, try again later
+                if isinstance(e, socket.error) and e.errno == errno.ECONNREFUSED:
+                    logger.debug("Polled server - not yet running ...")
+                    time.sleep(0.2)
+                    continue
+
+                # We are having this funny situation in MacOS builds, when
+                # intermitently the client times out while trying to connect
+                # to the server. This happens very rarely, but when it does it
+                # always seems to coincide with the moment the server starts
+                # listening for connections.
+                #
+                # The network traffic during these connect timeout situations
+                # seems completely normal, and just like the rest of the
+                # connection attempts before the timeout occurs. In particular,
+                # all these connection attempts result in a SYN packet sent by
+                # the client, and a RST/ACK packet quickly coming back quickly
+                # from the server side, meaning that the port is closed. In the
+                # case of the connect timeout however, the client hangs for all
+                # the time it is allowed to wait before timing out.
+                #
+                # This could well be a problem with python 2.7's implementation of
+                # socket.connect, which issues on initial connect(), followed by a
+                # select()/poll() depending on the situation. Without certainty,
+                # I imagine this might lead to some sort of very thing race condition
+                # between the connect and the select/poll call. Since I'm far
+                # from being and Apple guru, I will take the simplest solution
+                # for the time being and assume that a socket.timeout is simply
+                # a transient error that will solve itself in the next round.
+                # This change is also accompanied by a decrease on the timeout
+                # used by the client that issuea these requests (it was 60 seconds,
+                # we decreased it to 5 which makes more sense).
+                elif isinstance(e, socket.timeout):
+                    logger.warning("Timeo out when connecting to server, will try again")
+                    continue
+
+                logger.exception("Error while STATUS-ing server, shutting down")
+                give_up()
+
+                raise
 
         self.extSrvInfo.append(server_info)
 
@@ -1123,8 +1102,23 @@ class ngamsTestSuite(unittest.TestCase):
         Terminate an externally running server.
         """
 
-        srvProcess, port, rootDir = srvInfo
+        srvProcess, port, rootDir, cfg_file, daemon = srvInfo
 
+        # Started as a daemon, stopped as a daemon
+        # Here we trust that the daemon will shut down all the processes nicely,
+        # but we could be more thorough in the future I guess and double-check
+        # that everything is shut down correctly
+        if daemon:
+            execCmd  = [sys.executable, '-m', 'ngamsServer.ngamsDaemon', 'stop']
+            execCmd += ["-cfg", cfg_file]
+            with self._proc_startup_lock:
+                daemon_stop_proc = subprocess.Popen(execCmd, shell=False)
+            daemon_stop_proc.wait()
+            if daemon_stop_proc.poll() != 0:
+                raise Exception("Daemon process didn't stop correctly")
+            return
+
+        # The rest if for stopping a server that was NOT started inside a daemon
         if srvProcess.poll() is not None:
             logger.debug("Server process %d (port %d) already dead x(, no need to terminate it again", srvProcess.pid, port)
             srvProcess.wait()
@@ -1309,18 +1303,16 @@ class ngamsTestSuite(unittest.TestCase):
         Starts a given server which is part of a cluster of servers
         """
 
-        portNo      = int(srvInfo[0])
-        if (len(srvInfo) > 4):
-            cfgParList = srvInfo[4]
-        else:
-            cfgParList = []
+        port, cfg_pars = srvInfo, []
+        if isinstance(srvInfo, (tuple, list)):
+            port, cfg_pars = srvInfo
 
         # Set port number in configuration and allocate a mount root
         hostName = getHostName()
-        srvId = "%s:%d" % (hostName, portNo)
+        srvId = "%s:%d" % (hostName, port)
         if (multSrvs):
-            mtRtDir = "/tmp/ngamsTest/NGAS:%d" % portNo
-            rmFile("/tmp/ngamsTest/NGAS:%d" %(portNo,))
+            mtRtDir = "/tmp/ngamsTest/NGAS:%d" % port
+            rmFile("/tmp/ngamsTest/NGAS:%d" %(port,))
         else:
             mtRtDir = "/tmp/ngamsTest/NGAS"
         rmFile(mtRtDir)
@@ -1328,38 +1320,30 @@ class ngamsTestSuite(unittest.TestCase):
         # Set up our server-specific configuration
         cfg = ngamsConfig.ngamsConfig().load(comCfgFile)
         cfg.storeVal("NgamsCfg.Header[1].Type", "TEST CONFIG: %s" % srvId)
-        cfg.storeVal("NgamsCfg.Server[1].PortNo", portNo)
+        cfg.storeVal("NgamsCfg.Server[1].PortNo", port)
         cfg.storeVal("NgamsCfg.Server[1].RootDirectory", mtRtDir)
         cfg.storeVal("NgamsCfg.ArchiveHandling[1].BackLogBufferDirectory", mtRtDir)
         cfg.storeVal("NgamsCfg.Processing[1].ProcessingDirectory", mtRtDir)
         cfg.storeVal("NgamsCfg.Log[1].LocalLogFile", os.path.normpath(mtRtDir + "/log/LogFile.nglog"))
 
         # Set special values if so specified.
-        for cfgPar in cfgParList:
+        for cfgPar in cfg_pars:
             cfg.storeVal(cfgPar[0], cfgPar[1])
 
         # And dump it into our server-specific configuration file
         tmpCfgFile = "tmp/%s_tmp.xml" % srvId
         cfg.save(tmpCfgFile, 0)
 
-        # Check if server has entry in referenced DB. If not, create it.
-        db = ngamsDb.from_config(cfg)
-        db.close()
-
         # Start server + add reference to server configuration object and
         # server DB object.
-        srvCfgObj, srvDbObj = self.prepExtSrv(portNo,
+        srvCfgObj, srvDbObj = self.prepExtSrv(port=port,
                                               delDirs = 0,
                                               clearDb = 0,
                                               autoOnline = 1,
-                                              cfgFile = tmpCfgFile,
-                                              multipleSrvs = multSrvs)
+                                              cfgFile = tmpCfgFile)
         return [srvId, srvCfgObj, srvDbObj]
 
-    def prepCluster(self,
-                    comCfgFile,
-                    serverList,
-                    createDatabase = True):
+    def prepCluster(self, server_list, cfg_file='src/ngamsCfg.xml', createDatabase=True):
         """
         Prepare a common, simulated cluster. This consists of 1 to N
         servers running on the same node. It is ensured that each of
@@ -1374,12 +1358,11 @@ class ngamsTestSuite(unittest.TestCase):
         serverList:    List containing sub-lists with information about
                        each server. This must be formatted as follows:
 
-                       [[<Port#1>, <Domain>, <IP Addr>, <Cl Name>, <Cfg Pars>],
-                        [<Port#2>, <Domain>, <IP Addr>, <Cl Name>, <Cfg Pars>],
+                       [[<Port#1>, <Cfg Pars>],
+                        [<Port#2>, <Cfg Pars>],
                         ...]
 
-                       If the Domain, IP Address or Cluster Name are defined
-                       as None, the default (=localhost) is taken. <Cfg Pars>
+                       <Cfg Pars>
                        is a list of sub-list specifying (in XML Dictionary
                        format) special configuration parameters for the
                        given server (string).
@@ -1394,27 +1377,43 @@ class ngamsTestSuite(unittest.TestCase):
         """
 
         # Create the shared database first of all
-        tmpCfg = db_aware_cfg(comCfgFile)
+        tmpCfg = db_aware_cfg(cfg_file)
         self.point_to_sqlite_database(tmpCfg, createDatabase)
         if createDatabase:
-            db = ngamsDb.from_config(tmpCfg)
-            delNgasTbls(db)
-            db.close()
+            with contextlib.closing(ngamsDb.from_config(tmpCfg, maxpool=1)) as db:
+                delNgasTbls(db)
 
-        multSrvs = len(serverList) > 1
+        multSrvs = len(server_list) > 1
 
         # Start them in parallel now that we have all set up for it
-        res = srv_mgr_pool.map(functools.partial(self.start_srv_in_cluster, multSrvs, comCfgFile), serverList)
+        res = srv_mgr_pool.map(functools.partial(self.start_srv_in_cluster, multSrvs, cfg_file), server_list)
 
-        # srvId: (cfgObj, dbObj)
-        return {r[0]: (r[1], r[2]) for r in res}
+        # srvId: (cfgObj, dbObj), in same input order
+        d = collections.OrderedDict()
+        for r in res:
+            d[r[0]] = (r[1], r[2])
+        return d
 
     def point_to_sqlite_database(self, cfgObj, create):
         # Exceptional handling for SQLite.
-        # TODO: It would probably be better if we simply run
-        # the SQL script that creates the tables
-        if create and 'sqlite' in cfgObj.getDbInterface().lower():
-            cpFile("src/ngas_Sqlite_db_template", "tmp/ngas.sqlite")
+        if 'sqlite' in cfgObj.getDbInterface().lower():
+
+            # TODO: It would probably be better if we simply run
+            # the SQL script that creates the tables
+            if create:
+                cpFile("src/ngas_Sqlite_db_template", "tmp/ngas.sqlite")
+
+            # Make sure the 'database' attribute is an aboslute path
+            # This is because there are tests that start the server
+            # in daemon mode, in which case the process's cwd is /
+            #
+            # The "dbCfgGroupId" is needed when dumping configuration objects
+            # into the ngas configuration database tables (which is exercised
+            # by the unit tests, but in reality not really used much).
+            params = cfgObj.getDbParameters()
+            if 'database' in params and not params['database'].startswith('/'):
+                abspath = this_dir + '/' + params['database']
+                cfgObj.storeVal("NgamsCfg.Db[1].database", abspath, cfgObj.getVal('NgamsCfg.Id'))
 
     def prepDiskCfg(self,
                     diskCfg,
@@ -1453,7 +1452,7 @@ class ngamsTestSuite(unittest.TestCase):
                         (string).
         """
         cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
-        dbObj  = ngamsDb.from_config(cfgObj)
+        dbObj  = ngamsDb.from_config(cfgObj, maxpool=1)
 
         stoSetIdx = 0
         xmlKeyPat = "NgamsCfg.StorageSets[1].StorageSet[%d]."
@@ -1700,83 +1699,6 @@ class ngamsTestSuite(unittest.TestCase):
 
         self.markNodesAsUnsusp(dbConObj, nodes)
         self.fail("Sub-node not woken up within %ds" % timeOut)
-
-class ngamsTextTestResult(unittest._TextTestResult):
-    """
-    Class to produce text test output.
-    """
-
-    def __init__(self,
-                 stream = sys.stderr,
-                 descriptions = 1,
-                 verbosity = 1):
-        """
-        Constructor method.
-
-        stream:       Stream on which to write the report, e.g. sys.stderr
-                      (stream object).
-
-        descriptions: ?
-
-        verbosity:    ?
-        """
-        unittest._TextTestResult.__init__(self,stream, descriptions, verbosity)
-
-
-class ngamsTextTestRunner(unittest.TextTestRunner):
-    """
-    Test report generator class for the NG/AMS Unit Test.
-    """
-
-    def __init__(self,
-                 stream = sys.stderr,
-                 descriptions = 1,
-                 verbosity = 1):
-        unittest.TextTestRunner.__init__(self, stream, descriptions, verbosity)
-
-
-    def _makeResult(self):
-        return ngamsTextTestResult(self.stream, self.descriptions,
-                                   self.verbosity)
-
-
-    def run(self,
-            test):
-        """
-        Run the given test case or test suite.
-        """
-        testName = str(test._tests[0]).split(" ")[1].split(".")[0][1:]
-        self.stream.writeln("\nTest: " + testName)
-        result = self._makeResult()
-        startTime = time.time()
-        test(result)
-        stopTime = time.time()
-        timeTaken = float(stopTime - startTime)
-        result.printErrors()
-        self.stream.writeln(result.separator2)
-        run = result.testsRun
-        self.stream.writeln("Ran %d test%s in %.3fs" %
-                            (run, run == 1 and "" or "s", timeTaken))
-        self.stream.writeln()
-        if not result.wasSuccessful():
-            self.stream.write("FAILED (")
-            failed, errored = map(len, (result.failures, result.errors))
-            if failed:
-                self.stream.write("failures=%d" % failed)
-            if errored:
-                if failed: self.stream.write(", ")
-                self.stream.write("errors=%d" % errored)
-            self.stream.writeln(")")
-        else:
-            self.stream.writeln("OK\n")
-        return result
-
-
-if __name__ == '__main__':
-    """
-    Main program to test execution of functions in the module.
-    """
-    pass
 
 
 # EOF

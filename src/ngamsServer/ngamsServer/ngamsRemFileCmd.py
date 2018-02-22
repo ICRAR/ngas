@@ -36,8 +36,7 @@ import os
 
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsHighLevelLib
 from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, \
-    rmFile, NGAMS_SUCCESS, TRACE, NGAMS_XML_STATUS_ROOT_EL, \
-    NGAMS_XML_STATUS_DTD, NGAMS_HTTP_SUCCESS
+    rmFile, NGAMS_SUCCESS, TRACE, NGAMS_XML_MT
 import ngamsRemUtils
 
 
@@ -63,7 +62,6 @@ def _remFile(srvObj,
     # Temporary DBM to contain SQL info about files concerned by the query.
     fileListDbmName   = os.path.normpath(tmpFilePat + "_FILE_LIST")
     fileListDbm       = ngamsDbm.ngamsDbm(fileListDbmName, writePerm = 1)
-    tmpFileSumDbmName = os.path.normpath(tmpFilePat + "_TMP_FILE_LIST")
 
     # Get the information from the DB about the files in question.
     hostId = None
@@ -75,22 +73,19 @@ def _remFile(srvObj,
         hostId = srvObj.getHostId()
     if (fileId): fileIds = [fileId]
     if (fileVersion == -1): fileVersion = None
-    tmpFileSumDbmName = srvObj.getDb().dumpFileSummary1(tmpFileSumDbmName,
-                                                        hostId, diskIds,
-                                                        fileIds, ignore=None)
-    tmpFileSumDbm = ngamsDbm.ngamsDbm(tmpFileSumDbmName)
-    for key in range(0, tmpFileSumDbm.getCount()):
-        tmpFileInfo = tmpFileSumDbm.get(str(key))
-        if ((not fileVersion) or
-            (tmpFileInfo[ngamsDbCore.SUM1_VERSION] == fileVersion)):
-            msg = "Scheduling file with ID: %s/%d on disk with ID: %s for " +\
-                  "deletion"
-            logger.debug(msg, tmpFileInfo[ngamsDbCore.SUM1_FILE_ID],
-                           tmpFileInfo[ngamsDbCore.SUM1_VERSION],
-                           tmpFileInfo[ngamsDbCore.SUM1_DISK_ID])
-            fileListDbm.add(str(key), tmpFileInfo)
-    fileListDbm.sync()
-    del tmpFileSumDbm
+
+    n_files = 0
+    for f in srvObj.db.getFileSummary1(hostId, diskIds, fileIds, ignore=None):
+        if fileVersion is not None and fileVersion != f[ngamsDbCore.SUM1_VERSION]:
+            continue
+        msg = "Scheduling file with ID: %s/%d on disk with ID: %s for " +\
+              "deletion"
+        logger.debug(msg, f[ngamsDbCore.SUM1_FILE_ID],
+                     f[ngamsDbCore.SUM1_VERSION],
+                     f[ngamsDbCore.SUM1_DISK_ID])
+        fileListDbm.add(str(n_files), f)
+        n_files += 1
+        fileListDbm.sync()
 
     # Check if the files selected for deletion are available within the NGAS
     # system, in at least 3 copies.
@@ -256,7 +251,7 @@ def remFile(srvObj,
         rmFile(tmpFilePat + "*")
 
 
-def handleCmdRemFile(srvObj,
+def handleCmd(srvObj,
                      reqPropsObj,
                      httpRef):
     """
@@ -301,10 +296,8 @@ def handleCmdRemFile(srvObj,
 
     # Send reply back to requestor.
     xmlStat = status.genXmlDoc(0, 1, 1, 1, 0)
-    xmlStat = ngamsHighLevelLib.addDocTypeXmlDoc(srvObj, xmlStat,
-                                                 NGAMS_XML_STATUS_ROOT_EL,
-                                                 NGAMS_XML_STATUS_DTD)
-    srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, xmlStat)
+    xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
+    httpRef.send_data(xmlStat, NGAMS_XML_MT)
 
 
 # EOF

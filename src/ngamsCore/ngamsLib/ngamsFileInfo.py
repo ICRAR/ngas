@@ -735,11 +735,10 @@ class ngamsFileInfo:
         fileInfo = dbConObj.getFileInfoFromFileIdHostId(hostId, fileId,
                                                         fileVersion, diskId)
         if (not fileInfo):
-            cursorObj = dbConObj.getFileInfoFromFileId(fileId, fileVersion,
-                                                       diskId)
-            fileInfo = cursorObj.fetch(1)
-            if (fileInfo != []): fileInfo = fileInfo[0]
-            del cursorObj
+            fileInfo = dbConObj.getFileInfoFromFileId(fileId, fileVersion,
+                                                       diskId, dbCursor=False)
+            if fileInfo:
+                fileInfo = fileInfo[0]
         if (fileInfo == []):
             errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [fileId])
             raise Exception(errMsg)

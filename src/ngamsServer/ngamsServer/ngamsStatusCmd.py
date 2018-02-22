@@ -30,6 +30,7 @@
 """
 Function + code to handle the STATUS command.
 """
+import contextlib
 import glob
 import logging
 import os
@@ -39,15 +40,12 @@ import sys
 import types
 
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL,\
-    getHostName, genLog, genUniqueId, mvFile, rmFile,\
-    compressFile, NGAMS_PROC_FILE, NGAMS_GZIP_XML_MT, getNgamsVersion,\
-    NGAMS_SUCCESS, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD,\
-    NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, fromiso8601, toiso8601
-from ngamsLib import ngamsDbCore, ngamsDbm, ngamsStatus, ngamsDiskInfo
-from ngamsLib import ngamsDppiStatus
+    getHostName, genLog, genUniqueId, rmFile,\
+    compressFile, NGAMS_GZIP_XML_MT, getNgamsVersion,\
+    NGAMS_SUCCESS, NGAMS_XML_MT, fromiso8601, toiso8601
+from ngamsLib import ngamsDbm, ngamsStatus, ngamsDiskInfo, ngamsHttpUtils
 from ngamsLib import ngamsFileInfo, ngamsHighLevelLib
 import ngamsFileUtils
-import ngamsRetrieveCmd
 
 
 logger = logging.getLogger(__name__)
@@ -93,13 +91,15 @@ def _checkFileAccess(srvObj,
               fileVersion, mimeType =\
               ngamsFileUtils.locateArchiveFile(srvObj, fileId, fileVersion,
                                                diskId)
+
     if (location != NGAMS_HOST_LOCAL):
+        # Go and get it!
         host, port = srvObj.get_remote_server_endpoint(fileHost)
-        httpStatCode, httpStatMsg, httpHdrs, data =\
-                      srvObj.forwardRequest(reqPropsObj, httpRef, fileHost, host, port,
-                                            autoReply = 0)
-        tmpStat = ngamsStatus.ngamsStatus().unpackXmlDoc(data)
-        return tmpStat.getMessage()
+        pars = (('file_access', fileId), ('file_version', fileVersion), ('disk_id', diskId))
+        resp = ngamsHttpUtils.httpGet(host, port, 'STATUS', pars, timeout=60)
+        with contextlib.closing(resp):
+            return ngamsStatus.to_status(resp, fileHost, 'STATUS').getMessage()
+
     else:
         # First check if this system allows for Retrieve Requests.
         if (not srvObj.getCfg().getAllowRetrieveReq()):
@@ -241,45 +241,27 @@ def _handleFileList(srvObj,
     # Dump the file information needed.
     fileListId = genUniqueId()
     dbmBaseName = STATUS_FILE_LIST_DBM_TAG % fileListId
-    fileInfoDbmBaseName = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
+    fileInfoDbmName = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
                                                            dbmBaseName)
 
-    # Dump the file info from the DB.
+    # Dump the file info from the DB. Deal with uniqueness quickly
+    # (instead of using a new file like before)
     try:
-        fileInfoDbmName = srvObj.getDb().\
-                          dumpFileInfo2(fileInfoDbmBaseName,
-                                        hostId = srvObj.getHostId(),
-                                        ignore = 0,
-                                        lowLimIngestDate = fromIngDate)
-
-        # If requested, make the result set unique by inserting the elements
-        # with File ID/Version as key.
-        if (unique):
-            fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName)
-            uniqueFileInfoDbmName = fileInfoDbmBaseName + "_UNIQUE"
-            uniqueFileListDbm = ngamsDbm.ngamsDbm(uniqueFileInfoDbmName,
-                                                  cleanUpOnDestr = 0,
-                                                  writePerm = 1)
-            while (True):
-                key, fileInfo = fileInfoDbm.getNext()
-                if (not key):
-                    break
-                fileKey = "%s_%s" %\
-                          (fileInfo[ngamsDbCore.NGAS_FILES_FILE_ID],
-                           fileInfo[ngamsDbCore.NGAS_FILES_FILE_VER])
-                if (uniqueFileListDbm.hasKey(fileKey)):
-                    # File with that ID/Version already registered.
+        fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, 0, 1)
+        fileCount = 1
+        unique_files = set()
+        for f in srvObj.db.files_in_host(srvObj.getHostId(), from_date=fromIngDate):
+            if unique:
+                key = str('%s_%d' % (f[2], f[3]))
+                if key in unique_files:
                     continue
-                uniqueFileListDbm.add(fileKey, fileInfo)
-            fileInfoDbm.sync()
-            fileInfoDbmName = fileInfoDbm.getDbmName()
-            del fileInfoDbm
-            uniqueFileListDbm.sync()
-            uniqueFileListDbmName = uniqueFileListDbm.getDbmName()
-            del uniqueFileListDbm
-            mvFile(uniqueFileListDbmName, fileInfoDbmName)
+            else:
+                key = str(fileCount)
+            fileInfoDbm.add(key, f)
+            fileCount += 1
+
     except Exception as e:
-        rmFile("%s*" % fileInfoDbmBaseName)
+        rmFile(fileInfoDbmName)
         msg = "Problem generating file list for STATUS Command. " +\
               "Parameters: from_ingestion_date=%s. Error: %s" %\
               (str(fromIngDate), str(e))
@@ -391,16 +373,7 @@ def _handleFileListReply(srvObj,
 
     # Send the XML document back to the requestor.
     try:
-        tmpDppiResult = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE).\
-                        setMimeType(NGAMS_GZIP_XML_MT).\
-                        setDataRef(fileListXmlDoc).\
-                        setRefFilename(os.path.basename(fileListXmlDoc))
-        tmpDppiStatus = ngamsDppiStatus.ngamsDppiStatus().\
-                        addResult(tmpDppiResult)
-        ngamsRetrieveCmd.genReplyRetrieve(srvObj, reqPropsObj, httpRef,
-                                          [tmpDppiStatus])
-        reqPropsObj.setSentReply(1)
-        rmFile("%s*" % fileListXmlDoc)
+        httpRef.send_file(fileListXmlDoc, NGAMS_GZIP_XML_MT)
 
         # Remove the reported entries.
         for key in keyRefList:
@@ -416,13 +389,14 @@ def _handleFileListReply(srvObj,
             rmFile("%s*" % fileInfoDbmName)
 
     except Exception as e:
-        rmFile("%s*" % fileListXmlDoc)
         msg = "Error returning response to STATUS?file_list request. Error: %s"
         msg = msg % str(e)
         raise Exception(msg)
+    finally:
+        rmFile(fileListXmlDoc)
 
 
-def handleCmdStatus(srvObj,
+def handleCmd(srvObj,
                     reqPropsObj,
                     httpRef):
     """
@@ -469,7 +443,7 @@ def handleCmdStatus(srvObj,
     if (reqPropsObj.hasHttpPar("file_id")):
         fileId = reqPropsObj.getHttpPar("file_id")
     if (reqPropsObj.hasHttpPar("file_version")):
-        fileVersion = reqPropsObj.getHttpPar("file_version")
+        fileVersion = int(reqPropsObj.getHttpPar("file_version"))
 
     if (reqPropsObj.hasHttpPar("configuration_file")): configurationFile = "-"
 
@@ -527,12 +501,11 @@ def handleCmdStatus(srvObj,
         host, port = srvObj.get_remote_server_endpoint(hostId)
         cfgObj = srvObj.getCfg()
         if not cfgObj.getProxyMode():
-            srvObj.httpRedirReply(reqPropsObj, httpRef, host, port)
+            httpRef.redirect(host, port)
             return
         else:
             try:
-                srvObj.forwardRequest(reqPropsObj, httpRef, hostId, host, port,
-                                      autoReply = 1)
+                httpRef.proxy_request(hostId, host, port)
             except Exception as e:
                 ex = re.sub("<|>", "", str(e))
                 errMsg = genLog("NGAMS_ER_COM",
@@ -601,14 +574,10 @@ def handleCmdStatus(srvObj,
         # Generate XML reply.
         xmlStat = status.genXmlDoc(genCfgStatus, genDiskStatus, genFileStatus,
                                    genStatesStatus)
-        xmlStat = ngamsHighLevelLib.\
-                  addDocTypeXmlDoc(srvObj, xmlStat, NGAMS_XML_STATUS_ROOT_EL,
-                                   NGAMS_XML_STATUS_DTD)
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, xmlStat,
-                         NGAMS_XML_MT)
-    elif (not reqPropsObjRef.getSentReply()):
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
-                     msg)
+        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
+        httpRef.send_data(xmlStat, NGAMS_XML_MT)
+    elif not httpRef.reply_sent:
+        httpRef.send_status(msg)
 
     if (msg and (not help)):
         logger.info(msg)

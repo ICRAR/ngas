@@ -99,14 +99,16 @@ then
 	cd ngamsCClient
 	./bootstrap || error "Failed to bootstrap ngamsCClient module"
 	./configure "$prefix" || error "Failed to ./configure ngamsCCLient"
-	make clean all install || error "Failed to compile ngamsCClient"
+	make all install || error "Failed to compile ngamsCClient"
 	cd ..
 fi
 
 # Build python setup.py-based modules
-# The ngamsPlugIns module eventually requires numpy which we need to install
-# manually outside the setuptools world
-pip --no-cache-dir install numpy || warning "Failed to install numpy via pip"
+# The ngamsPlugIns module eventually requires astropy,
+# which is much faster to install using pip
+# The gleam plug-ins require numpy, but we leave that
+# out of the core dependencies of NGAS
+pip install 'astropy<3' || warning "Failed to install astropy via pip"
 for pyModule in ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)

@@ -65,7 +65,7 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj):
 
     removeFileFromContainer(srvObj, fileId, containerId)
 
-def _handleFileList(srvObj, containerId, reqPropsObj):
+def _handleFileList(srvObj, containerId, reqPropsObj, httpRef):
     """
     Handles the CREMOVE command for the case of
     file list being given in the body of POST request
@@ -75,7 +75,7 @@ def _handleFileList(srvObj, containerId, reqPropsObj):
     @param reqPropsObj: ngamsLib.ngamsReqProps
     """
     size = reqPropsObj.getSize()
-    fileListStr = reqPropsObj.getReadFd().read(size)
+    fileListStr = httpRef.rfile.read(size)
     fileList = minidom.parseString(fileListStr)
     fileIds = [el.getAttribute('FileId') for el in fileList.getElementsByTagName('File')]
     for fileId in fileIds:
@@ -120,6 +120,6 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET:
         _handleSingleFile(srvObj, containerId, reqPropsObj)
     else:
-        _handleFileList(srvObj, containerId, reqPropsObj)
+        _handleFileList(srvObj, containerId, reqPropsObj, httpRef)
 
 # EOF

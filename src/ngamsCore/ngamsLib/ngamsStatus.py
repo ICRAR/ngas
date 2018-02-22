@@ -32,13 +32,18 @@ Module that contains the ngamsStatus class used to handle
 the NG/AMS Status Report.
 """
 
+import logging
 import xml.dom.minidom
 
 from ngamsCore import ngamsGetChildNodes, NGAMS_XML_STATUS_ROOT_EL, \
-    getAttribValue, TRACE, prFormat1, toiso8601, fromiso8601
+    getAttribValue, TRACE, prFormat1, toiso8601, fromiso8601, getNgamsVersion, \
+    NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_SUCCESS, NGAMS_FAILURE, \
+    NGAMS_HTTP_SUCCESS
 import ngamsConfig, ngamsDiskInfo, ngamsFileList
 import ngamsContainer
 
+
+logger = logging.getLogger(__name__)
 
 class ngamsStatus:
     """
@@ -872,5 +877,39 @@ class ngamsStatus:
 
         return buf
 
+def _dummy_stat(host_id, status, msg, data=None):
+    stat = ngamsStatus().\
+           setDate(toiso8601()).\
+           setVersion(getNgamsVersion()).setHostId(host_id).\
+           setStatus(status).\
+           setMessage(msg).\
+           setState(NGAMS_ONLINE_STATE).\
+           setSubState(NGAMS_IDLE_SUBSTATE)
+    if data:
+        stat.setData(data)
+    return stat
 
-# EOF
+def dummy_success_stat(host_id, data=None):
+    return _dummy_stat(host_id, NGAMS_SUCCESS, "Successfully handled request", data)
+
+def dummy_failure_stat(host_id, cmd):
+    return _dummy_stat(host_id, NGAMS_FAILURE, "Failed to handle command %s" % (cmd,))
+
+def to_status(http_response, host_id, cmd):
+    """
+    Reads data from an HTTP response and turns it into an ngamsStatus object.
+    If the payload is not an XML document, a dummy ngamsStatus object is created
+    instead.
+    """
+
+    data = http_response.read()
+    if data and "<?xml" in data:
+        logger.debug("Parsing incoming HTTP data as ngamsStatus")
+        return ngamsStatus().unpackXmlDoc(data, 1)
+
+    # Otherwise, and depending on the HTTP code, we create either
+    # a dummy successful or failed status object
+    if http_response.status != NGAMS_HTTP_SUCCESS:
+        logger.debug("HTTP status != 200, creating dummy NGAS_FAILURE status")
+        return dummy_failure_stat(host_id, cmd)
+    return dummy_success_stat(host_id, data)

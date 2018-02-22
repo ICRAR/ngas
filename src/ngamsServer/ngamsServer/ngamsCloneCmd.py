@@ -44,15 +44,14 @@ from ngamsLib import ngamsReqProps, ngamsHighLevelLib, ngamsDapiStatus
 from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, getDiskSpaceAvail, \
     rmFile, getFileSize, NGAMS_XML_MT, NGAMS_FAILURE, checkCreatePath, \
-    mvFile, getFileCreationTime, NGAMS_SUCCESS, \
-    NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_TEXT_MT, \
+    mvFile, getFileCreationTime, NGAMS_SUCCESS, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_CLONE_CMD, NGAMS_CLONE_THR, \
     NGAMS_HTTP_SUCCESS, toiso8601
 from ngamsLib import ngamsDbm, ngamsFileList, ngamsStatus, ngamsDiskUtils, ngamsLib
 
 logger = logging.getLogger(__name__)
 
-def handleCmdClone(srvObj,
+def handleCmd(srvObj,
                    reqPropsObj,
                    httpRef):
     """
@@ -458,14 +457,12 @@ def _cloneExec(srvObj,
                 failedCloneCount += 1
                 continue
 
-            storageSetId = trgDiskInfo.getStorageSetId()
             tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
             tmpReqPropsObj.setMimeType(fio.getFormat())
             stagingFilename = ngamsHighLevelLib.\
                               genStagingFilename(srvObj.getCfg(),
                                                  tmpReqPropsObj,
-                                                 srvObj.getDiskDic(),
-                                                 storageSetId, fio.getFileId())
+                                                 trgDiskInfo, fio.getFileId())
             # Receive the data into the Staging File using the urllib.
             if (srvObj.getHostId() != hostId):
                 # Example: http://host:7777/RETRIEVE?file_id=id&file_version=1
@@ -629,10 +626,7 @@ def _cloneExec(srvObj,
                                       "CLONE command status report").\
                                       addFileList(cloneStatusFileList)
             statRep = status.genXmlDoc(0, 0, 0, 1, 0)
-            statRep = ngamsHighLevelLib.\
-                      addDocTypeXmlDoc(srvObj, statRep,
-                                       NGAMS_XML_STATUS_ROOT_EL,
-                                       NGAMS_XML_STATUS_DTD)
+            statRep = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, statRep)
             mimeType = NGAMS_XML_MT
         else:
             # Generate a 'simple' ASCII report.
@@ -663,7 +657,7 @@ def _cloneExec(srvObj,
                         "Total processing time (s):  %.3f\n" +\
                         "Handling time per file (s): %.3f\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (toiso8601, srvObj.getHostId(), diskId, fileId,
+            fo.write(tmpFormat % (toiso8601(), srvObj.getHostId(), diskId, fileId,
                                   str(fileVersion), totFiles,
                                   successCloneCount, failedCloneCount,
                                   timeAccu, (timeAccu / totFiles)))
@@ -791,13 +785,11 @@ def _cloneExplicit(srvObj,
         raise Exception(msg)
 
     # Receive the file into the staging filename.
-    storageSetId = trgDiskInfo.getStorageSetId()
     tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
     tmpReqPropsObj.setMimeType(mimeType)
     stagingFilename = ngamsHighLevelLib.genStagingFilename(srvObj.getCfg(),
                                                            tmpReqPropsObj,
-                                                           srvObj.getDiskDic(),
-                                                           storageSetId,
+                                                           trgDiskInfo,
                                                            fileId)
     try:
         quickLocation = False
@@ -983,53 +975,47 @@ def _clone(srvObj,
         return
 
     # Handling cloning of more files.
-    cloneListDbm = fileInfoDbm = None
+    cloneListDbm = None
     cloneListDbmName = tmpFilePat + "_CLONE_INFO_DB"
     try:
         # Get information about candidate files for cloning.
-        fileInfoDbmNm = tmpFilePat + "_FILE_INFO_DB"
-        fileInfoDbmNm = srvObj.getDb().\
-                        dumpFileInfo(fileId, fileVersion, diskId, ignore=0,
-                                     fileInfoDbmName=fileInfoDbmNm, order=0)
-        fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmNm)
+        files = srvObj.db.getFileInfoFromFileId(fileId, fileVersion, diskId,
+                                                ignore=0, order=0, dbCursor=False)
+        if not files:
+            msg = genLog("NGAMS_ER_CMD_EXEC",
+                         [NGAMS_CLONE_CMD, "No files for cloning found"])
+            raise Exception(msg)
+
+        # Convert to tuple of file info object plus extra info
+        # This is how the code expects this information to come, so we need to
+        # keep the format unless we change the bulk of the code
+        # f[-2] is the host id, f[-1] is the mount point
+        all_info = []
+        for f in files:
+            all_info.append((ngamsFileInfo.ngamsFileInfo().unpackSqlResult(f), f[-2], f[-1]))
 
         # Create a BSD DB with information about files to be cloned.
         rmFile(cloneListDbmName + "*")
         cloneListDbm = ngamsDbm.ngamsDbm(cloneListDbmName, cleanUpOnDestr = 0,
                                          writePerm = 1)
-        noOfFiles = fileInfoDbm.getCount()
-        if ((noOfFiles > 0) and
-            (((fileId != "") and (diskId == "") and (fileVersion == -1)) or
-             ((fileId != "") and (diskId != "") and (fileVersion == -1)) or
-             ((fileId != "") and (diskId != "") and (fileVersion != -1)))):
-            # Take only one element (the first).
-            cloneListDbm.add("0", fileInfoDbm.get("0"))
-        elif (noOfFiles > 0):
+        cloneDbCount = 0
+
+        if fileId != "" and (diskId != "" or fileVersion == -1):
+            # Take only the first element
+            cloneListDbm.add("0", all_info[0])
+            cloneDbCount = 1
+        else:
             # Take all the files.
-            fileInfoDbm.initKeyPtr()
-            cloneDbCount = 0
-            while (1):
-                key, tmpFileInfo = fileInfoDbm.getNext()
-                if (not key): break
+            for tmpFileInfo in all_info:
                 cloneListDbm.add(str(cloneDbCount), tmpFileInfo)
                 cloneDbCount += 1
 
-        # Raise exception if no files were found.
-        noOfCloneFiles = cloneListDbm.getCount()
-        if (noOfCloneFiles == 0):
-            errMsg = genLog("NGAMS_ER_CMD_EXEC",
-                            [NGAMS_CLONE_CMD, "No files for cloning found"])
-            raise Exception(errMsg)
-
-        del fileInfoDbm
-        rmFile(fileInfoDbmNm + "*")
     except Exception:
         if (cloneListDbm): del cloneListDbm
-        if (fileInfoDbm): del fileInfoDbm
-        rmFile(fileInfoDbmNm + "*")
         rmFile(cloneListDbmName + "*")
         raise
-    logger.debug("Found: %d file(s) for cloning ...", noOfCloneFiles)
+
+    logger.debug("Found: %d file(s) for cloning ...", cloneDbCount)
     del cloneListDbm
 
     # Check available amount of disk space.
@@ -1039,7 +1025,7 @@ def _clone(srvObj,
     if (reqPropsObj):
         reqPropsObj.\
                       setCompletionPercent(0, 1).\
-                      setExpectedCount(noOfCloneFiles, 1).\
+                      setExpectedCount(cloneDbCount, 1).\
                       setActualCount(0, 1)
         srvObj.updateRequestDb(reqPropsObj)
 
@@ -1076,11 +1062,8 @@ def _clone(srvObj,
     # Send reply if possible.
     if (httpRef):
         xmlStat = status.genXmlDoc(0, 0, 0, 1, 0)
-        xmlStat = ngamsHighLevelLib.\
-                  addDocTypeXmlDoc(srvObj,xmlStat,NGAMS_XML_STATUS_ROOT_EL,
-                                   NGAMS_XML_STATUS_DTD)
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                            xmlStat, 0, NGAMS_XML_MT, len(xmlStat), [], 1)
+        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
+        httpRef.send_data(xmlStat, NGAMS_XML_MT)
 
 
 def clone(srvObj,

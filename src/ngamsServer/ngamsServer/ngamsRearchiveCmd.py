@@ -36,17 +36,20 @@ former, the data of the file is provided in the request, using the second,
 the file is pulled via a provided URL from the remote, host node.
 """
 
+import base64
 import logging
 import os
-import time, base64
+import time
+import urllib
 
-import ngamsArchiveCmd, ngamsFileUtils, ngamsCacheControlThread
-from ngamsLib import ngamsStatus, ngamsLib
+import ngamsArchiveUtils
+import ngamsFileUtils, ngamsCacheControlThread
+from ngamsLib import ngamsLib
 from ngamsLib import ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
-from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_GET, \
-    NGAMS_HTTP_SUCCESS, mvFile, getDiskSpaceAvail, genLog, \
-    NGAMS_IDLE_SUBSTATE, NGAMS_SUCCESS
+from ngamsLib.ngamsCore import NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_GET, \
+    mvFile, getDiskSpaceAvail, genLog, \
+    NGAMS_IDLE_SUBSTATE, NGAMS_HTTP_HDR_CHECKSUM
 
 
 logger = logging.getLogger(__name__)
@@ -57,13 +60,12 @@ def receiveData(srvObj,
     """
     Receive the data in connection with the Rearchive Request.
 
-    For a description of the parameters: Check handleCmdRearchive().
+    For a description of the parameters: Check handleCmd().
 
     Returns:   Tuple with File Info Object for the file to be rearchived and
                Disk Info Object for the selected target disk
                (tuple/(fileInfo, ngamsDiskInfo)).
     """
-    T = TRACE()
 
     # Note, this algorithm does not implement support for back-log buffering
     # for speed optimization reasons.
@@ -111,30 +113,38 @@ def receiveData(srvObj,
                                          genTmpFiles = 0)
     reqPropsObj.setStagingFilename(stagingFilename)
 
-    # Save the data into the Staging File.
     # If it is an Rearchive Pull Request, open the URL.
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
         # urllib.urlopen will attempt to get the content-length based on the URI
         # i.e. file, ftp, http
-        handle = ngamsHighLevelLib.openCheckUri(reqPropsObj.getFileUri())
+        handle = urllib.urlopen(reqPropsObj.getFileUri())
         reqPropsObj.setSize(handle.info()['Content-Length'])
-        reqPropsObj.setReadFd(handle)
-        ioTime = ngamsHighLevelLib.saveInStagingFile(srvObj.getCfg(),
-                                                     reqPropsObj,
-                                                     stagingFilename,
-                                                     trgDiskInfoObj)
-        reqPropsObj.incIoTime(ioTime)
+        rfile = handle
     else:
-        try:
-            reqPropsObj.setSize(fileInfoObj.getFileSize())
-            ioTime = ngamsHighLevelLib.saveInStagingFile(srvObj.getCfg(),
-                                                         reqPropsObj,
-                                                         stagingFilename,
-                                                         trgDiskInfoObj)
-            reqPropsObj.incIoTime(ioTime)
-        except:
-            reqPropsObj.setSize(0)
-            raise
+        reqPropsObj.setSize(fileInfoObj.getFileSize())
+        rfile = httpRef.rfile
+
+
+    # Save the data into the Staging File.
+    try:
+        # Make mutual exclusion on disk access (if requested).
+        ngamsHighLevelLib.acquireDiskResource(srvObj.getCfg(), trgDiskInfoObj.getSlotId())
+
+        # If provided with a checksum, calculate the checksum on the incoming
+        # data stream and check that it is the same as the expected one
+        # (as indicated in the file info structure given by the user)
+        stored_checksum = fileInfoObj.getChecksum()
+        crc_variant = fileInfoObj.getChecksumPlugIn()
+        skip_crc = True
+        if stored_checksum and crc_variant:
+            reqPropsObj.addHttpPar('crc_variant', crc_variant)
+            reqPropsObj.__httpHdrDic[NGAMS_HTTP_HDR_CHECKSUM] = stored_checksum
+            skip_crc = False
+
+        ngamsArchiveUtils.archive_contents_from_request(stagingFilename, srvObj.getCfg(),
+                                                        reqPropsObj, rfile, skip_crc=skip_crc)
+    finally:
+        ngamsHighLevelLib.releaseDiskResource(srvObj.getCfg(), trgDiskInfoObj.getSlotId())
 
     # Synchronize the file caches to ensure the files have been stored
     # on the disk and check that the files are accessible.
@@ -153,7 +163,7 @@ def processRequest(srvObj,
     """
     Process the Rearchive Request.
 
-    For a description of the parameters: Check handleCmdRearchive().
+    For a description of the parameters: Check handleCmd().
 
     fileInfoObj:     File information for file to be restored (ngamsFileInfo).
 
@@ -161,11 +171,6 @@ def processRequest(srvObj,
 
     Returns:         Void.
     """
-    T = TRACE()
-
-    # Check the consistency of the staging file via the provided DCPI and
-    # checksum value.
-    ngamsFileUtils.check_checksum(srvObj, fileInfoObj, reqPropsObj.getStagingFilename())
 
     # Generate the DB File Information.
     newFileInfoObj = fileInfoObj.clone().\
@@ -202,7 +207,7 @@ def processRequest(srvObj,
     trgDiskInfoObj.addFileObj(newFileInfoObj)
 
 
-def handleCmdRearchive(srvObj,
+def handleCmd(srvObj,
                        reqPropsObj,
                        httpRef):
     """
@@ -218,13 +223,12 @@ def handleCmdRearchive(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
 
     archive_start = time.time()
 
     # Execute the init procedure for the ARCHIVE Command.
-    mimeType = ngamsArchiveCmd.archiveInitHandling(srvObj, reqPropsObj,
-                                                   httpRef)
+    mimeType = ngamsArchiveUtils.archiveInitHandling(srvObj, reqPropsObj, httpRef)
+
     # If mime-type is None, the request has been handled, i.e., it might have
     # been a probe request or the server acting as proxy.
     if (not mimeType): return
@@ -251,8 +255,7 @@ def handleCmdRearchive(srvObj,
     logger.info(msg, extra={'to_syslog': True})
 
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
-    srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                       NGAMS_SUCCESS, msg, trgDiskInfoObj)
+    httpRef.send_ingest_status(msg, trgDiskInfoObj)
 
 
 # EOF

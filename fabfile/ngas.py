@@ -28,7 +28,6 @@ import functools
 import httplib
 import os
 import tempfile
-import time
 import urllib2
 
 from fabric.context_managers import settings, cd
@@ -43,12 +42,11 @@ from system import check_dir, download, check_command, \
     create_user, get_linux_flavor, python_setup, check_python, \
     MACPORT_DIR
 from utils import is_localhost, home, default_if_empty, sudo, run, success,\
-    failure
+    failure, info
 
 # Don't re-export the tasks imported from other modules, only ours
 __all__ = [
     'start_ngas_and_check_status',
-    'test_ngas_status',
     'virtualenv_setup',
     'install_user_profile',
     'copy_sources',
@@ -90,11 +88,19 @@ def ngas_overwrite_installation():
     key = 'NGAS_OVERWRITE_INSTALLATION'
     return key in env
 
+def ngas_use_custom_pip_cert():
+    key = 'NGAS_USE_CUSTOM_PIP_CERT'
+    return key in env
+
 def ngas_root_dir():
     key = 'NGAS_ROOT_DIR'
     if key not in env:
         env[key] = os.path.abspath(os.path.join(home(), NGAS_ROOT_DIR_NAME))
     return env[key]
+
+def ngas_overwrite_root():
+    key = 'NGAS_OVERWRITE_ROOT'
+    return key in env
 
 def ngas_source_dir():
     key = 'NGAS_SRC_DIR'
@@ -146,50 +152,29 @@ def virtualenv(command, **kwargs):
     Just a helper function to execute commands in the NGAS virtualenv
     """
     nid = ngas_install_dir()
-    run('source {0}/bin/activate && {1}'.format(nid, command), **kwargs)
+    return run('source {0}/bin/activate && {1}'.format(nid, command), **kwargs)
 
-@task
 def start_ngas_and_check_status(tgt_cfg):
     """
     Starts the ngamsDaemon process and checks that the server is up and running.
     Then it shuts down the server
     """
+
     # We sleep 2 here as it was found on Mac deployment to docker container that the
     # shell would exit before the ngasDaemon could detach, thus resulting in no startup.
     virtualenv('ngamsDaemon start -cfg {0} && sleep 2'.format(tgt_cfg))
-
-    # Give it a few seconds to make sure it started
-    success("NGAS server started")
-    time.sleep(3)
-
     try:
-        test_ngas_status()
-        success("Server running correctly")
-    except:
-        failure("Server not running, or running incorrectly")
+        res = virtualenv('ngamsDaemon status -cfg {0}'.format(tgt_cfg), warn_only=True)
+        if res.failed:
+            failure("Couldn't contact NGAS server after starting it. "
+                    "Check log files under %s/log/ to find out what went wrong" % ngas_source_dir(),
+                    with_stars=False)
+        else:
+            success('NGAS server started correctly :)')
     finally:
+        info("Shutting NGAS server down now")
         virtualenv("ngamsDaemon stop -cfg {0}".format(tgt_cfg))
 
-@task
-@parallel
-def test_ngas_status():
-    """
-    Execute the STATUS command against the NGAS server on the host fabric is
-    currently pointing at
-    """
-    try:
-        serv = urllib2.urlopen('http://{0}:7777/STATUS'.format(env.host), timeout=5)
-    except IOError:
-        failure('Problem connecting to server {0}'.format(env.host))
-        raise
-
-    response = serv.read()
-    serv.close()
-    if response.find('Status="SUCCESS"') == -1:
-        failure('Problem with response from {0}, not SUCESS as expected'.format(env.host))
-        raise ValueError(response)
-    else:
-        success('Response from {0} OK'.format(env.host))
 
 @task
 def virtualenv_setup():
@@ -218,14 +203,15 @@ def virtualenv_setup():
 
     # Download this particular certifcate; otherwise pip complains
     # in some platforms
-    if not(check_dir('~/.pip')):
-        run('mkdir ~/.pip');
-        with cd('~/.pip'):
-            download('http://curl.haxx.se/ca/cacert.pem')
-    run('echo "[global]" > ~/.pip/pip.conf; echo "cert = {0}/.pip/cacert.pem" >> ~/.pip/pip.conf;'.format(home()))
+    if ngas_use_custom_pip_cert():
+        if not(check_dir('~/.pip')):
+            run('mkdir ~/.pip');
+            with cd('~/.pip'):
+                download('http://curl.haxx.se/ca/cacert.pem')
+        run('echo "[global]" > ~/.pip/pip.conf; echo "cert = {0}/.pip/cacert.pem" >> ~/.pip/pip.conf;'.format(home()))
 
     # Update pip and install wheel; this way we can install binary wheels from
-    # PyPI if available (like numpy)
+    # PyPI if available (like astropy)
     # TODO: setuptools and python-daemon are here only because
     #       python-daemon 2.1.2 is having a problem to install via setuptools
     #       but not via pip (see https://pagure.io/python-daemon/issue/2 and
@@ -321,25 +307,30 @@ def build_ngas():
     success("NGAS built and installed")
 
 def prepare_ngas_data_dir():
-    """
-    Prepares the NGAS data directory (NGAS_ROOT_DIR)
-    """
+    """Creates a new NGAS root directory"""
+
+    info('Preparing NGAS root directory')
     nrd = ngas_root_dir()
+    tgt_cfg = os.path.join(nrd, 'cfg', 'ngamsServer.conf')
     with cd(ngas_source_dir()):
-        # Installing and initializing an NGAS_ROOT directory
-        src_cfg = 'NgamsCfg.SQLite.mini.xml'
-        tgt_cfg = os.path.join(nrd, 'cfg', 'ngamsServer.conf')
-        run('mkdir -p {0}'.format(nrd))
-        run('cp -R NGAS/* {0}'.format(nrd))
-        run('cp cfg/{0} {1}'.format(src_cfg, tgt_cfg))
-        sed(tgt_cfg, '\*replaceRoot\*', nrd, backup='')
 
-        # Initialize the SQlite database
-        sql = "src/ngamsCore/ngamsSql/ngamsCreateTables-SQLite.sql"
-        run('sqlite3 {0}/ngas.sqlite < {1}'.format(nrd, sql))
+        cmd = ['./prepare_ngas_root.sh']
+        if ngas_overwrite_root():
+            cmd.append('-f')
+        cmd.append(nrd)
+        res = run(' '.join(cmd), quiet=True)
+        if res.succeeded:
+            success("NGAS data directory ready")
+            return tgt_cfg
 
-    success("NGAS data directory ready")
-    return tgt_cfg
+    # Deal with the errors here
+    error = 'NGAS root directory preparation under {0} failed.\n'.format(nrd)
+    if res.return_code == 2:
+        error = (nrd + " already exists. Specify NGAS_OVERWRITE_ROOT to overwrite, "
+                 "or a different NGAS_ROOT_DIR location")
+    else:
+        error = res
+    abort(error)
 
 
 def install_sysv_init_script(nsd, nuser, cfgfile):

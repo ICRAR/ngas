@@ -32,12 +32,13 @@ This module contains the Test Suite for the Python Client.
 """
 
 import os
+import subprocess
 import shutil
 import sys
 
 from ngamsLib.ngamsCore import getHostName
 from ngamsPClient import ngamsPClient
-from ngamsTestLib import ngamsTestSuite, waitReqCompl, runTest, unzip
+from ngamsTestLib import ngamsTestSuite, waitReqCompl, unzip
 
 
 class ngamsPClientTest(ngamsTestSuite):
@@ -432,7 +433,7 @@ class ngamsPClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].UseRequestDb','true'),))
+        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
         client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
         status = client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
@@ -515,14 +516,14 @@ class ngamsPClientTest(ngamsTestSuite):
         ...
         """
 
+        ports = range(8000, 8005)
         hostname = getHostName()
-        nodeList = [(8000+n, None, None, hostname) for n in range(5)]
-        self.prepCluster("src/ngamsCfg.xml", nodeList)
+        self.prepCluster(ports)
 
-        srvList = [('127.0.0.1', 8000+n) for n in range(5)]
+        srvList = [('127.0.0.1', p) for p in ports]
         client = ngamsPClient.ngamsPClient(servers=srvList)
 
-        nodeDic = {"%s:%d" % (hostname, 8000+n): 0 for n in range(5)}
+        nodeDic = {"%s:%d" % (hostname, p): 0 for p in ports}
         noOfNodes = len(nodeDic.keys())
         nodeCount = 0
         for n in range(100):
@@ -535,21 +536,98 @@ class ngamsPClientTest(ngamsTestSuite):
             self.fail("Not all specified NGAS Nodes were contacted " +\
                       "within 100 attempts")
 
+class CommandLineTest(ngamsTestSuite):
 
-def run():
-    """
-    Run the complete test.
+    def _assert_client(self, success_expected, *args):
 
-    Returns:   Void.
-    """
-    runTest(["ngamsPClientTest.test_Archive_1"])
+        cmdline = [sys.executable, '-m', 'ngamsPClient.ngamsPClient']
+        cmdline += list(args) + ['--host', '127.0.0.1', '--port', '8888']
+        with self._proc_startup_lock:
+            p = subprocess.Popen(cmdline, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        out, err = p.communicate()
+        ecode = p.poll()
+        cmdline = subprocess.list2cmdline(cmdline)
+        if success_expected and ecode != 0:
+            self.fail('Failure when executing "%s" (exit code %d)\nstdout: %s\n\nstderr:%s' % (cmdline, ecode, out, err))
+        elif not success_expected and ecode == 0:
+            self.fail('Successfully executed "%s"\nstdout: %s\n\nstderr:%s' % (cmdline, out, err))
+
+    def assert_client_succeeds(self, *args):
+        self._assert_client(True, *args)
+
+    def assert_client_fails(self, *args):
+        self._assert_client(False, *args)
+
+    def test_ars_success(self):
+        """Happy paths for an archive/receive/subscribe commands"""
+
+        self.prepExtSrv()
+
+        # Let's archive the python executable, it should be available
+        bname = os.path.basename(sys.executable)
+        self.assert_client_succeeds('ARCHIVE', '--file-uri', sys.executable)
+
+        # Let's get it back now into different places:
+        # the cwd (default), the relative "tmp" directory and /dev/null
+        try:
+            self.assert_client_succeeds('RETRIEVE', '--file-id', bname)
+            self.assertTrue(os.path.isfile(bname))
+        finally:
+            if os.path.isfile(bname):
+                os.unlink(bname)
+
+        self.assert_client_succeeds('RETRIEVE', '--file-id', bname, '-o', 'tmp')
+        self.assertTrue(os.path.isfile(os.path.join('tmp', bname)))
+
+        self.assert_client_succeeds('RETRIEVE', '--file-id', bname, '-o', os.devnull)
+
+        # Successful subscription creation (we don't care about actual replication of data here)
+        self.assert_client_succeeds('SUBSCRIBE', '--url', 'http://somewhere:8888/QARCHIVE')
 
 
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
+    def test_ars_failures(self):
+        """Situations in which an archive/retrieve/subscribe commands should fail"""
 
+        # Server not started yet
+        self.assert_client_fails('ARCHIVE', '--file-uri', sys.executable)
 
-# EOF
+        # Start the server now, all clients after this should not fails due to connection errors
+        self.prepExtSrv()
+
+        # No file indicated in command line
+        self.assert_client_fails('ARCHIVE')
+        self.assert_client_fails('ARCHIVE', '--file-uri')
+
+        # Bogus command line (can be confusing)
+        self.assert_client_fails('ARCHIVE', '--file-id', sys.executable)
+
+        # Indicated file doesn't exist (but make really sure it doesn't before testing)
+        fname = 'tmp/doesnt_exist_at_all.bin'
+        while os.path.isfile(fname):
+            fname = '1' + fname
+        self.assert_client_fails('ARCHIVE', '--file-uri', fname)
+
+        # Exists, but cannot be read
+        fname = 'tmp/unreadable.txt'
+        open(fname, 'wb').write(b'text')
+        os.chmod(fname, 0)
+        self.assert_client_fails('ARCHIVE', '--file-uri', fname)
+
+        # OK, let's archive for real now
+        bname = os.path.basename(sys.executable)
+        self.assert_client_succeeds('ARCHIVE', '--file-uri', sys.executable)
+
+        # Retrieve a file that doesn't exist
+        self.assert_client_fails('RETRIEVE', '--file-id', bname + "_with_suffix")
+        self.assert_client_fails('RETRIEVE', '--file-id', "prefix_with_" + bname)
+
+        # This version doesn't exist
+        self.assert_client_fails('RETRIEVE', '--file-id', bname, '-o', os.devnull, '--file-version', '2')
+
+        # This should work (just double checking!)
+        self.assert_client_succeeds('RETRIEVE', '--file-id', bname, '-o', os.devnull)
+
+        # Wrong subscriptions: missing URL, URL scheme not supported
+        self.assert_client_fails('SUBSCRIBE')
+        self.assert_client_fails('SUBSCRIBE', '--url', 'https://somewhere:8907/QARCHIVE')

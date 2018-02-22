@@ -61,8 +61,14 @@ To manually install NGAS go to the root directory and simply run::
  ./build.sh
 
 Run ``./build.sh -h`` to see the full set of options.
+Among the options users can choose
+whether to skip the build of the C-written clients,
+to install the python packages in development mode,
+and to build NGAS without CRC32c support
+(see :ref:`server.crc` for details).
+
 The script will (optionally) build and install the C NGAS client first, and then will build
-and install each of the python modules (i.e., ``pcc``, ``ngamsCore``,
+and install each of the python modules (i.e., ``ngamsCore``,
 ``ngamsPClient``, ``ngamsServer`` and ``ngamsPlugIns``). The python modules will
 automatically pull and install their dependencies.
 

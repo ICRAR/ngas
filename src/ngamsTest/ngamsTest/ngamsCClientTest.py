@@ -33,15 +33,13 @@ This module contains the Test Suite for the NG/AMS C-Client and C-API.
 
 import os
 import subprocess
-import sys
 import time
 import unittest
 
 from ngamsLib import ngamsStatus
 from ngamsLib.ngamsCore import getHostName, rmFile, cpFile, execCmd
 from ngamsTestLib import ngamsTestSuite, saveInFile, loadFile, \
-    filterOutLines, getClusterName, sendPclCmd, STD_DISK_STAT_FILT, runTest, \
-    has_program
+    filterOutLines, sendPclCmd, STD_DISK_STAT_FILT, has_program
 
 
 def _execCClient(unpackXmlStat = 1,
@@ -163,9 +161,7 @@ class ngamsCClientTest(ngamsTestSuite):
         The check to see if the command is actually executed on the specified
         target node is not yet fully implemented.
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster((8000, 8011))
         hostId = "%s:%d" % (getHostName(), 8011)
         statObj = _execCClient(pars=[["-port", "8000"],
                                      ["-cmd", "STATUS"],
@@ -197,9 +193,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
 
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster((8000, 8011))
         for n in range(2): sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = _execCClient(pars=[["-port", "8000"],
@@ -208,16 +202,12 @@ class ngamsCClientTest(ngamsTestSuite):
                                      ["-fileVersion", "2"]])[0]
         self.checkTags(statObj.dumpBuf(),
                        ["NumberOfFiles:                      2",
-                        "BytesStored:                        91646",
                         "saf/2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.gz",
                         "TEST.2001-05-08T15:25:00.123",
                         "application/x-gfits",
-                        "FileSize:                           45823",
                         "UncompressedFileSize:               69120",
                         "Compression:                        gzip",
-                        "Ignore:                             0",
-                        "Checksum:                           1379947874",
-                        "ChecksumPlugIn:                     ngamsGenCrc32"])
+                        "Ignore:                             0"])
 
 
     def test_StatusCmd_4(self):
@@ -238,10 +228,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
 
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
-        hostId = "%s:%d" % (getHostName(), 8011)
+        self.prepCluster((8000, 8011))
         for n in range(2): sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = _execCClient(pars=[["-port", "8000"],
@@ -561,6 +548,7 @@ class ngamsCClientTest(ngamsTestSuite):
                           "of corrupt server HTTP response in C-Client/API")
 
 
+    @unittest.skipUnless(has_program('uncompress'), 'external uncompress program unavailable')
     def test_ArchiveCmd_Err_5_1(self):
         """
         Synopsis:
@@ -748,8 +736,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
         """
         ports = range(8000, 8005)
-        nodeList = [[p, None, None, getHostName()] for p in ports]
-        self.prepCluster("src/ngamsCfg.xml", nodeList)
+        self.prepCluster(ports)
         noOfNodes = len(ports)
         nodeCount = 0
         srvList = ",".join(["127.0.0.1:%d" % (p,) for p in ports])
@@ -773,22 +760,3 @@ class ngamsCClientTest(ngamsTestSuite):
         if (nodeCount != noOfNodes):
             self.fail("Not all specified NGAS Nodes were contacted " +\
                       "within %d attempts" % noOfAttempts)
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsCClientTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

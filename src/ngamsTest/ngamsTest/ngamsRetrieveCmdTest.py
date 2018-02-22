@@ -37,13 +37,12 @@ import io
 import gzip
 import os
 import subprocess
-import sys
 
 from ngamsLib import ngamsConfig, ngamsHttpUtils
-from ngamsLib.ngamsCore import getHostName, NGAMS_RETRIEVE_CMD, \
+from ngamsLib.ngamsCore import getHostName, \
     checkCreatePath, rmFile, NGAMS_SUCCESS, mvFile
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
-    getClusterName, sendPclCmd, runTest, genTmpFilename, unzip
+    sendPclCmd, genTmpFilename, unzip
 
 
 class ngamsRetrieveCmdTest(ngamsTestSuite):
@@ -182,9 +181,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster((8000, 8011))
         # Archive file into sub-node (port=8011).
         sendPclCmd(port=8011).archive("src/TinyTestFile.fits")
 
@@ -220,8 +217,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         Description:
         The purpose of the test is to verify that the problem that there are
         Online and Offline files in the archive and thus the cross-checking
-        of the number of files for which info was queried from the NGAS DB (in
-        ngamsDb.dumpFileInfo()), detected erroneously a discrepancy.
+        of the number of files for which info was queried from the NGAS DB
+        detected erroneously a discrepancy.
 
         Expected Result:
         The RETRIEVE Command should execute successfully. The check of the
@@ -249,10 +246,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                  getHostName() + ":8002"]
         suspPars = [["NgamsCfg.HostSuspension[1].IdleSuspension", "1"],
                     ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:05"]]
-        envDic = self.prepCluster("src/ngamsCfg.xml",
-                                  [[8000, None, None, getClusterName()],
-                                   [8001, None, None, getClusterName()],
-                                   [8002, None, None, getClusterName(), suspPars]])
+        envDic = self.prepCluster((8000, 8001, (8002, suspPars)))
         for portNo in [8000, 8001, 8002]:
             for n in range(3):
                 sendPclCmd(port=portNo).archive("src/SmallFile.fits")
@@ -310,24 +304,24 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         """
         nmuCfgPars = [["NgamsCfg.Server[1].ProxyMode", "0"],
                       ["NgamsCfg.Log[1].LocalLogLevel", "4"]]
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName(), nmuCfgPars],
-                          [8011, None, None, getClusterName()]])
-        sendPclCmd(port=8000).archive("src/SmallFile.fits")
-        stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
+        self.prepCluster(((8000, nmuCfgPars), 8011))
+        self.assertStatus(sendPclCmd(port=8000).archive("src/SmallFile.fits"))
+        self.assertStatus(sendPclCmd(port=8011).archive("src/SmallFile.fits"))
+
+        # The ngamsPClient handles redirects automatically,
+        # but we want to manually check here that things are right
         fileId = "TEST.2001-05-08T15:25:00.123"
-        stat = sendPclCmd(port=8000).get_status(NGAMS_RETRIEVE_CMD,
-                                             pars=[["file_id", fileId]])
-        refStatFile = "ref/ngamsRemFileCmdTest_test_HttpRedirection_01_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(stat.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status for " +\
-                          "RETRIEVE Command/HTTP redirection")
-        # Check that a log entry in the log file of the NMU is found.
-        grepCmd = ['grep', 'NGAMS_INFO_REDIRECT',
-                   '/tmp/ngamsTest/NGAS:8000/log/LogFile.nglog']
-        out = subprocess.check_output(grepCmd)
-        if "Redirection URL:" not in out:
-            self.fail("Unexpected/missing HTTP redirection log entry: %s"%out)
+        pars = (("file_id", fileId),)
+        resp = ngamsHttpUtils.httpGet('127.0.0.1', 8000, 'RETRIEVE', pars=pars)
+        self.assertEqual(303, resp.status)
+        resp.close()
+
+        # Follow the Location, we should get it now
+        host, port = resp.getheader('Location').split('/')[2].split(':')
+        port = int(port)
+        resp = ngamsHttpUtils.httpGet(host, port, 'RETRIEVE', pars=pars)
+        self.assertEqual(200, resp.status)
+        resp.close()
 
 
     def test_DppiProc_01(self):
@@ -462,9 +456,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                        "ngamsTest.ngamsTestDppi1"],
                       ["NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
                        "TAG=test_DppiProc_02,TARGET=FILE"]]
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName(), ncuCfgPars]])
+        self.prepCluster((8000, (8011, ncuCfgPars)))
         stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
         self.assertEquals('SUCCESS', stat.getStatus())
         # Retrieve the file specifying to apply the DPPI.
@@ -609,21 +601,3 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         self.assertEqual(file_size, piece_by_piece.tell())
         self.assertEqual(full.getvalue(), piece_by_piece.getvalue())
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsRetrieveCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

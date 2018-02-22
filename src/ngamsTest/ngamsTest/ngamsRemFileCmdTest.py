@@ -32,12 +32,11 @@ This module contains the Test Suite for the REMFILE Command.
 """
 
 import os
-import sys
 
 from ngamsLib import ngamsFileInfo
 from ngamsLib.ngamsCore import getHostName, NGAMS_REMFILE_CMD, NGAMS_CLONE_CMD
 from ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
-    filterDbStatus1, getClusterName, sendPclCmd, sendExtCmd, runTest
+    filterDbStatus1, sendPclCmd, sendExtCmd
 
 
 class ngamsRemFileCmdTest(ngamsTestSuite):
@@ -84,7 +83,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         TODO!: It is not checked that the info for the file is actually
                removed from the DB and from the disk.
         """
-        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].UseRequestDb','true'),))
+        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
         client = sendPclCmd()
 
         # Archive a file + clone it to be able to execute the REMFILE Command.
@@ -199,9 +198,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster((8000, 8011))
         sendPclCmd(port=8000).archive("src/SmallFile.fits")
         client8011 = sendPclCmd(port=8011)
         stat = client8011.archive("src/SmallFile.fits")
@@ -281,22 +278,3 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
             tmpStatFile = saveInFile(None, filterDbStatus1(fileInfo.dumpBuf()))
             self.checkFilesEq(refStatFile, tmpStatFile,
                               "Incorrect status for REMFILE Command/execution")
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsRemFileCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

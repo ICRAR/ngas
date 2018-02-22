@@ -1,0 +1,591 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg>
+<!--
+    Sample configuration file distributed with NGAS.
+
+    ICRAR - International Centre for Radio Astronomy Research
+    (c) UWA - The University of Western Australia, 2017
+    Copyright by UWA (in the framework of the ICRAR)
+    All rights reserved
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+    MA 02111-1307  USA
+-->
+
+<!--
+Sample configuration file distributed with NGAS.
+
+This file pretends to show users how a server is configured, and all the
+knobs and levers that can be toggled to change the behaviour of the server.
+It offers secure default values for most options, so it should be safe to use
+as a starting point to write your own configuration files.
+
+Each high-level XML element contains a description of what topic it covers,
+and which attributes and values are accepted.
+
+For more information on the configuration options, visit NGAS's documentation at
+
+https://ngas.readthedocs.io/en/latest/
+
+
+Quick-start
+===========
+
+To quickly adapt this file to your needs:
+
+ * Adjust the Server.RootDirectory attribute to your NGAS root directory
+ * Adjust the Server.ArchiveName to a meaningful name for your archive
+ * Adjust the <Db> XML element to point to your database
+
+
+About time amounts
+==================
+
+Some time amounts are expresed using a DTHH:mm:ss format, with D, HH, mm and ss
+representing days, hours, minutes and seconds, respectivelly. A shorter version
+is also accepted in the form of HH:mm (without :ss). Because this is confusing
+future versions of NGAS will not support this format anymore, and will change
+to simply use seconds everywhere. Once this change takes effect the old format
+will still be supported for a few versions, but warning messages will appear so
+users update their configuration files.
+
+
+About secrets
+=============
+
+Some secrets (like Authorization passwords) are expressed in this configuration
+file using base64 encoding. This will change in future versions of NGAS, where
+passwords will be expressed literally.
+
+-->
+<NgamsCfg Id="ngamsCfg">
+
+
+
+
+	<!--
+	========================================================================
+	               High-level server-wide configuration items
+	========================================================================
+	-->
+
+	<!--
+	    Server configuration.
+
+	    The NGAS HTTP server listens for requests in the address indicated
+	    by the IpAddress/PortNo pair, and attends up to MaxSimReqs simultaneous
+	    requests. It acts as a proxy for requests that must be answered by other
+	    servers in the same cluster if ProxyMode is set; otherwise clients receive
+	    a redirect response instead.
+
+	    Any disk found by the server will be considered as being part of the
+	    abstract archive ArchiveName. Access to the disk, plus other block-based
+	    operations performed by the server (e.g., network read/write and
+	    checksum calculation) will be performed using BlockSize block size.
+
+	    Finally, a list of colon-separated directories containing python
+	    packages and modules can be specified using the PluginsPath attribute.
+	    This directories will be added to the sys.path of the NGAS server,
+	    allowing users to install their own code separately from the NGAS
+	    installation, which might not even be writable.
+	-->
+	<Server Id="Server-MWA"
+	        RootDirectory="/your/NGAS/root/directory" ArchiveName="MyArchive" BlockSize="65536"
+	        IpAddress="127.0.0.1" PortNo="7777" MaxSimReqs="10"
+	        ProxyMode="0"/>
+
+	<!--
+	    Authorization and authentication.
+
+	    Authorization is performed using Basic HTTP authentication.
+	    Usernames and passwords are defined on each of the User
+	    sub-elements below. Passwords are base64-encoded. For each user, a
+	    comma-separated list of the commands they are allow to use can be defined
+	    (with "*" serving as a wildcard to indicate all commands).
+
+	    Authorization can be enabled/disabled fully through the Enable attribute.
+	-->
+	<Authorization Id="Authorization" Enable="0">
+		<User Name="user1" Password="dXNlcjE=" Commands="*"/>
+		<User Name="user2" Password="dXNlcjI=" Commands="RETRIEVE"/>
+		<User Name="user3" Password="dXNlcjM=" Commands="ARCHIVE"/>
+	</Authorization>
+
+	<!--
+	    Logging configuration
+
+	    The NGAS server outputs its logging to three different sinks:
+	    the stdout, a (rotating) logfile, and syslog.
+
+	    The stdout output is not configured but via a command-line parameter.
+	    In a real-world setup the NGAS server will run in the background,
+	    so there is no point on configuring stdout logging here.
+
+	    Logfile output is configured via LocalLogFile, which indicates the
+	    logfile. Statements with level <= LocalLogLevel appear in the logfile.
+	    The logfile is rotated with a LogRotateInt interval (expressed as ddTHH:mm:ss),
+	    and LogRotateCache files are maintained before they start getting
+	    deleted.
+
+	    Syslog output is enabled if SysLog is 1. Statements are prefixed with
+	    SysLogPrefix before sent to syslog.
+
+	    Logging levels are interpreted like this:
+	    0 = NONE, 1 = ERROR, 2 = WARNING, 3 = NOTICE, 4 = INFO, 5 = DEBUG.
+	-->
+	<Log Id="Log" LocalLogFile="log/LogFile.nglog" LocalLogLevel="4"
+	     LogRotateCache="30" LogRotateInt="01T00:00:00" SysLog="0"
+	     SysLogPrefix="ngas"/>
+
+	<!--
+	    Archiving configuration
+
+	    The FreeSpaceDiskChangeMb and MinFreeSpaceWarningMb specify how much
+	    available free space in the disks will trigger an error to change the
+	    disk, and a warning email alerting about the condition, respectivelly.
+	    The PathPrefix is the top-level directory on each volume under which
+	    NGAS will store incoming data. Data will be replicated during archiving
+	    from the Main disk to a Replication disk if Replication is set to 1.
+
+	    If BackLogBuffering is set to 1, then failures during ARCHIVE commands
+	    *might* be resolved automatically by NGAS asynchronously. In such
+	    situations, backlogged data sits temporarily in the
+	    BackLogBufferDirectory.
+	-->
+	<ArchiveHandling Id="ArchiveHandling"
+	                 BackLogBufferDirectory="." BackLogBuffering="0"
+	                 FreeSpaceDiskChangeMb="200" MinFreeSpaceWarningMb="200"
+	                 PathPrefix="MWAArchive" Replication="0"/>
+
+	<!--
+	    Set of actions this server is allowed to perform
+
+	    Servers can be allowed to process archive requests, processing requests,
+	    remove requests and/or retrieve requests.
+	-->
+	<Permissions Id="Permissions" AllowArchiveReq="1" AllowProcessingReq="1"
+	             AllowRemoveReq="1" AllowRetrieveReq="1"/>
+
+	<!--
+	    Database connectivity
+
+	    NGAS uses the PEP-249-compliant module indicated by Interface to
+	    connect to the central database. This driver is wrapped by a
+	    connection pool, which will hold a maximum of MaxPoolConnections
+	    connections. When a new connection is established by the pool to
+	    the database server, the SQL statements specified in the sql attribute
+	    of the SessionSql XML sub-elements are executed. This could be useful,
+	    for instance, to switch to a different database before running any
+	    queries, if required, but could be used for other purposes.
+
+	    Because of historical reasons, some database schemas had a "ignore"
+	    column in the ngas_files table rather than a "file_ignore" column.
+	    If you are creating a database from scratch, you should prefer
+	    "file_ignore" (which is what we use in the SQL scripts we ship with
+	    NGAS to create databases from scratch), but if you have an existing
+	    database with "ignore" you can still configure NGAS to use that name.
+	    The UseFileIgnore attribute controls this. It defaults to "true",
+	    in which case "file_ignore" will be used throughout the code;
+	    otherwise "ignore" will be used instead.
+
+	    The Snapshot attribute should be considered unsafe, and (unless you
+	    know exactly what you are doing) should be left set to "0".
+
+	    Any other parameter will be used verbatim as keyword arguments
+	    to the connect method of the PEP-249 driver.
+
+	    Example: If the central database is a PostgreSQL server, and is
+	             using the old "ignore" column name one can setup this element
+	             to be:
+
+	      <Db Id="Db" Snapshot="0" Interface="psycopg2" UseFileIgnore="false"
+	          host="db-server.example.com" dbname="db-name" user="db-user"
+	          password="password"/>
+	-->
+	<Db Id="Db-Element" Snapshot="0" Interface="sqlite3"
+	    MaxPoolConnections="5" UseFileIgnore="true"
+	    database="/tmp/ngas.sqlite"/>
+
+	<!--
+	    E-mail notification setup
+
+	    Under certain circumstances emails can be sent by NGAS to different
+	    recipients. Notifications are sent to the SmtpHost SMTP server, and
+	    appear as sent by Sender. Depending on the event generating the email,
+	    one of the addresses will be used. Email sending can be disabled,
+	    although even when disabled some notifications (that are considered
+	    too important to be missed) will still be sent.
+
+	    If messages cannot be sent for any reason, they are kept internally
+	    by NGAS for a maximum of time defined by MaxRetentionTime, or until
+	    MaxRetentionSize messages are hit.
+	-->
+	<Notification Id="Notification"
+	              Active="0" MaxRetentionSize="1" MaxRetentionTime="00T00:30:00"
+	              Sender="ngas@host.com" SmtpHost="localhost">
+		<AlertNotification>
+			<EmailRecipient Address="address@example.com"/>
+		</AlertNotification>
+		<ErrorNotification>
+			<EmailRecipient Address="address@example.com"/>
+		</ErrorNotification>
+		<DiskSpaceNotification>
+			<EmailRecipient Address="address@example.com"/>
+		</DiskSpaceNotification>
+		<DiskChangeNotification>
+			<EmailRecipient Address="address@example.com"/>
+		</DiskChangeNotification>
+		<NoDiskSpaceNotification>
+			<EmailRecipient Address="address@example.com"/>
+		</NoDiskSpaceNotification>
+		<DataCheckNotification>
+			<EmailRecipient Address="address@example.com"/>
+		</DataCheckNotification>
+	</Notification>
+
+
+
+
+	<!--
+	========================================================================
+	                              Background tasks
+	========================================================================
+	-->
+
+	<!--
+	    Configures the Janitor service.
+
+	    The Janitor service runs a number of house-keeping tasks in the
+	    background with a given period (specified via SuspensionTime).
+
+	    One of the tasks of the Janitor service is the check that the
+	    filesystems where files are being stored in have enough space to
+	    keep storing new files (and if not, send the server to OFFLINE
+	    state). This behavior is controlled via the MinSpaceSysDirMb
+	    attribute, which indicates how much space should always be available
+	    on each filesystem.
+
+	    Users can also specify extra functionality to be run during each
+	    janitor iteration. To do this, PlugIn XML sub-elements can be defined
+	    inside the JanitorThread element, each specifying a Name attribute
+	    pointing to a fully-qualified python module name. See NGAS's
+	    documentation for more details.
+	-->
+	<JanitorThread Id="JanitorThread-Std" SuspensionTime="0T00:10:00"
+	               MinSpaceSysDirMb="500"/>
+
+	<!--
+	    Caching control configuration
+
+	    If enabled (Enable="1"), the caching control service automatically
+	    removes data from the server when certain criteria are met.
+
+	    Files are removed from the cache if any of the following is true
+	    for them: 1) they have been in the cache for more than a specified
+	    maximum time, expressed in seconds (e.g., MaxTime="86400" for a full
+	    day), 2) the total volume of files in the cache has reached the
+	    specified limit (e.g., MaxCacheSize="1099511627776" to specify 1 TBs),
+	    3) a maximum number of files has been reached (e.g., MaxFiles="1000"
+	    for a maximum caching of 1000 files), and 4) A user-specific plugin,
+	    specified via the CacheControlPlugIn (a fully-qualified python module
+	    name) and the CacheControlPlugInPars parameters, which determines
+	    whether a particular file should be deleted or not.
+
+	    If any of these attributes is missing, the corresponding criterion
+	    is not applied. In the case of MaxCacheSize and MaxFiles, eligible
+	    files are selected FIFO-wise; that is, older files are removed first.
+
+	    On top of all the above, if the Subscription service is enabled files
+	    will only be eligible for deletion after they are successfully
+	    transmitted to all their subscribers. At the moment this is
+	    specified by setting CheckCanBeDeleted="1", but in future releases
+	    this will change and the behaviour will be implicit.
+	-->
+	<Caching Enable="0" Period="0T00:30:00" MaxCacheSize="1099511627776"
+	         CheckCanBeDeleted="1"/>
+
+	<!--
+	    Data Checker Thread configuration
+
+	    If enabled (Active="1"), the checksum of the files stored in the
+	    NGAS server will be periodically re-calculated (with a period of
+	    MinCycle) and compared against the respective checksum stored in the
+	    database. A summary report will be generated at the end and e-mailed
+	    to the corresponding recipient (see the Notification configuration
+	    element) if there are errors, or if the ForceNotif attribute is
+	    set to 1.
+
+	    The data checker thread can also be configured to perform a simple file
+	    scanning check (if Scan is "1") instead of a full checksum calculation
+	    and comparison.
+
+	    The ChecksumPlugIn and ChecksumPlugInPars attributes should be ignored,
+	    as they are superseeded by the ArchiveHandling.CRCVariant configuration
+	    variable. They will be removed in future releases.
+	-->
+	<DataCheckThread Id="DataCheckThread" Active="0" Scan="0"
+	                 ChecksumPlugIn="ngamsGenCrc32" ChecksumPlugInPars=""
+	                 ForceNotif="1" MaxProcs="4" MinCycle="01T00:00:00"/>
+
+	<!--
+	    A collection of system-level plug-ins
+
+	    These plug-ins are used for different purposes, either by a command or
+	    by the core system. Each specifies a name (a python module with that name,
+	    offering a function with the same name) and an optional set of comma-separated
+	    key=value parameter pairs.
+	-->
+	<SystemPlugIns Id="SystemPlugIns-Std"
+	         LabelPrinterPlugIn="-" LabelPrinterPlugInPars="-"
+	         OfflinePlugIn="ngamsGenericOfflinePlugIn" OfflinePlugInPars="unmount=0"
+	         OnlinePlugIn="ngamsGenericOnlinePlugIn" OnlinePlugInPars=""
+	         DiskSyncPlugIn="" DiskSyncPlugInPars=""/>
+
+
+
+
+	<!--
+	========================================================================
+	              File types, storage organisation, and processing
+	========================================================================
+	-->
+
+
+	<!--
+	    Mime type definitions.
+
+	    Here mime types, and their associated default extensions,
+	    are defined.
+	-->
+	<MimeTypes Id="MimeTypes-Std">
+		<MimeTypeMap Extension="fits" MimeType="image/x-fits"/>
+		<MimeTypeMap Extension="nglog" MimeType="ngas/nglog"/>
+		<MimeTypeMap Extension="nglog.gz" MimeType="application/x-nglog"/>
+		<MimeTypeMap Extension="txt" MimeType="text/ascii"/>
+		<MimeTypeMap Extension="log" MimeType="text/log-file"/>
+		<MimeTypeMap Extension="log.Z" MimeType="application/x-clog"/>
+		<MimeTypeMap Extension="paf" MimeType="ngas/paf"/>
+		<MimeTypeMap Extension="fits.gz" MimeType="application/x-gfits"/>
+		<MimeTypeMap Extension="fits.Z" MimeType="application/x-cfits"/>
+		<MimeTypeMap Extension="hfits" MimeType="application/x-hfits"/>
+		<MimeTypeMap Extension="hdr" MimeType="image/x-fitshdr"/>
+		<MimeTypeMap Extension="tar" MimeType="application/x-tar"/>
+		<MimeTypeMap Extension="tar.gz" MimeType="application/x-gtar"/>
+		<MimeTypeMap Extension="pdf" MimeType="application/pdf"/>
+		<MimeTypeMap Extension="msg" MimeType="multialma/related"/>
+		<MimeTypeMap Extension="bin" MimeType="application/octet-stream"/>
+	</MimeTypes>
+
+	<!--
+	    Storage organisation.
+
+	    NGAS storage is organised in disks or volumes, which can be grouped
+	    in StorageSets. For full details see
+
+	    https://ngas.readthedocs.io/en/latest/
+	-->
+	<StorageSets>
+		<StorageSet DiskLabel="BULK" MainDiskSlotId="volume1" Mutex="0"
+		            Synchronize="1" StorageSetId="volume1"/>
+		<StorageSet DiskLabel="BULK" MainDiskSlotId="volume2" Mutex="0"
+		            StorageSetId="volume2" Synchronize="1"/>
+		<StorageSet DiskLabel="BULK" MainDiskSlotId="volume3" Mutex="0"
+		            StorageSetId="volume3" Synchronize="1"/>
+	</StorageSets>
+
+	<!--
+	    Stream definitions
+
+	    With the definitions of mime types and storage sets, users define
+	    which files end up in which disks depending on their storage sets.
+	    This logic is obeyed but some (but not all) archiving commands.
+	    On top of that, streams also define which plug-in should be applied
+	    to each mapped mime type (although this bit of configuration will
+	    be moved in the future to the MimeTypes element).
+
+	    For full details on Streams and storage organisation visit:
+
+	    https://ngas.readthedocs.io/en/latest/
+	-->
+	<Streams>
+		<Stream MimeType="application/octet-stream" PlugIn="ngamsGenDapi" PlugInPars="">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="image/x-fits" PlugIn="ngamsFitsPlugIn"
+		        PlugInPars="compression=compress -f,
+		                    checksum_util=utilFitsChecksum,
+		                    skip_checksum=,
+		                    checksum_result=0/0000000000000000,
+		                    frame_ingest_db_id=TEST_SRV">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="cal/x-fits" PlugIn="ngamsCalibDapi" PlugInPars="">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="cal/x-tfits" PlugIn="ngamsCalibDapi" PlugInPars="">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="non/existing" PlugIn="ngamsNonExisting" PlugInPars="">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="application/x-cfits" PlugIn="ngamsFitsPlugIn"
+		        PlugInPars="compression=compress -f,
+		                    checksum_util=utilFitsChecksum,
+		                    checksum_result=0/0000000000000000">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="application/x-gfits" PlugIn="ngamsFitsPlugIn"
+		        PlugInPars="compression=compress -f,
+		                    checksum_util=utilFitsChecksum,
+		                    checksum_result=0/0000000000000000">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="ngas/nglog" PlugIn="ngamsNgLogPlugIn" PlugInPars="">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="text/ascii" PlugIn="ngamsGenDapi" PlugInPars="">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="text/log-file" PlugIn="ngamsNgLogPlugIn" PlugInPars="">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="application/x-tar" PlugIn="ngasTarBallPlugIn" PlugInPars="">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="multialma/related" PlugIn="ngamsSdmMultipart" PlugInPars="">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="application/pdf" PlugIn="ngamsGenDapi" PlugInPars="">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+		<Stream MimeType="application/x-gtar" PlugIn="ngamsGenDapi" PlugInPars="">
+			<StorageSetRef StorageSetId="volume1"/>
+			<StorageSetRef StorageSetId="volume2"/>
+			<StorageSetRef StorageSetId="volume3"/>
+		</Stream>
+	</Streams>
+
+	<!--
+	    Processing setup
+
+	    When files are retrieved from an NGAS server, they can be processed
+	    before sent back to the client. This behaviour is controlled by these
+	    plug-ins, which specify which mime types are allowed to be processed
+	    by which plug-in (users specify in the HTTP request which plugin
+	    they want to use for processing).
+	-->
+	<Processing Id="Processing-Std" ProcessingDirectory=".">
+		<PlugIn Name="ngamsEsoArchDppi" PlugInPars="">
+			<MimeType Name="image/x-fits"/>
+			<MimeType Name="application/x-gfits"/>
+			<MimeType Name="application/x-cfits"/>
+		</PlugIn>
+		<PlugIn Name="ngamsExtractFitsHdrDppi" PlugInPars="">
+			<MimeType Name="image/x-fits"/>
+			<MimeType Name="application/x-gfits"/>
+			<MimeType Name="application/x-cfits"/>
+		</PlugIn>
+		<PlugIn Name="ngasWfiPreview" PlugInPars="">
+			<MimeType Name="image/x-fits"/>
+			<MimeType Name="application/x-gfits"/>
+			<MimeType Name="application/x-cfits"/>
+		</PlugIn>
+	</Processing>
+
+	<!--
+	    Plug-in definitions for the REGISTER command
+	-->
+	<Register Id="Register-Std">
+		<PlugIn Name="ngamsFitsRegPlugIn"
+		        PlugInPars="checksum_util=utilFitsChecksum,
+		                    checksum_result=0/0000000000000000">
+			<MimeType Name="image/x-fits"/>
+			<MimeType Name="application/x-gfits"/>
+			<MimeType Name="application/x-cfits"/>
+		</PlugIn>
+	</Register>
+
+	<!--
+	    Host suspension configuration
+
+	    Under some circumstances users may want to configure NGAS hosts to
+	    suspend themselves if they have been idle for a long time. If enabled
+	    (IdleSuspension="1"), a host H will suspend itself after being
+	    IdleSuspensionTime seconds idle using SuspensionPlugIn (and its
+	    SuspensionPlugInPars). Before suspending themselves, they register
+	    a wake-up call with the WakeUpServerHost, who will wake wake up
+	    host H using WakeUpPlugIn and WakeUpPlugInPars, and a timeout of
+	    WakeUpCallTimeOut.
+	-->
+	<HostSuspension Id="HostSuspension" IdleSuspension="0" IdleSuspensionTime="60"
+	                SuspensionPlugIn="ngamsSuspensionPlugIn"
+	                SuspensionPlugInPars="--SuspensionPlugInPars--"
+	                WakeUpCallTimeOut="200" WakeUpPlugIn="ngamsWakeUpPlugIn"
+	                WakeUpPlugInPars="eth0,eth1" WakeUpServerHost="my_wakeup_host"/>
+
+	<!--
+	    Pre-defined subscriptions.
+
+	    These subscrptions are incorporated into the list of subscriptions managed by the server
+	    at server startup time. If the subscriptions exist in the subscription database (which is
+	    the official source of subscription information) then no action is taken. Otherwise they
+	    are added to the database, and will start being used immediately.
+
+	    This is an old option, and shouldn't be used as it is less flexible than using the
+	    SUBSCRIBE/USUBSCRIBE command (it offers less flexibility on the details).
+	-->
+	<SubscriptionDef Id="SubscriptionDef" AutoUnsubscribe="1" BackLogExpTime="28T00:00:00"
+	                 Enable="0" SuspensionTime="0T00:03:00">
+		<Subscription  HostId="HostId1"
+		               PortNo="1234"
+		               Priority="1"
+		               SubscriberUrl="http://test.url1"
+		               FilterPlugIn="FilterPlugIn1"
+		               FilterPlugInPars="1,2,3,4"/>
+		<Subscription  HostId="HostId2"
+		               PortNo="5678"
+		               Priority="2"
+		               SubscriberUrl="http://test.url2"
+		               FilterPlugIn="FilterPlugIn2"
+		               FilterPlugInPars="5,6,7,8"/>
+	</SubscriptionDef>
+
+</NgamsCfg>

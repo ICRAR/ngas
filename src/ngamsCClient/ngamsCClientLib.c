@@ -2540,6 +2540,12 @@ int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr,
 		ngamsTrimString(recvLine, "\015\012");
 		ngamsLogDebug("Parsing HTTP header(%d): |%s|", strlen(recvLine),
 				recvLine);
+
+		/* End of headers, body will begin */
+		if (strcmp("", recvLine) == 0) {
+			break;
+		}
+
 		if ((bytesRead == 1) || (strstr(recvLine, "\015\012") == recvLine))
 			break;
 		for ((chr = recvLine); (*chr && (*chr != ':')); chr++)
@@ -3019,7 +3025,7 @@ int _ngamsHttpPost(const char* host, const int port, const float timeout, const 
 		"User-agent: %s\015\012"
 		"Content-Type: %s\015\012"
 		"Content-Length: %llu\015\012"
-		"Content-Disposition: %s%s\015\012\012", path, ngamsUSER_AGENT,
+		"Content-Disposition: %s%s\015\012\015\012", path, ngamsUSER_AGENT,
 			mimeType, contLen, contentDisp, authHdr);
 	hdrLen = strlen(header);
 

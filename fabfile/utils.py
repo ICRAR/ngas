@@ -30,8 +30,7 @@ import time
 import types
 import urllib2
 
-from Crypto.PublicKey import RSA
-from fabric.colors import green, red, yellow
+from fabric.colors import green, red, yellow, blue
 from fabric.context_managers import settings, hide
 from fabric.decorators import task, parallel
 from fabric.exceptions import NetworkError
@@ -154,11 +153,17 @@ def key_filename(key_name):
     return os.path.join(os.path.expanduser('~/.ssh/'), '{0}.pem'.format(key_name))
 
 def get_public_key(key_filename):
+
+    from Crypto.PublicKey import RSA
+
     with open(key_filename) as f:
         okey = RSA.importKey(f.read())
         return okey.exportKey('OpenSSH')
 
 def generate_key_pair():
+
+    from Crypto.PublicKey import RSA
+
     key = RSA.generate(2048)
     pubkey = key.publickey()
     return key, pubkey
@@ -166,11 +171,23 @@ def generate_key_pair():
 def repo_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-def success(msg):
-    puts(green("******** %s ********" % (msg,)))
+def _colored_puts(msg, color, with_stars):
+    if with_stars:
+        puts(color("******** %s ********" % (msg,)))
+    else:
+        puts(color(msg))
 
-def failure(msg):
-    puts(red("******** %s ********" % (msg,)))
+def success(msg, with_stars=True):
+    _colored_puts(msg, green, with_stars)
+
+def failure(msg, with_stars=True):
+    _colored_puts(msg, red, with_stars)
+
+def warning(msg, with_stars=True):
+    _colored_puts(msg, yellow, with_stars)
+
+def info(msg, with_stars=False):
+    _colored_puts(msg, blue, with_stars)
 
 def append_desc(t):
     tname = t.__name__

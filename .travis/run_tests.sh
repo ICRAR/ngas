@@ -26,20 +26,27 @@
 #
 # DB                the database used in this run (sqlite3, mysql, postgresql)
 # TRAVIS_BUILD_DIR  the directory where the sources are located
+# TRAVIS_OS_NAME    the OS under which we are running (linux, osx)
 #
 
 cd ${TRAVIS_BUILD_DIR}/src/ngamsTest/ngamsTest
+
+# In OSX we create our own virtualenv, see run_build.sh
+if [ "${TRAVIS_OS_NAME}" = "osx" ]
+then
+	source ${TRAVIS_BUILD_DIR}/osx_venv/bin/activate
+fi
 
 # These are the user/dbname/passwd that we created on run_build
 # sqlite3 is the default so it needs no special attention
 NGAS_TESTDB=
 if [[ "$DB" == "mysql" ]]; then
-	NGAS_TESTDB='<Db Id="blah" Snapshot="1" Interface="MySQLdb" host="127.0.0.1" db="ngas" user="ngas" passwd="ngas"/>'
+	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="MySQLdb" host="127.0.0.1" db="ngas" user="ngas" passwd="ngas"/>'
 elif [[ "$DB" == "postgresql" ]]; then
-	NGAS_TESTDB='<Db Id="blah" Snapshot="1" Interface="psycopg2" host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>'
+	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="psycopg2" host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>'
 fi
 
-pip install psutil
+pip install psutil pytest-cov coveralls
 
 # Prepare for sub-process coverage
 mkdir coverage.tmp

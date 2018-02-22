@@ -38,7 +38,6 @@ import logging
 import thread
 import threading
 import time
-import types
 import os
 import base64
 import urlparse
@@ -428,7 +427,7 @@ def _convertFileInfo(fileInfo):
 
 
 
-
+_backlog_area_lock = threading.Lock()
 def _genSubscrBackLogFile(srvObj,
                           subscrObj,
                           fileInfo):
@@ -456,8 +455,7 @@ def _genSubscrBackLogFile(srvObj,
 
     # NOTE: The actions carried out by this function are critical and need
     #       to be semaphore protected (Back-Log Operations Semaphore).
-    srvObj._backLogAreaSem.acquire()
-    try:
+    with _backlog_area_lock:
         # chen.wu@icrar.org:
         # we no longer copy files, the limitation now is that the storage media is not movable
         ## Create copy of file in Subscription Back-Log Area + make entry in
@@ -489,11 +487,6 @@ def _genSubscrBackLogFile(srvObj,
         # Increase the Subscription Back-Log Counter to indicate to the Data
         # Subscription Thread that it should only suspend itself temporarily.
         srvObj.incSubcrBackLogCount()
-        srvObj._backLogAreaSem.release()
-    except Exception:
-        srvObj._backLogAreaSem.release()
-        logger.exception("Error generating Subscription Back-Log File")
-        raise
 
 
 def _delFromSubscrBackLog(srvObj,
@@ -520,8 +513,7 @@ def _delFromSubscrBackLog(srvObj,
     # NOTE: The actions carried out by this function are critical and need
     #       to be semaphore protected (Back-Log Operations Semaphore).
 
-    srvObj._backLogAreaSem.acquire()
-    try:
+    with _backlog_area_lock:
         srvObj.decSubcrBackLogCount()
         # Delete the entry from the DB for that file/Subscriber.
         srvObj.getDb().delSubscrBackLogEntry(srvObj.getHostId(),
@@ -531,10 +523,6 @@ def _delFromSubscrBackLog(srvObj,
         # delete the file.
         # subscrIds = srvObj.getDb().getSubscrsOfBackLogFile(fileId, fileVersion)
         # if (subscrIds == []): commands.getstatusoutput("rm -f " + fileName)
-        srvObj._backLogAreaSem.release()
-    except:
-        srvObj._backLogAreaSem.release()
-        raise
 
 def _markDeletion(srvObj,
                   diskId,
@@ -722,7 +710,9 @@ def _deliveryThread(srvObj,
             # If the target does not turn on the authentication (or even not an NGAS), this still works
             # as long as there is a user named "ngas-int" in the configuration file for the current server
             # But if the target is an NGAS server and the authentication is on, the target must have set a user named "ngas-int"
-            authHdr = srvObj.getCfg().getAuthHttpHdrVal(user = NGAMS_HTTP_INT_AUTH_USER)
+            authHdr = None
+            if srvObj.getCfg().getAuthUserInfo(NGAMS_HTTP_INT_AUTH_USER) is not None:
+                authHdr = srvObj.getCfg().getAuthHttpHdrVal(user = NGAMS_HTTP_INT_AUTH_USER)
             fileInfoObjHdr = None
             urlList = subscrObj.getUrlList()
             urlListLen = len(urlList)
@@ -814,6 +804,35 @@ def _deliveryThread(srvObj,
                     # (if the file is not an already back log buffered file, which
                     # was attempted re-posted).
 
+                    #
+                    # SLOW DOWN THE WORLD
+                    #
+                    # When our subscribers cannot be reached, we might end up
+                    # trying to contact them continuously, either to send
+                    # different files within the same subscription loop
+                    # iteration, or the same files after the outer loop has
+                    # started a new iteration. This can result in errors being
+                    # produced continuously at a high rate, for example if there
+                    # are many files that still need to be sent. This rate will
+                    # only grow if, on top of that, files keep being archived
+                    # into us. Apart from potentially imposing a high load on
+                    # the server itself, large error rates produce high load on
+                    # the central database (because two rows are updated in two
+                    # different tables). This is not only sub-optimal in itself,
+                    # but it also can affect other applications that are
+                    # connected to the same central database. Therefore, for our
+                    # own honour and to be be better citizens we need to address
+                    # this.
+                    #
+                    # A proper solution would obviously be to properly collect
+                    # all the errors individually and react intelligently to
+                    # that (probably with a "retry-period" setting or similar),
+                    # but for the time being we are simply resorting to slow
+                    # down the error rate. This will bring down the load on the
+                    # server and on the central database, which is the immediate
+                    # problem we need to solve.
+                    time.sleep(3)
+
                     if (runJob):
                         if (redo_on_fail):
                             _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
@@ -873,6 +892,10 @@ def _deliveryThread(srvObj,
                                     # it is possible that backlogged files cannot find an entry in the reference count dic -
                                     # e.g. when the server is restarted, refcount dic is empty. Later on, back-logged files are queued for delivery.
                                     # but they did not create entries in refcount dic when they are queued
+                                    _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
+                                elif 'NGAS_FORCE_MARK_FOR_DELETION_AFTER_DELIVERY' in os.environ:
+                                    # Last chance to get marked for deletion
+                                    logger.warning('File %s/%d not found in the fileDeliveryCountDic, but marking for deletion anyway', fileId, fileVersion)
                                     _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
                                 else:
                                     logger.warning("Fail to find %s/%d in the fileDeliveryCountDic", fileId, fileVersion)
@@ -1143,24 +1166,19 @@ def subscriptionThread(srvObj,
                     logger.debug('Data mover %s start_date = %s', subscrId, start_date)
                     count = 0
                     logger.debug('Checking hosts %s for data mover %s', dm_hosts, subscrId)
-                    cursorObj = srvObj.getDb().getFileSummary2(hostId = dm_hosts, ing_date = start_date, max_num_records = 1000)
+                    files = srvObj.getDb().getFileSummary2(hostId = dm_hosts, ing_date = start_date, max_num_records = 1000, fetch_size=100)
                     lastIngDate = None
-                    while (1):
-                        fileList = cursorObj.fetch(100)
-                        if (fileList == []): break
-                        for fileInfo in fileList:
-                            fileInfo = _convertFileInfo(fileInfo)
-                            fileDicDbm.add(_fileKey(fileInfo[FILE_ID], fileInfo[FILE_VER]), fileInfo)
-                            if (fileInfo[FILE_DATE] > lastIngDate): #just in case the cursor result is not sorted!
-                                lastIngDate = fileInfo[FILE_DATE]
-                            count += 1
+                    for fileInfo in files:
+                        fileInfo = _convertFileInfo(fileInfo)
+                        fileDicDbm.add(_fileKey(fileInfo[FILE_ID], fileInfo[FILE_VER]), fileInfo)
+                        if (fileInfo[FILE_DATE] > lastIngDate): #just in case the cursor result is not sorted!
+                            lastIngDate = fileInfo[FILE_DATE]
+                        count += 1
                         _checkStopSubscriptionThread(srvObj)
-                        time.sleep(0.1)
                     if (lastIngDate):
                         # mark the "last" file that will be checked regardless if it will be delivered or not
                         checkedStatus[subscrId] = lastIngDate
                         pass
-                    del cursorObj
                     if (count == 0):
                         logger.debug('No new files for data mover %s', subscrId)
                     else:
@@ -1179,24 +1197,17 @@ def subscriptionThread(srvObj,
                     if min_date is None or min_date > myMinDate:
                         min_date = myMinDate
 
-                cursorObj = srvObj.getDb().getFileSummary2(srvObj.getHostId(), ing_date = min_date)
+                files = srvObj.getDb().getFileSummary2(srvObj.getHostId(), ing_date = min_date, fetch_size=100)
                 if min_date is not None:
                     logger.debug('Fetching files ingested after %s', toiso8601(min_date))
                 else:
                     logger.debug('Fetching all ingested files')
-                while (1):
-                    fileList = cursorObj.fetch(100)
-                    if not fileList:
-                        break
-
-                    for fileInfo in fileList:
-                        fileInfo = _convertFileInfo(fileInfo)
-                        fileDicDbm.add(_fileKey(fileInfo[FILE_ID],
-                                                fileInfo[FILE_VER]),
-                                       fileInfo)
+                for fileInfo in files:
+                    fileInfo = _convertFileInfo(fileInfo)
+                    fileDicDbm.add(_fileKey(fileInfo[FILE_ID],
+                                            fileInfo[FILE_VER]),
+                                   fileInfo)
                     _checkStopSubscriptionThread(srvObj)
-                    time.sleep(0.1)
-                del cursorObj
             elif (fileRefs != []): # this is still possible even for data mover (due to recovered subscriptionList during server start)
                 # fileRefDic: Dictionary indicating which versions for each
                 # file that are of interest.
@@ -1213,23 +1224,18 @@ def subscriptionThread(srvObj,
                     else:
                         fileRefDic[fileId] = [fileVersion]
 
-                cursorObj = srvObj.getDb().getFileSummary2(srvObj.getHostId(),
-                                                           fileIds.keys(),
-                                                           ignore=0)
-                while (1):
-                    fileList = cursorObj.fetch(100)
-                    if (fileList == []): break
+                files = srvObj.getDb().getFileSummary2(srvObj.getHostId(),
+                                                       fileIds.keys(),
+                                                       ignore=0, fetch_size=100)
+                for fileInfo in files:
+                    # Take only the file if the File ID + File Version are
+                    # explicitly specified.
+                    fileInfo = _convertFileInfo(fileInfo)
+                    if fileInfo[FILE_VER] in fileRefDic[fileInfo[FILE_ID]]:
+                        fileDicDbm.add(_fileKey(fileInfo[FILE_ID],
+                                                fileInfo[FILE_VER]),
+                                       fileInfo)
                     _checkStopSubscriptionThread(srvObj)
-                    for fileInfo in fileList:
-                        # Take only the file if the File ID + File Version are
-                        # explicitly specified.
-                        fileInfo = _convertFileInfo(fileInfo)
-                        if fileInfo[FILE_VER] in fileRefDic[fileInfo[FILE_ID]]:
-                            fileDicDbm.add(_fileKey(fileInfo[FILE_ID],
-                                                    fileInfo[FILE_VER]),
-                                           fileInfo)
-                    time.sleep(0.1)
-                del cursorObj
 
             # The Deliver Status Dictionary indicates for each Subscriber
             # when the last file was delivered. We first initialize the

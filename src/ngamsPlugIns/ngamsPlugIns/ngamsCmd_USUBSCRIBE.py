@@ -30,7 +30,7 @@ including priority, url, start_date, and num_concurrent_threads
 import logging
 import threading
 
-from ngamsLib.ngamsCore import NGAMS_DELIVERY_THR, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_SUCCESS,\
+from ngamsLib.ngamsCore import NGAMS_DELIVERY_THR, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,\
     fromiso8601
 from ngamsLib import ngamsSubscriber
 from ngamsServer import ngamsSubscriptionThread
@@ -88,14 +88,14 @@ def handleCmd(srvObj,
     errMsg = ''
     err = 0
     if (not reqPropsObj.hasHttpPar("subscr_id")):
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
-                 'USUBSCRIBE command failed: \'subscr_id\' is not specified')
+        httpRef.send_status("USUBSCRIBE command failed: 'subscr_id' is not specified",
+                            status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
         return
 
     subscrId = reqPropsObj.getHttpPar("subscr_id")
     if (not srvObj.getSubscriberDic().has_key(subscrId)):
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
-                 "USUBSCRIBE command failed: Cannot find subscriber '%s'" % subscrId)
+        httpRef.send_status("USUBSCRIBE command failed: Cannot find subscriber '%s'" % subscrId,
+                            status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
         return
 
     if (reqPropsObj.hasHttpPar("suspend")):
@@ -111,11 +111,10 @@ def handleCmd(srvObj,
             suspend_processed = 1
             action = 'RESUMED'
         if (suspend_processed):
-            reMsg = "Successfully %s for the subscriber %s" % (action, subscrId)
-            srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, reMsg)
+            httpRef.send_status("Successfully %s for the subscriber %s" % (action, subscrId))
         else:
             reMsg = "No suspend/resume action is taken for the subscriber %s" % subscrId
-            srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, reMsg)
+            httpRef.send_status(reMsg, status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
         return
 
     subscriber = srvObj.getSubscriberDic()[subscrId]
@@ -174,6 +173,6 @@ def handleCmd(srvObj,
         err += 1
         errMsg += msg
     if (err):
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, "USUBSCRIBE command failed. Exception: %s" % errMsg)
+        httpRef.send_status("USUBSCRIBE command failed. Exception: %s" % errMsg, status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
     else:
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, "USUBSCRIBE command succeeded")
+        httpRef.send_status("USUBSCRIBE command succeeded")

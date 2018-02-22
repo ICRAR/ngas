@@ -25,28 +25,53 @@ Module containing HTTP utility code (mostly client-side)
 
 import cStringIO
 import contextlib
+import errno
 import httplib
 import logging
+import os
 import socket
 import time
 import urllib
 import urlparse
 
-from .ngamsCore import getHostName, NGAMS_HTTP_POST, NGAMS_HTTP_GET
-
 
 logger = logging.getLogger(__name__)
 
-_http_fmt = "%a, %d %b %Y %H:%M:%S GMT"
-def httpTimeStamp():
-    """
-    Generate a time stamp in the 'HTTP format', e.g.:
 
-        'Mon, 17 Sep 2001 09:21:38 GMT'
 
-    Returns:  Timestamp (string).
-    """
-    return time.strftime(_http_fmt, time.gmtime(time.time()))
+_connect_retries = 5
+_connect_retries_period_ms = 10
+if 'NGAS_HTTP_CONNECT_RETRIES' in os.environ:
+    _connect_retries = int(os.environ['NGAS_HTTP_CONNECT_RETRIES'])
+if 'NGAS_HTTP_CONNECT_RETRIES_PERIOD_MS' in os.environ:
+    _connect_retries_period_ms = int(os.environ['NGAS_HTTP_CONNECT_RETRIES_PERIOD_MS'])
+
+def _connect(conn):
+    # If the server on the other side has its backlog of connections full
+    # it will react differently depending on the OS it is running on.
+    # Linux will simply not respond the SYN packet sent by this client,
+    # triggering a few internal retries before giving up. On the other
+    # hand BSDs (including MacOS) will respond with RST, issuing a
+    # ECONNRESET error here. We thus deal with that particular error at
+    # this level, re-trying a few times before fully giving up
+    ntry = 0
+    while True:
+        try:
+            conn.connect()
+            return
+        except socket.error as e:
+
+            if e.errno != errno.ECONNRESET:
+                raise
+
+            ntry += 1
+            if ntry == _connect_retries:
+                raise
+
+            # We do increasing sleeps, kind of "a la TCP"
+            ms = _connect_retries_period_ms * ntry
+            logger.warning('Server did not accept() connection, retying in %d [ms] (try %d/%d)', ms, ntry,  _connect_retries)
+            time.sleep(0.001 * ms)
 
 
 def _http_response(host, port, method, cmd,
@@ -55,7 +80,6 @@ def _http_response(host, port, method, cmd,
 
     # Prepare all headers that need to be sent
     hdrs = dict(hdrs)
-    hdrs["Host"] = getHostName()
 
     url = cmd
     if pars:
@@ -68,15 +92,30 @@ def _http_response(host, port, method, cmd,
     # Go, go, go!
     logger.info("About to %s to %s:%d/%s", method, host, port, url)
     conn = httplib.HTTPConnection(host, port, timeout = timeout)
+    _connect(conn)
+
     try:
         conn.request(method, url, body=data, headers=hdrs)
         logger.debug("%s request sent to, waiting for a response", method)
-    except socket.error:
-        try:
-            conn.close()
-        except:
-            pass
-        raise
+    except socket.error as e:
+
+        # If the server closes the connection while we write data
+        # we still try to read the response, if any
+        #
+        # In OSX >= 10.10 this error can come up as EPROTOTYPE instead of EPIPE
+        # (although the error code is not mentioned in send(2)). The actual
+        # error recognised by the kernel in this situation is slightly different,
+        # but still due to remote end closing the connection. For a full, nice
+        # explanation of this see:
+        #
+        # https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
+        tolerate = e.errno in (errno.EPROTOTYPE, errno.EPIPE)
+        if not tolerate:
+            try:
+                conn.close()
+            except:
+                pass
+            raise
 
     start = time.time()
     response = conn.getresponse()
@@ -110,7 +149,7 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
     if auth:
         hdrs["Authorization"] = auth.strip()
 
-    resp = _http_response(host, port, NGAMS_HTTP_POST, cmd, data, timeout, pars, hdrs)
+    resp = _http_response(host, port, 'POST', cmd, data, timeout, pars, hdrs)
     with contextlib.closing(resp):
 
         # Receive + unpack reply.
@@ -165,10 +204,10 @@ def httpGet(host, port, cmd, pars=[], hdrs={},
     It is the callers' responsibility to close the response object,
     which in turn will close the HTTP connection.
     """
-    hdrs = dict(hdrs)
+    hdrs = dict(hdrs) if hdrs else {}
     if auth:
         hdrs['Authorization'] = auth.strip()
-    return _http_response(host, port, NGAMS_HTTP_GET, cmd,
+    return _http_response(host, port, 'GET', cmd,
                           pars=pars, hdrs=hdrs, timeout=timeout)
 
 
@@ -181,3 +220,26 @@ def httpGetUrl(url, pars=[], hdrs={}, timeout=None, auth=None):
     pars = [] if not url.query else urlparse.parse_qsl(url.query)
     return httpGet(url.hostname, url.port, url.path,
                    pars=pars, hdrs=hdrs, timeout=timeout)
+
+class sizeaware(object):
+    """
+    Small utility class that wraps a file object that doesn't have a __len__
+    method and makes it aware of its size. Useful to present the body of an HTTP
+    request or response as a file object with a length.
+    """
+
+    def __init__(self, f, size):
+        self.f = f
+        self.size = size
+        self.readin = 0
+
+    def read(self, n):
+        if self.readin >= self.size:
+            return b''
+        left = self.size - self.readin
+        buf = self.f.read(n if left >= n else left)
+        self.readin += len(buf)
+        return buf
+
+    def __len__(self):
+        return self.size

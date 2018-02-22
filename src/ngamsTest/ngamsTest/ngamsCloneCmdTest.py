@@ -32,14 +32,13 @@ This module contains the Test Suite for the CLONE Command.
 """
 
 import getpass
-import sys
 import traceback
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_CLONE_CMD
 from ngamsLib import ngamsFileInfo, ngamsLib
-from ngamsTestLib import getClusterName, flushEmailQueue, saveInFile, \
+from ngamsTestLib import flushEmailQueue, saveInFile, \
     filterDbStatus1, getEmailMsg, ngamsTestSuite, waitReqCompl, genErrMsgVals, \
-    runTest, sendPclCmd, unzip, genTmpFilename
+    sendPclCmd, unzip, genTmpFilename
 
 # TODO: See how we can actually set this dynamically in the future
 _checkMail = False
@@ -131,9 +130,7 @@ def _execCloneTest(testObj,
     trgDisk = testData[3]
     subNode = testData[4]
     if (subNode):
-        testObj.prepCluster("src/ngamsCfg.xml",
-                            [[8000, None, None, getClusterName()],
-                             [8011, None, None, getClusterName()]])
+        testObj.prepCluster((8000, 8011))
         clNcu = sendPclCmd(port=8011)
     else:
         testObj.prepExtSrv(port=8000)
@@ -526,7 +523,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         TODO: Re-implement using _execCloneTest().
         """
         srcFile = "src/SmallFile.fits"
-        cfgObj, dbObj = self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].UseRequestDb','true'),))
+        cfgObj, dbObj = self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
         client = sendPclCmd()
         for n in range(2): client.archive(srcFile)
         flushEmailQueue()
@@ -603,7 +600,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         TODO: Re-implement using _execCloneTest().
         """
         srcFile = "src/SmallFile.fits"
-        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].UseRequestDb','true'),))
+        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
         client = sendPclCmd()
         for n in range(10): client.archive(srcFile)
         flushEmailQueue()
@@ -621,22 +618,3 @@ class ngamsCloneCmdTest(ngamsTestSuite):
             tmpStatFile = saveInFile(None, _sortRepFileList(mailCont))
             self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing " +\
                               "CLONE Status Notification Email Msg")
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsCloneCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

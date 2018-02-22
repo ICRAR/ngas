@@ -29,7 +29,7 @@ from ngamsServer import ngamsSrvUtils
 
 logger = logging.getLogger(__name__)
 
-def run(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt):
 
     hostId = srvObj.getHostId()
     now = time.time()

@@ -31,11 +31,10 @@
 Function + code to handle the EXIT command.
 """
 
-from ngamsLib.ngamsCore import NGAMS_OFFLINE_STATE, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
+from ngamsLib.ngamsCore import NGAMS_OFFLINE_STATE, NGAMS_IDLE_SUBSTATE
 
 
-def handleCmdExit(srvObj,
+def handleCmd(srvObj,
                   reqPropsObj,
                   httpRef):
     """
@@ -51,10 +50,8 @@ def handleCmdExit(srvObj,
     """
     srvObj.checkSetState("Command EXIT", [NGAMS_OFFLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE])
-    srvObj.reply(reqPropsObj.setCompletionTime(), httpRef, NGAMS_HTTP_SUCCESS,
-                 NGAMS_SUCCESS, "NG/AMS Server performing exit ...")
+    httpRef.send_status("NG/AMS Server performing exit")
     srvObj.updateRequestDb(reqPropsObj)
     srvObj.terminate()
-
 
 # EOF

@@ -301,7 +301,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         vals = []
 
         instDate = self.convertTimeStamp(installationDate)
-        bytesStored = "%.0f" % float(bytesStored)
+        bytesStored = int(bytesStored)
         addDiskHistEntry = 0
 
         if self.diskInDb(diskId):
@@ -591,14 +591,18 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         fileInfoDbmName = None
         fileInfoDbm = None
         try:
-            diskInfo = None
 
             # Get the information about the files on the disk (before this
             # information is deleted).
             if delFileInfo and self.getCreateDbSnapshot():
                 diskInfo = ngamsDiskInfo.ngamsDiskInfo().read(self, diskId)
-                fname = self.genTmpFile('DISK_INFO')
-                fileInfoDbmName = self.dumpFileInfoList(diskId, fileListDbmName=fname)
+                fileInfoDbmName = self.genTmpFile('DISK_INFO')
+                fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, cleanUpOnDestr=0, writePerm = 1)
+                fileCount = 0
+                for fileInfo in self.getFileInfoList(diskId, fetch_size=1000):
+                    fileInfoDbm.add(str(fileCount), fileInfo)
+                    fileCount += 1
+                fileInfoDbm.sync()
 
             # Delete the disk info.
             sql = "DELETE FROM ngas_disks WHERE disk_id={}"
@@ -612,7 +616,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                 # Create a File Removal Status Document.
                 if (self.getCreateDbSnapshot()):
                     op = NGAMS_DB_CH_FILE_DELETE
-                    fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName)
                     fileInfoDbm.initKeyPtr()
                     key, fileSqlInfo = fileInfoDbm.getNext()
                     while (key):
@@ -623,8 +626,9 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
                         key, fileSqlInfo = fileInfoDbm.getNext()
 
-            self.triggerEvents([diskInfo.getDiskId(),
-                                diskInfo.getMountPoint()])
+                    self.triggerEvents([diskInfo.getDiskId(),
+                                        diskInfo.getMountPoint()])
+
             return self
         except Exception:
             logger.exception("Error deleting disk info from DB")
@@ -633,7 +637,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             if fileInfoDbm:
                 del fileInfoDbm
             if fileInfoDbmName:
-                rmFile(fileInfoDbmName + "*")
+                rmFile(fileInfoDbmName)
 
 
     def getLastDiskCheck(self, hostId = ""):

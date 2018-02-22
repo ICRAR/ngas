@@ -215,10 +215,7 @@ def resolveHostAddress(localHostId,
     return hostInfoDic
 
 
-def addDocTypeXmlDoc(srvObj,
-                     xmlDoc,
-                     rootElName,
-                     dtd):
+def addStatusDocTypeXmlDoc(srvObj, xml):
     """
     Generates an XML document (as an ASCII document) with the proper
     document type definition in it, e.g.:
@@ -237,15 +234,13 @@ def addDocTypeXmlDoc(srvObj,
 
     Returns:      XML document generated.
     """
-    docType = "<!DOCTYPE %s SYSTEM \"http://%s:%d/RETRIEVE?internal=%s\">"
-    docType = docType % (rootElName, ngamsLib.getCompleteHostName(),
-                         srvObj.getCfg().getPortNo(), dtd)
-    xmlDocList = xmlDoc.split("\n")
+
+    docType = "<!DOCTYPE NgamsStatus SYSTEM \"http://%s:%d/RETRIEVE?internal=ngamsStatus.dtd\">"
+    docType = docType % (ngamsLib.getCompleteHostName(),
+                         srvObj.getCfg().getPortNo())
+    xmlDocList = xml.split("\n")
     xmlDocList = [xmlDocList[0]] + [docType] + xmlDocList[1:]
-    tmpXmlDoc = ""
-    for line in xmlDocList:
-        tmpXmlDoc += line + "\n"
-    return tmpXmlDoc[0:-1]
+    return '\n'.join(xmlDocList)
 
 
 def determineMimeType(ngamsCfgObj,
@@ -372,8 +367,7 @@ def checkAddExt(ngamsCfgObj,
 
 def genStagingFilename(ngamsCfgObj,
                        reqPropsObj,
-                       diskDic,
-                       storageSetId,
+                       trgDiskInfo,
                        filename,
                        genTmpFiles = 0):
     """
@@ -403,8 +397,8 @@ def genStagingFilename(ngamsCfgObj,
                     administrative staging files as described above
                     (string|tuple).
     """
-    logger.debug("Generating staging filename - Storage Set ID: %s - URI: %s",
-                 storageSetId, filename)
+    logger.debug("Generating staging filename - Disk ID: %s - URI: %s",
+                 trgDiskInfo.getDiskId(), filename)
     try:
         tmpFilename = re.sub("\?|=|&", "_", os.path.basename(filename))
 
@@ -412,11 +406,11 @@ def genStagingFilename(ngamsCfgObj,
         tmpFilename = checkAddExt(ngamsCfgObj, reqPropsObj.getMimeType(),
                                   tmpFilename)
 
-        slotId = ngamsCfgObj.getStorageSetFromId(storageSetId).\
-                 getMainDiskSlotId()
-        mountPt = diskDic[slotId].getMountPoint()
+        mountPt = trgDiskInfo.getMountPoint()
         staging_dir = os.path.join(mountPt, NGAMS_STAGING_DIR)
         stagingFilename = tempfile.mktemp(suffix="-" + tmpFilename, prefix='', dir=staging_dir)
+
+        logger.debug("Staging filename is: %s", stagingFilename)
         reqPropsObj.setStagingFilename(stagingFilename)
 
         if (genTmpFiles):
@@ -438,134 +432,6 @@ def genStagingFilename(ngamsCfgObj,
                  "(in ngamsHighLevelLib.genStagingFilename()). Exception: " +\
                  str(e)
         raise Exception(errMsg)
-
-
-def openCheckUri(uri):
-    """
-    The function opens a URI and checks the result of the query. In case and
-    error is returned, an exception is thrown indicating the type of error.
-
-    uri:            URI to open/read (string).
-
-    Returns:        Open file object from where to read the data (file object).
-    """
-    T = TRACE()
-
-    logger.debug("Opening URL: %s", uri)
-    err = ""
-    retStat = None
-    try:
-        retStat = urllib.urlopen(uri)
-    except Exception as e:
-        err = str(e)
-    # In case an error occurred, a tuple is returned, otherwise an "addinfourl"
-    # object is returned. An error occurred if an empty tuple was returned.
-    if ((err == "") and (type(retStat) == type(()))):
-        # Contents of retStat in case of error:
-        # url, fp, errCode, errMsg, headers, data
-        status = ngamsStatus.ngamsStatus().unpackXmlDoc(retStat[1].read())
-        retStat[1].close()
-        err = status.getMessage()
-    if (err):
-        errMsg = "Error opening URI: " + uri + ". Error message: " + str(err)
-        errMsg = genLog("NGAMS_ER_REQ_HANDLING", [errMsg])
-        raise Exception(errMsg)
-    return retStat
-
-
-def saveFromHttpToFile(ngamsCfgObj,
-                       reqPropsObj,
-                       trgFilename,
-                       blockSize,
-                       mutexDiskAccess = 1,
-                       diskInfoObj = None):
-    """
-    Save the data available on an HTTP channel into the given file.
-
-    ngamsCfgObj:     NG/AMS Configuration object (ngamsConfig).
-
-    reqPropsObj:     NG/AMS Request Properties object (ngamsReqProps).
-
-    trgFilename:     Target name for file where data will be
-                     written (string).
-
-    blockSize:       Block size (bytes) to apply when reading the data
-                     from the HTTP channel (integer).
-
-    mutexDiskAccess: Require mutual exclusion for disk access (integer).
-
-    diskInfoObj:     Disk info object. Only needed if mutual exclusion
-                     is required for disk access (ngamsDiskInfo).
-
-    Returns:         Tuple. Element 0: Time in took to write
-                     file (s) (tuple).
-    """
-    T = TRACE()
-
-    checkCreatePath(os.path.dirname(trgFilename))
-
-    logger.info("Saving data in file: %s", trgFilename)
-    start = time.time()
-
-    with open(trgFilename, "w") as fdOut:
-        try:
-            # Make mutual exclusion on disk access (if requested).
-            if (mutexDiskAccess):
-                acquireDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
-
-            # Receive the data.
-            fin = reqPropsObj.getReadFd()
-            size = reqPropsObj.getSize()
-            readin = 0
-            while readin < size:
-                left = size - readin
-                buff = fin.read(blockSize if left >= blockSize else left)
-                if not buff:
-                    raise Exception('No bytes found in stream, at least %d expected' % left)
-                readin += len(buff)
-                reqPropsObj.setBytesReceived(readin)
-                fdOut.write(buff)
-
-            deltaTime = time.time() - start
-
-            msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
-                  "Rate: %.2f Bytes/s"
-            logger.debug(msg, trgFilename, int(reqPropsObj.getBytesReceived()),
-                         deltaTime,
-                         float(reqPropsObj.getBytesReceived())/deltaTime)
-
-            return deltaTime
-
-        finally:
-            # Release disk resouce.
-            if (mutexDiskAccess):
-                releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
-
-def saveInStagingFile(ngamsCfgObj,
-                      reqPropsObj,
-                      stagingFilename,
-                      diskInfoObj):
-    """
-    Save the data ready on the HTTP channel, into the given Staging
-    Area file.
-
-    ngamsCfgObj:     NG/AMS Configuration (ngamsConfig).
-
-    reqPropsObj:     NG/AMS Request Properties object (ngamsReqProps).
-
-    stagingFilename: Staging Area Filename as generated by
-                     ngamsHighLevelLib.genStagingFilename() (string).
-
-    diskInfoObj:     Disk info object. Only needed if mutual exclusion
-                     is required for disk access (ngamsDiskInfo).
-
-    Returns:         Void.
-    """
-    T = TRACE()
-
-    blockSize = ngamsCfgObj.getBlockSize()
-    return saveFromHttpToFile(ngamsCfgObj, reqPropsObj, stagingFilename,
-                              blockSize, 1, diskInfoObj)
 
 
 def checkIfFileExists(dbConObj,

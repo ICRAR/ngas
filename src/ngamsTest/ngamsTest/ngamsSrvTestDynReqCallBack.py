@@ -32,10 +32,11 @@ Child class of ngamsServer where the test case code can define how requests
 are handled.
 """
 
+import os
 import sys
 import time
 
-from ngamsLib.ngamsCore import TRACE, NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, \
+from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, \
     NGAMS_STATUS_CMD, NGAMS_ARCHIVE_CMD
 from ngamsServer import ngamsServer
 from ngamsTestLib import loadFile
@@ -47,159 +48,115 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
     are handled.
     """
 
-    def __init__(self):
-        """
-        Constructor method.
-        """
-        ngamsServer.ngamsServer.__init__(self)
-
-
-    def reqCallBack(self,
-                    httpRef,
-                    clientAddress,
-                    method,
-                    path,
-                    requestVersion,
-                    headers,
-                    writeFd,
-                    readFd):
+    def reqCallBack(self, *args, **kwargs):
         """
         Override ngamsServer.reqCallBack(). Simply load the name of the
         request handler to execute in the file written by the test case.
         """
-        reqHandleCode = loadFile("tmp/reqCallBack_tmp")
-        callback = getattr(self, reqHandleCode)
-        callback(httpRef, clientAddress, method, path, requestVersion,
-                 headers, writeFd, readFd)
+        if os.path.exists("tmp/reqCallBack_tmp"):
+            reqHandleCode = loadFile("tmp/reqCallBack_tmp")
+            reqHandleCode = getattr(self, reqHandleCode)
+            reqHandleCode(*args, **kwargs)
+        else:
+            super(ngamsServerTestDynReqCallBack, self).reqCallBack(*args, **kwargs)
+
+    def handleHttpRequest(self, *args, **kwargs):
+        if os.path.exists("tmp/handleHttpRequest_tmp"):
+            reqHandleCode = loadFile("tmp/handleHttpRequest_tmp")
+            reqHandleCode = getattr(self, reqHandleCode)
+            reqHandleCode(*args, **kwargs)
+        else:
+            super(ngamsServerTestDynReqCallBack, self).handleHttpRequest(*args, **kwargs)
+
+    def handleHttpRequest_Block5secs(self, *args, **kwargs):
+        """
+        Allow to execute EXIT, OFFLINE, STATUS. Block other commands for 5 secs
+        """
+        path = kwargs['path'] if 'path' in kwargs else args[4]
+        cmd = path.strip().split('?')[0]
+        if cmd not in (NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, NGAMS_STATUS_CMD):
+            time.sleep(5)
+        super(ngamsServerTestDynReqCallBack, self).handleHttpRequest(*args, **kwargs)
 
 
-    def reqCallBack_BlockCmds1(self,
-                               httpRef,
-                               clientAddress,
-                               method,
-                               path,
-                               requestVersion,
-                               headers,
-                               writeFd,
-                               readFd):
+    def reqCallBack_BlockCmds1(self, *args, **kwargs):
         """
         Allow to execute EXIT, OFFLINE, STATUS. Block other commands.
         """
+        path = kwargs['path'] if 'path' in kwargs else args[3]
         cmd = path.strip().split('?')[0]
         if cmd in (NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, NGAMS_STATUS_CMD):
-            ngamsServer.ngamsServer.reqCallBack(self, httpRef, clientAddress,
-                                                method, path, requestVersion,
-                                                headers, writeFd, readFd)
+            super(ngamsServerTestDynReqCallBack, self).reqCallBack(*args, **kwargs)
         else:
             time.sleep(10e6)
 
 
-    def reqCallBack_AccArchiveBlock2(self,
-                                     httpRef,
-                                     clientAddress,
-                                     method,
-                                     path,
-                                     requestVersion,
-                                     headers,
-                                     writeFd,
-                                     readFd):
+    def reqCallBack_AccArchiveBlock2(self, *args, **kwargs):
         """
         Allow to execute ARCHIVE Commands (+ EXIT, OFFLINE, STATUS).
         Block RETRIEVE Commands + other commands.
         """
+        path = kwargs['path'] if 'path' in kwargs else args[3]
         cmd = path.strip().split('?')[0]
         if cmd in (NGAMS_ARCHIVE_CMD, NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, NGAMS_STATUS_CMD):
-            ngamsServer.ngamsServer.reqCallBack(self, httpRef, clientAddress,
-                                                method, path, requestVersion,
-                                                headers, writeFd, readFd)
+            super(ngamsServerTestDynReqCallBack, self).reqCallBack(*args, **kwargs)
         else:
             time.sleep(10e6)
 
 
-    def reqCallBack_IllegalResp(self,
-                                httpRef,
-                                clientAddress,
-                                method,
-                                path,
-                                requestVersion,
-                                headers,
-                                writeFd,
-                                readFd):
+    def reqCallBack_IllegalResp(self, *args, **kwargs):
         """
         Override ngamsServer.reqCallBack(). This version simply writes an
         illegal HTTP response.
 
         Only commands that are handled are: EXIT, OFFLINE, STATUS.
         """
-        T = TRACE(1)
+        path = kwargs['path'] if 'path' in kwargs else args[3]
+        req_handler = kwargs['httpRef'] if 'httpRef' in kwargs else args[0]
 
-        if ((path.strip().find(NGAMS_EXIT_CMD) == 0) or
-            (path.strip().find(NGAMS_OFFLINE_CMD) == 0) or
-            (path.strip().find(NGAMS_STATUS_CMD) == 0)):
-            ngamsServer.ngamsServer.reqCallBack(self, httpRef, clientAddress,
-                                                method, path, requestVersion,
-                                                headers, writeFd, readFd)
+        cmd = path.strip().split('?')[0]
+
+        if cmd in (NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, NGAMS_STATUS_CMD):
+            super(ngamsServerTestDynReqCallBack, self).reqCallBack(*args, **kwargs)
         else:
             # Sending back illegal HTTP response
             time.sleep(0.500)
-            readFd.flush()
             resp = loadFile("tmp/ngamsServerTestIllegalResp_tmp")
-            writeFd.write(resp)
+            req_handler.wfile.write(resp)
 
 
-    def reqCallBack_SrvCrash1(self,
-                              httpRef,
-                              clientAddress,
-                              method,
-                              path,
-                              requestVersion,
-                              headers,
-                              writeFd,
-                              readFd):
+    def reqCallBack_SrvCrash1(self, *args, **kwargs):
         """
         Override ngamsServer.reqCallBack(). This version simply kills itself.
         The input socket it first flushed.
 
         Only command that is handled is: STATUS.
         """
-        T = TRACE(1)
+        path = kwargs['path'] if 'path' in kwargs else args[3]
+        cmd = path.strip().split('?')[0]
 
-        if (path.strip().find(NGAMS_STATUS_CMD) == 0):
-            ngamsServer.ngamsServer.reqCallBack(self, httpRef, clientAddress,
-                                                method, path, requestVersion,
-                                                headers, writeFd, readFd)
+        if cmd == NGAMS_STATUS_CMD:
+            super(ngamsServerTestDynReqCallBack, self).reqCallBack(*args, **kwargs)
         else:
             time.sleep(0.250)
-            readFd.flush()
             self.killServer()
             sys.exit(0)
 
 
-    def reqCallBack_SrvCrash2(self,
-                              httpRef,
-                              clientAddress,
-                              method,
-                              path,
-                              requestVersion,
-                              headers,
-                              writeFd,
-                              readFd):
+    def reqCallBack_SrvCrash2(self, *args, **kwargs):
         """
         Override ngamsServer.reqCallBack(). This version simply kills itself.
         The input socket it first flushed.
 
         Only command that is handled is: STATUS.
         """
-        T = TRACE(1)
+        path = kwargs['path'] if 'path' in kwargs else args[3]
+        cmd = path.strip().split('?')[0]
 
-        if ((path.strip().find(NGAMS_ARCHIVE_CMD) == 0) or
-            (path.strip().find(NGAMS_STATUS_CMD) == 0)):
-            ngamsServer.ngamsServer.reqCallBack(self, httpRef, clientAddress,
-                                                method, path, requestVersion,
-                                                headers, writeFd, readFd)
+        if cmd in (NGAMS_ARCHIVE_CMD, NGAMS_STATUS_CMD):
+            super(ngamsServerTestDynReqCallBack, self).reqCallBack(*args, **kwargs)
         else:
             time.sleep(0.250)
-            readFd.flush()
             self.killServer()
             sys.exit(0)
 

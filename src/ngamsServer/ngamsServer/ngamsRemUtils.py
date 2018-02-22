@@ -34,13 +34,12 @@ Contains common functions used for the REMFILE and REMDISK commands.
 import glob
 import logging
 import os
-import time
 
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsLib
 from ngamsLib import ngamsDiskInfo, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsNotification
 from ngamsLib.ngamsCore import TRACE, NGAMS_NOTIF_INFO, NGAMS_TEXT_MT, \
-    genLog, NGAMS_FAILURE, rmFile, NGAMS_DISK_INFO, \
+    genLog, NGAMS_FAILURE, NGAMS_DISK_INFO, \
     NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE, NGAMS_MAX_SQL_QUERY_SZ,\
     toiso8601
 
@@ -92,19 +91,11 @@ def checkSpuriousFiles(srvObj,
 
     # Check that there are no spurious files in connection with this disk in
     # the DB (where ngas_files.file_ignore != 0 or ngas_files.status != "1*******"
-    cursorObj = srvObj.getDb().\
-                getFileSummarySpuriousFiles1(hostId, diskId, fileId,
-                                             fileVersion)
-    while (1):
-        fileList = cursorObj.fetch(200)
-        if (not fileList): break
-
-        # Loop over the files.
-        for fileInfo in fileList:
-            spuriousFilesDbm.addIncKey(fileInfo)
-        spuriousFilesDbm.sync()
-        time.sleep(0.2)
-    del cursorObj
+    files = srvObj.db.getFileSummarySpuriousFiles1(hostId, diskId, fileId,
+                                                   fileVersion, fetch_size=200)
+    for fileInfo in files:
+        spuriousFilesDbm.addIncKey(fileInfo)
+    spuriousFilesDbm.sync()
     del spuriousFilesDbm
 
     return spuriousFilesDbmName
@@ -556,25 +547,16 @@ def checkFileCopiesAndReg(srvObj,
     # about files concerned from the DB.
     if (diskId):
         logger.debug("Retrieving information about files on disk with ID: %s", diskId)
-        tmpFileSumDbmName = os.path.normpath(dbFilePat + "_TMP_FILE_SUM")
-        tmpFileSumDbmName = srvObj.getDb().\
-                            dumpFileSummary1(tmpFileSumDbmName,
-                                             None, [diskId], [],
-                                             ignore=0, fileStatus=[])
-        tmpFileSumDbm = ngamsDbm.ngamsDbm(tmpFileSumDbmName)
-        for key in range(0, tmpFileSumDbm.getCount()):
-            tmpFileInfo = tmpFileSumDbm.get(str(key))
-            fileListDbm.addIncKey(tmpFileInfo)
-            fileId = tmpFileInfo[ngamsDbCore.SUM1_FILE_ID]
+        for f in srvObj.db.getFileSummary1(None, [diskId], [], ignore=0, fileStatus=[]):
+            fileListDbm.addIncKey(f)
+            fileId = f[ngamsDbCore.SUM1_FILE_ID]
             fileIdDbm.add(str(fileId), "")
-            fileVersion = tmpFileInfo[ngamsDbCore.SUM1_VERSION]
+            fileVersion = f[ngamsDbCore.SUM1_VERSION]
             fileKey = ngamsLib.genFileKey(None, fileId, fileVersion)
             checkDicDbm.add(fileKey, {})
         fileListDbm.sync()
         fileIdDbm.sync()
         checkDicDbm.sync()
-        del tmpFileSumDbm
-        rmFile(tmpFileSumDbmName + "*")
 
         # Get the list of files located on the disk. Later on, remove entries
         # from this dictionary as the files are parsed, based on their DB info,
@@ -644,32 +626,23 @@ def checkFileCopiesAndReg(srvObj,
     fileIdCount = 0
     fileIdDbm.initKeyPtr()
     fileId = "INIT"
-    tmpFileSumDbmName = os.path.normpath(dbFilePat + "_TMP_FILE_SUM")
     while (fileId):
         fileId, dummy = fileIdDbm.getNext()
         if (fileId):
             queryIds.append(fileId)
             fileIdCount+= 1
             querySize += (len(fileId) + 4)
-        if ((queryIds != []) and
-            ((querySize >= maxQuerySize) or (fileIdCount == noOfFileIds))):
-            tmpFileSumDbmName = srvObj.getDb().\
-                                dumpFileSummary1(tmpFileSumDbmName,
-                                                 None, [], queryIds,
-                                                 ignore=None, fileStatus=[])
-            tmpFileSumDbm = ngamsDbm.ngamsDbm(tmpFileSumDbmName)
-            for key in range(0, tmpFileSumDbm.getCount()):
+
+        if queryIds and (querySize >= maxQuerySize or fileIdCount == noOfFileIds):
+            for f in srvObj.db.getFileSummary1(fileIds=queryIds, fileStatus=[]):
                 # Take only a sub-result if that File ID + Version
                 # is concerned by the query.
-                tmpFileInfo = tmpFileSumDbm.get(str(key))
-                tmpFileId = tmpFileInfo[ngamsDbCore.SUM1_FILE_ID]
-                tmpFileVersion = tmpFileInfo[ngamsDbCore.SUM1_VERSION]
-                tmpFileKey = ngamsLib.genFileKey(None,tmpFileId,tmpFileVersion)
+                tmpFileId = f[ngamsDbCore.SUM1_FILE_ID]
+                tmpFileVersion = f[ngamsDbCore.SUM1_VERSION]
+                tmpFileKey = ngamsLib.genFileKey(None, tmpFileId, tmpFileVersion)
                 if (checkDicDbm.hasKey(tmpFileKey)):
-                    complFileListDbm.addIncKey(tmpFileInfo)
+                    complFileListDbm.addIncKey(f)
             complFileListDbm.sync()
-            del tmpFileSumDbm
-            rmFile(tmpFileSumDbmName + "*")
             queryIds = []
             querySize = 0
 

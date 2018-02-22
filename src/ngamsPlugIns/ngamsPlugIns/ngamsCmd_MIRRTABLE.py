@@ -191,7 +191,7 @@ def executeMirroring(srvObj, iteration):
             'rx_timeout': rx_timeout,
             'n_threads': getNumberOfSimultaneousFetchesPerServer(srvObj)
         }
-        host, port = srvObj.get_endpoint()
+        host, port = srvObj.get_self_endpoint()
         ngamsHttpUtils.httpGet(host, port, 'MIRREXEC', pars=pars, timeout=rx_timeout)
         # TODO look at the response code
 

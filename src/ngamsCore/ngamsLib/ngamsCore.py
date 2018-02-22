@@ -80,24 +80,15 @@ import logdefs
 logger = logging.getLogger(__name__)
 
 
-# Import COPYRIGHT statement into doc page.
-NGAMS_COPYRIGHT_TEXT = pkg_resources.resource_string('ngamsData', 'COPYRIGHT')
-__doc__ = __doc__ % NGAMS_COPYRIGHT_TEXT
-
-
 # Handle NG/AMS Version.
-_NGAMS_CVS_ID   = "--UNDEFINED--"
-_NGAMS_SW_VER   = "--UNDEFINED--"
-_NGAMS_VER_DATE = "--UNDEFINED--"
-for line in iter(pkg_resources.resource_string('ngamsData', 'VERSION').splitlines()):
-    if (line.find("NGAMS_CVS_ID") != -1):
-        _NGAMS_CVS_ID = line.split("NGAMS_CVS_ID ")[1].strip()[1:-1]
-    elif (line.find("NGAMS_SW_VER") != -1):
+_NGAMS_SW_VER   = ""
+_NGAMS_VER_DATE = ""
+for line in pkg_resources.resource_string('ngamsData', 'VERSION').splitlines():
+    if "NGAMS_SW_VER" in line:
         _NGAMS_SW_VER = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]
-    elif (line.find("VER_DATE") != -1):
+    elif "VER_DATE" in line:
         _NGAMS_VER_DATE = line.split("VER_DATE ")[1].strip()[1:-1]
-    elif ((_NGAMS_CVS_ID != "") and (_NGAMS_SW_VER != "") and
-          (_NGAMS_VER_DATE != "")):
+    if _NGAMS_SW_VER and _NGAMS_VER_DATE:
         break
 
 
@@ -117,8 +108,6 @@ def prFormat1():
     Return:    Format (string).
     """
     return "%-35s %s\n"
-
-_CONST_FORMAT = "\n%-32s = %s"
 
 # Directories and Filenames.
 NGAMS_BAD_FILES_DIR           = "bad-files"
@@ -285,23 +274,13 @@ def getNgamsVersion():
         return "--UNDFINED--"
 
 
-def getNgamsVersionRaw():
-    """
-    Return the version of the NG/AMS SW in 'raw format'.
-
-    Returns:    Raw version string (string).
-    """
-    global _NGAMS_SW_VER
-    return _NGAMS_SW_VER
-
-
 def ngamsCopyrightString():
     """
     Return the NG/AMS Copyright and Reference String.
 
     Returns:   Copyright string (string).
     """
-    return NGAMS_COPYRIGHT_TEXT
+    return pkg_resources.resource_string('ngamsData', 'COPYRIGHT')
 
 
 _logDef = logdefs.LogDefHolder(pkg_resources.resource_stream('ngamsData', 'ngamsLogDef.xml'))# @UndefinedVariable
@@ -714,12 +693,15 @@ def getBoolean(val):
         msg = "Value given: %s, does not seem to be a boolean"
         raise Exception(msg % str(val))
 
-def loadPlugInEntryPoint(plugInName, entryPointMethodName=None):
+def loadPlugInEntryPoint(plugInName, entryPointMethodName=None, returnNone=False):
     """
     Loads the entry point method of an NGAMS Plug-In. First the
     module is loaded and then the method that acts as entry point is
     also loaded and returned to the caller, who can then use
-    the method reference directly
+    the method reference directly.
+
+    If `returnNone` is True and the module loads correctly but the method does
+    not exist, None is returned instead.
     """
 
     # By default the entry point has the same name as the module
@@ -735,7 +717,13 @@ def loadPlugInEntryPoint(plugInName, entryPointMethodName=None):
         plugInModule = importlib.import_module(plugInName)
 
     logger.debug("Loading entry-point method %s from module %s ", entryPointMethodName,plugInModule.__name__)
-    return getattr(plugInModule, entryPointMethodName)
+
+    try:
+        return getattr(plugInModule, entryPointMethodName)
+    except AttributeError:
+        if returnNone:
+            return None
+        raise
 
 def is_localhost(host_or_ip):
     return host_or_ip == 'localhost' or \

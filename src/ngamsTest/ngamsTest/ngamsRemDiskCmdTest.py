@@ -31,12 +31,9 @@
 This module contains the Test Suite for the REMDISK Command.
 """
 
-import sys
-
 from ngamsLib.ngamsCore import NGAMS_REMDISK_CMD
 from ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
-    filterDbStatus1, getThreadId, getClusterName, sendExtCmd, runTest, \
-    sendPclCmd
+    filterDbStatus1, getThreadId, sendExtCmd, sendPclCmd
 
 
 class ngamsRemDiskCmdTest(ngamsTestSuite):
@@ -88,7 +85,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         TODO!: It is not checked that the contents on the disk and the info
                in the DB in ngas_files and ngas_disks is properly updated.
         """
-        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].UseRequestDb','true'),))
+        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
         client = sendPclCmd()
 
         # Archive a file + clone it to be able to execute the REMDISK Command.
@@ -280,9 +277,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster((8000, 8011))
         diskId  = "tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1"
         for execute in [0, 1]:
             httpPars=[["disk_id", diskId], ["execute", execute]]
@@ -290,22 +285,3 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
             refStatFile = "ref/ngamsRemDiskCmdTest_test_ProxyMode_01_01_ref"
             self.checkFilesEq(refStatFile, tmpStatFile,
                               "Incorrect handling of REMDISK Command detected")
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsRemDiskCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

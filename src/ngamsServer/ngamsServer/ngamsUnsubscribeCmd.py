@@ -38,8 +38,7 @@ import logging
 import Queue
 import ngamsSubscriptionThread
 from ngamsLib.ngamsCore import TRACE, NGAMS_DELIVERY_THR, \
-    genLog, NGAMS_SUBSCRIBE_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,\
-    NGAMS_FAILURE
+    genLog, NGAMS_SUBSCRIBE_CMD, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
 from ngamsLib import ngamsLib
 
 
@@ -203,7 +202,7 @@ def _reduceRefCount(fileDeliveryCountDic, fileDeliveryCountDic_Sem, fileId, file
     return 0
 
 
-def handleCmdUnsubscribe(srvObj,
+def handleCmd(srvObj,
                          reqPropsObj,
                          httpRef):
     """
@@ -235,12 +234,7 @@ def handleCmdUnsubscribe(srvObj,
             raise Exception(errMsg)
         err, errStr = delSubscriber(srvObj, ngamsLib.getSubscriberId(url))
 
-    if (not err):
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
-                 "Successfully handled UNSUBSCRIBE command")
+    if err:
+        httpRef.send_status('UNSUBSCRIBE command failed: ' + errStr, status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
     else:
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
-                 'UNSUBSCRIBE command failed: ' + errStr)
-
-
-# EOF
+        return "Successfully handled UNSUBSCRIBE command"

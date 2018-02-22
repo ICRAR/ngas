@@ -33,13 +33,12 @@ Archive Command handling
 """
 
 import os
-import sys
 import thread
 import threading
 import time
 
 from ngamsLib.ngamsCore import cpFile
-from ngamsTestLib import incArcfile, sendPclCmd, ngamsTestSuite, runTest, AUTH
+from ngamsTestLib import incArcfile, sendPclCmd, ngamsTestSuite, AUTH
 
 
 TST_STR1 = "Successfully handled Archive Push Request for data file " +\
@@ -244,22 +243,3 @@ class ngamsArchiveStressTest(ngamsTestSuite):
         ...
         """
         self._scheduleTest(1)
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsArchiveStressTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

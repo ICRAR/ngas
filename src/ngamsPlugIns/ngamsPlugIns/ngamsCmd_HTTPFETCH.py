@@ -113,6 +113,8 @@ def saveToFile(srvObj,
 
     logger.debug("Creating path: %s", trgFilename)
     checkCreatePath(os.path.dirname(trgFilename))
+
+    crc_info = ngamsFileUtils.get_checksum_info('crc32')
     if startByte != 0:
         logger.info("resume requested")
     if startByte != 0 and downloadResumeSupported:
@@ -124,7 +126,7 @@ def saveToFile(srvObj,
         if (startByte > 0):
             logger.info("Resume of download requested but server does not support it. Starting from byte 0 again.")
         fdOut = open(trgFilename, "w")
-        crc = 0
+        crc = crc_info.init
 
     start = time.time()
 
@@ -141,8 +143,8 @@ def saveToFile(srvObj,
     # Receive the data.
     buf = "-"
     rdSize = blockSize
-    crc_m = ngamsFileUtils.get_checksum_method('crc32')
 
+    crc_m = crc_info.method
     with contextlib.closing(response), contextlib.closing(fdOut):
         while (remSize > 0):
             if (remSize < rdSize):
@@ -157,6 +159,7 @@ def saveToFile(srvObj,
                 reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() +\
                                          sizeRead)
                 fdOut.write(buf)
+    crc = crc_info.final(crc)
 
     deltaTime = time.time() - start
     msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\

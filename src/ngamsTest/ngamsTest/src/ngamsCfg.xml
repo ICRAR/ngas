@@ -76,7 +76,7 @@
   <Db Id="Db-Test"
       Interface="sqlite3"
       database="tmp/ngas.sqlite"
-      Snapshot="1"/>
+      Snapshot="0"/>
 
   <SystemPlugIns Id="SystemPlugIns-Std"
                  LabelPrinterPlugIn="ngamsNullLabelPrinterPlugIn" 
@@ -296,26 +296,17 @@
 
   <SubscriptionDef Id="SubscriptionDef-Test"
                    AutoUnsubscribe="0"
-		   SuspensionTime="0T00:03:00"
+                   SuspensionTime="0T00:03:00"
                    BackLogExpTime="28T00:00:00"
-                   Enable="1">
+                   Enable="0">
     <Subscription HostId="DEFINE"
                   PortNo="8888"
                   Priority="0"
                   SubscriberUrl="http://DEFINE:8888/ARCHIVE"
                   FilterPlugIn="ngamsMimeTypeFilterPI"
-                  FilterPlugInPars="mime_types=image/x-fits|application/x-cfits"/>
+                  FilterPlugInPars="mime_types=image/x-fits|application/x-cfits|application/octet-stream"/>
   </SubscriptionDef>
 
-  <Authorization Id="Authorization-Test"
-                 Enable="0">
-    <User Name="ngas" 
-          Password="bmdhcw=="
-          Commands="*"/>
-    <User Name="ngasmgr" 
-          Password="bmdhc21ncg=="/>
-    <User Name="ngas-int"
-          Password="bmdhcy1pbnQ="/>
-  </Authorization>
+  <Authorization Id="Authorization-Test" Enable="0"/>
 
 </NgamsCfg>

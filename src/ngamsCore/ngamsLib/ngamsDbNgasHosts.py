@@ -82,8 +82,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         if len(res) == 1:
             return res[0][0]
         else:
-            errMsg = "Error retrieving IP Address for host: " + hostId
-            raise Exception(errMsg)
+            raise Exception("No NGAS host with host_id: %s" % hostId)
 
 
     def getClusterNameFromHostId(self,

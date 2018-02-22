@@ -29,7 +29,7 @@ from ngamsPClient import ngamsPClient
 
 logger = logging.getLogger(__name__)
 
-def run(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt):
     """
     Check if there is enough disk space for the various
     directories defined.
@@ -41,7 +41,7 @@ def run(srvObj, stopEvt, jan_to_srv_queue):
         logger.exception("Not enough disk space, bringing the system Offline")
 
         # Connect to the server and send an OFFLINE command
-        host, port = srvObj.get_endpoint()
+        host, port = srvObj.get_self_endpoint()
         auth = None
         if srvObj.getCfg().getAuthorize():
             auth = srvObj.getCfg().getAuthHttpHdrVal(NGAMS_HTTP_INT_AUTH_USER)

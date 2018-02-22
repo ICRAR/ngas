@@ -31,14 +31,26 @@
 This module contains the Test Suite for the NG/AMS Server.
 """
 
+import contextlib
 import os
 import socket
+import subprocess
 import sys
+import threading
 import time
+import unittest
+import uuid
 
-from ngamsLib.ngamsCore import NGAMS_SUCCESS
-from ngamsTestLib import ngamsTestSuite, runTest
-from ngamsTestLib import sendPclCmd
+from ngamsLib import ngamsHttpUtils
+from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SERVICE_NA
+from ngamsTestLib import ngamsTestSuite, saveInFile, sendPclCmd, this_dir
+
+
+# This module is used as a command by one of its own tests,
+# which expects that after running the command there will be a 0-bytes file
+# created with a given name
+def handleCmd(_, req, __):
+    open(os.path.join(this_dir, req['fname']), 'wb').close()
 
 
 class ngamsServerTest(ngamsTestSuite):
@@ -84,20 +96,78 @@ class ngamsServerTest(ngamsTestSuite):
         self.assertEquals('', s.recv(amount_of_data - len(data)))
         s.close()
 
-def run():
-    """
-    Run the complete test.
+    def test_too_many_requests(self):
 
-    Returns:   Void.
-    """
-    runTest(["ngamsServerTest"])
+        saveInFile("tmp/handleHttpRequest_tmp", "handleHttpRequest_Block5secs")
+        self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack",
+                        cfgProps=(('NgamsCfg.Server[1].MaxSimReqs', '2'),))
 
+        # Fire off two clients, each takes 5 seconds to finish
+        cl1, cl2 =  sendPclCmd(), sendPclCmd()
+        threading.Thread(target=cl1.online).start()
+        threading.Thread(target=cl2.online).start()
 
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
+        # The third one should not pass through
+        # (assuming that 2 seconds were enough for the two clients
+        # to connect and be busy waiting for their reply)
+        time.sleep(2)
+        resp = ngamsHttpUtils.httpGet('127.0.0.1', 8888, 'ONLINE')
+        with contextlib.closing(resp):
+            self.assertEqual(NGAMS_HTTP_SERVICE_NA, resp.status)
 
+    def test_user_command_plugin(self):
 
-# EOF
+        # Let this module implement the TEST command
+        cfg = (('NgamsCfg.Commands[1].Command[1].Name', 'TEST'),
+               ('NgamsCfg.Commands[1].Command[1].Module', 'ngamsTest.ngamsServerTest'))
+        self.prepExtSrv(cfgProps=cfg)
+        client = sendPclCmd()
+
+        # Let the TEST command create a file under ./tmp
+        # There is no need to manually remove here, as ./tmp gets removed anyway
+        # later during tearDown()
+        fname = os.path.join(this_dir, 'tmp', str(uuid.uuid4()))
+        status = client.get_status('TEST', pars=[('fname', fname)])
+        self.assertEquals(NGAMS_SUCCESS, status.getStatus())
+        self.assertTrue(os.path.isfile(os.path.join(this_dir, fname)))
+
+    def test_no_such_command(self):
+        self.prepExtSrv()
+        resp, _, _ = sendPclCmd()._get('UNKNOWN_CMD')
+        self.assertEquals(404, resp.status)
+
+    @unittest.skipUnless('NGAS_MANY_STARTS_TEST' in os.environ, 'skipped by default')
+    def test_many_starts(self):
+        for _ in range(int(os.environ['NGAS_MANY_STARTS_TEST'])):
+            self.prepExtSrv()
+            self.terminateAllServer()
+
+class ngamsDaemonTest(ngamsTestSuite):
+
+    def _run_daemon_cmd(self, cfg_file, cmd):
+        execCmd  = [sys.executable, '-m', 'ngamsServer.ngamsDaemon', cmd]
+        execCmd += ['-cfg', cfg_file]
+        with self._proc_startup_lock:
+            daemon_status_proc = subprocess.Popen(execCmd, shell=False)
+        return daemon_status_proc.wait()
+
+    def _run_daemon_status(self, cfg_file):
+        return self._run_daemon_cmd(cfg_file, 'status')
+
+    def _run_daemon_start(self, cfg_file):
+        return self._run_daemon_cmd(cfg_file, 'start')
+
+    def test_start_via_daemon(self):
+        self.prepExtSrv(daemon=True)
+
+    def test_daemon_status(self):
+        self.prepExtSrv(daemon=True)
+        self.assertEquals(0, self._run_daemon_status(self.extSrvInfo[-1].cfg_file))
+
+    def test_daemon_status_no_server_running(self):
+        self.assertEquals(1, self._run_daemon_status(os.path.join(this_dir, 'src/ngamsCfg.xml')))
+
+    def test_daemon_double_start(self):
+        # Try to start the daemon twice, it should fail
+        self.prepExtSrv(daemon=True)
+        self.assertNotEqual(0, self._run_daemon_start(os.path.join(this_dir, 'src/ngamsCfg.xml')))

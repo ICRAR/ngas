@@ -31,9 +31,7 @@
 Contains code for handling the CONFIG command.
 """
 
-from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
-
-def handleCmdConfig(srvObj,
+def handleCmd(srvObj,
                     reqPropsObj,
                     httpRef):
     """
@@ -49,8 +47,6 @@ def handleCmdConfig(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     logSysLog        = None
     logSysLogPrefix  = None
     logLocalLogFile  = None
@@ -80,9 +76,6 @@ def handleCmdConfig(srvObj,
         #           logLocalLogFile, logVerboseLevel)
         pass
 
-    srvObj.reply(reqPropsObj.setCompletionTime(), httpRef, NGAMS_HTTP_SUCCESS,
-                 NGAMS_SUCCESS, "Handled CONFIG command")
-    srvObj.updateRequestDb(reqPropsObj)
-
+    return "Handled CONFIG command"
 
 # EOF

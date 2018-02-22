@@ -40,7 +40,7 @@ import commands
 import logging
 import os
 
-from ngamsLib.ngamsCore import NGAMS_TEXT_MT, NGAMS_HTTP_SUCCESS, getFileSize
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize
 
 
 logger = logging.getLogger(__name__)
@@ -145,7 +145,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     for rp in required_params:
         if (not parDic.has_key(rp)):
             errMsg = 'Parameter missing: %s' % rp
-            srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
+            httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)
             return
 
     filename = reqPropsObj.getHttpPar('file_path')
@@ -153,7 +153,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if (not os.path.exists(filename)):
         errMsg = 'File Not found: %s' % filename
         logger.error(errMsg)
-        srvObj.httpReply(reqPropsObj, httpRef, 404, errMsg, NGAMS_TEXT_MT)
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=404)
         return
 
     fileId = parDic['file_id']
@@ -163,13 +163,13 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if (not isMWAVisFile(fileId)):
         errMsg = 'Not MWA visibilty file: %' % (fileId)
         logger.warning(errMsg)
-        srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)
         return
 
     if (hasCompressed(filename)):
         errMsg = 'OK'
         logger.debug('File compressed %s already, return now', filename)
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg, NGAMS_TEXT_MT)
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT)
         return
 
     if (parDic.has_key('scale_factor')):
@@ -217,7 +217,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         if (ret[0] != 0):
             errMsg = 'Failed to compress %s' % ret[1]
             logger.error(errMsg)
-            srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
+            httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)
             return
 
     # calculate the CRC code
@@ -230,7 +230,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         except Exception, exp:
             errMsg = 'Failed to calculate the CRC for file %s: %s' % (newfn, str(exp))
             logger.error(errMsg)
-            srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
+            httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)
             # remove the temp compressed file
             cmd1 = 'rm %s' % newfn
             execCmd(cmd1)
@@ -246,7 +246,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         if (ret[0] != 0):
             errMsg = 'Failed to move/rename uncompressed file %s: %s' % (filename, ret[1])
             logger.error(errMsg)
-            srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
+            httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)
             # remove the temp compressed file
             cmd1 = 'rm %s' % newfn
             execCmd(cmd1)
@@ -262,7 +262,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         if (ret[0] != 0):
             errMsg = 'Failed to move the compressed file to NGAS volume: %s' % ret[1]
             logger.error(errMsg)
-            srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
+            httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)
             # remove the temp compressed file
             cmd2 = 'rm %s' % newfn
             execCmd(cmd2)
@@ -285,7 +285,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         except Exception, ex:
             errMsg = 'Fail to update crc for file %s/%d/%s: %s' % (fileId, fileVersion, diskId, str(ex))
             logger.error(errMsg)
-            srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
+            httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)
             # remove the compressed file that have been copied in
             cmd2 = 'rm %s' % filename
             execCmd(cmd2)
@@ -308,4 +308,5 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         logger.debug(errMsg + '\. Result: %d - %d = %d, compress ratio: %.2f' % (old_fs, new_fs, (old_fs - new_fs), new_fs * 1.0 / old_fs))
     else:
         logger.debug(errMsg)
-    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg + '\n', NGAMS_TEXT_MT)
+
+    httpRef.send_data(errMsg + '\n', NGAMS_TEXT_MT)

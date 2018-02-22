@@ -31,10 +31,10 @@
 This module contains the Test Suite for the SUBSCRIBE Command.
 """
 
-import sys, os
+import os
 
 from ngamsLib.ngamsCore import NGAMS_DISCARD_CMD, cpFile
-from ngamsTestLib import ngamsTestSuite, sendExtCmd, sendPclCmd, getClusterName, runTest
+from ngamsTestLib import ngamsTestSuite, sendExtCmd, sendPclCmd
 
 
 try:
@@ -371,9 +371,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster((8000, 8011))
         sendPclCmd(port=8000).archive("src/SmallFile.fits")
         stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
         diskId  = "tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1"
@@ -387,22 +385,3 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
             refStatFile = "ref/ngamsDiscardCmdTest_test_ProxyMode_01_01_ref"
             self.checkFilesEq(refStatFile, tmpStatFile,
                               "Incorrect handling of DISCARD Command detected")
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsDiscardCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

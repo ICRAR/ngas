@@ -30,7 +30,7 @@ are still available on the file system
 
 import os, datetime, threading
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT
 from ngamsLib.ngamsDb import ngamsDb
 
 
@@ -45,25 +45,20 @@ def _checkFileThread(srvObj, reqPropsObj, httpRef):
     is_chkFileThrd_running = True
     wrong_files = []
 
-    cursorObj = srvObj.getDb().getFileSummary2(hostId = srvObj.getHostId())
-    while (1):
-        fileList = cursorObj.fetch(100)
-        if (fileList == []): break
-        for fileInfo in fileList:
-            complFileUri = os.path.realpath(fileInfo[ngamsDb.ngamsDbCore.SUM2_MT_PT] +\
-                                                  os.sep +\
-                                                  fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME])
-            if (not os.path.exists(complFileUri)):
-                ing_date = fileInfo[ngamsDb.ngamsDbCore.SUM2_ING_DATE]
-                fileId = fileInfo[ngamsDb.ngamsDbCore.SUM2_FILE_ID]
-                diskId = fileInfo[ngamsDb.ngamsDbCore.SUM2_DISK_ID]
-                file_ver = fileInfo[ngamsDb.ngamsDbCore.SUM2_VERSION]
-                wrong_files.append((ing_date, complFileUri, fileId, diskId, file_ver))
-                num_wrong += 1
+    for fileInfo in srvObj.getDb().getFileSummary2(hostId = srvObj.getHostId(), fetch_size=100):
+        complFileUri = os.path.realpath(fileInfo[ngamsDb.ngamsDbCore.SUM2_MT_PT] +\
+                                              os.sep +\
+                                              fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME])
+        if (not os.path.exists(complFileUri)):
+            ing_date = fileInfo[ngamsDb.ngamsDbCore.SUM2_ING_DATE]
+            fileId = fileInfo[ngamsDb.ngamsDbCore.SUM2_FILE_ID]
+            diskId = fileInfo[ngamsDb.ngamsDbCore.SUM2_DISK_ID]
+            file_ver = fileInfo[ngamsDb.ngamsDbCore.SUM2_VERSION]
+            wrong_files.append((ing_date, complFileUri, fileId, diskId, file_ver))
+            num_wrong += 1
 
-            num_checked += 1
+        num_checked += 1
 
-    del cursorObj
     if (num_wrong):
         work_dir = srvObj.getCfg().getRootDirectory() + '/tmp'
         fname = '%s/CheckFileResult_%s' % (work_dir, chkFileThrd.getName())
@@ -96,7 +91,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     global is_chkFileThrd_running
     if (is_chkFileThrd_running):
         if (chkFileThrd):
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Thread %s has checked %d files, and %d files are missing\n' % (chkFileThrd.getName(), num_checked, num_wrong), NGAMS_TEXT_MT)
+            httpRef.send_data('Thread %s has checked %d files, and %d files are missing\n' % (chkFileThrd.getName(), num_checked, num_wrong), NGAMS_TEXT_MT)
         else:
             is_chkFileThrd_running = False
             raise Exception('CheckFile thread\'s instance is gone!')
@@ -107,4 +102,4 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         chkFileThrd = threading.Thread(None, _checkFileThread, thrdName, args)
         chkFileThrd.setDaemon(0)
         chkFileThrd.start()
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Thread %s is successfully launched to check files.\n' % thrdName, NGAMS_TEXT_MT)
+        httpRef.send_data('Thread %s is successfully launched to check files.\n' % thrdName, NGAMS_TEXT_MT)

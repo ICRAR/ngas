@@ -34,11 +34,11 @@ import os
 import time
 
 from ngamsLib import ngamsHighLevelLib, ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, NGAMS_SUCCESS, NGAMS_HTTP_GET, \
+from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_GET, \
     NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile, NGAMS_NOTIF_NO_DISKS, \
     mvFile, NGAMS_FAILURE, NGAMS_PICKLE_FILE_EXT, \
     rmFile, genLog, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
-    getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, loadPlugInEntryPoint
+    getDiskSpaceAvail, loadPlugInEntryPoint, NGAMS_TEXT_MT
 from ngamsServer import ngamsArchiveUtils, ngamsCacheControlThread
 
 
@@ -122,7 +122,8 @@ def archiveFromFile(srvObj,
                resMain.getCompleteFilename())
         iorate = reqPropsObjLoc.getSize()/(time.time() - st)
 
-        ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain)
+        ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain,
+                                                trgDiskInfo)
     except Exception, e:
         # If another error occurs, than one qualifying for Back-Log
         # Buffering the file, we have to log an error.
@@ -218,7 +219,7 @@ def handleCmd(srvObj,
     (resDapi, targDiskInfo, iorate) = archiveFromFile(srvObj, fileUri, 0, mimeType, reqPropsObj)
     if (resDapi == NGAMS_FAILURE):
         errMsg = targDiskInfo
-        srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg + '\n')
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)
         return
 
     # Get crc info
@@ -261,8 +262,7 @@ def handleCmd(srvObj,
     msg = "Successfully handled Archive Pull Request for data file " +\
           "with URI: " + reqPropsObj.getSafeFileUri()
     logger.info(msg)
-    srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                       NGAMS_SUCCESS, msg, targDiskInfo)
+    httpRef.send_ingest_status(msg, targDiskInfo)
 
     # Trigger Subscription Thread. This is a special version for MWA, in which we simply swapped MIRRARCHIVE and QARCHIVE
     # chen.wu@icrar.org

@@ -41,7 +41,7 @@ import datetime
 import logging
 import threading
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT
 from ngamsServer import ngamsDiscardCmd
 
 
@@ -80,7 +80,6 @@ def _shouldRetain(fileId):
 def _purgeThread(srvObj, reqPropsObj, httpRef):
     global is_purgeThrd_running, total_todo, num_done
     is_purgeThrd_running = True
-    work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
     try:
         logger.debug("host_id = %s", srvObj.getHostId())
         resDel = srvObj.getDb().query2(QUERY_ALL_FILES, args=(srvObj.getHostId(),))
@@ -92,7 +91,7 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
                 try:
                     if (_shouldRetain(fileDelInfo[1])):
                         continue
-                    ngamsDiscardCmd._discardFile(srvObj, fileDelInfo[0], fileDelInfo[1], int(fileDelInfo[2]), execute = 1, tmpFilePat = work_dir)
+                    ngamsDiscardCmd._discardFile(srvObj, fileDelInfo[0], fileDelInfo[1], int(fileDelInfo[2]), execute = 1)
                     num_done += 1
                 except Exception, e1:
                     if (str(e1).find('DISCARD Command can only be executed locally') > -1):
@@ -129,7 +128,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     global is_purgeThrd_running
     if (is_purgeThrd_running):
         if (purgeThrd):
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Thread %s has successfully rri_purged %d out of %d files.\n' % (purgeThrd.getName(), num_done, total_todo), NGAMS_TEXT_MT)
+            msg= 'Thread %s has successfully rri_purged %d out of %d files.\n' % (purgeThrd.getName(), num_done, total_todo)
+            httpRef.send_data(msg, NGAMS_TEXT_MT)
         else:
             is_purgeThrd_running = False
             raise Exception('RRI Purge thread\'s instance is gone!')
@@ -140,4 +140,5 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         purgeThrd = threading.Thread(None, _purgeThread, thrdName, args)
         purgeThrd.setDaemon(0)
         purgeThrd.start()
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Thread %s is successfully launched to rri_purge files.\n' % thrdName, NGAMS_TEXT_MT)
+        msg = 'Thread %s is successfully launched to rri_purge files.\n' % thrdName
+        httpRef.send_data(msg, NGAMS_TEXT_MT)

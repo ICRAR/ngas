@@ -105,7 +105,7 @@ def suspend(stopEvt, t):
     if stopEvt.wait(t):
         raise StopCacheControlThreadEx()
 
-def createCacheDbms(srvObj):
+def createCacheDbms(srvObj, ready_evt):
     """
     Creates the internal/local DBMS (SQLite based) used for managing the cache
     contents without constantly accessing the remote NGAS Cache Table in the
@@ -151,6 +151,9 @@ def createCacheDbms(srvObj):
                        "cache_time REAL, " +\
                        "cache_entry_obj TEXT)"
             srvObj._cacheContDbmsCur.execute(sqlQuery)
+
+            # Add an index for quicker INSERT/SELECT
+            srvObj._cacheContDbmsCur.execute('CREATE INDEX cache_index ON ngas_cache(disk_id, file_id, file_version)')
         else:
             raise
 
@@ -163,6 +166,7 @@ def createCacheDbms(srvObj):
     srvObj._cacheNewFilesDbm = ngamsDbm.ngamsDbm(newFilesDbmName,
                                                   cleanUpOnDestr = 0,
                                                   writePerm = 1)
+    ready_evt.set()
 
     # Create DBMs used by the Cache Control Plug-Ins.
     # - DBM used to schedule files for checking.
@@ -546,7 +550,7 @@ def delEntryFromCacheDbms(srvObj,
     srvObj.getDb().deleteCacheEntry(diskId, fileId, fileVersion)
 
 
-def initCacheArchive(srvObj, stopEvt):
+def initCacheArchive(srvObj, stopEvt, ready_evt):
     """
     Initialize the NGAS Cache Archive Service. If there are requests in the
     Cache Table in the DB, these are read out and inserted in the local
@@ -560,74 +564,66 @@ def initCacheArchive(srvObj, stopEvt):
 
     # Create/open the Cache Contents DBM.
     # Note: This DBMS is kept between sessions for efficiency reasons.
-    createCacheDbms(srvObj)
+    createCacheDbms(srvObj, ready_evt)
 
     # Check if all files registered in the RDBMS NGAS Cache Table are
     # registered in the Local Cache DBMS.
-    curObj = srvObj.getDb().getCacheContents(srvObj.getHostId())
-    while (True):
-        fileInfoList = curObj.fetch(10000)
-        if (not fileInfoList): break
-        for sqlFileInfo in fileInfoList:
-            diskId      = sqlFileInfo[0]
-            fileId      = sqlFileInfo[1]
-            fileVersion = int(sqlFileInfo[2])
-            delete      = int(sqlFileInfo[3])
-            if (entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
-                continue
-            # Set filename, file size and Cache Entry Object later.
-            addEntryInCacheDbms(srvObj, diskId, fileId, fileVersion, "", -1,
-                                cacheEntryObj = "", addInRdbms = True)
+    for sqlFileInfo in srvObj.db.getCacheContents(srvObj.getHostId()):
+        diskId      = sqlFileInfo[0]
+        fileId      = sqlFileInfo[1]
+        fileVersion = int(sqlFileInfo[2])
+        if (entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
+            continue
+        # Set filename, file size and Cache Entry Object later.
+        addEntryInCacheDbms(srvObj, diskId, fileId, fileVersion, "", -1,
+                            cacheEntryObj = "", addInRdbms = True)
 
     # Update the local Cache Content DBMS with the information about files
     # online on this node.
-    curObj = srvObj.getDb().getFileSummary1(hostId = srvObj.getHostId(),
-                                            fileStatus = [], order = False)
-    while (True):
-        fileInfoList = curObj.fetch(10000)
-        if (not fileInfoList): break
-        for sqlFileInfo in fileInfoList:
-            diskId      = sqlFileInfo[ngamsDbCore.SUM1_DISK_ID]
-            fileId      = sqlFileInfo[ngamsDbCore.SUM1_FILE_ID]
-            fileVersion = int(sqlFileInfo[ngamsDbCore.SUM1_VERSION])
-            filename    = sqlFileInfo[ngamsDbCore.SUM1_FILENAME]
-            if (entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
-                # Ensure that filename (and ngamsCacheEntry 0bject) is defined.
-                if (getFilenameFromCacheDbms(srvObj, diskId, fileId,
-                                             fileVersion)):
-                    continue
-                else:
-                    # If the filename is not defined, this is an entry that
-                    # has been recovered from the RDBMS NGAS Cache Table.
-                    # We add the filename and the Cache Entry Object to the
-                    # entry for that file.
-                    setFilenameCacheDbms(srvObj, diskId, fileId,
-                                         fileVersion, filename)
-                    fileSize = sqlFileInfo[ngamsDbCore.SUM1_FILE_SIZE]
-                    setFileSizeCacheDbms(srvObj, diskId, fileId,
-                                         fileVersion, fileSize)
-                    ingDateSecs = srvObj.getDb().\
-                                  getIngDate(diskId, fileId, fileVersion)
-                    cacheEntryObj = ngamsCacheEntry.ngamsCacheEntry().\
-                                    unpackSqlInfo(sqlFileInfo).\
-                                    setLastCheck(time.time()).\
-                                    setCacheTime(ingDateSecs)
-                    setCacheEntryObjectCacheDbms(srvObj, cacheEntryObj)
-                    continue
+    files = srvObj.getDb().getFileSummary1(hostId = srvObj.getHostId(),
+                                           fileStatus = [], order = False)
+    for sqlFileInfo in files:
+        diskId      = sqlFileInfo[ngamsDbCore.SUM1_DISK_ID]
+        fileId      = sqlFileInfo[ngamsDbCore.SUM1_FILE_ID]
+        fileVersion = int(sqlFileInfo[ngamsDbCore.SUM1_VERSION])
+        filename    = sqlFileInfo[ngamsDbCore.SUM1_FILENAME]
+        if (entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
+            # Ensure that filename (and ngamsCacheEntry 0bject) is defined.
+            if (getFilenameFromCacheDbms(srvObj, diskId, fileId,
+                                         fileVersion)):
+                continue
+            else:
+                # If the filename is not defined, this is an entry that
+                # has been recovered from the RDBMS NGAS Cache Table.
+                # We add the filename and the Cache Entry Object to the
+                # entry for that file.
+                setFilenameCacheDbms(srvObj, diskId, fileId,
+                                     fileVersion, filename)
+                fileSize = sqlFileInfo[ngamsDbCore.SUM1_FILE_SIZE]
+                setFileSizeCacheDbms(srvObj, diskId, fileId,
+                                     fileVersion, fileSize)
+                ingDateSecs = srvObj.getDb().\
+                              getIngDate(diskId, fileId, fileVersion)
+                cacheEntryObj = ngamsCacheEntry.ngamsCacheEntry().\
+                                unpackSqlInfo(sqlFileInfo).\
+                                setLastCheck(time.time()).\
+                                setCacheTime(ingDateSecs)
+                setCacheEntryObjectCacheDbms(srvObj, cacheEntryObj)
+                continue
 
-            # Add new entry in the DBMS'.
-            ingDateSecs = srvObj.getDb().\
-                          getIngDate(diskId, fileId, fileVersion)
-            lastCheckTime = time.time()
-            cacheEntryObject = ngamsCacheEntry.ngamsCacheEntry().\
-                               unpackSqlInfo(sqlFileInfo).\
-                               setLastCheck(lastCheckTime).\
-                               setCacheTime(ingDateSecs)
-            fileSize = sqlFileInfo[ngamsDbCore.SUM1_FILE_SIZE]
-            addEntryInCacheDbms(srvObj, diskId, fileId, fileVersion,
-                                filename, fileSize, lastCheck = lastCheckTime,
-                                cacheTime = ingDateSecs,
-                                cacheEntryObj = cacheEntryObject)
+        # Add new entry in the DBMS'.
+        ingDateSecs = srvObj.getDb().\
+                      getIngDate(diskId, fileId, fileVersion)
+        lastCheckTime = time.time()
+        cacheEntryObject = ngamsCacheEntry.ngamsCacheEntry().\
+                           unpackSqlInfo(sqlFileInfo).\
+                           setLastCheck(lastCheckTime).\
+                           setCacheTime(ingDateSecs)
+        fileSize = sqlFileInfo[ngamsDbCore.SUM1_FILE_SIZE]
+        addEntryInCacheDbms(srvObj, diskId, fileId, fileVersion,
+                            filename, fileSize, lastCheck = lastCheckTime,
+                            cacheTime = ingDateSecs,
+                            cacheEntryObj = cacheEntryObject)
 
     # Start the Cache Control Plug-In helper threads if a Cache Control Plug-In
     # is specified.
@@ -739,23 +735,14 @@ def requestFileForDeletion(srvObj, sqlFileInfo):
     """
 
     try:
-       check_can_be_deleted = int(srvObj.getCfg().getVal("Caching[1].CheckCanBeDeleted"))
-       if not check_can_be_deleted:
-          return
+        check_can_be_deleted = int(srvObj.getCfg().getVal("Caching[1].CheckCanBeDeleted"))
+        if not check_can_be_deleted:
+            return
     except:
-       return
+        return
 
-    diskId = sqlFileInfo[NGAMS_CACHE_DISK_ID]
-    fileId = sqlFileInfo[NGAMS_CACHE_FILE_ID]
-    fileVersion = int(sqlFileInfo[NGAMS_CACHE_FILE_VER])
-    #TODO - should get the original file_status from the remote db, and then do a bitmask OR operation,
-    # maybe too db resource intensive, since this file is about to be deleted, the original value is not that important
-    # moreover, it is most likely just ingested (when cache delete is triggered), so we can assume that it is "00000000"
-    try:
-        logger.debug('Set file_status for file %s', fileId)
-        srvObj.getDb().setFileStatus(fileId, fileVersion, diskId, CACHE_DEL_BIT_MASK) # should be (CACHE_DEL_BIT_MASK | file_status)
-    except Exception as err:
-       logger.error('Fail to set file status for file %s, Exception: %s', fileId, str(err))
+    diskId, fileId, fileVersion = sqlFileInfo
+    srvObj.db.set_available_for_deletion(fileId, fileVersion, diskId)
 
 
 def scheduleFileForDeletion(srvObj,
@@ -979,11 +966,7 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
     #    limit. If there are more files, files are deleted FIFO-wise, until
     #    going below the maximum limit -10%.
     #
-    # 4. Check if the minimum specified available space in the cache is
-    #    exceeded. If this is the case, remove files FIFO-wise until
-    #    reaching the maximum limit -10%.
-    #
-    # 5. Execute the Cache Control Plug-In (if specified in the
+    # 4. Execute the Cache Control Plug-In (if specified in the
     #    configuration).
 
     # 0. Go through the explicitDel queue to remove files
@@ -1169,71 +1152,7 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
             del delFilesDbm
             delFilesDbm = None
 
-    # 4. Check if the minimum space that should be available in the cache
-    #    is exhausted.
-    if (srvObj.getCfg().getVal("Caching[1].MinCacheSpace")):
-        # This feature is not yet supported.
-        # TODO: Make function that derives the space by looking at the
-        #       volumes directly. Should look at each file system, note,
-        #       in simulation mode, several volumes may be hosted on the same
-        #       file system.
-        msg = "MINIMUM AVAILABLE CACHE SPACE AS CRITERIA IS NOT YET " +\
-              "SUPPORTED"
-        logger.warning(msg)
-    if (0 and srvObj.getCfg().getVal("Caching[1].MinCacheSpace")):
-        logger.debug("Applying criteria: Minimum available cache space ...")
-        minCacheSpace = int(srvObj.getCfg().getVal("Caching[1].MinCacheSpace"))
-        spaceAvailMb = srvObj.getDb().getSpaceAvailForHost(srvObj.getHostId())
-        msg = "Space Available=%.6f MB, Min. Cache Space=%.6f MB, " +\
-              "Availability till Threshold: %.6f MB"
-        logger.debug(msg, spaceAvailMb, minCacheSpace,
-                       (spaceAvailMb - (1.1 * minCacheSpace)))
-        if (spaceAvailMb < minCacheSpace):
-            # Reduce the size of the cache to 10% below the threshold
-            # to avoid having to clean-up constantly due to this rule.
-            minCacheSpace *= 1.10
-            # Dump the results into a temporary DBM.
-            delFilesDbm = createTmpDbm(srvObj, "MIN_SPACE_FILES_INFO")
-            # Schedule files FIFO-wise for removal from the cache.
-            sqlQuery = "SELECT * FROM ngas_cache ORDER BY cache_time"
-            # Encapsulate this in a try clause to be able to semaphore protect
-            # the interaction with SQLite in case other threads would try to
-            # access the DBMS.
-            try:
-                srvObj._cacheContDbmsSem.acquire()
-                srvObj._cacheContDbmsCur.execute(sqlQuery)
-                while (spaceAvailMb < minCacheSpace):
-                    fileInfoList = srvObj._cacheContDbmsCur.fetchmany(10000)
-                    if (not fileInfoList): break
-                    for sqlFileInfo in fileInfoList:
-                        msg = "CACHE-CRITERIA: Minimum Cache Space " +\
-                              "Exhausted: %s/%s/%s"
-                        logger.info(msg,
-                              sqlFileInfo[NGAMS_CACHE_DISK_ID],
-                              sqlFileInfo[NGAMS_CACHE_FILE_ID],
-                              str(sqlFileInfo[NGAMS_CACHE_FILE_VER]))
-                        delFilesDbm.addIncKey(sqlFileInfo)
-                        fileSize = sqlFileInfo[NGAMS_CACHE_FILE_SIZE]
-                        spaceAvailMb += fileSize
-                    if (spaceAvailMb < minCacheSpace): break
-                srvObj._cacheContDbms.commit()
-                srvObj._cacheContDbmsSem.release()
-            except:
-                srvObj._cacheContDbmsSem.release()
-                raise
-
-            # Now, loop over the selected files and mark them for deletion.
-            delFilesDbm.initKeyPtr()
-            while (True):
-                key, sqlFileInfo = delFilesDbm.getNext()
-                if (not key): break
-                scheduleFileForDeletion(srvObj, sqlFileInfo)
-                markFileChecked(srvObj, sqlFileInfo)
-
-            del delFilesDbm
-            delFilesDbm = None
-
-    # 5. Invoke the Cache Control Plug-In (if specified) on the files.
+    # 4. Invoke the Cache Control Plug-In (if specified) on the files.
     if (srvObj.getCfg().getVal("Caching[1].CacheControlPlugIn")):
         logger.debug("Applying criteria: Cache Control Plug-In ...")
 
@@ -1420,7 +1339,7 @@ def cleanUpCache(srvObj):
         # be marked as uncompleted.
 
 
-def cacheControlThread(srvObj, stopEvt, check_can_be_deleted):
+def cacheControlThread(srvObj, stopEvt, ready_evt, check_can_be_deleted):
     """
     The Cache Control Thread runs periodically when the NG/AMS Server is
     Online (if enabled) to synchronize the data holding of the local NGAS
@@ -1428,7 +1347,12 @@ def cacheControlThread(srvObj, stopEvt, check_can_be_deleted):
     """
 
     # Initialize the Cache Service.
-    initCacheArchive(srvObj, stopEvt)
+    try:
+        initCacheArchive(srvObj, stopEvt, ready_evt)
+    except:
+        if not ready_evt.is_set():
+            ready_evt.set()
+        raise
 
     # Main loop.
     period = srvObj.getCfg().getCachingPeriod()
@@ -1471,6 +1395,7 @@ def cacheControlThread(srvObj, stopEvt, check_can_be_deleted):
             errMsg = "Error occurred during execution of the Cache " +\
                      "Control Thread"
             logger.exception(errMsg)
-            # We make a small wait here to avoid that the process tries
-            # too often to carry out the tasks that failed.
-            time.sleep(5.0)
+            try:
+                suspend(stopEvt, 5)
+            except StopCacheControlThreadEx:
+                break
