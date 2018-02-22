@@ -33,8 +33,8 @@
 Class to handle the information in connection with one entry in the NGAS Cache.
 """
 
-from ngamsCore import TRACE, getBoolean
-import ngamsDbCore
+from .ngamsCore import TRACE, getBoolean
+from . import ngamsDbCore
 
 
 class ngamsFileSummary1:

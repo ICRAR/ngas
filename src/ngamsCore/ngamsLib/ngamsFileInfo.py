@@ -35,7 +35,7 @@ an archived file.
 
 import xml.dom.minidom
 
-from ngamsCore import ignoreValue, getAttribValue, prFormat1, TRACE, genLog, fromiso8601, toiso8601
+from .ngamsCore import ignoreValue, getAttribValue, prFormat1, TRACE, genLog, fromiso8601, toiso8601
 
 
 # TODO:

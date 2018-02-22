@@ -34,17 +34,17 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-import cPickle
 import collections
 import logging
 import os
 import re
 import tempfile
 
-from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE
-from ngamsCore import rmFile, getNgamsVersion, toiso8601, fromiso8601, mvFile
-import ngamsDbCore
-import ngamsFileInfo, ngamsStatus, ngamsFileList
+from six.moves import cPickle  # @UnresolvedImport
+
+from . import ngamsDbCore, ngamsFileInfo, ngamsStatus, ngamsFileList
+from .ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE
+from .ngamsCore import rmFile, getNgamsVersion, toiso8601, fromiso8601, mvFile
 
 
 logger = logging.getLogger(__name__)

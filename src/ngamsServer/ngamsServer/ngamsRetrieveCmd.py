@@ -40,12 +40,12 @@ import time
 from ngamsLib import ngamsDppiStatus, ngamsHttpUtils
 from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize, \
-    TRACE, genLog, NGAMS_PROC_FILE, NGAMS_HTTP_SUCCESS, NGAMS_PROC_DATA, \
+    TRACE, genLog, NGAMS_PROC_FILE, \
     NGAMS_HOST_LOCAL, \
     NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, checkCreatePath, NGAMS_RETRIEVE_CMD, \
-    NGAMS_PROC_STREAM, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
+    NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
-import ngamsSrvUtils, ngamsFileUtils, pysendfile
+from . import ngamsSrvUtils, ngamsFileUtils
 
 
 logger = logging.getLogger(__name__)

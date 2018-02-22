@@ -31,7 +31,6 @@
 This module contains the Test Suite for the SUBSCRIBE Command.
 """
 
-import SocketServer
 import base64
 import contextlib
 import functools
@@ -41,10 +40,12 @@ import struct
 import threading
 import time
 
+from six.moves import socketserver  # @UnresolvedImport
+
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_SUCCESS
-from ngamsTestLib import ngamsTestSuite, sendPclCmd, getNoCleanUp, setNoCleanUp
 from ngamsServer import ngamsServer
+from .ngamsTestLib import ngamsTestSuite, sendPclCmd, getNoCleanUp, setNoCleanUp
 
 
 # The plug-in that we configure the subscriber server with, so we know when
@@ -66,12 +67,12 @@ class SenderHandler(object):
             print(e)
 
 # A small server that receives the archiving event and sets a threading event
-class notification_srv(SocketServer.TCPServer):
+class notification_srv(socketserver.TCPServer):
 
     allow_reuse_address = True
 
     def __init__(self, recvevt):
-        SocketServer.TCPServer.__init__(self, ('127.0.0.1', 8887), None)
+        socketserver.TCPServer.__init__(self, ('127.0.0.1', 8887), None)
         self.recvevt = recvevt
         self.archive_evt = None
 
@@ -138,7 +139,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # We configure the second server to send notifications via socket
         # to the listener we start later
-        cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'),)
+        cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsTest.ngamsSubscriptionTest.SenderHandler'),)
         self._prep_subscription_cluster((8888, (8889, cfg)))
 
         qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
@@ -186,7 +187,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
     def test_basic_subscription_fail(self):
 
         src_cfg = (("NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:02'), ("NgamsCfg.Log[1].LocalLogLevel", '4'))
-        tgt_cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'),)
+        tgt_cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsTest.ngamsSubscriptionTest.SenderHandler'),)
         self._prep_subscription_cluster(((8888, src_cfg), (8889, tgt_cfg)))
 
         qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
@@ -375,7 +376,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].HostId', 'localhost'),
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].PortNo', '8888'),
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].Command', 'QARCHIVE'),
-                             ('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'))
+                             ('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsTest.ngamsSubscriptionTest.SenderHandler'))
         self._prep_subscription_cluster((8888, (8889, subscription_pars)))
 
         # Listen for archives on server B (B is configured to send us notifications)

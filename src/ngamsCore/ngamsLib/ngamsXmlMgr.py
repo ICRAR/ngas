@@ -73,7 +73,7 @@ import logging
 import re
 import xml.dom.minidom
 
-from ngamsCore import TRACE, genLog, rmFile
+from .ngamsCore import TRACE, genLog, rmFile
 
 
 logger = logging.getLogger(__name__)

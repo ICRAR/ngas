@@ -37,7 +37,8 @@ in a human readible (ASCII) format.
 """
 
 import sys
-import cPickle
+
+from six.moves import cPickle  # @UnresolvedImport
 
 try:
     import bsddb

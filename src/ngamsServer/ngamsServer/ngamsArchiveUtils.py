@@ -33,13 +33,14 @@ the file archiving.
 """
 import collections
 import contextlib
-import cPickle
 import glob
 import logging
 import os
 import random
 import time
 import urllib
+
+from six.moves import cPickle # @UnresolvedImport
 
 from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
     NGAMS_FILE_STATUS_OK, TRACE, NGAMS_NOTIF_DISK_SPACE,\
@@ -53,8 +54,8 @@ from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
 from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib,\
     ngamsHttpUtils
 from ngamsLib import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
-import ngamsFileUtils
-import ngamsCacheControlThread
+from . import ngamsFileUtils
+from . import ngamsCacheControlThread
 
 
 logger = logging.getLogger(__name__)

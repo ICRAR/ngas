@@ -23,17 +23,17 @@
 Module containing HTTP utility code (mostly client-side)
 """
 
-import cStringIO
 import contextlib
 import errno
-import httplib
+import io
 import logging
 import os
 import socket
 import time
 import urllib
-import urlparse
 
+from six.moves import http_client as httplib  # @UnresolvedImport
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +169,7 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
 
         # Accumulate the incoming stream and return it whole in `data`
         bs = 65536
-        with contextlib.closing(cStringIO.StringIO()) as out:
+        with contextlib.closing(io.BytesIO()) as out:
             readin = 0
             while readin < size:
                 left = size - readin

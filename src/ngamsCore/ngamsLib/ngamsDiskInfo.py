@@ -35,9 +35,9 @@ Contains tools for handling the disk configuration.
 import os
 import xml.dom.minidom
 
-from ngamsCore import genLog, getAttribValue, prFormat1, ignoreValue, toiso8601, fromiso8601
-from ngamsCore import TRACE, NGAMS_STAGING_DIR
-import ngamsFileInfo
+from . import ngamsFileInfo
+from .ngamsCore import genLog, getAttribValue, prFormat1, ignoreValue, toiso8601, fromiso8601
+from .ngamsCore import TRACE, NGAMS_STAGING_DIR
 
 def getStorageSetIdFromDiskId(dbConObj,
                               ngamsCfgObj,

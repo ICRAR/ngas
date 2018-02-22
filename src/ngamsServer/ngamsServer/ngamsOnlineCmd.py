@@ -33,7 +33,7 @@ Function + code to handle the ONLINE command.
 
 import logging
 
-import ngamsSrvUtils
+from . import ngamsSrvUtils
 from ngamsLib.ngamsCore import NGAMS_OFFLINE_STATE, NGAMS_IDLE_SUBSTATE
 
 

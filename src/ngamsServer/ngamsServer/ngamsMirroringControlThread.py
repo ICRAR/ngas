@@ -46,7 +46,6 @@ import functools
 import logging
 import os
 import random
-import thread
 import threading
 import time
 
@@ -663,7 +662,8 @@ def mirroringThread(srvObj,
             ###################################################################
 
         except Exception as e:
-            if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): thread.exit()
+            if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1):
+                return
             errMsg = "Error occurred during execution of the Mirroring " +\
                      "Control Thread"
             logger.exception(errMsg)
@@ -1309,7 +1309,8 @@ def mirControlThread(srvObj, stopEvt):
 
 
             except Exception as e:
-                if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): thread.exit()
+                if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1):
+                    return
                 errMsg = "Error occurred during execution of the ALMA Mirroring " +\
                          "Control Thread"
                 logger.exception(errMsg)
@@ -1378,7 +1379,8 @@ def mirControlThread(srvObj, stopEvt):
                     return
 
             except Exception:
-                if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): thread.exit()
+                if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1):
+                    return
                 errMsg = "Error occurred during execution of the Mirroring " +\
                          "Control Thread"
                 logger.exception(errMsg)

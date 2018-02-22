@@ -22,7 +22,7 @@
 
 import time
 
-from ngamsTestLib import ngamsTestSuite
+from .ngamsTestLib import ngamsTestSuite
 
 
 class ngamsCacheThreadTest(ngamsTestSuite):

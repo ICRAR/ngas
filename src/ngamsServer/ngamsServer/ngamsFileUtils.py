@@ -42,7 +42,6 @@ import re
 import struct
 import time
 
-import ngamsSrvUtils
 from ngamsLib import ngamsDbCore, ngamsDiskInfo, ngamsStatus, \
     ngamsHttpUtils, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib
@@ -50,6 +49,7 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
     NGAMS_STATUS_CMD, NGAMS_CACHE_DIR, \
     NGAMS_DATA_CHECK_THR, getFileSize, loadPlugInEntryPoint
+from . import ngamsSrvUtils
 
 _crc32c_available = True
 try:

@@ -34,8 +34,8 @@ Contains the implementation of the Mirroring Source Class, used to handle
 the information for one Mirroring Source.
 """
 
-from ngamsCore import isoTime2Secs
-import ngamsDbCore
+from . import ngamsDbCore
+from .ngamsCore import isoTime2Secs
 
 
 # Definitions for the handling of Mirroring Sources.

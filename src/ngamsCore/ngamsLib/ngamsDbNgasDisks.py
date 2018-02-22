@@ -37,14 +37,11 @@ It should be used as part of the ngamsDbBase parent classes.
 
 import logging
 
-from ngamsCore import TRACE, getDiskSpaceAvail, rmFile, NGAMS_DB_CH_FILE_DELETE, fromiso8601
-import ngamsDbm, ngamsDbCore
+from . import ngamsDbm, ngamsDbCore, ngamsFileInfo, ngamsDiskInfo
+from .ngamsCore import TRACE, getDiskSpaceAvail, rmFile, NGAMS_DB_CH_FILE_DELETE, fromiso8601
 
 
 logger = logging.getLogger(__name__)
-
-# TODO: Avoid using these classes in this module (mutual dependency):
-import ngamsFileInfo, ngamsDiskInfo
 
 
 class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):

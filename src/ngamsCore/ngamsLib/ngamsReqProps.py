@@ -40,12 +40,13 @@ import os
 import time
 import types
 import urllib
-import urlparse
 
-from ngamsCore import TRACE, NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
+
+from . import ngamsLib
+from .ngamsCore import TRACE, NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
     NGAMS_HTTP_POST, NGAMS_ARCHIVE_CMD, NGAMS_ARCH_REQ_MT, genLog,\
     NGAMS_UNKNOWN_MT, createSortDicDump, ignoreValue, prFormat1
-import ngamsLib
 
 
 logger = logging.getLogger(__name__)

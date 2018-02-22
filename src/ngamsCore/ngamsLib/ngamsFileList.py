@@ -34,8 +34,9 @@ Contains definition of a class to handle a list of ngamsFileInfo objects.
 """
 
 import xml.dom.minidom
-from ngamsCore import prFormat1, ngamsGetChildNodes, getAttribValue, TRACE
-import ngamsFileInfo
+
+from . import ngamsFileInfo
+from .ngamsCore import prFormat1, ngamsGetChildNodes, getAttribValue, TRACE
 
 
 class ngamsFileList:

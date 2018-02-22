@@ -35,12 +35,12 @@ the NG/AMS Status Report.
 import logging
 import xml.dom.minidom
 
-from ngamsCore import ngamsGetChildNodes, NGAMS_XML_STATUS_ROOT_EL, \
+from . import ngamsConfig, ngamsDiskInfo, ngamsFileList
+from . import ngamsContainer
+from .ngamsCore import ngamsGetChildNodes, NGAMS_XML_STATUS_ROOT_EL, \
     getAttribValue, TRACE, prFormat1, toiso8601, fromiso8601, getNgamsVersion, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_SUCCESS, NGAMS_FAILURE, \
     NGAMS_HTTP_SUCCESS
-import ngamsConfig, ngamsDiskInfo, ngamsFileList
-import ngamsContainer
 
 
 logger = logging.getLogger(__name__)

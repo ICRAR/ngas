@@ -36,7 +36,7 @@ import urllib
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_STATUS_CMD, \
     NGAMS_CHECKFILE_CMD, rmFile, NGAMS_SUCCESS
-from ngamsTestLib import ngamsTestSuite, sendPclCmd, \
+from .ngamsTestLib import ngamsTestSuite, sendPclCmd, \
     filterOutLines, saveInFile, loadFile, genTmpFilename, unzip
 
 

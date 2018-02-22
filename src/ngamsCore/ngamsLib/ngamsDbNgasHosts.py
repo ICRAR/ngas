@@ -36,8 +36,8 @@ It should be used as part of the ngamsDbBase parent classes.
 
 import collections
 
-from   ngamsCore import TRACE
-import ngamsDbCore
+from. import ngamsDbCore
+from .ngamsCore import TRACE
 
 
 class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):

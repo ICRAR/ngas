@@ -24,12 +24,13 @@ A collection of methods used to deal with the DbSnapshot feature and its
 bits and pieces
 """
 
-import cPickle
 import glob
 import logging
 import os
 import time
 import types
+
+from six.moves import cPickle # @UnresolvedImport
 
 from ngamsLib import ngamsDbCore, ngamsLib, ngamsFileInfo, ngamsHighLevelLib, \
     ngamsDbm, ngamsNotification
@@ -37,7 +38,7 @@ from ngamsLib.ngamsCore import NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, \
     checkCreatePath, NGAMS_DB_CH_CACHE, rmFile, NGAMS_PICKLE_FILE_EXT, \
     NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, \
     toiso8601, NGAMS_NOTIF_DATA_CHECK, NGAMS_TEXT_MT
-from ngamsJanitorCommon import checkStopJanitorThread, StopJanitorThreadException
+from .ngamsJanitorCommon import checkStopJanitorThread, StopJanitorThreadException
 
 
 try:

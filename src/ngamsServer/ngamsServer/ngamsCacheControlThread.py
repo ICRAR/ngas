@@ -35,11 +35,11 @@ to manage the contents in the cache archive when running the NG/AMS Server
 as a cache archive.
 """
 import base64
-import cPickle
 import logging
 import os
 import time
 
+from six.moves import cPickle # @UnresolvedImport
 import sqlite3 as sqlite
 
 from ngamsLib.ngamsCore import TRACE, rmFile, genLog, loadPlugInEntryPoint

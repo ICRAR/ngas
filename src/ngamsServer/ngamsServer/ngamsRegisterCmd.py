@@ -31,10 +31,8 @@
 Contains functions for handling the REGISTER command.
 """
 
-import commands
 import logging
 import os
-import thread
 import threading
 import time
 
@@ -47,8 +45,8 @@ from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint, toiso8601
 from ngamsLib import ngamsDbm, ngamsReqProps, ngamsFileInfo, ngamsDbCore, \
     ngamsHighLevelLib, ngamsDiskUtils, ngamsLib, ngamsFileList, \
-    ngamsNotification, ngamsDiskInfo, ngamsPlugInApi
-import ngamsArchiveUtils, ngamsCacheControlThread
+    ngamsNotification, ngamsDiskInfo, ngamsPlugInApi, ngamsCore
+from . import ngamsArchiveUtils, ngamsCacheControlThread
 
 logger = logging.getLogger(__name__)
 
@@ -153,10 +151,10 @@ def _registerExec(srvObj,
     sortFileList = tmpFilePat + "_SORT_FILE_LIST"
     rmFile(sortFileList)
     shellCmd = "sort %s > %s" % (tmpFileList, sortFileList)
-    stat, out = commands.getstatusoutput(shellCmd)
+    stat, out, err = ngamsCore.execCmd(shellCmd)
     if (stat != 0):
-        raise Exception("Error executing command: %s. Error: %s" %\
-              (shellCmd, str(out)))
+        raise Exception("Error executing command: %s. Error: %s, %s" %\
+              (shellCmd, str(out), str(err)))
     rmFile(tmpFileList)
 
     # Go through each file in the list, check if the mime-type is among the
@@ -456,7 +454,7 @@ def _registerThread(srvObj,
         _registerExec(srvObj, fileListDbmName, tmpFilePat, diskInfoDic,
                       reqPropsObj)
         rmFile(tmpFilePat + "*")
-        thread.exit()
+        return
     except Exception:
         logger.exception("Exception raised in Register Sub-Thread")
         rmFile(tmpFilePat + "*")

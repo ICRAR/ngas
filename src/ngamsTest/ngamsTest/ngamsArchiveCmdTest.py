@@ -33,7 +33,6 @@ Contains the Test Suite for the ARCHIVE Command.
 """
 
 import contextlib
-import cPickle
 import functools
 import getpass
 import glob
@@ -42,11 +41,13 @@ import subprocess
 from multiprocessing.pool import ThreadPool
 from unittest.case import skip, skipIf
 
+from six.moves import cPickle # @UnresolvedImport
+
 from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
     NGAMS_SUCCESS, getDiskSpaceAvail, mvFile, NGAMS_FAILURE
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
     ngamsCore, ngamsHttpUtils
-from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
+from .ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     saveInFile, filterDbStatus1, sendPclCmd, pollForFile, \
     sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
     copyFile, genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp

@@ -43,18 +43,14 @@ import threading
 import random
 import tempfile
 import time
-import urllib
 
-from ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
+from .ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
     NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE,\
     NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
     checkCreatePath, checkAvailDiskSpace,\
     getFileSize, NGAMS_BAD_FILES_DIR, NGAMS_BAD_FILE_PREFIX, NGAMS_STATUS_CMD,\
     mvFile, rmFile, NGAMS_HTTP_UNAUTH, NGAMS_HTTP_SUCCESS
-import ngamsSmtpLib
-import ngamsLib
-import ngamsHostInfo, ngamsStatus
-import ngamsHttpUtils
+from . import ngamsSmtpLib, ngamsLib, ngamsHostInfo, ngamsHttpUtils
 
 
 logger = logging.getLogger(__name__)

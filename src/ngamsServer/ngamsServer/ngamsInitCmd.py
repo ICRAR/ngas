@@ -33,7 +33,7 @@ Function + code to handle the INIT command.
 
 import logging
 
-import ngamsSrvUtils
+from . import ngamsSrvUtils
 from ngamsLib.ngamsCore import NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE
 
 

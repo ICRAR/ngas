@@ -34,8 +34,8 @@ import logging
 import os
 import time
 
-import ngamsContainer, ngamsFileInfo
-from ngamsCore import checkCreatePath
+from . import ngamsContainer, ngamsFileInfo
+from .ngamsCore import checkCreatePath
 
 
 logger = logging.getLogger(__name__)

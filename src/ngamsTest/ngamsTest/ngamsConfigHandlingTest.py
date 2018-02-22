@@ -36,7 +36,7 @@ DB is tested.
 import re
 
 from ngamsLib import ngamsConfig, ngamsDb
-from ngamsTestLib import delNgasTbls, ngamsTestSuite, \
+from .ngamsTestLib import delNgasTbls, ngamsTestSuite, \
     saveInFile, sendPclCmd, filterDbStatus1, db_aware_cfg
 
 

@@ -33,8 +33,8 @@
 Class to handle the information in connection with one entry in the NGAS Cache.
 """
 
-from ngamsCore import TRACE
-import ngamsFileSummary1
+from .ngamsCore import TRACE
+from . import ngamsFileSummary1
 
 
 class ngamsCacheEntry(ngamsFileSummary1.ngamsFileSummary1):

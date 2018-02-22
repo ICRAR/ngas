@@ -38,8 +38,9 @@ import tempfile
 import threading
 import time
 
-from ngamsCore import TRACE, toiso8601, fromiso8601
 from DBUtils.PooledDB import PooledDB
+
+from .ngamsCore import TRACE, toiso8601, fromiso8601
 
 # Global DB Semaphore to protect critical, global DB interaction.
 _globalDbSem = threading.Semaphore(1)

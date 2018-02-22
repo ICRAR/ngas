@@ -34,8 +34,8 @@ Class to handle the information in connection with one Mirroring Request.
 
 import time
 
-from ngamsCore import TRACE, toiso8601
-import ngamsLib
+from . import ngamsLib
+from .ngamsCore import TRACE, toiso8601
 
 
 # TODO: Add writeMirroringReq() in ngamsDbJoin.py

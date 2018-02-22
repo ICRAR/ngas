@@ -35,10 +35,10 @@ import logging
 import os
 import threading
 import time
-import urllib, thread
+import urllib
 
-import ngamsArchiveUtils, ngamsSrvUtils, ngamsFileUtils
-import ngamsCacheControlThread
+from . import ngamsArchiveUtils, ngamsSrvUtils, ngamsFileUtils
+from . import ngamsCacheControlThread
 from ngamsLib import ngamsNotification, ngamsFileInfo, ngamsDiskInfo
 from ngamsLib import ngamsReqProps, ngamsHighLevelLib, ngamsDapiStatus
 from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE, \
@@ -46,7 +46,7 @@ from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE, \
     rmFile, getFileSize, NGAMS_XML_MT, NGAMS_FAILURE, checkCreatePath, \
     mvFile, getFileCreationTime, NGAMS_SUCCESS, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_CLONE_CMD, NGAMS_CLONE_THR, \
-    NGAMS_HTTP_SUCCESS, toiso8601
+    toiso8601
 from ngamsLib import ngamsDbm, ngamsFileList, ngamsStatus, ngamsDiskUtils, ngamsLib
 
 logger = logging.getLogger(__name__)
@@ -571,7 +571,7 @@ def _cloneExec(srvObj,
                              fio.getDiskId(), hostId, str(e)])
             if (abortCloneLoop):
                 logger.error(errMsg, extra={'to_syslog': True})
-                thread.exit()
+                return
             else:
                 logger.warning(errMsg)
                 if (emailNotif):
@@ -933,7 +933,7 @@ def _cloneThread(srvObj,
                    reqPropsObj)
         rmFile(tmpFilePat + "*")
         logger.info("Processing of Clone Request completed")
-        thread.exit()
+        return
     except Exception:
         rmFile(tmpFilePat + "*")
         raise

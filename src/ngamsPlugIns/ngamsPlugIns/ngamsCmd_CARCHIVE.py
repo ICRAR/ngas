@@ -37,7 +37,9 @@ from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, \
     NGAMS_STAGING_DIR, genUniqueId, mvFile, getFileCreationTime, \
     NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, toiso8601, FMT_DATE_ONLY
 from ngamsLib import ngamsMIMEMultipart, ngamsHighLevelLib, ngamsFileInfo
+from ngamsLib import ngamsPlugInApi
 from ngamsServer import ngamsCacheControlThread, ngamsArchiveUtils
+from . import ngamsGenDapi
 
 
 logger = logging.getLogger(__name__)
@@ -237,9 +239,6 @@ def handleCmd(srvObj,
     reqPropsObj.incIoTime(ioTime)
 
     createContainers(rootContainer, None, srvObj)
-
-    from ngamsLib import ngamsPlugInApi
-    import ngamsGenDapi
 
     parDic = {}
     ngamsGenDapi.handlePars(reqPropsObj, parDic)

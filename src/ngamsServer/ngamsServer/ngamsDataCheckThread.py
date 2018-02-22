@@ -32,7 +32,6 @@ This module contains the code for the Data Check Thread, which is used
 to check the data holding in connection with one NGAS host.
 """
 
-import cPickle
 import glob
 import logging
 import os
@@ -40,7 +39,9 @@ import random
 import time
 import threading
 
-import ngamsFileUtils
+from six.moves import cPickle # @UnresolvedImport
+
+from . import ngamsFileUtils
 from ngamsLib.ngamsCore import TRACE, NGAMS_DATA_CHECK_THR, \
     NGAMS_CACHE_DIR, checkCreatePath, isoTime2Secs, \
     rmFile, genLog, mvFile, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \

@@ -43,7 +43,7 @@ import uuid
 
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SERVICE_NA
-from ngamsTestLib import ngamsTestSuite, saveInFile, sendPclCmd, this_dir
+from .ngamsTestLib import ngamsTestSuite, saveInFile, sendPclCmd, this_dir
 
 
 # This module is used as a command by one of its own tests,

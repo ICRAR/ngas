@@ -36,7 +36,7 @@ import contextlib
 import os
 
 from ngamsLib import ngamsHttpUtils
-from ngamsTestLib import ngamsTestSuite
+from .ngamsTestLib import ngamsTestSuite
 
 
 class ngamsAuthorizationTest(ngamsTestSuite):

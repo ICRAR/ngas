@@ -41,7 +41,7 @@ import subprocess
 from ngamsLib import ngamsConfig, ngamsHttpUtils
 from ngamsLib.ngamsCore import getHostName, \
     checkCreatePath, rmFile, NGAMS_SUCCESS, mvFile
-from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
+from .ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
     sendPclCmd, genTmpFilename, unzip
 
 

@@ -34,7 +34,6 @@ NG/AMS implementation.
 The functions in this module can be used in all the NG/AMS code.
 """
 
-import cPickle
 import gzip
 import logging
 import os
@@ -43,7 +42,9 @@ import socket
 import string
 import urllib
 
-from ngamsCore import genLog, NGAMS_UNKNOWN_MT, rmFile
+from six.moves import cPickle # @UnresolvedImport
+
+from .ngamsCore import genLog, NGAMS_UNKNOWN_MT, rmFile
 
 
 logger = logging.getLogger(__name__)

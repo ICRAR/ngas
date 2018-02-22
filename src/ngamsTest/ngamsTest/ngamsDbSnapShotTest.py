@@ -38,7 +38,7 @@ import time
 
 from ngamsLib.ngamsCore import NGAMS_CLONE_CMD, NGAMS_REMFILE_CMD, \
     NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD, cpFile
-from ngamsTestLib import saveInFile, ngamsTestSuite, sendPclCmd
+from .ngamsTestLib import saveInFile, ngamsTestSuite, sendPclCmd
 
 
 NM2IDX = "___NM2ID___"

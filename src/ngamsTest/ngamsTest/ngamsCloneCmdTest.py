@@ -36,7 +36,7 @@ import traceback
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_CLONE_CMD
 from ngamsLib import ngamsFileInfo, ngamsLib
-from ngamsTestLib import flushEmailQueue, saveInFile, \
+from .ngamsTestLib import flushEmailQueue, saveInFile, \
     filterDbStatus1, getEmailMsg, ngamsTestSuite, waitReqCompl, genErrMsgVals, \
     sendPclCmd, unzip, genTmpFilename
 

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsPlugInApi.py,v 1.6 2008/08/19 20:51:50 jknudstr Exp $"
@@ -34,15 +33,14 @@ Module containing functions to be used for implementing the different
 types of NG/AMS plug-ins.
 """
 
-import commands
 import logging
 import os
 import shutil
 
-from ngamsCore import NGAMS_SUCCESS, TRACE, checkCreatePath, execCmd as ngamsCoreExecCmd
-import ngamsDapiStatus
-import ngamsHighLevelLib, ngamsNotification
-import ngamsLib
+from .ngamsCore import NGAMS_SUCCESS, TRACE, checkCreatePath, execCmd as ngamsCoreExecCmd
+from . import ngamsDapiStatus
+from . import ngamsHighLevelLib, ngamsNotification
+from . import ngamsLib
 
 
 logger = logging.getLogger(__name__)
@@ -205,11 +203,8 @@ def execCmd(cmd,
                    [<exit code>, <stdout>]
     """
     logger.debug("Executing command: %s", cmd)
-    if (timeOut == -1):
-        return commands.getstatusoutput(cmd)
-    else:
-        exitCode, stdout, stderr = ngamsCoreExecCmd(cmd, timeOut)
-        return [exitCode, stdout]
+    exitCode, stdout, _ = ngamsCoreExecCmd(cmd, timeOut)
+    return [exitCode, stdout]
 
 
 def parseRawPlugInPars(rawPars):

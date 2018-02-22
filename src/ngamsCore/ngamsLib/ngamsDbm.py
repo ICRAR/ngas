@@ -33,13 +33,14 @@
 Contains definition of class for handling a DBM DB (BSDDB).
 """
 
-import cPickle
 import functools
 import logging
 import os
 import threading
 
-from ngamsCore import NGAMS_DBM_EXT, NGAMS_FILE_DB_COUNTER, rmFile
+from six.moves import cPickle  # @UnresolvedImport
+
+from .ngamsCore import NGAMS_DBM_EXT, NGAMS_FILE_DB_COUNTER, rmFile
 
 
 logger = logging.getLogger(__name__)

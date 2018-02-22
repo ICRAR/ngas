@@ -82,7 +82,7 @@ When the
 import threading
 import time
 
-from ngamsCore import TRACE
+from .ngamsCore import TRACE
 
 
 # Constants.

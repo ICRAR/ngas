@@ -33,8 +33,8 @@
 Contains the ngamsConfigBase class to handle the NG/AMS Configuration.
 """
 
-from ngamsCore import TRACE, genLog
-import ngamsXmlMgr
+from . import ngamsXmlMgr
+from .ngamsCore import TRACE, genLog
 
 
 class ngamsConfigBase:

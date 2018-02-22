@@ -35,8 +35,10 @@ UNSUBSCRIBE Command.
 """
 
 import logging
-import Queue
-import ngamsSubscriptionThread
+
+from six.moves import queue as Queue  # @UnresolvedImport
+
+from . import ngamsSubscriptionThread
 from ngamsLib.ngamsCore import TRACE, NGAMS_DELIVERY_THR, \
     genLog, NGAMS_SUBSCRIBE_CMD, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
 from ngamsLib import ngamsLib

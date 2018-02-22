@@ -32,9 +32,6 @@ This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
 """
 
-import BaseHTTPServer
-import Queue
-import SocketServer
 import collections
 import contextlib
 import logging
@@ -51,6 +48,11 @@ import time
 import traceback
 import uuid
 
+from six.moves import reduce # @UnresolvedImport
+from six.moves import socketserver # @UnresolvedImport
+from six.moves import BaseHTTPServer  # @UnresolvedImport
+from six.moves import queue as Queue  # @UnresolvedImport
+
 import netifaces
 import pkg_resources
 
@@ -65,13 +67,13 @@ from ngamsLib.ngamsCore import genLog, TRACE, getNgamsVersion, \
 from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils
 from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
-import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
-import ngamsJanitorThread
-import ngamsDataCheckThread
-import ngamsUserServiceThread
-import ngamsMirroringControlThread
-import ngamsCacheControlThread
-import request_db
+from . import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
+from . import ngamsJanitorThread
+from . import ngamsDataCheckThread
+from . import ngamsUserServiceThread
+from . import ngamsMirroringControlThread
+from . import ngamsCacheControlThread
+from . import request_db
 from . import pysendfile
 
 
@@ -86,7 +88,7 @@ def get_all_ipaddrs():
     inet_addrs = [addrs[proto] for addrs in iface_addrs if proto in addrs]
     return [addr['addr'] for addrs in inet_addrs for addr in addrs if 'addr' in addr]
 
-class ngamsHttpServer(SocketServer.ThreadingMixIn,
+class ngamsHttpServer(socketserver.ThreadingMixIn,
                       BaseHTTPServer.HTTPServer):
     """
     Class that provides the multithreaded HTTP server functionality.
@@ -115,7 +117,7 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
             wfile.write(b'HTTP/1.0 503 Service Unavailable\r\n\r\n')
             return
 
-        SocketServer.ThreadingMixIn.process_request(self, request, client_address)
+        socketserver.ThreadingMixIn.process_request(self, request, client_address)
 
 
 class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):

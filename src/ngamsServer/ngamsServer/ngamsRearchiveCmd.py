@@ -42,8 +42,8 @@ import os
 import time
 import urllib
 
-import ngamsArchiveUtils
-import ngamsFileUtils, ngamsCacheControlThread
+from . import ngamsArchiveUtils
+from . import ngamsFileUtils, ngamsCacheControlThread
 from ngamsLib import ngamsLib
 from ngamsLib import ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils

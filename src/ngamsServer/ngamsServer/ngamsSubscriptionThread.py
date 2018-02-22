@@ -35,15 +35,15 @@ used to handle the delivery of data to Subscribers.
 """
 
 import logging
-import thread
 import threading
 import time
 import os
 import base64
-import urlparse
-from Queue import Queue, Empty, PriorityQueue
 
-import ngamsCacheControlThread
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
+from six.moves.queue import Queue, Empty, PriorityQueue  # @UnresolvedImport
+
+from . import ngamsCacheControlThread
 from ngamsLib.ngamsCore import TRACE, NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
     NGAMS_SUBSCR_BACK_LOG, NGAMS_DELIVERY_THR,\
     NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, NGAMS_FAILURE,\
@@ -636,6 +636,7 @@ def _deliveryThread(srvObj,
 
     subscrbId = subscrObj.getId();
     tname = threading.current_thread().name
+    tident = threading.current_thread().ident
     remindMainThread = True # whether to notify the subscriptionThread when the queue is empty in order to bypass static suspension time
     firstThread = (threading.current_thread().name == NGAMS_DELIVERY_THR + subscrbId + '0')
 
@@ -651,7 +652,7 @@ def _deliveryThread(srvObj,
                 fileInfo = quChunks.get(timeout = 1)
                 srvObj._subscrDeliveryFileDic[tname] = fileInfo # once it is dequeued, it is no longer safe, so need to record it in case server shut down.
             except Empty:
-                logger.debug("Data delivery thread [%s] block timeout", str(thread.get_ident()))
+                logger.debug("Data delivery thread [%s] block timeout", str(tident))
                 _checkStopDataDeliveryThread(srvObj, subscrbId) # Timeout allows it to check if the delivery thread should stop
                 # if delivery thread is to continue, trigger the subscriptionThread to get more files in
                 if (srvObj.getDataMoverOnlyActive() and remindMainThread and firstThread):
@@ -702,7 +703,7 @@ def _deliveryThread(srvObj,
             contDisp = 'attachment; filename="{0}"; file_id={1}'.format(baseName, fileId)
 
             msg = "Thread [%s] Delivering file: %s/%s - to Subscriber with ID: %s"
-            logger.info(msg, str(thread.get_ident()), baseName, str(fileVersion), subscrObj.getId())
+            logger.info(msg, str(tident), baseName, str(fileVersion), subscrObj.getId())
 
             ex = ""
             stat = ngamsStatus.ngamsStatus()
@@ -845,14 +846,14 @@ def _deliveryThread(srvObj,
                         errMsg = "Error occurred while executing job plugin on file: " + baseName +\
                                  "/" + str(fileVersion) +\
                                  " - for Subscriber/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() +\
-                                 " by Job Thread [" + str(thread.get_ident()) + "]"
+                                 " by Job Thread [" + str(tident) + "]"
                     else:
                         _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
                         updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 1, ex + stat.getMessage())
                         errMsg = "Error occurred while delivering file: " + baseName +\
                                  "/" + str(fileVersion) +\
                                  " - to Subscriber/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() +\
-                                 " by Delivery Thread [" + str(thread.get_ident()) + "]"
+                                 " by Delivery Thread [" + str(tident) + "]"
 
                     if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
                         # remove bl record from the dict
@@ -868,14 +869,14 @@ def _deliveryThread(srvObj,
                     if (runJob):
                         updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, jpiResult)
                         logger.info("File: %s/%s executed by %s for Subscriber: %s by Job Thread [%s]",
-                                     baseName, str(fileVersion), plugIn, subscrObj.getId(), str(thread.get_ident()))
+                                     baseName, str(fileVersion), plugIn, subscrObj.getId(), str(tident))
                     else:
                         howlong = time.time() - st
                         fileSize = getFileSize(filename)
                         transfer_rate = '%.0f Bytes/s' % (fileSize / howlong)
                         updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, transfer_rate)
                         logger.info("File: %s/%s delivered to Subscriber: %s by Delivery Thread [%s]",
-                                     baseName, str(fileVersion), subscrObj.getId(), str(thread.get_ident()))
+                                     baseName, str(fileVersion), subscrObj.getId(), str(tident))
 
                     if (srvObj.getCachingActive()):
                         fkey = fileId + "/" + str(fileVersion)
@@ -912,7 +913,7 @@ def _deliveryThread(srvObj,
                         # continue with warning message. this means the database (i.e. last_ingestion_date) is not synchronised for this file,
                         # but at least remaining files can be delivered continuously, the database may be back in sync upon delivering remaining files
                         errMsg = "Error occurred during update the ngas_subscriber table " +\
-                             "_devliveryThread [" + str(thread.get_ident()) + "] Exception: " + str(e)
+                             "_devliveryThread [" + str(tident) + "] Exception: " + str(e)
                         logger.warning(errMsg)
 
                     # If the file is back-log buffered, we check if we can delete it.
@@ -933,8 +934,8 @@ def _deliveryThread(srvObj,
         except Exception as be:
             if (str(be).find("_STOP_DELIVERY_THREAD_") != -1):
                 # Stop delivery thread.
-                logger.debug('Delivery thread [%s] is exiting.', str(thread.get_ident()))
-                thread.exit()
+                logger.debug('Delivery thread [%s] is exiting.', str(tident))
+                break
             logger.exception("Error occurred during file delivery: %s", str(be))
 
 
@@ -1424,7 +1425,7 @@ def subscriptionThread(srvObj,
             except:
                 pass
             rmFile(fileDicDbmName + "*")
-            if (str(e).find("_STOP_SUBSCRIPTION_THREAD_") != -1): thread.exit()
+            if (str(e).find("_STOP_SUBSCRIPTION_THREAD_") != -1): break
             errMsg = "Error occurred during execution of the Data " +\
                      "Subscription Thread."
             logger.exception(errMsg)

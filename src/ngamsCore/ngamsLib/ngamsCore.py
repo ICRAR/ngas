@@ -61,10 +61,10 @@ import calendar
 import collections
 import errno
 import glob
+import hashlib
 import importlib
 import logging
 import math
-import md5
 import os
 import shutil
 import socket
@@ -75,7 +75,8 @@ import subprocess
 
 import pkg_resources
 
-import logdefs
+from . import utils
+from . import logdefs
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ logger = logging.getLogger(__name__)
 # Handle NG/AMS Version.
 _NGAMS_SW_VER   = ""
 _NGAMS_VER_DATE = ""
-for line in pkg_resources.resource_string('ngamsData', 'VERSION').splitlines():
+for line in utils.b2s(pkg_resources.resource_string('ngamsData', 'VERSION')).splitlines():
     if "NGAMS_SW_VER" in line:
         _NGAMS_SW_VER = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]
     elif "VER_DATE" in line:
@@ -98,7 +99,7 @@ def getNgamsLicense():
 
     Returns:   Contents of license agreement (string).
     """
-    return pkg_resources.resource_string('ngamsData', 'COPYING')
+    return utils.b2s(pkg_resources.resource_string('ngamsData', 'COPYING'))
 
 
 def prFormat1():
@@ -422,7 +423,7 @@ def genUniqueId():
 
     Returns:  Unique ID (string).
     """
-    return md5.new("%.12f-%s" % (time.time(), getHostName())).hexdigest()
+    return hashlib.md5("%.12f-%s" % (time.time(), getHostName())).hexdigest()
 
 
 def createSortDicDump(dic):

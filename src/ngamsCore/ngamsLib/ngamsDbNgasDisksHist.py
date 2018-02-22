@@ -39,8 +39,8 @@ import logging
 import re
 import time
 
-from ngamsCore import TRACE, NGAMS_XML_MT, toiso8601
-import ngamsDbCore
+from .ngamsCore import TRACE, NGAMS_XML_MT, toiso8601
+from . import ngamsDbCore
 
 
 logger = logging.getLogger(__name__)

@@ -33,7 +33,7 @@ import subprocess
 import unittest
 
 from ngamsLib import ngamsHttpUtils
-from ngamsTestLib import ngamsTestSuite
+from .ngamsTestLib import ngamsTestSuite
 from ngamsServer import ngamsFileUtils
 
 # If there's any problem getting bbcp's version

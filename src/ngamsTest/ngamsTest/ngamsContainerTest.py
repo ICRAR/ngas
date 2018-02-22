@@ -26,7 +26,7 @@ import string
 
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE, toiso8601
 from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
-from ngamsTestLib import sendPclCmd, ngamsTestSuite
+from .ngamsTestLib import sendPclCmd, ngamsTestSuite
 
 
 class ngamsContainerTest(ngamsTestSuite):

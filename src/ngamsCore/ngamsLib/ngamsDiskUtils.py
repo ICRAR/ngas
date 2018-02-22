@@ -35,17 +35,16 @@ Contains utilities for handling the disk configuration.
 import logging
 import os
 import re
-import string
 import threading
 import time
 
-from ngamsCore import TRACE, getNgamsVersion, genLog, \
+from .ngamsCore import TRACE, getNgamsVersion, genLog, \
     NGAMS_DB_DIR, checkCreatePath, NGAMS_DB_CH_CACHE, NGAMS_NOTIF_ERROR,\
     NGAMS_SUCCESS, NGAMS_NOTIF_NO_DISKS, NGAMS_FAILURE,\
     NGAMS_DISK_INFO, getDiskSpaceAvail, toiso8601
-import ngamsNotification
-import ngamsLib
-import ngamsDiskInfo, ngamsStatus
+from . import ngamsNotification
+from . import ngamsLib
+from . import ngamsDiskInfo, ngamsStatus
 
 
 logger = logging.getLogger(__name__)

@@ -38,9 +38,9 @@ import logging
 import os
 import types
 
-from   ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
-import ngamsConfigBase, ngamsSubscriber
-import ngamsStorageSet, ngamsStream, ngamsMirroringSource
+from . import ngamsConfigBase, ngamsSubscriber
+from . import ngamsStorageSet, ngamsStream, ngamsMirroringSource
+from .ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
 
 
 logger = logging.getLogger(__name__)

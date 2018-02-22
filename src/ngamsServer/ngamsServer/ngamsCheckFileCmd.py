@@ -35,7 +35,7 @@ Contains the functions to handle the CHECKFILE command.
 
 import logging
 
-import ngamsFileUtils
+from . import ngamsFileUtils
 from ngamsLib import ngamsDbCore
 from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, genLog, NGAMS_HOST_CLUSTER
 
