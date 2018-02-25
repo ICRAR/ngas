@@ -65,7 +65,7 @@ def default_if_empty(env, key, default):
 def whatsmyip():
     """
     Returns the external IP address of the host running fab.
-    
+
     NOTE: This is only used for EC2 setups, thus it is assumed
     that the host is on-line.
     """
@@ -81,6 +81,8 @@ def home():
     return run('echo $HOME')
 
 @task
+# parallel does not work with this implementation. Needs to deal with the hosts
+# individually.
 #@parallel
 def check_ssh(timeout=60.):
     """

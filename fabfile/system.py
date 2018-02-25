@@ -91,7 +91,7 @@ def check_user(user):
     Task checking existence of user
     """
     res = run('if id -u "{0}" >/dev/null 2>&1; then echo 1; else echo 0; fi;'.format(user))
-    if res == '0': 
+    if res == '0':
         puts('User {0} does not exist'.format(user))
         return False
     else:
@@ -171,7 +171,8 @@ def assign_ddns():
     requires some manual input. Then the noip2 client is started in background.
     """
     with cd('/usr/local/src'):
-        download('http://www.no-ip.com/client/linux/noip-duc-linux.tar.gz')
+        download('http://www.no-ip.com/client/linux/noip-duc-linux.tar.gz',
+                 root=True)
         sudo('tar xf noip-duc-linux.tar.gz')
         sudo('cd noip-2.1.9-1')
         sudo('make install')
@@ -209,16 +210,20 @@ def postfix_config():
     # Start it
     sudo('service postfix start')
 
-def download(url, target=None):
+def download(url, target=None, root=False):
     if target is None:
         parts = urlparse.urlparse(url)
         target = parts.path.split('/')[-1]
     if check_command('wget'):
-        run('wget --no-check-certificate -q -O {0} {1}'.format(target, url))
+        cmd = 'wget --no-check-certificate -q -O {0} {1}'.format(target, url)
     elif check_command('curl'):
-        run('curl -o {0} {1}'.format(target, url))
+        cmd = 'curl -o {0} {1}'.format(target, url)
     else:
         raise Exception("Neither wget nor curl are installed")
+    if root:
+        sudo(cmd)
+    else:
+        run(cmd)
     return target
 
 
