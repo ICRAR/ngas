@@ -176,8 +176,10 @@ def assign_ddns():
         sudo('tar xf noip-duc-linux.tar.gz')
         sudo('cd noip-2.1.9-1')
         sudo('make install')
-    sudo('noip2 -C')
-    # TODO: put startup script in repo and install it
+        sudo('noip2 -C')
+    # TODO: put correct startup script in repo and install it
+    # sudo('cp redhat.noip.sh /etc/init.d/noip')
+    # sudo('chmod a+x /etc/init.d/noip')
     # sudo('chkconfig noip on')
     # sudo('service noip start')
     puts(green("\n***** Dynamic IP address assigned ******\n"))
