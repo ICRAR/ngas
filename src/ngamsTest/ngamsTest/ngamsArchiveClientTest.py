@@ -35,13 +35,12 @@ import glob
 import os
 import shutil
 import subprocess
-import sys
 import time
 import unittest
 
 from ngamsLib import ngamsStatus
 from ngamsLib.ngamsCore import terminate_or_kill
-from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, runTest, \
+from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
     has_program
 
 
@@ -199,22 +198,3 @@ class ngamsArchiveClientTest(ngamsTestSuite):
                 # (len(globFile2StatPat)):
                 errMsg = "Did not remove status XML document: "+file2StatPat[0]
             self.fail(errMsg)
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsArchiveClientTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

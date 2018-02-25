@@ -31,11 +31,9 @@
 This module contains the Test Suite for the CHECKFILE Command.
 """
 
-import sys
-
 from ngamsLib.ngamsCore import getHostName, NGAMS_CHECKFILE_CMD
 from ngamsTestLib import ngamsTestSuite, sendPclCmd, saveInFile, \
-    loadFile, sendExtCmd, runTest
+    loadFile, sendExtCmd
 
 
 class ngamsCheckFileCmdTest(ngamsTestSuite):
@@ -197,22 +195,3 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsCheckFileCmdTest_test_ProxyMode_01_01_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling of "+\
                           "CHECKFILE Command detected")
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsCheckFileCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

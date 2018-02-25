@@ -49,7 +49,7 @@ from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
     rmFile, NGAMS_SUCCESS, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
     getHostName, loadPlugInEntryPoint, checkCreatePath, NGAMS_HTTP_HDR_CHECKSUM,\
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE,\
-    NGAMS_HTTP_SUCCESS, NGAMS_NOTIF_ERROR
+    NGAMS_NOTIF_ERROR
 from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib,\
     ngamsHttpUtils
 from ngamsLib import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
@@ -199,7 +199,7 @@ def archive_contents(out_fname, fin, fsize, block_size, crc_name, skip_crc=False
     return archiving_results(readin, rtime, wtime, crctime, total_time, crc_name, crc)
 
 
-def archive_contents_from_request(out_fname, cfg, req, skip_crc=False, transfer=None):
+def archive_contents_from_request(out_fname, cfg, req, rfile, skip_crc=False, transfer=None):
     """
     Inspects the given configuration and request objects, and calls
     archive_contents with the required arguments.
@@ -218,8 +218,7 @@ def archive_contents_from_request(out_fname, cfg, req, skip_crc=False, transfer=
     def http_transfer(req, out_fname, crc_name, skip_crc):
         block_size = cfg.getBlockSize()
         size = req.getSize()
-        fin = req.getReadFd()
-        return archive_contents(out_fname, fin, size, block_size, crc_name, skip_crc)
+        return archive_contents(out_fname, rfile, size, block_size, crc_name, skip_crc)
 
     transfer = transfer or http_transfer
     result = transfer(req, out_fname, crc_name, skip_crc=skip_crc)
@@ -958,9 +957,9 @@ def archiveInitHandling(srvObj, reqPropsObj, httpRef, do_probe=False, try_to_pro
         except Exception:
             msg = genLog("NGAMS_ER_ARCH_REQ_NOK",
                          [mimeType, getHostName()])
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                     NGAMS_SUCCESS, msg)
-        return None
+
+        httpRef.send_status(msg)
+        return
 
     # Check if the URI is correctly set.
     if not reqPropsObj.getFileUri():
@@ -969,16 +968,12 @@ def archiveInitHandling(srvObj, reqPropsObj, httpRef, do_probe=False, try_to_pro
 
     # Act possibly as proxy for the Achive Request?
     # TODO: Support maybe HTTP redirection also for Archive Requests.
-    try:
-        if (try_to_proxy and
-            srvObj.getCfg().getStreamFromMimeType(mimeType).getHostIdList()):
-            host_id, host, port = findTargetNode(srvObj, mimeType)
-            if host_id != srvObj.getHostId():
-                srvObj.forwardRequest(reqPropsObj, httpRef, host_id, host, port,
-                                      mimeType=mimeType)
-                return None
-    except Exception:
-        pass
+    if (try_to_proxy and
+        srvObj.getCfg().getStreamFromMimeType(mimeType).getHostIdList()):
+        host_id, host, port = findTargetNode(srvObj, mimeType)
+        if host_id != srvObj.getHostId():
+            httpRef.proxy_request(host_id, host, port)
+            return None
 
     return mimeType
 
@@ -1025,9 +1020,10 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         # urllib.urlopen will attempt to get the content-length based on the URI
         # i.e. file, ftp, http
         reqPropsObj.setSize(handle.info()['Content-Length'])
-        reqPropsObj.setReadFd(handle)
+        rfile = handle
     else:
         logger.info("Handling archive push request")
+        rfile = httpRef.rfile
 
     logger.info(genLog("NGAMS_INFO_ARCHIVING_FILE", [reqPropsObj.getFileUri()]), extra={'to_syslog': True})
 
@@ -1076,7 +1072,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         try:
             ngamsHighLevelLib.acquireDiskResource(cfg, trgDiskInfo.getSlotId())
             archive_result = archive_contents_from_request(tmpStagingFilename, cfg, reqPropsObj,
-                                                   skip_crc=skip_crc, transfer=transfer)
+                                                           rfile, skip_crc=skip_crc, transfer=transfer)
         finally:
             ngamsHighLevelLib.releaseDiskResource(cfg, trgDiskInfo.getSlotId())
 
@@ -1088,8 +1084,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         if pickle_request:
             srvObj.test_AfterSaveInStagingFile()
             logger.debug("Create Temporary Request Properties File: %s", tmpReqPropsFilename)
-            tmpReqPropsObj = reqPropsObj.clone().setReadFd(None).setWriteFd(None).\
-                             setTargDiskInfo(None)
+            tmpReqPropsObj = reqPropsObj.clone().setTargDiskInfo(None)
             ngamsLib.createObjPickleFile(tmpReqPropsFilename, tmpReqPropsObj)
             srvObj.test_AfterCreateTmpPropFile()
             logger.debug("Move Temporary Request Properties File to Request " + \
@@ -1206,8 +1201,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     msg = msg % ('Pull' if reqPropsObj.is_GET() else 'Push', reqPropsObj.getSafeFileUri())
     logger.info(msg)
 
-    srvObj.ingestReply(reqPropsObj, httpRef,NGAMS_HTTP_SUCCESS,
-                       NGAMS_SUCCESS, msg, diskInfo)
+    httpRef.send_ingest_status(msg, diskInfo)
 
     # After a successful archiving we notify the archive event subscribers
     srvObj.fire_archive_event(plugin_result.getFileId(), plugin_result.getFileVersion())
@@ -1278,7 +1272,7 @@ def findTargetNode(srvObj, mimeType):
             if "NGAMS_INFO_ARCH_REQ_OK" in statObj.getMessage():
                 logMsg = "Found remote Archiving Unit: %s:%d to handle " +\
                          "Archive Request for data file with mime-type: %s"
-                logger.debug(logMsg, host, port, mimeType)
+                logger.info(logMsg, host, port, mimeType)
                 return hostId, host, port
 
             logMsg = "Remote Archiving Unit: %s:%d rejected to/" +\

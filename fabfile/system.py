@@ -223,7 +223,7 @@ def download(url, target=None):
 
 
 APP_PYTHON_VERSION = '2.7'
-APP_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.12/Python-2.7.12.tgz'
+APP_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.14/Python-2.7.14.tgz'
 
 @task
 def check_python():

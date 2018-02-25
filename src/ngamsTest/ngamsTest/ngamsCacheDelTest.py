@@ -20,9 +20,8 @@
 #    MA 02111-1307  USA
 #
 import contextlib
-import sys
 
-from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd
+from ngamsTestLib import ngamsTestSuite, sendPclCmd
 from ngamsLib import ngamsHttpUtils
 
 def delete_ngas_file(host, port, file_id, file_version, disk_id, timeout = 10):
@@ -46,9 +45,3 @@ class ngamsCacheDelTest(ngamsTestSuite):
         status = delete_ngas_file('localhost', 8888, 'TEST.2001-05-08T15:25:00.123', 1,
                                         r.getDiskStatusList()[0].getDiskId())
         self.assertEquals(status, 200, None)
-
-def run():
-    runTest(["ngamsCacheDelTest"])
-
-if __name__ == '__main__':
-    runTest(sys.argv)

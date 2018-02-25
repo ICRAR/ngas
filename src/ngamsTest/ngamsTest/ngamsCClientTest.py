@@ -33,15 +33,13 @@ This module contains the Test Suite for the NG/AMS C-Client and C-API.
 
 import os
 import subprocess
-import sys
 import time
 import unittest
 
 from ngamsLib import ngamsStatus
 from ngamsLib.ngamsCore import getHostName, rmFile, cpFile, execCmd
 from ngamsTestLib import ngamsTestSuite, saveInFile, loadFile, \
-    filterOutLines, sendPclCmd, STD_DISK_STAT_FILT, runTest, \
-    has_program
+    filterOutLines, sendPclCmd, STD_DISK_STAT_FILT, has_program
 
 
 def _execCClient(unpackXmlStat = 1,
@@ -550,6 +548,7 @@ class ngamsCClientTest(ngamsTestSuite):
                           "of corrupt server HTTP response in C-Client/API")
 
 
+    @unittest.skipUnless(has_program('uncompress'), 'external uncompress program unavailable')
     def test_ArchiveCmd_Err_5_1(self):
         """
         Synopsis:
@@ -761,22 +760,3 @@ class ngamsCClientTest(ngamsTestSuite):
         if (nodeCount != noOfNodes):
             self.fail("Not all specified NGAS Nodes were contacted " +\
                       "within %d attempts" % noOfAttempts)
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsCClientTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

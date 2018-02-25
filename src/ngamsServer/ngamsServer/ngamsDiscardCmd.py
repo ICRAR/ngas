@@ -54,7 +54,7 @@ import os
 
 from ngamsLib.ngamsCore import getHostName, genLog, rmFile, TRACE, \
     NGAMS_DISCARD_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, NGAMS_FAILURE
-from ngamsLib import ngamsHighLevelLib, ngamsLib
+from ngamsLib import ngamsLib
 
 
 _help = """
@@ -202,9 +202,7 @@ def handleCmd(srvObj,
 
     if (reqPropsObj.hasHttpPar("help")):
         global _help
-        srvObj.reply(reqPropsObj.setCompletionTime(), httpRef,
-                     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, _help)
-        return
+        return _help
 
     if (not srvObj.getCfg().getAllowRemoveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Discard File"])
@@ -238,12 +236,10 @@ def handleCmd(srvObj,
                             "value for parameter: execute (0|1)"])
             raise Exception, errMsg
 
-    status = _discardFile(srvObj, diskId, fileId, fileVersion, hostId, path, execute)
-    if (status.find("NGAMS_INFO_") == 0):
-        ngamsStat = NGAMS_SUCCESS
+    msg = _discardFile(srvObj, diskId, fileId, fileVersion, hostId, path, execute)
+    if msg.startswith("NGAMS_INFO_"):
+        status = NGAMS_SUCCESS
     else:
-        ngamsStat = NGAMS_FAILURE
-    srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, ngamsStat, status)
+        status = NGAMS_FAILURE
 
-
-# EOF
+    httpRef.send_status(msg, status=status, code=NGAMS_HTTP_SUCCESS)

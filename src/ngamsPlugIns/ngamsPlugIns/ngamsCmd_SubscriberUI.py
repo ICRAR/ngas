@@ -78,5 +78,4 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             f.write(line)
 
     # Get final buffer contents and write it back to the client
-    s = f.getvalue()
-    srvObj.httpReplyGen(reqPropsObj, httpRef, 200, contentType='text/html', dataRef=s)
+    httpRef.send_data(f.getvalue(), 'text/html')

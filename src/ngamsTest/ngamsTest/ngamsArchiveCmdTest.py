@@ -39,7 +39,6 @@ import getpass
 import glob
 import os
 import subprocess
-import sys
 from multiprocessing.pool import ThreadPool
 from unittest.case import skip, skipIf
 
@@ -49,7 +48,7 @@ from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
     ngamsCore, ngamsHttpUtils
 from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     saveInFile, filterDbStatus1, sendPclCmd, pollForFile, \
-    sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, runTest, \
+    sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
     copyFile, genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp
 from ngamsServer import ngamsFileUtils
 
@@ -1664,21 +1663,3 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                 self.terminateAllServer()
 
         os.unlink(test_file)
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsArchiveCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

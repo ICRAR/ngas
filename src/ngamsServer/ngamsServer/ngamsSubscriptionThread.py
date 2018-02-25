@@ -710,7 +710,9 @@ def _deliveryThread(srvObj,
             # If the target does not turn on the authentication (or even not an NGAS), this still works
             # as long as there is a user named "ngas-int" in the configuration file for the current server
             # But if the target is an NGAS server and the authentication is on, the target must have set a user named "ngas-int"
-            authHdr = srvObj.getCfg().getAuthHttpHdrVal(user = NGAMS_HTTP_INT_AUTH_USER)
+            authHdr = None
+            if srvObj.getCfg().getAuthUserInfo(NGAMS_HTTP_INT_AUTH_USER) is not None:
+                authHdr = srvObj.getCfg().getAuthHttpHdrVal(user = NGAMS_HTTP_INT_AUTH_USER)
             fileInfoObjHdr = None
             urlList = subscrObj.getUrlList()
             urlListLen = len(urlList)
@@ -890,6 +892,10 @@ def _deliveryThread(srvObj,
                                     # it is possible that backlogged files cannot find an entry in the reference count dic -
                                     # e.g. when the server is restarted, refcount dic is empty. Later on, back-logged files are queued for delivery.
                                     # but they did not create entries in refcount dic when they are queued
+                                    _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
+                                elif 'NGAS_FORCE_MARK_FOR_DELETION_AFTER_DELIVERY' in os.environ:
+                                    # Last chance to get marked for deletion
+                                    logger.warning('File %s/%d not found in the fileDeliveryCountDic, but marking for deletion anyway', fileId, fileVersion)
                                     _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
                                 else:
                                     logger.warning("Fail to find %s/%d in the fileDeliveryCountDic", fileId, fileVersion)

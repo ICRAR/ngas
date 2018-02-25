@@ -567,7 +567,7 @@ class ngamsPClient:
         with contextlib.closing(resp):
 
             if resp.status != NGAMS_HTTP_SUCCESS:
-                return ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read(), 1)
+                return ngamsStatus.to_status(resp, host_id, 'RETRIEVE')
 
             # If the target path is a directory, take the filename
             # of the incoming data as the filename
@@ -616,7 +616,8 @@ class ngamsPClient:
                   priority = None,
                   startDate = None,
                   filterPlugIn = None,
-                  filterPlugInPars = None):
+                  filterPlugInPars = None,
+                  pars=[]):
         """
         Subscribe to data from a Data Provider.
 
@@ -639,7 +640,8 @@ class ngamsPClient:
 
         Returns:            NG/AMS Status object (ngamsStatus).
         """
-        pars = [("url", url)]
+        pars = list(pars)
+        pars.append(("url", url))
         if priority is not None:
             pars.append(("priority", priority))
         if startDate:
@@ -880,6 +882,9 @@ def main():
     mtype = opts.mime_type
     pars = [p.split('=') for p in opts.param]
     if cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']:
+        if not opts.file_uri:
+            msg = "Must specify parameter --file-uri for a ARCHIVE/QARCHIVE commands"
+            raise Exception(msg)
         pars += [('file_version', opts.file_version)] if opts.file_version is not None else []
         stat = client.archive(opts.file_uri, mtype, opts.async, opts.no_versioning, cmd=cmd, pars=pars)
     elif cmd == "CARCHIVE":
@@ -923,14 +928,22 @@ def main():
     elif (cmd == NGAMS_REMDISK_CMD):
         stat = client.remDisk(opts.disk_id, opts.execute)
     elif (cmd == NGAMS_REMFILE_CMD):
-        stat = client.remFile(opts.disk_id, opts.file_id, opts.file_version, opts.execute)
+        stat = client.remFile(diskId=opts.disk_id, fileId=opts.file_id,
+                              fileVersion=opts.file_version, execute=opts.execute)
     elif (cmd == NGAMS_RETRIEVE_CMD):
-        stat = client.retrieve(opts.file_id, opts.file_version, pars, opts.output,
-                               opts.p_plugin, opts.p_plugin_pars)
+        stat = client.retrieve(opts.file_id, opts.file_version, pars=pars,
+                               targetFile=opts.output, processing=opts.p_plugin,
+                               processingPars=opts.p_plugin_pars)
     elif (cmd == NGAMS_STATUS_CMD):
         stat = client.status(pars, opts.output)
     elif (cmd == NGAMS_SUBSCRIBE_CMD):
-        stat = client.subscribe(opts.url, opts.priority, opts.start_date, opts.f_plugin, opts.f_plugin_pars)
+        if not opts.url:
+            raise Exception("Must specify parameter --url for a SUBSCRIBE commands")
+        stat = client.subscribe(url=opts.url, priority=opts.priority,
+                                startDate=opts.start_date,
+                                filterPlugIn=opts.f_plugin,
+                                filterPlugInPars=opts.f_plugin_pars,
+                                pars=pars)
     elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
         stat = client.unsubscribe(opts.url)
     else:

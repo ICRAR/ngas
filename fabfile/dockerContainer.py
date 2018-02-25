@@ -24,38 +24,42 @@ Module containing Docker related methods and tasks
 """
 
 import collections
+import io
 import os
-import shutil
-import tempfile
+import tarfile
+import time
 
 from fabric.colors import blue
 from fabric.context_managers import settings
-from fabric.decorators import task
 from fabric.state import env
 from fabric.tasks import execute
 from fabric.utils import puts
 
-from ngas import ngas_root_dir, ngas_user
+from ngas import ngas_root_dir, ngas_user, ngas_source_dir
 from system import get_fab_public_key
-from utils import check_ssh, sudo, generate_key_pair, run, success, failure,\
-    default_if_empty
+from utils import check_ssh, generate_key_pair, run, success, failure,\
+    default_if_empty, info
 
 
 # Don't re-export the tasks imported from other modules
 __all__ = []
 
 
-DockerContainerState = collections.namedtuple('DockerContainerState', 'client container stage1_image')
+DockerContainerState = collections.namedtuple('DockerContainerState', 'client container')
 
 def docker_keep_ngas_root():
     key = 'DOCKER_KEEP_NGAS_ROOT'
+    return key in env
+
+def docker_keep_ngas_src():
+    key = 'DOCKER_KEEP_NGAS_SRC'
     return key in env
 
 def docker_image_repository():
     default_if_empty(env, 'DOCKER_IMAGE_REPOSITORY', 'icrar/ngas')
     return env.DOCKER_IMAGE_REPOSITORY
 
-def docker_public_add_ssh_key(build_dir):
+def add_public_ssh_key(cont):
 
     # Generate a private/public key pair if there's not one already in use
     public_key = get_fab_public_key()
@@ -63,107 +67,120 @@ def docker_public_add_ssh_key(build_dir):
         private, public_key = generate_key_pair()
         env.key = private
 
-    with open('%s/authorized_keys' % (build_dir,), 'wb') as f:
-        f.write(public_key)
+    #write password to file
+    tar_data = io.BytesIO()
+    tarinfo = tarfile.TarInfo(name='.ssh/authorized_keys')
+    tarinfo.size = len(public_key)
+    tarinfo.mtime = time.time()
+    with tarfile.TarFile(fileobj=tar_data, mode='w') as tar:
+        tar.addfile(tarinfo, io.BytesIO(public_key))
 
-def create_stage1_container():
-    """
-    Create an inital Docker container and let Fabric point at it
+    tar_data.seek(0)
+    cont.put_archive(path='/root/', data=tar_data)
 
-    This method creates a Docker container and points the fabric environment to it with
-    the container IP.
 
-    If using Docker in a virtual machine such as on a Mac (setup with say docker-machine),
-    the code will look for three environemnt variables
-        DOCKER_TLS_VERIFY
-        DOCKER_HOST
-        DOCKER_CERT_PATH
-    using these to connect to the remote daemon. Extra steps are then taken during setup to
-    then connect to the correct exposed port on the docker daemon host rather than trying to connect
-    to the docker container we create as we likely don't have a route to the IP address used.
-    """
+def setup_container():
+    """Create and prepare a docker container and let Fabric point at it"""
 
     from docker.client import DockerClient
 
-    stage1_tag = 'ngas-stage1:latest'
+    image = 'centos:centos7'
     container_name = 'ngas_installation_target'
     cli = DockerClient.from_env(version='auto', timeout=10)
 
-    # Build the stage1 image which contains only an SSH server and sudo
-    # We use a temporary build dir containing only the things we need there
-    puts(blue("Building stage1 image"))
-    build_dir = tempfile.mkdtemp()
-    try:
-
-        dockerfile = os.path.join(os.path.dirname(__file__), 'Dockerfile-stage1')
-        shutil.copy(dockerfile, os.path.join(build_dir, 'Dockerfile'))
-        docker_public_add_ssh_key(build_dir)
-
-        # Build the stage1 docker container to deploy NGAS into
-        stage1_image = cli.images.build(path=build_dir, tag=stage1_tag, rm=True, pull=True)
-
-        success("Built image %s" % (stage1_tag,))
-    finally:
-        shutil.rmtree(build_dir)
-
     # Create and start a container using the newly created stage1 image
-    puts(blue("Starting new container from stage1 image"))
-    container = None
+    cont = cli.containers.run(image=image, name=container_name, remove=False, detach=True, tty=True)
+    success("Created container %s from %s" % (container_name, image))
+
+    # Find out container IP, prepare container for NGAS installation
     try:
-        container = cli.containers.run(image=stage1_image, remove=False,
-                                       detach=True, name=container_name)
-        success("Started container %s" % (container_name,))
+        host_ip = cli.api.inspect_container(cont.id)['NetworkSettings']['IPAddress']
+
+        info("Updating and installing OpenSSH server in container")
+        cont.exec_run('yum -y update')
+        cont.exec_run('yum -y install openssh-server sudo')
+        cont.exec_run('yum clean all')
+
+        info('Configuring OpenSSH to allow connections to container')
+        add_public_ssh_key(cont)
+        cont.exec_run('sed -i "s/#PermitRootLogin yes/PermitRootLogin yes/" /etc/ssh/sshd_config')
+        cont.exec_run('sed -i "s/#UseDNS yes/UseDNS no/" /etc/ssh/sshd_config')
+        cont.exec_run('ssh-keygen -A')
+        cont.exec_run('chown root.root /root/.ssh/authorized_keys')
+        cont.exec_run('chmod 600 /root/.ssh/authorized_keys')
+        cont.exec_run('chmod 700 /root/.ssh')
+
+        info('Starting OpenSSH deamon in container')
+        cont.exec_run('/usr/sbin/sshd -D', detach=True)
     except:
-        if container is not None:
-            container.remove()
-        cli.images.remove(stage1_image.id)
+        failure("Error while preparing container for NGAS installation, cleaning up...")
+        cont.stop()
+        cont.remove()
         raise
 
     # From now on we connect to root@host_ip using our SSH key
-    try:
-        host_ip = cli.api.inspect_container(container.id)['NetworkSettings']['IPAddress']
-    except:
-        failure("Cannot get container's IP address")
-        container.stop()
-        container.remove()
-        cli.images.remove(stage1_image.id)
-        raise
-
     env.hosts = host_ip
     env.user = 'root'
     if 'key_filename' not in env and 'key' not in env:
         env.key_filename = os.path.expanduser("~/.ssh/id_rsa")
 
     # Make sure we can connect via SSH to the newly started container
-    execute(check_ssh)
+    # We disable the known hosts check since docker containers created at
+    # different times might end up having the same IP assigned to them, and the
+    # ssh known hosts check will fail
+    with settings(disable_known_hosts=True):
+        execute(check_ssh)
 
-    return DockerContainerState(cli, container, stage1_image)
+    success('Container successfully setup! NGAS installation will start now')
+    return DockerContainerState(cli, cont)
 
-@task
-def cleanup_stage1():
-    # Remove all packages we installed
-    sudo('yum clean all')
+def cleanup_container():
 
-    # Do not ship NGAS with a working NGAS directory
-    if not docker_keep_ngas_root():
-        with settings(user=ngas_user()):
-            run("rm -rf %s" % (ngas_root_dir()))
+    # Clean downloaded packages, remove unnecessary packages
+    #
+    # This is obviously a CentOS 7 hardcoded list, but we already hardcode
+    # CentOS 7 as the FROM image in our build file so we are basically building
+    # up on that assumption. Generalising all this logic would require quite
+    # some effort. but since it is not necessarily something we need or want, it
+    # is kind of ok to live with this sin.
+    for pkg in ('autoconf', 'bzip2-devel', 'cpp',
+                'groff-base', 'krb5-devel', 'less', 'libcom_err-devel', 'libgnome-keyring', 'libedit', 'libgomp', 'libkadm5', 'libselinux-devel', 'm4', 'mpfr', 'pcre-devel', 'rsync', 'libverto-devel', 'libmpc',
+                'gcc', 'gdbm-devel', 'git',
+                'glibc-devel', 'glibc-headers', 'kernel-headers', 'libdb-devel',
+                'make', 'openssl-devel', 'patch', 'perl', 'postgresql',
+                'postgresql-libs', 'python-devel', 'readline-devel', 'sqlite-devel',
+                'sudo', 'wget', 'zlib-devel'):
+        run('yum --assumeyes --quiet remove %s' % (pkg,), warn_only=True)
+    run('yum clean all')
+
+    # Remove user directories that are not needed anymore
+    with settings(user=ngas_user()):
+
+        # By default we do not ship the image with a working NGAS directory
+        to_remove = ['~/.cache']
+        if not docker_keep_ngas_src():
+            to_remove.append(ngas_source_dir())
+        if not docker_keep_ngas_root():
+            to_remove.append(ngas_root_dir())
+
+        for d in to_remove:
+            run ('rm -rf %s' % d,)
 
 def create_final_image(state):
-    """
-    Create stage2 image from stage1 container
+    """Create docker image from container"""
 
-    This method creates the stage2 docker images from the running stage1 docker container.
-    The methd then stops and removes the stage1 containe plus the stage1 image.
-    """
-
-    puts(blue("Building final image"))
+    puts(blue("Building image"))
 
     # First need to cleanup container before we stop and commit it.
-    execute(cleanup_stage1)
-
-    conf = {'Cmd': ["/usr/bin/su", "-", "ngas", "-c", "/home/ngas/ngas_rt/bin/ngamsServer -cfg /home/ngas/NGAS/cfg/ngamsServer.conf -autoOnline -force -multiplesrvs -v 4"]}
+    # We execute most of the commands via ssh, until we actually remove ssh
+    # itself and forcefully remove unnecessary system-level folders
+    execute(cleanup_container)
     cont = state.container
+    cont.exec_run('yum --assume-yes remove fipscheck fipscheck-lib openssh-server')
+    cont.exec_run('rm -rf /var/log')
+    cont.exec_run('rm -rf /var/lib/yum')
+
+    conf = {'Cmd': ["/usr/bin/su", "-", "ngas", "-c", "/home/ngas/ngas_rt/bin/ngamsServer -cfg /home/ngas/NGAS/cfg/ngamsServer.conf -autoOnline -force -v 4"]}
     image_repo = docker_image_repository()
 
     try:

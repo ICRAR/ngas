@@ -644,10 +644,12 @@ def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
                 time.sleep(sleepTime - one_block_time)
             if (bsize > 0):
                 if writeStat:
-                    bspeed.append((bsize / one_block_time, stb, one_block_time))
+                    bspeed.append((bsize / one_block_time, stb,
+                                   one_block_time))
                 total_block_time = tend - stt
                 if writeStat:
-                    tspeed.append((bsize/total_block_time, stt, total_block_time))
+                    tspeed.append((bsize/total_block_time, stt,
+                                   total_block_time))
                 # tspeed.append((bsize/one_block_time, stt, one_block_time))
         if (Test == 'write'):
             print "Pure write throughput:  %6.2f MB/s" % (tsize/write_time)

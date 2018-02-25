@@ -32,12 +32,11 @@ This module contains the Test Suite for the REMFILE Command.
 """
 
 import os
-import sys
 
 from ngamsLib import ngamsFileInfo
 from ngamsLib.ngamsCore import getHostName, NGAMS_REMFILE_CMD, NGAMS_CLONE_CMD
 from ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
-    filterDbStatus1, sendPclCmd, sendExtCmd, runTest
+    filterDbStatus1, sendPclCmd, sendExtCmd
 
 
 class ngamsRemFileCmdTest(ngamsTestSuite):
@@ -279,22 +278,3 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
             tmpStatFile = saveInFile(None, filterDbStatus1(fileInfo.dumpBuf()))
             self.checkFilesEq(refStatFile, tmpStatFile,
                               "Incorrect status for REMFILE Command/execution")
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsRemFileCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

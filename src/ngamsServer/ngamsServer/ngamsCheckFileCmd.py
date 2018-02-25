@@ -37,8 +37,7 @@ import logging
 
 import ngamsFileUtils
 from ngamsLib import ngamsDbCore
-from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, genLog,\
-    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, NGAMS_HOST_CLUSTER
+from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, genLog, NGAMS_HOST_CLUSTER
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +64,7 @@ def handleCmd(srvObj,
     if (reqPropsObj.hasHttpPar("file_id")):
         fileId = reqPropsObj.getHttpPar("file_id")
     if (reqPropsObj.hasHttpPar("file_version")):
-        fileVersion = reqPropsObj.getHttpPar("file_version")
+        fileVersion = int(reqPropsObj.getHttpPar("file_version"))
     if (reqPropsObj.hasHttpPar("disk_id")):
         diskId = reqPropsObj.getHttpPar("disk_id")
     if (reqPropsObj.hasHttpPar("host_id")):
@@ -125,19 +124,17 @@ def handleCmd(srvObj,
             msg = genLog("NGAMS_ER_FILE_NOK", [fileId, int(fileVersion),
                                                diskId, fileSlotId, fileHostId,
                                                discrepancies])
-        logger.debug(msg)
+
         reqPropsObj.setCompletionTime(1)
-        srvObj.updateRequestDb(reqPropsObj)
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                     NGAMS_SUCCESS, msg)
-        return
+        return msg
+
     elif (srvObj.getCfg().getProxyMode() or
           (fileLocInfo[0] == NGAMS_HOST_CLUSTER)):
         logger.debug("File is remote or located within the private network of " +\
                      "the contacted NGAS system -- this server acting as proxy " +\
                      "and forwarding request to remote NGAS system: %s", fileHostId)
         host, port = srvObj.get_remote_server_endpoint(fileHostId)
-        srvObj.forwardRequest(reqPropsObj, httpRef, fileHostId, host, port)
+        httpRef.proxy_request(fileHostId, host, port)
         return
     else:
         # Send back an HTTP re-direction response to the requestor.
@@ -146,8 +143,7 @@ def handleCmd(srvObj,
                      "re-direction response")
         host, port = srvObj.get_remote_server_endpoint(fileHostId)
         reqPropsObj.setCompletionTime(1)
-        srvObj.updateRequestDb(reqPropsObj)
-        srvObj.httpRedirReply(reqPropsObj, httpRef, host, port)
+        httpRef.redirect(host, port)
         return
 
 

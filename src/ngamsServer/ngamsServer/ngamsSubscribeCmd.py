@@ -34,7 +34,7 @@ This module contains functions used in connection with the SUBSCRIBE Command.
 import logging
 import time
 
-from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
+from ngamsLib.ngamsCore import \
     genLog, NGAMS_SUBSCRIBE_CMD, TRACE, fromiso8601, toiso8601
 from ngamsLib import ngamsSubscriber, ngamsLib
 
@@ -140,5 +140,4 @@ def handleCmd(srvObj,
     # files to deliver to the new Subscriber.
     srvObj.addSubscriptionInfo([], [subscrObj]).triggerSubscriptionThread()
 
-    srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
-                 "Handled SUBSCRIBE command")
+    return "Handled SUBSCRIBE command"

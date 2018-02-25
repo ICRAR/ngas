@@ -41,7 +41,7 @@ import datetime
 import logging
 import threading
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT
 from ngamsServer import ngamsDiscardCmd
 
 
@@ -128,7 +128,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     global is_purgeThrd_running
     if (is_purgeThrd_running):
         if (purgeThrd):
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Thread %s has successfully rri_purged %d out of %d files.\n' % (purgeThrd.getName(), num_done, total_todo), NGAMS_TEXT_MT)
+            msg= 'Thread %s has successfully rri_purged %d out of %d files.\n' % (purgeThrd.getName(), num_done, total_todo)
+            httpRef.send_data(msg, NGAMS_TEXT_MT)
         else:
             is_purgeThrd_running = False
             raise Exception('RRI Purge thread\'s instance is gone!')
@@ -139,4 +140,5 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         purgeThrd = threading.Thread(None, _purgeThread, thrdName, args)
         purgeThrd.setDaemon(0)
         purgeThrd.start()
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Thread %s is successfully launched to rri_purge files.\n' % thrdName, NGAMS_TEXT_MT)
+        msg = 'Thread %s is successfully launched to rri_purge files.\n' % thrdName
+        httpRef.send_data(msg, NGAMS_TEXT_MT)

@@ -13,7 +13,7 @@ This task will:
 The user on the target host used for running the ``sudo`` commands is the SSH
 user given to fabric via the command line (``fab -u <user>``).
 
-On top of the normal fabric variables used by ``hl.usr_deploy`` the following
+On top of the normal fabric variables used by ``hl.user_deploy`` the following
 additional variables control this script:
 
 +-----------------------------+--------------------------------------+-------------------+

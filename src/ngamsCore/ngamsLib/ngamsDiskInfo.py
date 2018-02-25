@@ -652,7 +652,7 @@ class ngamsDiskInfo:
                                                 self.getMountPoint(),
                                                 self.getNumberOfFiles(),
                                                 self.getAvailableMb(),
-                                                self.getBytesStoredStr(),
+                                                self.getBytesStored(),
                                                 self.getCompleted(),
                                                 self.getCompletionDate(),
                                                 self.getChecksum(),
@@ -773,8 +773,9 @@ class ngamsDiskInfo:
             self.setCompletionDate(fromiso8601(compDate))
 
         self.setChecksum(getAttribValue(diskNode, "Checksum"))
-        self.setTotalDiskWriteTime(getAttribValue(diskNode,
-                                                  "TotalDiskWriteTime"))
+        write_time = getAttribValue(diskNode, "TotalDiskWriteTime")
+        if write_time:
+            self.setTotalDiskWriteTime(float(write_time))
 
         # Handle files.
         fileNodes = diskNode.getElementsByTagName("FileStatus")

@@ -30,11 +30,10 @@ import contextlib
 import io
 import random
 import subprocess
-import sys
 import unittest
 
 from ngamsLib import ngamsHttpUtils
-from ngamsTestLib import ngamsTestSuite, runTest
+from ngamsTestLib import ngamsTestSuite
 from ngamsServer import ngamsFileUtils
 
 # If there's any problem getting bbcp's version
@@ -144,19 +143,3 @@ class ngamsBBCPArchiveTest(ngamsTestSuite):
             self._test_correct_checksum('crc32c')
         else:
             self._test_unsupported_checksum('crc32c')
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsBBCPArchiveTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-

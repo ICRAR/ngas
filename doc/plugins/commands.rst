@@ -24,10 +24,27 @@ The arguments are the following:
   can be obtained
   (via ``server.db`` and ``server.cfg`` respectively).
 * ``request`` is an instance of ``ngamsReqProps``,
-  and contains all HTTP-related information (method, headers and parameters)
-  that make up the request.
-* ``http_ref`` is a reference to the client connection.
-  It is seldom used, but given in case your code needs it.
+  and encapsulates information that exists in the scope of a request.
+* ``http_ref`` is a reference to the HTTP connection.
+  It can be used to read content from the incoming data stream,
+  and send responses.
+
+Any uncaught exception thrown by the ``handleCmd`` method
+will be interpreted as an error by the NGAS server
+and will generate an error status code being sent to the client,
+together with an XML NGAS status document indicating the failure.
+
+If the module returns a string,
+this will be used to create an XML NGAS status document
+that will contain that message,
+and that will be returned to the client with a ``200`` HTTP status code.
+
+If the module returns ``None``,
+a generic success XML NGAS status document will be sent to the client.
+
+To send other kind of replies,
+please refer to the
+:class:`ngamsServer.ngamsServer.ngamsHttpRequestHandler` class documentation.
 
 Registration
 ============

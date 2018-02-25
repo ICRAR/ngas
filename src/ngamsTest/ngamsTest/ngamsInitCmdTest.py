@@ -31,10 +31,8 @@
 This module contains the Test Suite for the INIT Command.
 """
 
-import sys
-
 from ngamsLib.ngamsCore import NGAMS_INIT_CMD
-from ngamsTestLib import ngamsTestSuite, sendExtCmd, runTest
+from ngamsTestLib import ngamsTestSuite, sendExtCmd
 
 
 class ngamsInitCmdTest(ngamsTestSuite):
@@ -80,22 +78,3 @@ class ngamsInitCmdTest(ngamsTestSuite):
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status returned for INIT Command")
         # TODO: Check that server has initialized with new parameter
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsInitCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

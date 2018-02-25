@@ -487,7 +487,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                    "nd.host_id={} AND nd.mounted=1 AND nf.file_version={}") \
                    % ngamsDbCore.getNgasFilesCols(self._file_ignore_columnname))
 
-        vals = [fileId, hostId, fileVersion]
+        vals = [fileId, hostId, int(fileVersion)]
         if diskId:
             sql.append(" AND nd.disk_id={}")
             vals.append(diskId)
@@ -816,6 +816,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         if ignore == -1:
             ignore = 0
 
+        checksum = str(checksum) if checksum else None
         ingDate = self.convertTimeStamp(ingestionDate)
         creDate = self.convertTimeStamp(creationDate)
 

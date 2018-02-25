@@ -105,7 +105,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     httpMethod = reqPropsObj.getHttpMethod()
     if (httpMethod == 'POST'):
-        postContent = _getPostContent(srvObj, reqPropsObj)
+        postContent = _getPostContent(srvObj, reqPropsObj, httpRef)
         # postContent = urllib.unquote(postContent)
         #info(3,"decoded getPostContent: %s" % postContent)
         # unpack AsyncListRetrieveRequest
@@ -141,7 +141,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
         # 3. launch a thread to process the list
         _startThread(srvObj, sessionId)
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(res), NGAMS_TEXT_MT)
+        httpRef.send_data(pickle.dumps(res), NGAMS_TEXT_MT)
     else:
         # extract parameters
         sessionId = None
@@ -181,7 +181,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             #msg = "No UUID in the GET request."
             #raise Exception, msg
 
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(resp), NGAMS_TEXT_MT)
+        httpRef.send_data(pickle.dumps(resp), NGAMS_TEXT_MT)
 
 def cancelHandler(srvObj, reqPropsObj, sessionId):
     resp = AsyncListRetrieveCancelResponse()
@@ -264,13 +264,13 @@ def statusHandler(srvObj, reqPropsObj, sessionId):
         res.session_uuid = sessionId
     return res
 
-def _getPostContent(srvObj, reqPropsObj):
+def _getPostContent(srvObj, reqPropsObj, httpRef):
     """
     Get the actual asynchlist request content from the HTTP Post
     """
     remSize = reqPropsObj.getSize()
     #info(3,"Post Data size: %d" % remSize)
-    buf = reqPropsObj.getReadFd().read(remSize) #TODO - use proper loop on read here! given remSize is small, should be okay for now
+    buf = httpRef.rfile.read(remSize) #TODO - use proper loop on read here! given remSize is small, should be okay for now
     sizeRead = len(buf)
     #info(3,"Read buf size: %d" % sizeRead)
     #info(3,"Read buf: %s" % buf)

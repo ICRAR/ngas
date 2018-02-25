@@ -33,11 +33,10 @@ This module contains the Test Suite for the Data Consistency Checking Thread.
 
 import os
 import shutil
-import sys
 import time
 
 from ngamsLib.ngamsCore import checkCreatePath
-from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd, getNoCleanUp, setNoCleanUp
+from ngamsTestLib import ngamsTestSuite, sendPclCmd, getNoCleanUp, setNoCleanUp
 
 
 class ngamsDataCheckingThreadTest(ngamsTestSuite):
@@ -169,21 +168,3 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
             db.query2(sql, args=('123', 'TEST.2001-05-08T15:25:00.123'))
 
         self._test_data_check_thread(6, 0, 2, corrupt=change_checksum)
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsDataCheckingThreadTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

@@ -22,7 +22,6 @@
 
 import os
 import socket
-import sys
 import ngamsTestLib
 
 from ngamsPlugIns.mwa.ngamsMWAPawseyTapeApi import isFileOffline, readDMFStatus,\
@@ -106,11 +105,3 @@ class ngamsPawseyStageTest(ngamsTestLib.ngamsTestSuite):
                 pass
         except socket.error:
             pass #ingore
-
-def run():
-    ngamsTestLib.runTest(["ngamsPawseyStageTest"])
-
-if __name__ == "__main__":
-    ngamsTestLib.runTest(sys.argv)
-
-# EOF

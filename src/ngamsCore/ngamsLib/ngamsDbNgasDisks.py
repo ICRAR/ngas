@@ -301,7 +301,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         vals = []
 
         instDate = self.convertTimeStamp(installationDate)
-        bytesStored = "%.0f" % float(bytesStored)
+        bytesStored = int(bytesStored)
         addDiskHistEntry = 0
 
         if self.diskInDb(diskId):

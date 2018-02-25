@@ -30,7 +30,7 @@ import logging
 import os
 
 from ngamsLib import ngamsDbCore
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT
 from ngamsServer import ngamsCacheControlThread
 
 
@@ -53,10 +53,10 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     myhostId = srvObj.getHostId()
     if (not srvObj.getCachingActive()):
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, '%s is not a Cache Server!' % myhostId, NGAMS_TEXT_MT)
+        httpRef.send_data('%s is not a Cache Server!' % myhostId, NGAMS_TEXT_MT)
         return
 
-    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Adding files to the Cache db now\n', NGAMS_TEXT_MT)
+    httpRef.send_data('Adding files to the Cache db now\n', NGAMS_TEXT_MT)
 
     up_until = '2013-08-22T21:56:04.284'
     c = 0

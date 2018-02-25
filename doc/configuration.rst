@@ -25,7 +25,9 @@ Contains the overall server configuration.
 * *MaxSimReqs*: The maximum number of requests the server can be serving
   at a given time. If a new request comes in and the server has reached
   the limit already, it will respond with an ``503`` HTTP code.
-* *PluginsPath*: A directory where NGAS plug-ins can be loaded from.
+* *PluginsPath*: A colon-separated list of directories
+  where external python code, like NGAS plug-ins or database drivers,
+  can be loaded from.
 * *Proxy*: Whether this server should act as a proxy when serving requests that
   are addressed to a different server within the same cluster (``1``)
   or not (``0``).
@@ -58,6 +60,16 @@ This element contains the database connection parameters.
   The latter was used by some particular combinations
   of old versions of the NGAS code and database engines,
   while the former is the default nowadays.
+* *SessionSql*:
+  Zero or more XML sub-elements,
+  each with an ``sql`` attribute denoting
+  an SQL statement that will be executed whenever
+  a physical connection is established
+  by the connection pool to the database server.
+  Usually these will not be required,
+  but can be useful, for instance,
+  if one needs to execute a command
+  to switch to a different database.
 
 The rest of the attributes on the *Db* element
 are used as keyword arguments to create connection

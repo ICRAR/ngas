@@ -39,7 +39,6 @@ import threading
 import time
 
 from ngamsCore import TRACE, toiso8601, fromiso8601
-from contextlib import closing
 from DBUtils.PooledDB import PooledDB
 
 # Global DB Semaphore to protect critical, global DB interaction.
@@ -483,6 +482,7 @@ class ngamsDbCursor(object):
         return rows
 
     def close(self):
+        """Closes the underlying cursor and connection"""
         if self.cursor:
             try:
                 self.cursor.close()
@@ -493,7 +493,7 @@ class ngamsDbCursor(object):
             except: pass
 
 class cursor2(ngamsDbCursor):
-    """A cursor smarter than ngamsDbCursor that yields values and acts as a context manager"""
+    """A cursor that yields values and acts as a context manager"""
 
     def fetch(self, howmany):
         """
@@ -516,8 +516,8 @@ class cursor2(ngamsDbCursor):
 
 class transaction(object):
     """
-    A context manager that allows multiple SQL queries to be performed
-    in a single transaction
+    A context manager that allows multiple SQL queries to be executed
+    within a single transaction
     """
 
     def __init__(self, db_core, pool):
@@ -526,6 +526,7 @@ class transaction(object):
 
     def __enter__(self):
         self.conn = self.pool.connection()
+        self.cursor = self.conn.cursor()
         return self
 
     def __exit__(self, typ, *_):
@@ -536,38 +537,47 @@ class transaction(object):
         else:
             self.conn.rollback()
 
-        # Always close the connection at the end
-        try:
-            self.conn.close()
-        except:
-            pass
+        # Always close the cursor and the connection at the end
+        for x in (self.cursor, self.conn):
+            try:
+                x.close()
+            except:
+                pass
 
         # Re-raise original exception
         if typ:
             raise
 
     def execute(self, sql, args=()):
+        """Executes `sql` using `args`"""
 
         # If we are passing down parameters we need to sanitize both the query
         # string (which should come with {0}-style formatting) and the parameter
         # list to cope with the different parameter styles supported by PEP-249
+        logger.debug("Performing SQL query with parameters: %s / %r", sql, args)
         sql, args = self.db_core._prepare_query(sql, args)
+        cursor = self.cursor
 
-        with closing(self.conn.cursor()) as cursor:
-            with ngamsDbTimer(self.db_core, sql):
+        with ngamsDbTimer(self.db_core, sql):
+
+            # Some drivers complain when an empty argument list/tuple is passed
+            # so let's avoid it
+            if not args:
+                cursor.execute(sql)
+            else:
                 cursor.execute(sql, args)
 
-                # From PEP-249, regarding .description:
-                # This attribute will be None for operations that do not return
-                # rows [...]
-                # We thus use it to distinguish between those cases when there
-                # are results to fetch or not. This is important because fetch*
-                # calls can raise Errors if there are no results generated from
-                # the last call to .execute*
-                res = []
-                if cursor.description is not None:
-                    res = cursor.fetchall()
-                return res
+            # From PEP-249, regarding .description:
+            # This attribute will be None for operations that do not return
+            # rows [...]
+            # We thus use it to distinguish between those cases when there
+            # are results to fetch or not. This is important because fetch*
+            # calls can raise Errors if there are no results generated from
+            # the last call to .execute*
+            res = []
+            if cursor.description is not None:
+                res = cursor.fetchall()
+            return res
 
 class ngamsDbCore(object):
     """
@@ -579,7 +589,8 @@ class ngamsDbCore(object):
                  parameters = {},
                  createSnapshot = 1,
                  maxpoolcons = 6,
-                 use_file_ignore=True):
+                 use_file_ignore=True,
+                 session_sql=None):
         """
         Creates a new ngamsDbCore object using ``interface`` as the underlying
         PEP-249-compliant database connection driver. Connections creation
@@ -613,14 +624,17 @@ class ngamsDbCore(object):
         logger.info("Importing DB Module: %s", interface)
         self.module_name = interface
         self.__dbModule = importlib.import_module(interface)
+        logger.info("DB Module param style: %s", self.__dbModule.paramstyle)
+        logger.info("DB Module API Level: %s", self.__dbModule.apilevel)
         self.__paramstyle = self.__dbModule.paramstyle
+
+        logger.info('Preparing database pool with %d connections. Initial SQL: %s', maxpoolcons, session_sql)
         self.__pool = PooledDB(self.__dbModule,
                                 maxshared = maxpoolcons,
                                 maxconnections = maxpoolcons,
                                 blocking = True,
+                                setsession=session_sql,
                                 **parameters)
-        logger.info("DB Module param style: %s", self.__paramstyle)
-        logger.info("DB Module API Level: %s", self.__dbModule.apilevel)
 
         self.__dbTmpDir      = "/tmp"
 
@@ -755,7 +769,21 @@ class ngamsDbCore(object):
             self.__dbSem.release()
 
 
-    def _params_to_bind(self, howMany):
+    def _named_marker(self, i):
+        # We know that the Sybase module uses @ named markers
+        # Everyone else (so far) is pretty sensible
+        if self.module_name == 'Sybase':
+            return '@n%d' % i
+        return ':n%d' % i
+
+    def _named_key(self, i):
+        # See above
+        if self.module_name == 'Sybase':
+            return '@n%d' % i
+        return 'n%d' % i
+
+
+    def _markers(self, howMany):
         # Depending on the different vendor, we need to write the parameters in
         # the SQL calls using different notations. This method will produce an
         # array containing all the parameter _references_ in the SQL statement
@@ -767,18 +795,20 @@ class ngamsDbCore(object):
         # pyformat  Python extended format codes, e.g. ...WHERE name=%(name)s
         #
         s = self.__paramstyle
-        if s == 'qmark':    return ['?'            for i in xrange(howMany)]
-        if s == 'numeric':  return [':%d'%(i)      for i in xrange(howMany)]
-        if s == 'named':    return [':n%d'%(i)     for i in xrange(howMany)]
-        if s == 'format':   return ['%s'           for i in xrange(howMany)]
-        if s == 'pyformat': return ['%%(n%d)s'%(i) for i in xrange(howMany)]
+        if s == 'qmark':    return ['?'                   for i in xrange(howMany)]
+        if s == 'numeric':  return [':%d'%(i)             for i in xrange(howMany)]
+        if s == 'named':    return [self._named_marker(i) for i in xrange(howMany)]
+        if s == 'format':   return ['%s'                  for i in xrange(howMany)]
+        if s == 'pyformat': return ['%%(n%d)s'%(i)        for i in xrange(howMany)]
         raise Exception('Unknown paramstyle: %s' % (s))
 
     def _format_query(self, sql, args):
-        return sql.format(*self._params_to_bind(len(args)))
+        return sql.format(*self._markers(len(args)))
 
     def _data_to_bind(self, data):
-        if self.__paramstyle in ['named', 'pyformat']:
+        if self.__paramstyle == 'named':
+            return {self._named_key(i): d for i,d in enumerate(data)}
+        elif self.__paramstyle == 'pyformat':
             return {'n%d'%(i): d for i,d in enumerate(data)}
         return data
 
@@ -801,17 +831,7 @@ class ngamsDbCore(object):
         return transaction(self, self.__pool)
 
     def query2(self, sqlQuery, args = ()):
-        """
-        Simple query method that takes an SQL query and a tuple of arguments to
-        bind to the query.
-
-        Unlike self.query, this method doesn't perform automatic retries or
-        reconnections to the underlying database. It also returns a simpler
-        result list, consisting on a two-dimensional structure instead of the
-        three-dimensional one returned by self.query.
-        """
-
-        logger.debug("Performing SQL query with parameters: %s / %r", sqlQuery, args)
+        """Takes an SQL query and a tuple of arguments to bind to the query"""
         with self.transaction() as t:
             return t.execute(sqlQuery, args)
 

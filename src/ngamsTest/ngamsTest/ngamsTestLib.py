@@ -34,11 +34,11 @@ This module contains test utilities used to build the NG/AMS Functional Tests.
 
 import collections
 import contextlib
+import errno
 import functools
 import getpass
 import glob
 import gzip
-import importlib
 import logging
 import multiprocessing.pool
 import os
@@ -76,8 +76,6 @@ logging_levels = {
     logging.NOTSET: 5,
 }
 
-# Global parameters to control the test run.
-_noCleanUp   = 0
 
 # Pool used to start/shutdown servers in parallel
 srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
@@ -90,7 +88,7 @@ AUTH               = "bmdhczpuZ2Fz"
 
 
 # this_dir, which we use in a few places to refer to files, etc
-this_dir = os.path.normpath(pkg_resources.resource_filename(__name__, '.'))  # @UndefinedVariable
+this_dir = os.path.normpath(os.path.abspath(pkg_resources.resource_filename(__name__, '.')))  # @UndefinedVariable
 
 ###########################################################################
 
@@ -256,6 +254,7 @@ def waitReqCompl(clientObj,
     return res
 
 
+_noCleanUp   = int(os.environ.get('NGAS_TESTS_NO_CLEANUP', 0))
 def setNoCleanUp(noCleanUp):
     """
     Set the No Clean Up Flag.
@@ -701,82 +700,6 @@ def flushEmailQueue():
         recvEmail(mailNo)
 
 
-def runTest(argv):
-    """
-    Parses and executes the test according to the command line
-    parameters given.
-
-    argv:     Arguments given on command line (tuple).
-
-    Returns:  Void.
-    """
-    testModuleName = argv[0].split('/')[-1].split(".")[0]
-    tests = []
-    silentExit = 0
-    verboseLevel = 0
-    skip = None
-    idx = 1
-    while idx < len(argv):
-        par = argv[idx].upper()
-        try:
-            if (par == "-V"):
-                idx += 1
-                verboseLevel = int(argv[idx])
-            elif (par == "-TESTS"):
-                idx += 1
-                tests = argv[idx].split(",")
-            elif (par == "-NOCLEANUP"):
-                setNoCleanUp(1)
-            elif (par == "-SKIP"):
-                idx += 1
-                skip = argv[idx]
-            else:
-                correctUsage()
-                silentExit = 1
-                sys.exit(1)
-            idx += 1
-        except Exception, e:
-            if (not silentExit):
-                print "Illegal input parameters: " + str(e) + "\n"
-                correctUsage()
-            sys.exit(1)
-
-    logging.root.addHandler(logging.NullHandler())
-    if verboseLevel:
-        logging.root.addHandler(logging.StreamHandler(stream=sys.stdout))
-        val = verboseLevel - 1
-        for level, level_val in logging_levels.items():
-            if level_val == val:
-                logging.root.setLevel(level)
-                break
-
-    skipDic = {}
-    if (skip):
-        for testCase in skip.split(","): skipDic[testCase.strip()] = 1
-
-    # Always ensure that the local "tmp" directory exists
-    if not os.path.isdir("tmp"):
-        if os.path.exists("tmp"):
-            raise Exception("./tmp exists and is not a directory, cannot continue")
-        os.mkdir("tmp")
-
-    # Execute the test.
-    testModule = importlib.import_module(testModuleName)
-    testClass = getattr(testModule, testModuleName)
-    if (tests == []):
-        # No specific test specified - run all tests.
-        testSuite = unittest.makeSuite(testClass)
-    elif (skipDic != {}):
-        print "TODO: IMPLEMENT SKIP PARAMETER FOR TEST SUITES!"
-        sys.exit(1)
-    else:
-        testSuite = unittest.TestSuite()
-        for testCase in tests:
-            testSuite.addTest(testClass(testCase))
-    res = ngamsTextTestRunner(sys.stdout, 1, 0).run(testSuite)
-    sys.exit(0 if res.wasSuccessful() else 1)
-
-
 def writeFitsKey(filename,
                  key,
                  value,
@@ -1034,10 +957,8 @@ class ngamsTestSuite(unittest.TestCase):
             # extract the configuration information from the DB to
             # create a complete temporary cfg. file.
             cfgObj = db_aware_cfg(cfgFile)
-            dbObj = ngamsDb.from_config(cfgObj)
-            cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, dbObj)
-            del dbObj
-            dbObj = None
+            with contextlib.closing(ngamsDb.from_config(cfgObj, maxpool=1)) as db:
+                cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, db)
             logger.debug("Successfully read configuration from database, root dir is %s", cfgObj2.getRootDirectory())
             cfgFile = saveInFile(None, cfgObj2.genXmlDoc(0))
 
@@ -1057,7 +978,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         # Now connect to the database and perform any cleanups before we start
         # the server, like removing existing NGAS dirs and clearing tables
-        dbObj = ngamsDb.from_config(cfgObj)
+        dbObj = ngamsDb.from_config(cfgObj, maxpool=1)
         if (delDirs):
             logger.debug("Deleting NG/AMS directories ...")
             delNgamsDirs(cfgObj)
@@ -1091,17 +1012,29 @@ class ngamsTestSuite(unittest.TestCase):
 
         # We have to wait until the server is serving.
         server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory(), tmpCfg, daemon)
-        pCl = sendPclCmd(port=port)
+        pCl = sendPclCmd(port=port, timeOut=5)
+
+        def give_up():
+            try:
+                self.termExtSrv(server_info)
+            except:
+                pass
 
         # A daemon server should start rather quickly, as it forks out the actual
         # server process and then exists (with a 0 status when successful)
         if server_info.daemon:
             srvProcess.wait()
             if srvProcess.poll() != 0:
+                give_up()
                 raise Exception("Daemon server failed to start")
 
         startTime = time.time()
         while True:
+
+            # Took too long?
+            if ((time.time() - startTime) >= 20):
+                give_up()
+                raise Exception("Server did not start correctly within 20 [s]")
 
             # Check if the server actually didn't start up correctly
             if not server_info.daemon:
@@ -1116,18 +1049,48 @@ class ngamsTestSuite(unittest.TestCase):
                 logger.debug("Test server running - State: %s", state)
                 if stat.getState() == state:
                     break
-            except socket.error:
-                logger.debug("Polled server - not yet running ...")
-                time.sleep(0.2)
-            except:
-                logger.error("Error while STATUS-ing server, shutting down")
-                self.termExtSrv(server_info)
-                raise
+            except Exception as e:
 
-            # Took too long?
-            if ((time.time() - startTime) >= 20):
-                self.termExtSrv(server_info)
-                raise Exception("Server did not start correctly within 20 [s]")
+                # Not up yet, try again later
+                if isinstance(e, socket.error) and e.errno == errno.ECONNREFUSED:
+                    logger.debug("Polled server - not yet running ...")
+                    time.sleep(0.2)
+                    continue
+
+                # We are having this funny situation in MacOS builds, when
+                # intermitently the client times out while trying to connect
+                # to the server. This happens very rarely, but when it does it
+                # always seems to coincide with the moment the server starts
+                # listening for connections.
+                #
+                # The network traffic during these connect timeout situations
+                # seems completely normal, and just like the rest of the
+                # connection attempts before the timeout occurs. In particular,
+                # all these connection attempts result in a SYN packet sent by
+                # the client, and a RST/ACK packet quickly coming back quickly
+                # from the server side, meaning that the port is closed. In the
+                # case of the connect timeout however, the client hangs for all
+                # the time it is allowed to wait before timing out.
+                #
+                # This could well be a problem with python 2.7's implementation of
+                # socket.connect, which issues on initial connect(), followed by a
+                # select()/poll() depending on the situation. Without certainty,
+                # I imagine this might lead to some sort of very thing race condition
+                # between the connect and the select/poll call. Since I'm far
+                # from being and Apple guru, I will take the simplest solution
+                # for the time being and assume that a socket.timeout is simply
+                # a transient error that will solve itself in the next round.
+                # This change is also accompanied by a decrease on the timeout
+                # used by the client that issuea these requests (it was 60 seconds,
+                # we decreased it to 5 which makes more sense).
+                elif isinstance(e, socket.timeout):
+                    logger.warning("Timeo out when connecting to server, will try again")
+                    continue
+
+                logger.exception("Error while STATUS-ing server, shutting down")
+                give_up()
+
+                raise
 
         self.extSrvInfo.append(server_info)
 
@@ -1371,10 +1334,6 @@ class ngamsTestSuite(unittest.TestCase):
         tmpCfgFile = "tmp/%s_tmp.xml" % srvId
         cfg.save(tmpCfgFile, 0)
 
-        # Check if server has entry in referenced DB. If not, create it.
-        db = ngamsDb.from_config(cfg)
-        db.close()
-
         # Start server + add reference to server configuration object and
         # server DB object.
         srvCfgObj, srvDbObj = self.prepExtSrv(port=port,
@@ -1421,9 +1380,8 @@ class ngamsTestSuite(unittest.TestCase):
         tmpCfg = db_aware_cfg(cfg_file)
         self.point_to_sqlite_database(tmpCfg, createDatabase)
         if createDatabase:
-            db = ngamsDb.from_config(tmpCfg)
-            delNgasTbls(db)
-            db.close()
+            with contextlib.closing(ngamsDb.from_config(tmpCfg, maxpool=1)) as db:
+                delNgasTbls(db)
 
         multSrvs = len(server_list) > 1
 
@@ -1494,7 +1452,7 @@ class ngamsTestSuite(unittest.TestCase):
                         (string).
         """
         cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
-        dbObj  = ngamsDb.from_config(cfgObj)
+        dbObj  = ngamsDb.from_config(cfgObj, maxpool=1)
 
         stoSetIdx = 0
         xmlKeyPat = "NgamsCfg.StorageSets[1].StorageSet[%d]."
@@ -1741,83 +1699,6 @@ class ngamsTestSuite(unittest.TestCase):
 
         self.markNodesAsUnsusp(dbConObj, nodes)
         self.fail("Sub-node not woken up within %ds" % timeOut)
-
-class ngamsTextTestResult(unittest._TextTestResult):
-    """
-    Class to produce text test output.
-    """
-
-    def __init__(self,
-                 stream = sys.stderr,
-                 descriptions = 1,
-                 verbosity = 1):
-        """
-        Constructor method.
-
-        stream:       Stream on which to write the report, e.g. sys.stderr
-                      (stream object).
-
-        descriptions: ?
-
-        verbosity:    ?
-        """
-        unittest._TextTestResult.__init__(self,stream, descriptions, verbosity)
-
-
-class ngamsTextTestRunner(unittest.TextTestRunner):
-    """
-    Test report generator class for the NG/AMS Unit Test.
-    """
-
-    def __init__(self,
-                 stream = sys.stderr,
-                 descriptions = 1,
-                 verbosity = 1):
-        unittest.TextTestRunner.__init__(self, stream, descriptions, verbosity)
-
-
-    def _makeResult(self):
-        return ngamsTextTestResult(self.stream, self.descriptions,
-                                   self.verbosity)
-
-
-    def run(self,
-            test):
-        """
-        Run the given test case or test suite.
-        """
-        testName = str(test._tests[0]).split(" ")[1].split(".")[0][1:]
-        self.stream.writeln("\nTest: " + testName)
-        result = self._makeResult()
-        startTime = time.time()
-        test(result)
-        stopTime = time.time()
-        timeTaken = float(stopTime - startTime)
-        result.printErrors()
-        self.stream.writeln(result.separator2)
-        run = result.testsRun
-        self.stream.writeln("Ran %d test%s in %.3fs" %
-                            (run, run == 1 and "" or "s", timeTaken))
-        self.stream.writeln()
-        if not result.wasSuccessful():
-            self.stream.write("FAILED (")
-            failed, errored = map(len, (result.failures, result.errors))
-            if failed:
-                self.stream.write("failures=%d" % failed)
-            if errored:
-                if failed: self.stream.write(", ")
-                self.stream.write("errors=%d" % errored)
-            self.stream.writeln(")")
-        else:
-            self.stream.writeln("OK\n")
-        return result
-
-
-if __name__ == '__main__':
-    """
-    Main program to test execution of functions in the module.
-    """
-    pass
 
 
 # EOF

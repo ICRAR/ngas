@@ -71,7 +71,7 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj, force, closeContainer):
         srvObj.getDb().closeContainer(containerId)
 
 
-def _handleFileList(srvObj, containerId, reqPropsObj, force, closeContainer):
+def _handleFileList(srvObj, containerId, reqPropsObj, httpRef, force, closeContainer):
     """
     Handles the CAPPEND command for the case of
     file list being given in the body of POST request
@@ -79,11 +79,12 @@ def _handleFileList(srvObj, containerId, reqPropsObj, force, closeContainer):
     @param srvObj: ngamsServer.ngamsServer
     @param containerId: string
     @param reqPropsObj: ngamsLib.ngamsReqProps
+    @param httpRef: ngamsServer.ngamsHttpRequestHandler
     @param force: bool
     @param closeContainer: bool
     """
     size = reqPropsObj.getSize()
-    fileListStr = reqPropsObj.getReadFd().read(size)
+    fileListStr = httpRef.rfile.read(size)
     fileList = minidom.parseString(fileListStr)
     fileIds = [el.getAttribute('FileId') for el in fileList.getElementsByTagName('File')]
     for fileId in fileIds:
@@ -141,6 +142,6 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET:
         _handleSingleFile(srvObj, containerId, reqPropsObj, force, closeContainer)
     else:
-        _handleFileList(srvObj, containerId, reqPropsObj, force, closeContainer)
+        _handleFileList(srvObj, containerId, reqPropsObj, httpRef, force, closeContainer)
 
 # EOF

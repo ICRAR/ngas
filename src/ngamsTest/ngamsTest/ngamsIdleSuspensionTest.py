@@ -31,14 +31,13 @@
 This module contains the Test Suite for the handling of Idle Suspension.
 """
 
-import sys
 import time
 import urllib
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_STATUS_CMD, \
     NGAMS_CHECKFILE_CMD, rmFile, NGAMS_SUCCESS
 from ngamsTestLib import ngamsTestSuite, sendPclCmd, \
-    filterOutLines, saveInFile, loadFile, runTest, genTmpFilename, unzip
+    filterOutLines, saveInFile, loadFile, genTmpFilename, unzip
 
 
 SUSP_EL = "NgamsCfg.HostSuspension[1]"
@@ -509,9 +508,9 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         self.waitTillSuspended(dbConObj, subNode1, 10, susp_nodes)
 
         # Execute CHECKFILE Command on a file on the suspended sub-node.
-        cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
+        file_id = "TEST.2001-05-08T15:25:00.123"
+        cmdPars = [["file_id", file_id],
                    ["file_version", "1"]]
-        targetFile = genTmpFilename()
         statObj = sendPclCmd(port=8000, auth=AUTH).\
                   get_status(NGAMS_CHECKFILE_CMD, pars=cmdPars)
         # Check that request response is as expected.
@@ -539,8 +538,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         # Check that expected log entries found in the Sub-Node Log File.
         tmpTag = "File list to check: (1: Location:LOCAL, Host:%s, " +\
                  "Version:1) (2: Location:LOCAL, Host:%s, Version:1)"
-        testTags = ["CHECKFILE?time_out=60.0&file_version=1&" +\
-                    "file_id=" + urllib.quote("TEST.2001-05-08T15:25:0"),
+        testTags = [('CHECKFILE?file_id=' + urllib.quote(file_id) +
+                    '&file_version=1&time_out=60.0'),
                     tmpTag % (subNode1, subNode1)]
         subNodeLogBuf = loadFile(subNode1Log)
         self.checkTags(subNodeLogBuf, testTags, showBuf=0)
@@ -636,22 +635,3 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         testTags = ["NGAMS_INFO_DATA_CHK_STAT:3020:INFO: Number of files " +\
                     "checked: 4"]
         self.checkTags(subNodeLogBuf, testTags, showBuf=0)
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsIdleSuspensionTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

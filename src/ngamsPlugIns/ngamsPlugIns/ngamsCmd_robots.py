@@ -26,7 +26,6 @@
 """
 Respond to a robots.txt request"""
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -42,4 +41,4 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     Returns:        Void.
     """
-    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'User-agent: *\nDisallow: /\n')
+    httpRef.send_response(200, {'User-agent': '*', 'Disallow': '/'})

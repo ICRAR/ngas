@@ -20,7 +20,7 @@
 #    MA 02111-1307  USA
 #
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, NGAMS_SUCCESS
+from ngamsLib.ngamsCore import NGAMS_XML_MT, NGAMS_SUCCESS
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -61,6 +61,6 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     statusObj = srvObj.genStatus(NGAMS_SUCCESS, "Successfully retrieved containers list")
     statusObj.addContainer(rootCont)
     statusXml = statusObj.genXml().toxml(encoding="utf8")
-    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, statusXml, NGAMS_XML_MT)
+    httpRef.send_data(statusXml, NGAMS_XML_MT)
 
 # EOF

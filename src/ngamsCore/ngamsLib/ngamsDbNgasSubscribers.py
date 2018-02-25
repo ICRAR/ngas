@@ -126,7 +126,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
             else:
                 sql.append(" AND ")
             sql.append("srv_port = {}")
-            vals.append(str(portNo))
+            vals.append(portNo)
 
         return self.query2(''.join(sql), args = vals)
 
@@ -154,10 +154,10 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                " last_file_ingestion_date, concurrent_threads) "
                " VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})")
 
-        vals = (hostId, str(portNo), str(priority), \
+        vals = (hostId, portNo, priority, \
                 subscrId, subscrUrl, startDate, \
                 filterPlugIn, filterPlugInPars, \
-                lastFileIngDate, str(concurrent_threads))
+                lastFileIngDate, concurrent_threads)
 
         self.query2(sql, args = vals)
         self.triggerEvents()
@@ -211,9 +211,9 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                ", last_file_ingestion_date={8}"
                ", concurrent_threads={9} "
                "WHERE subscr_id={10} AND host_id={11} AND srv_port={12}")
-        vals = (hostId, str(portNo), str(priority), subscrId, subscrUrl, \
+        vals = (hostId, portNo, priority, subscrId, subscrUrl, \
                 startDate, filterPlugIn, filterPlugInPars, lastFileIngDate, \
-                str(concurrent_threads), subscrId, hostId, str(portNo))
+                concurrent_threads, subscrId, hostId, portNo)
         self.query2(sql, args = vals)
         self.triggerEvents()
 

@@ -31,10 +31,10 @@
 This module contains the Test Suite for the SUBSCRIBE Command.
 """
 
-import sys, os
+import os
 
 from ngamsLib.ngamsCore import NGAMS_DISCARD_CMD, cpFile
-from ngamsTestLib import ngamsTestSuite, sendExtCmd, sendPclCmd, runTest
+from ngamsTestLib import ngamsTestSuite, sendExtCmd, sendPclCmd
 
 
 try:
@@ -385,22 +385,3 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
             refStatFile = "ref/ngamsDiscardCmdTest_test_ProxyMode_01_01_ref"
             self.checkFilesEq(refStatFile, tmpStatFile,
                               "Incorrect handling of DISCARD Command detected")
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsDiscardCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

@@ -38,11 +38,12 @@ import subprocess
 import sys
 import threading
 import time
+import unittest
 import uuid
 
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SERVICE_NA
-from ngamsTestLib import ngamsTestSuite, runTest, saveInFile, sendPclCmd, this_dir
+from ngamsTestLib import ngamsTestSuite, saveInFile, sendPclCmd, this_dir
 
 
 # This module is used as a command by one of its own tests,
@@ -135,14 +136,26 @@ class ngamsServerTest(ngamsTestSuite):
         resp, _, _ = sendPclCmd()._get('UNKNOWN_CMD')
         self.assertEquals(404, resp.status)
 
+    @unittest.skipUnless('NGAS_MANY_STARTS_TEST' in os.environ, 'skipped by default')
+    def test_many_starts(self):
+        for _ in range(int(os.environ['NGAS_MANY_STARTS_TEST'])):
+            self.prepExtSrv()
+            self.terminateAllServer()
+
 class ngamsDaemonTest(ngamsTestSuite):
 
-    def _run_daemon_status(self, cfg_file):
-        execCmd  = [sys.executable, '-m', 'ngamsServer.ngamsDaemon', 'status']
+    def _run_daemon_cmd(self, cfg_file, cmd):
+        execCmd  = [sys.executable, '-m', 'ngamsServer.ngamsDaemon', cmd]
         execCmd += ['-cfg', cfg_file]
         with self._proc_startup_lock:
             daemon_status_proc = subprocess.Popen(execCmd, shell=False)
         return daemon_status_proc.wait()
+
+    def _run_daemon_status(self, cfg_file):
+        return self._run_daemon_cmd(cfg_file, 'status')
+
+    def _run_daemon_start(self, cfg_file):
+        return self._run_daemon_cmd(cfg_file, 'start')
 
     def test_start_via_daemon(self):
         self.prepExtSrv(daemon=True)
@@ -155,24 +168,6 @@ class ngamsDaemonTest(ngamsTestSuite):
         self.assertEquals(1, self._run_daemon_status(os.path.join(this_dir, 'src/ngamsCfg.xml')))
 
     def test_daemon_double_start(self):
-        # Try to start the daemon in the same port, should fail
+        # Try to start the daemon twice, it should fail
         self.prepExtSrv(daemon=True)
-        self.assertRaises(Exception, self.prepExtSrv, delDirs=False, clearDb=False, daemon=True)
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsServerTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF
+        self.assertNotEqual(0, self._run_daemon_start(os.path.join(this_dir, 'src/ngamsCfg.xml')))

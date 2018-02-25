@@ -70,12 +70,18 @@ def __params_for_log(params):
         copy[k] = v
     return copy
 
-def from_config(cfg):
+def from_config(cfg, maxpool=None):
+    """
+    Create a database object from a configuration object. If `maxpool` is not
+    `None`, it overrides the value loaded from the configuration for the number
+    of connections held by the pool.
+    """
 
     driver   = cfg.getDbInterface()
     creSnap  = cfg.getDbSnapshot()
     drvPars  = cfg.getDbParameters()
-    maxpool  = cfg.getDbMaxPoolCons()
+    maxpool  = maxpool or cfg.getDbMaxPoolCons()
+    sess_sql = cfg.getDbSessionSql()
     use_file_ignore = cfg.getDbUseFileIgnore()
 
     # HACK, HACK, HACK
@@ -96,4 +102,5 @@ def from_config(cfg):
     msg = "Additional DB parameters: snapshot: %d, params: %r"
     logger.debug(msg, creSnap, __params_for_log(drvPars))
     return ngamsDb(driver, parameters = drvPars, createSnapshot = creSnap,
-                   maxpoolcons = maxpool, use_file_ignore=use_file_ignore)
+                   maxpoolcons = maxpool, use_file_ignore=use_file_ignore,
+                   session_sql=sess_sql)

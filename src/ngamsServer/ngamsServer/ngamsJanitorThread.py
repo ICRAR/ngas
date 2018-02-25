@@ -139,6 +139,7 @@ def janitorThread(srvObj, stopEvt, srv_to_jan_queue, jan_to_srv_queue):
     try:
         checkUpdateDbSnapShots(srvObj, stopEvt)
     except StopJanitorThreadException:
+        srvObj.close_db()
         return
     except:
         logger.exception("Problem updating DB Snapshot files")
@@ -186,6 +187,7 @@ def janitorThread(srvObj, stopEvt, srv_to_jan_queue, jan_to_srv_queue):
                 suspend(stopEvt, 1.0)
 
     except StopJanitorThreadException:
+        srvObj.close_db()
         return
 
 

@@ -44,8 +44,7 @@ from ngamsLib import ngamsReqProps, ngamsHighLevelLib, ngamsDapiStatus
 from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, getDiskSpaceAvail, \
     rmFile, getFileSize, NGAMS_XML_MT, NGAMS_FAILURE, checkCreatePath, \
-    mvFile, getFileCreationTime, NGAMS_SUCCESS, \
-    NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_TEXT_MT, \
+    mvFile, getFileCreationTime, NGAMS_SUCCESS, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_CLONE_CMD, NGAMS_CLONE_THR, \
     NGAMS_HTTP_SUCCESS, toiso8601
 from ngamsLib import ngamsDbm, ngamsFileList, ngamsStatus, ngamsDiskUtils, ngamsLib
@@ -627,10 +626,7 @@ def _cloneExec(srvObj,
                                       "CLONE command status report").\
                                       addFileList(cloneStatusFileList)
             statRep = status.genXmlDoc(0, 0, 0, 1, 0)
-            statRep = ngamsHighLevelLib.\
-                      addDocTypeXmlDoc(srvObj, statRep,
-                                       NGAMS_XML_STATUS_ROOT_EL,
-                                       NGAMS_XML_STATUS_DTD)
+            statRep = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, statRep)
             mimeType = NGAMS_XML_MT
         else:
             # Generate a 'simple' ASCII report.
@@ -1066,11 +1062,8 @@ def _clone(srvObj,
     # Send reply if possible.
     if (httpRef):
         xmlStat = status.genXmlDoc(0, 0, 0, 1, 0)
-        xmlStat = ngamsHighLevelLib.\
-                  addDocTypeXmlDoc(srvObj,xmlStat,NGAMS_XML_STATUS_ROOT_EL,
-                                   NGAMS_XML_STATUS_DTD)
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                            xmlStat, 0, NGAMS_XML_MT, len(xmlStat), [], 1)
+        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
+        httpRef.send_data(xmlStat, NGAMS_XML_MT)
 
 
 def clone(srvObj,
