@@ -81,7 +81,7 @@ def home():
     return run('echo $HOME')
 
 @task
-@parallel
+#@parallel
 def check_ssh(timeout=60.):
     """
     Check availability of SSH
