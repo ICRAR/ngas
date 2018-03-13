@@ -39,7 +39,6 @@ import logging
 import os
 import shutil
 import socket
-import string
 import urllib
 
 from six.moves import cPickle # @UnresolvedImport
@@ -65,8 +64,8 @@ def hidePassword(fileUri):
         return fileUri
 
     # ARCHIVE?filename="ftp://jknudstr:*****@host//home/...
-    lst1 = string.split(tmpUri,"@")
-    lst2 = string.split(lst1[0], ":")
+    lst1 = tmpUri.split("@")
+    lst2 = lst1[0].split(":")
     return lst2[0] + ":" + lst2[1] + ":*****@" + lst1[1]
 
 
@@ -83,9 +82,9 @@ def parseHttpHdr(httpHdr):
                  [[<par>, <value>], [<par>, <value>], ...]
     """
     retDic = {}
-    els = string.split(httpHdr, ";")
+    els = httpHdr.split(";")
     for el in els:
-        subEls = string.split(el, "=")
+        subEls = el.split("=")
         key = subEls[0].strip("\" ")
         if (len(subEls) > 1):
             value = subEls[1].strip("\" ")
@@ -172,11 +171,11 @@ def parseRawPlugInPars(rawPars):
     # Plug-In Parameters. Expect:
     # "<field name>=<field value>[,field name>=<field value>]"
     parDic = {}
-    pars = string.split(rawPars, ",")
+    pars = rawPars.split(",")
     for par in pars:
         if (par != ""):
             try:
-                parVal = string.split(par, "=")
+                parVal = par.split("=")
                 par = parVal[0].strip()
                 parDic[par] = parVal[1].strip()
                 logger.debug("Found plug-in parameter: %s with value: %s",
@@ -212,7 +211,7 @@ def detMimeType(mimeTypeMaps,
     mimeType = ""
     for map in mimeTypeMaps:
         ext = "." + map[1]
-        idx = string.find(filename, ext)
+        idx = filename.find(ext)
         if ((idx != -1) and ((idx + len(ext)) == len(filename))):
             found = 1
             mimeType = map[0]

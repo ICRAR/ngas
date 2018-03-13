@@ -38,7 +38,6 @@ import os
 import re
 import shutil
 import socket
-import string
 import threading
 import random
 import tempfile
@@ -279,7 +278,7 @@ def acquireDiskResource(ngamsCfgObj,
     global _diskMutexSems
     if slotId not in _diskMutexSems:
         _diskMutexSems[slotId] = threading.Semaphore(1)
-    code = string.split(str(abs(random.gauss(10000000,10000000))), ".")[0]
+    code = str(abs(random.gauss(10000000,10000000))).split(".")[0]
     logger.debug("Requesting access to disk resource with Slot ID: %s (Code: %s)",
                  slotId, str(code))
     _diskMutexSems[slotId].acquire()
