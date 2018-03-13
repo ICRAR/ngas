@@ -163,7 +163,7 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
     def test_MultipartParserSeveralReadingSizes(self):
         # The pure fact that the parser ends is good,
         # there's really nothing else to check.
-        for size in [2**i for i in xrange(20)]:
+        for size in [2**i for i in range(20)]:
             message = self._createMIMEMessage(True)
             inputContent= io.BytesIO(message)
             handler = ngamsMIMEMultipart.ContainerBuilderHandler()

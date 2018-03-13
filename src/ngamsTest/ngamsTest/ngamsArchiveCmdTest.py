@@ -1214,7 +1214,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         noOfNodes = len(ports)
         nodeCount = 0
         counts = {p: 0 for p in ports}
-        for _ in xrange(100):
+        for _ in range(100):
             stat = sendPclCmd(port=8000).\
                    archive("src/TinyTestFile.fits")
             self.assertEquals(stat.getStatus(), 'SUCCESS', "Didn't successfully archive file: %s / %s" % (stat.getStatus(), stat.getMessage()))
@@ -1600,12 +1600,12 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         client = sendPclCmd(timeout=120)
         kb = 2 ** 10
-        for log_blockSize_kb in xrange(8):
+        for log_blockSize_kb in range(8):
 
             blockSize = (2**log_blockSize_kb) * kb
             self.prepExtSrv(cfgProps=[['NgamsCfg.Server[1].BlockSize', blockSize]])
 
-            for log_fsize_mb in xrange(13):
+            for log_fsize_mb in range(13):
                 size = (2**log_fsize_mb) * kb * kb
 
                 for crc32_variant in (0, 1):
@@ -1642,7 +1642,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
             blockSize = (2**log_blockSize_kb) * kb
 
-            for nfiles in xrange(5):
+            for nfiles in range(5):
                 nfiles += 1
                 tp = ThreadPool(nfiles)
 

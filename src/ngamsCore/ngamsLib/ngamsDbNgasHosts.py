@@ -60,10 +60,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         T = TRACE()
 
         sqlQuery = ["SELECT %s FROM ngas_hosts nh WHERE host_id IN (" % ngamsDbCore.getNgasHostsCols()]
-        for x in xrange(len(hostList)):
-            sqlQuery.append("{}")
-            if x < len(hostList) - 1:
-                sqlQuery.append(", ")
+        sqlQuery.append(', '.join(["{}"] * len(hostList)))
         sqlQuery.append(")")
         return self.query2(''.join(sqlQuery), args=[str(h) for h in hostList])
 
@@ -189,7 +186,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         # Get column names and placeholder values to put into the SQL statement
         table_columns = ngamsDbCore.getNgasHostsMap()
         cols = ", ".join([table_columns[x] for x in args.keys()])
-        params = ", ".join("{%d}" % (i) for i in xrange(len(args)))
+        params = ", ".join("{%d}" % (i) for i in range(len(args)))
         sql = "INSERT INTO ngas_hosts (%s) VALUES (%s)" % (cols, params)
 
         self.query2(sql, args=args.values())

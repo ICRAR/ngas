@@ -797,11 +797,11 @@ class ngamsDbCore(object):
         # pyformat  Python extended format codes, e.g. ...WHERE name=%(name)s
         #
         s = self.__paramstyle
-        if s == 'qmark':    return ['?'                   for i in xrange(howMany)]
-        if s == 'numeric':  return [':%d'%(i)             for i in xrange(howMany)]
-        if s == 'named':    return [self._named_marker(i) for i in xrange(howMany)]
-        if s == 'format':   return ['%s'                  for i in xrange(howMany)]
-        if s == 'pyformat': return ['%%(n%d)s'%(i)        for i in xrange(howMany)]
+        if s == 'qmark':    return ['?'                   for i in range(howMany)]
+        if s == 'numeric':  return [':%d'%(i)             for i in range(howMany)]
+        if s == 'named':    return [self._named_marker(i) for i in range(howMany)]
+        if s == 'format':   return ['%s'                  for i in range(howMany)]
+        if s == 'pyformat': return ['%%(n%d)s'%(i)        for i in range(howMany)]
         raise Exception('Unknown paramstyle: %s' % (s))
 
     def _format_query(self, sql, args):
