@@ -71,7 +71,7 @@ def saveInStagingFile(ngamsCfgObj,
         blockSize = ngamsCfgObj.getBlockSize()
         return saveFromHttpToFile(ngamsCfgObj, reqPropsObj, httpRef, stagingFilename,
                                   blockSize, 1, diskInfoObj)
-    except Exception, e:
+    except Exception as e:
         errMsg = genLog("NGAMS_ER_PROB_STAGING_AREA", [stagingFilename,str(e)])
         logger.exception(errMsg)
         raise
@@ -189,7 +189,7 @@ def handleCmd(srvObj,
     logger.debug("Is this NG/AMS permitted to handle Archive Requests?")
     if (not srvObj.getCfg().getAllowArchiveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Archive"])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     srvObj.checkSetState("Archive Request", [NGAMS_ONLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
                          NGAMS_ONLINE_STATE, NGAMS_BUSY_SUBSTATE,

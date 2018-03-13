@@ -45,7 +45,7 @@ def ngamsRaiseEx_NGAMS_ER_DAPI_1(srvObj,
 
     Returns:  Void.
     """
-    raise Exception, genLog("NGAMS_ER_DAPI",
-                            [genLog("NGAMS_ER_DB_COM", ["TEST EXCEPTION"])])
+    raise Exception(genLog("NGAMS_ER_DAPI",
+                            [genLog("NGAMS_ER_DB_COM", ["TEST EXCEPTION"])]))
 
 # EOF

@@ -74,7 +74,7 @@ def ngamsMimeTypeFilterPI(srvObj,
     if "mime_types" not in parDic:
         errMsg = "ngamsMimeTypeFilterPI: Missing Plug-In Parameter: " +\
                  "mime_types"
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Perform the matching.
     refMimeTypes = parDic["mime_types"].split("|")

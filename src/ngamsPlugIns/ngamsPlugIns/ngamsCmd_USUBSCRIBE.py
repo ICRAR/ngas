@@ -159,7 +159,7 @@ def handleCmd(srvObj,
             subscriber.setConcurrentThreads(ccthrds)
             try:
                 changeNumThreads(srvObj, subscrId, origthrds, ccthrds)
-            except Exception, e:
+            except Exception as e:
                 msg = " Exception updating subscriber's concurrent threads: %s." % str(e)
                 logger.warning(msg)
                 err += 1
@@ -167,7 +167,7 @@ def handleCmd(srvObj,
     try:
         srvObj.getDb().updateSubscriberEntry(subscriber)
         srvObj.addSubscriptionInfo([], [subscriber]).triggerSubscriptionThread()
-    except Exception, e:
+    except Exception as e:
         msg = " Update subscriber in DB exception: %s." % str(e)
         logger.warning(msg)
         err += 1

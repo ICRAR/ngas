@@ -90,7 +90,7 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
     checksum_out, out = p1.communicate()
 
     if p1.returncode != 0:
-        raise Exception, "bbcp returncode: %d error: %s" % (p1.returncode, out)
+        raise Exception("bbcp returncode: %d error: %s" % (p1.returncode, out))
 
     # extract c32 zip variant checksum from output and convert to signed 32 bit integer
     crc_info = ngamsFileUtils.get_checksum_info(crc_name)
