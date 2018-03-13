@@ -38,7 +38,6 @@ import copy
 import logging
 import os
 import time
-import types
 import urllib
 
 from six.moves.urllib import parse as urlparse  # @UnresolvedImport
@@ -654,9 +653,9 @@ class ngamsReqProps:
         objStat = self.getObjStatus()
         for fieldName, val in objStat:
             if (not ignoreValue(ignoreUndefFields, val)):
-                if (type(val) == types.DictType):
+                if isinstance(val, dict):
                     val2 = createSortDicDump(val)
-                elif (type(val) == types.ListType):
+                elif isinstance(val, list):
                     val2 = str(val.sort())
                     val2 = copy.deepcopy(val)
                     val2.sort()

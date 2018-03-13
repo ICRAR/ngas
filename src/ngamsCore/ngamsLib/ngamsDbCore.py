@@ -39,6 +39,7 @@ import threading
 import time
 
 from DBUtils.PooledDB import PooledDB
+import six
 
 from .ngamsCore import TRACE, toiso8601, fromiso8601
 
@@ -859,7 +860,7 @@ class ngamsDbCore(object):
         """
         Convert a timestamp given in one of the following formats:
         """
-        if isinstance(t, basestring):
+        if isinstance(t, six.string_types):
             return t
         else:
             return toiso8601(t, local=True)

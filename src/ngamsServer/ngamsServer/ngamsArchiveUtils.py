@@ -38,8 +38,8 @@ import logging
 import os
 import random
 import time
-import urllib
 
+from six.moves.urllib import request as urlrequest # @UnresolvedImport
 from six.moves import cPickle # @UnresolvedImport
 
 from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
@@ -1017,7 +1017,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     # GET means pull, POST is push
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
         logger.info("Handling archive pull request")
-        handle = urllib.urlopen(reqPropsObj.getFileUri())
+        handle = urlrequest.urlopen(reqPropsObj.getFileUri())
         # urllib.urlopen will attempt to get the content-length based on the URI
         # i.e. file, ftp, http
         reqPropsObj.setSize(handle.info()['Content-Length'])

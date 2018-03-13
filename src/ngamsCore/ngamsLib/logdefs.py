@@ -31,6 +31,8 @@ import collections
 import re
 import xml.dom.minidom
 
+import six
+
 #: A single log definition
 log_def = collections.namedtuple('log_def', 'id number text type description')
 
@@ -113,7 +115,7 @@ class LogDefHolder(object):
         if log_pars:
             sanitized = []
             for p in log_pars:
-                if isinstance(p, basestring):
+                if isinstance(p, six.string_types):
                     p = p.replace("\n", " ")
                 sanitized.append(p)
             return text % tuple(sanitized)

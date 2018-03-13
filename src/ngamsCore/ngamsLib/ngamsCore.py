@@ -70,13 +70,14 @@ import shutil
 import socket
 import threading
 import time
-import types
 import subprocess
 
 import pkg_resources
+import six
 
 from . import utils
 from . import logdefs
+
 
 logger = logging.getLogger(__name__)
 
@@ -386,7 +387,7 @@ def ignoreValue(ignoreEmptyField,
     Returns:              1 if field should be ignored, otherwise 0
                           (integer/0|1).
     """
-    if (type(fieldValue) == types.IntType):
+    if isinstance(fieldValue, six.integer_types):
         if (ignoreEmptyField and (fieldValue == -1)): return 1
     elif (ignoreEmptyField and (str(fieldValue).strip() == "")):
         return 1
@@ -435,7 +436,7 @@ def createSortDicDump(dic):
 
     Returns: Sorted dictionary ASCII representation (string).
     """
-    if (type(dic) != types.DictType):
+    if not isinstance(dic, dict):
         raise Exception("Object given is not a dictionary")
     keys = dic.keys()
     keys.sort()
@@ -808,6 +809,7 @@ def fromiso8601(s, local=False, fmt=FMT_DATETIME):
     t = totime(time.strptime(s, fmt.format))
     return t + ms
 
+_long = int if six.PY3 else long
 def toiso8601(t=None, local=False, fmt=FMT_DATETIME):
     """
     Converts the time value `t` to a string formatted using the ISO 8601
@@ -828,7 +830,7 @@ def toiso8601(t=None, local=False, fmt=FMT_DATETIME):
     totuple = time.gmtime if not local else time.localtime
     timeStamp = time.strftime(fmt.format, totuple(t))
     if fmt.msecs:
-        t = (t - long(t)) * 1000
+        t = (t - _long(t)) * 1000
         timeStamp += '.%03d' % int(t)
 
     return timeStamp

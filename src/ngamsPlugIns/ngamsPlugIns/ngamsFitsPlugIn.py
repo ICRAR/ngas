@@ -42,6 +42,8 @@ import os
 import subprocess
 import time
 
+import six
+
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, genLog, fromiso8601, tomjd, frommjd,\
     toiso8601, FMT_DATE_ONLY, rmFile
@@ -75,7 +77,7 @@ def getFitsKeys(fitsFile,
     try:
         for key in keyList:
             vals = pyfits.getval(fitsFile, key)
-            if isinstance(vals, basestring):
+            if isinstance(vals, six.string_types):
                 vals = [vals]
             keyDic[key] = list(vals)
         return keyDic

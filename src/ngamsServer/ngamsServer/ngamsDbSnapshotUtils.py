@@ -28,8 +28,8 @@ import glob
 import logging
 import os
 import time
-import types
 
+import six
 from six.moves import cPickle # @UnresolvedImport
 
 from ngamsLib import ngamsDbCore, ngamsLib, ngamsFileInfo, ngamsHighLevelLib, \
@@ -185,8 +185,7 @@ def _genFileKey(fileInfo):
 
     Returns:        File key (string).
     """
-    if ((type(fileInfo) == types.ListType) or
-        (type(fileInfo) == types.TupleType)):
+    if isinstance(fileInfo, (list, tuple)):
         fileId  = fileInfo[ngamsDbCore.NGAS_FILES_FILE_ID]
         fileVer = fileInfo[ngamsDbCore.NGAS_FILES_FILE_VER]
     else:
@@ -346,7 +345,7 @@ def checkDbChangeCache(srvObj,
                 continue
 
             cacheStatObj = ngamsLib.loadObjPickleFile(cacheFile)
-            if (isinstance(cacheStatObj, types.ListType)):
+            if isinstance(cacheStatObj, list):
                 # A list type in the Temporary DB Snapshot means that the
                 # file has been removed.
                 cacheStatList = cacheStatObj

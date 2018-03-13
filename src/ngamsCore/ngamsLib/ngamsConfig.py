@@ -27,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/05/2001  Created
 #
-
 """
 The ngamsConfig class is used to handle the NG/AMS Configuration.
 """
@@ -36,7 +35,8 @@ import base64
 import collections
 import logging
 import os
-import types
+
+import six
 
 from . import ngamsConfigBase, ngamsSubscriber
 from . import ngamsStorageSet, ngamsStream, ngamsMirroringSource
@@ -103,7 +103,7 @@ def checkIfSetStr(property,
                if the string was not properly formatted (integer/0|1).
     """
     logging.debug("Checking if property: %s is properly set ...", property)
-    if ((not isinstance(value, types.StringType))):
+    if ((not isinstance(value, six.string_types))):
         errMsg = "Must define a proper string value for property: " + property
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
         logger.error(errMsg)
@@ -135,7 +135,7 @@ def checkIfSetInt(property,
     """
     logger.debug("Checking if property: %s is properly set ...", property)
     value = int(value)
-    if ((not isinstance(value, types.IntType)) or (value == -1)):
+    if ((not isinstance(value, six.integer_types)) or (value == -1)):
         errMsg = "Must define a proper integer value for property: " + property
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
         logger.error(errMsg)
@@ -164,7 +164,7 @@ def checkIfZeroOrOne(property,
                 if the value was not properly formatted (integer/0|1).
     """
     logger.debug("Checking if property: %s is properly set ...", property)
-    if ((not isinstance(value, types.IntType)) or
+    if ((not isinstance(value, six.integer_types)) or
         ((value != 0) and (value != 1))):
         errMsg = "Value must be 0 or 1 (integer) for property: " + property
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])

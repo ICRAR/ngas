@@ -42,6 +42,8 @@ import re
 import struct
 import time
 
+import six
+
 from ngamsLib import ngamsDbCore, ngamsDiskInfo, ngamsStatus, \
     ngamsHttpUtils, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib
@@ -587,7 +589,7 @@ def _normalize_variant(variant_or_name):
         variant = CHECKSUM_NULL
 
     # A plug-in name or variant name
-    elif isinstance(variant, basestring):
+    elif isinstance(variant, six.string_types):
         # In NGAS versions <= 8 the CRC was calculated as a separate step after
         # archiving a file, and therefore was loaded as a plugin that received a
         # filename when invoked.
@@ -679,7 +681,7 @@ def get_checksum(blocksize, fin, checksum_variant):
     # fin can be a filename, in which case we open (and then close) it
     my_fileobj = None
     fileobj = fin
-    if isinstance(fin, basestring):
+    if isinstance(fin, six.string_types):
         my_fileobj = fileobj = open(fin, 'rb')
 
     # Read and checksum, thank you very much
