@@ -573,7 +573,7 @@ class ngamsXmlMgr:
         Returns:        Name of the key in the XML Dictionary (string).
         """
         if (elObj == self.__rootElObj):
-            if (not self.__xmlDic.has_key(elDicKey)):
+            if elDicKey not in self.__xmlDic:
                 self.__xmlDic[self.__rootElObj.getName()] = self.__rootElObj
             return self.__rootElObj.getName()
         elif (elDicKey):
@@ -581,7 +581,7 @@ class ngamsXmlMgr:
             idx = 1
             while (1):
                 newElDicKey = newElDicKeyFormat % idx
-                if (not self.__xmlDic.has_key(newElDicKey)):
+                if newElDicKey not in self.__xmlDic:
                     self.__xmlDic[newElDicKey] = elObj
                     break
                 else:
@@ -659,7 +659,7 @@ class ngamsXmlMgr:
         for pathEl in pathEls[1:-1]:
             tmpPath += "." + pathEl
             # Check if this element is already in the otherwise add it.
-            if (not self.__xmlDic.has_key(tmpPath)):
+            if tmpPath not in self.__xmlDic:
                 self.addElOrAttr(tmpPath, ngamsElement(pathEl.split("[")[0],
                                                        context = context))
         self.addElOrAttr(tmpPath + "." + pathEls[-1],

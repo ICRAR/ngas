@@ -255,7 +255,7 @@ def cloneCheckDiskSpace(srvObj,
             key, fio = cloneFailDbm.getNext()
             if (not key): break
             format = fio.getFormat()
-            if (not spaceLackMimeTypeDic.has_key(fio.getFormat())):
+            if fio.getFormat() not in spaceLackMimeTypeDic:
                 spaceLackMimeTypeDic[format] = 0.0
             spaceLackMimeTypeDic[format] += float(fio.getFileSize())
         errMsg = "Insufficient space to carry out the CLONE Command. " +\

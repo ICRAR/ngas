@@ -365,7 +365,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         # Sort the File Info Objects according to disks.
         fileInfoObjDic = {}
         for fileInfo in fileInfoObjList:
-            if (not fileInfoObjDic.has_key(fileInfo.getDiskId())):
+            if fileInfo.getDiskId() not in fileInfoObjDic:
                 fileInfoObjDic[fileInfo.getDiskId()] = []
             fileInfoObjDic[fileInfo.getDiskId()].append(fileInfo)
 

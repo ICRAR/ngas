@@ -239,7 +239,7 @@ class ngamsReqProps:
         Returns:      1 if referenced HTTP header was contained in the
                       request otherwise 0 (integer/0|1).
         """
-        return self.__httpHdrDic.has_key(httpHdr.lower())
+        return httpHdr.lower() in self.__httpHdrDic
 
 
     def getHttpHdr(self,
@@ -442,7 +442,7 @@ class ngamsReqProps:
         Returns:    1 if parameter is contained in object,
                     otherwise 0 (integer).
         """
-        return self.__httpPars.has_key(httpPar)
+        return httpPar in self.__httpPars
 
 
     def getHttpPar(self,

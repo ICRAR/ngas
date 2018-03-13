@@ -104,7 +104,7 @@ class ngamsConfigBase:
         """
         if (xmlDicKey.find("NgamsCfg") != 0):
             xmlDicKey = "NgamsCfg." + xmlDicKey
-        if (self.getXmlDic().has_key(xmlDicKey)):
+        if xmlDicKey in self.getXmlDic():
             return str(self.getXmlDic()[xmlDicKey].getValue())
         else:
             return None
@@ -248,7 +248,7 @@ class ngamsConfigBase:
                    (ngamsElement|ngamsAttribute|None).
         """
         if (objPath.find("NgamsCfg") != 0): objPath = "NgamsCfg." + objPath
-        if (self.getXmlDic().has_key(objPath)):
+        if objPath in self.getXmlDic():
             return self.getXmlDic()[objPath]
         else:
             return None
@@ -289,7 +289,7 @@ class ngamsConfigBase:
                 tmpObj = ngamsXmlMgr.ngamsElement(elName, value, comment,
                                                   groupId)
             xmlDic[key] = tmpObj
-        if (not xmlDic.has_key("NgamsCfg")):
+        if "NgamsCfg" not in xmlDic:
             xmlDic["NgamsCfg"] = ngamsXmlMgr.ngamsElement("NgamsCfg", "")
         self.__xmlMgr.digestXmlDic(xmlDic, clear)
         return self

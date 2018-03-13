@@ -152,7 +152,8 @@ def _locateArchiveFile(srvObj,
         for fileInfo in fileList:
             fileVer = fileInfo[0].getFileVersion()
             # Create a list in connection with each File Version key.
-            if (not candFileDic.has_key(fileVer)): candFileDic[fileVer] = []
+            if fileVer not in candFileDic:
+                candFileDic[fileVer] = []
             candFileDic[fileVer].append([location, fileInfo[0], fileInfo[1]])
     fileVerList = candFileDic.keys()
     fileVerList.sort()

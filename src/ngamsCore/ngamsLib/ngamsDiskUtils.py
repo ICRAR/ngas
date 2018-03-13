@@ -201,7 +201,7 @@ def checkDisks(hostId,
     for slotId in slotIdList:
         slotId = str(slotId)
         # Get from DB if not already read + if disk in DB.
-        if (not mtDiskDic.has_key(slotId)):
+        if slotId not in mtDiskDic:
             if (dbConObj.diskInDb(diskDic[slotId].getDiskId())):
                 dbDiskInfo = ngamsDiskInfo.ngamsDiskInfo()
                 dbDiskInfo.read(dbConObj, diskDic[slotId].getDiskId())
@@ -213,9 +213,9 @@ def checkDisks(hostId,
         ngasDiskInfoFile = getNgasDiskInfoFile(diskDic, slotId)
 
         # Decide which information to use.
-        if (not mtDiskDic.has_key(slotId)):
+        if slotId not in mtDiskDic:
             mtDiskDic[slotId] = ngasDiskInfoFile
-        elif (mtDiskDic.has_key(slotId) and ngasDiskInfoFile):
+        elif (slotId in mtDiskDic and ngasDiskInfoFile):
             # Take the info in the NgasDiskInfo file if this is the most
             # recent one.
             if (ngasDiskInfoFile.getInstallationDate() >
@@ -272,7 +272,7 @@ def checkDisks(hostId,
                     logger.error(errMsg)
                     rmDiskDic[slotId] = slotId
                     notifInfo.append(["DISK INACCESSIBLE", errMsg])
-                    if (dbUpdateDic.has_key(assocSlotId)):
+                    if assocSlotId in dbUpdateDic:
                         dbUpdateDic[assocSlotId] = None
                         del dbUpdateDic[assocSlotId]
                     continue
@@ -287,7 +287,7 @@ def checkDisks(hostId,
                 if (tmpDiskInfo == None):
                     # If the associated disk is not already found to be
                     # wrong, we add an ADD entry in the Update DB Dictionary.
-                    if (not rmDiskDic.has_key(assocSlotId)):
+                    if assocSlotId not in rmDiskDic:
                         dbUpdateDic[slotId] = ["ADD"]
                 else:
                     logger.info("Entry found in DB for disk with ID: %s",
@@ -339,7 +339,7 @@ def checkDisks(hostId,
                     # Everything OK, update existing entry in the DB.
                     # If the associated disk is not already found to be
                     # wrong, we add an entry in the Update DB Dictionary.
-                    if (not rmDiskDic.has_key(assocSlotId)):
+                    if assocSlotId not in rmDiskDic:
                         dbUpdateDic[slotId] = ["UPDATE", tmpDiskInfo]
 
                 # Create some standard directories on the disk if not
@@ -364,7 +364,7 @@ def checkDisks(hostId,
                 if (mtDiskDic[slotId].getCompleted()): continue
             assocSlotId = ngamsCfgObj.getAssocSlotId(slotId)
             if (assocSlotId):
-                if (not dbUpdateDic.has_key(assocSlotId)):
+                if assocSlotId not in dbUpdateDic:
                     msg = "Disk in slot: %s has no associated " +\
                           "disk in slot: %s - rejecting disk in slot: %s"
                     logger.info(msg, slotId, assocSlotId, slotId)
@@ -374,7 +374,7 @@ def checkDisks(hostId,
         # Remove entries from the Disk Dictionary, which are invalid.
         for slId in rmDiskDic.keys():
             for id in [slId, ngamsCfgObj.getAssocSlotId(slId)]:
-                if (diskDic.has_key(id)):
+                if id in diskDic:
                     logger.info("Removing invalid disk info object from Disk " +\
                          "Dictionary - Port No: %s Mount Point: %s Disk ID: %s",
                          str(diskDic[id].getPortNo()),
@@ -382,7 +382,7 @@ def checkDisks(hostId,
                          diskDic[id].getDiskId())
                     diskDic[id] = None
                     del diskDic[id]
-                    if (dbUpdateDic.has_key(id)):
+                    if id in dbUpdateDic:
                         dbUpdateDic[id] = None
                         del dbUpdateDic[id]
 
@@ -466,7 +466,7 @@ def checkDisks(hostId,
                             "and mount point: %s in the DB.",
                             diskId, diskDic[slotId].getMountPoint())
                 hasDiskInfo = 0
-                if (mtDiskDic.has_key(slotId)):
+                if slotId in mtDiskDic:
                     if (mtDiskDic[slotId]): hasDiskInfo = 1
                 if (hasDiskInfo):
                     updateDiskInDb(hostId, dbConObj, ngamsCfgObj, slotId, diskDic,
@@ -1036,7 +1036,7 @@ def findTargetDisk(hostId,
     # Get Disk IDs matching the mime-type.
     logger.debug("Finding target disks - mime-type is: %s", mimeType)
     global _diskInfoObjsDic
-    if ((not caching) or (not _diskInfoObjsDic.has_key(mimeType))):
+    if (not caching) or (mimeType not in _diskInfoObjsDic):
         diskInfoObjs = getDiskInfoObjsFromMimeType(hostId, dbConObj, ngamsCfgObj,
                                                    mimeType, sendNotification)
         if (caching): _diskInfoObjsDic[mimeType] = diskInfoObjs
@@ -1076,7 +1076,7 @@ def findTargetDisk(hostId,
             # (if any).
             repSlotId = ngamsCfgObj.getAssocSlotId(diskInfoObj.getSlotId())
             if (ngamsCfgObj.getReplication() and (repSlotId != "") and
-                (slotIdDic.has_key(repSlotId))):
+                (repSlotId in slotIdDic)):
                 repDiskObj = slotIdDic[repSlotId]
                 if (not repDiskObj.getCompleted()):
                     # Check if the Replication Disk has enough space.
@@ -1100,7 +1100,7 @@ def findTargetDisk(hostId,
     # Find the best target disk.
     global _bestTargetDiskDic
     key = str(diskIds)[1:-1].replace("'", "_").replace(", ", "")
-    if ((not caching) or (not _bestTargetDiskDic.has_key(key))):
+    if ((not caching) or (key not in _bestTargetDiskDic)):
         diskId = dbConObj.getBestTargetDisk(diskIds,
                                             ngamsCfgObj.getRootDirectory())
         if (caching): _bestTargetDiskDic[key] = diskId
@@ -1117,7 +1117,7 @@ def findTargetDisk(hostId,
     else:
         global _diskInfoDic
         key = diskId + "_" + mimeType
-        if ((not caching) or (not _diskInfoDic.has_key(key))):
+        if ((not caching) or (key not in _diskInfoDic)):
             diskInfo = ngamsDiskInfo.ngamsDiskInfo()
             diskInfo.getInfo(dbConObj, ngamsCfgObj, diskId, mimeType)
             if (caching): _diskInfoDic[key] = diskInfo

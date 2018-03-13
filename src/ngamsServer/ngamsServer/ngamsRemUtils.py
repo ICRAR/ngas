@@ -690,7 +690,7 @@ def checkFileCopiesAndReg(srvObj,
         # Remove this file from the Files On Disk DBM - do this only
         # if a Disk ID is specified.
         if (diskId):
-            if (tmpDic.has_key(diskId)):
+            if (diskId in tmpDic):
                 fileInfo = tmpDic[diskId]
                 filename = os.path.\
                            normpath(fileInfo[ngamsDbCore.SUM1_MT_PT] +\

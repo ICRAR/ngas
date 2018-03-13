@@ -388,7 +388,7 @@ def _schedNextFile(srvObj,
     with reqFileInfoSem:
         while True:
             fileInfo = None
-            if (not diskSchedDic.has_key(threadId)):
+            if threadId not in diskSchedDic:
                 if (disk_ids):
                     idx = random.randint(0, (len(disk_ids) - 1))
                     diskId = disk_ids[idx]

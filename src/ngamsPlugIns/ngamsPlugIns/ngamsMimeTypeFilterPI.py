@@ -71,7 +71,7 @@ def ngamsMimeTypeFilterPI(srvObj,
         if (reqPropsObj.hasHttpPar("plug_in_pars")):
             pars = reqPropsObj.getHttpPar("plug_in_pars")
     parDic = ngamsPlugInApi.parseRawPlugInPars(pars)
-    if (not parDic.has_key("mime_types")):
+    if "mime_types" not in parDic:
         errMsg = "ngamsMimeTypeFilterPI: Missing Plug-In Parameter: " +\
                  "mime_types"
         raise Exception, errMsg

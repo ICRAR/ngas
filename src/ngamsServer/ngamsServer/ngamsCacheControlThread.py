@@ -1306,7 +1306,7 @@ def cleanUpCache(srvObj):
 
         # Remove the entry from the cache:
         # - First get the information for the disk hosting the file.
-        if (not diskInfoDic.has_key(diskId)):
+        if diskId not in diskInfoDic:
             diskInfo = srvObj.getDb().getDiskInfoFromDiskId(diskId)
             if (not diskInfo):
                 msg = "Illegal Disk ID referenced in Cache Contents " +\

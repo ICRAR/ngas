@@ -146,8 +146,8 @@ def _checkStopDataDeliveryThread(srvObj, subscrbId):
     deliveryThreadRefDic = srvObj._subscrDeliveryThreadDicRef
     tname = threading.current_thread().name
     if (srvObj._deliveryStopSync.isSet() or # server is about to shutdown
-        (not deliveryThreadRefDic.has_key(tname)) or # this thread's reference has been removed by the USUBSCRIBE command, see ngamsPlugIns/ngamsCmd_USUBSCRIBE.changeNumThreads()
-        (not srvObj.getSubscriberDic().has_key(subscrbId))): # the UNSUBSCRIBE command is issued
+        (tname not in deliveryThreadRefDic) or # this thread's reference has been removed by the USUBSCRIBE command, see ngamsPlugIns/ngamsCmd_USUBSCRIBE.changeNumThreads()
+        (subscrbId not in srvObj.getSubscriberDic())): # the UNSUBSCRIBE command is issued
         logger.debug("Stopping Data Delivery Thread ... %s", tname)
         raise Exception("_STOP_DELIVERY_THREAD_%s" % tname)
 
@@ -233,7 +233,7 @@ def _addFileDeliveryDic(subscrId,
     replaceWithBL = 0
     add = 1
     #First, Check if the file is already registered for that Subscriber.
-    if (fileBackLogBuffered == NGAMS_SUBSCR_BACK_LOG and deliverReqDic.has_key(subscrId)):
+    if (fileBackLogBuffered == NGAMS_SUBSCR_BACK_LOG and subscrId in deliverReqDic):
         for idx in range(len(deliverReqDic[subscrId])): #TODO - this for loop should be a hashtable lookup!!
             tstFileInfo            = deliverReqDic[subscrId][idx]
             tstFilename            = tstFileInfo[FILE_NM]
@@ -252,17 +252,17 @@ def _addFileDeliveryDic(subscrId,
 
     #Second, Check if the file is a back-logged file that has been previously registered
     if (fileBackLogBuffered == NGAMS_SUBSCR_BACK_LOG):
-        if (not srvObj._subscrBlScheduledDic.has_key(subscrId)):
+        if (subscrId not in srvObj._subscrBlScheduledDic):
             srvObj._subscrBlScheduledDic[subscrId] = {}
         k = _fileKey(fileId, fileVersion)
-        if (srvObj._subscrBlScheduledDic[subscrId].has_key(k)):
+        if (k in srvObj._subscrBlScheduledDic[subscrId]):
             add = 0 # if this is an old entry, do not add again
         else:
             # if this is a new entry, maybe it will be added unless the first check set 'add' to 0.
             # Must occupy the dic key space
             srvObj._subscrBlScheduledDic[subscrId][k] = None
     if (add):
-        if (deliverReqDic.has_key(subscrId)):
+        if (subscrId in deliverReqDic):
             deliverReqDic[subscrId].append(fileInfo)
         else:
             # It was a new entry, create new list for this Subscriber.
@@ -276,7 +276,7 @@ def _addFileDeliveryDic(subscrId,
         fkey = fileInfo[FILE_ID] + "/" + str(fileVersion)
         fileDeliveryCountDic_Sem.acquire()
         try:
-            if (fileDeliveryCountDic.has_key(fkey)):
+            if (fkey in fileDeliveryCountDic):
                 if (fileBackLogBuffered != NGAMS_SUBSCR_BACK_LOG):
                     fileDeliveryCountDic[fkey]  += 1
                 elif (replaceWithBL):
@@ -321,7 +321,7 @@ def _checkIfDeliverFile(srvObj,
     T = TRACE()
 
     lastDelivery        = deliveredStatus[subscrObj.getId()]
-    if (scheduledStatus.has_key(subscrObj.getId())):
+    if (subscrObj.getId() in scheduledStatus):
         lastSchedule = scheduledStatus[subscrObj.getId()]
     else:
         lastSchedule = None
@@ -553,7 +553,7 @@ def _backupQueueToBacklog(srvObj):
     queueDict = srvObj._subscrQueueDic
     subscrbDict =srvObj.getSubscriberDic()
     for subscrbId, qu in queueDict.items():
-        if (subscrbDict.has_key(subscrbId)):
+        if (subscrbId in subscrbDict):
             subscrObj = subscrbDict[subscrbId]
         else:
             logger.warning('Cannot find the file queue for subscriber %s during backing up', subscrbId)
@@ -737,10 +737,10 @@ def _deliveryThread(srvObj,
                         if (urlres_query):
                             jqdict = urlparse.parse_qs(urlres_query)
                             if (jqdict):
-                                if (jqdict.has_key('redo_on_fail') and
+                                if ('redo_on_fail' in jqdict and
                                 '1' == jqdict['redo_on_fail'][0]):
                                     redo_on_fail = True
-                                if (jqdict.has_key('plugin_params')):
+                                if ('plugin_params' in jqdict):
                                     plugInPars = jqdict['plugin_params'][0]
                     else:
                         raise Exception('invalid ngas job plugin')
@@ -857,11 +857,11 @@ def _deliveryThread(srvObj,
 
                     if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
                         # remove bl record from the dict
-                        if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
+                        if (subscrbId in srvObj._subscrBlScheduledDic):
                             k = _fileKey(fileId, fileVersion)
                             srvObj._subscrBlScheduledDic_Sem.acquire()
                             try:
-                                if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
+                                if (k in srvObj._subscrBlScheduledDic[subscrbId]):
                                     del srvObj._subscrBlScheduledDic[subscrbId][k]
                             finally:
                                 srvObj._subscrBlScheduledDic_Sem.release()
@@ -882,7 +882,7 @@ def _deliveryThread(srvObj,
                         fkey = fileId + "/" + str(fileVersion)
                         fileDeliveryCountDic_Sem.acquire()
                         try:
-                            if (fileDeliveryCountDic.has_key(fkey)):
+                            if (fkey in fileDeliveryCountDic):
                                 fileDeliveryCountDic[fkey] -= 1
                                 if (fileDeliveryCountDic[fkey] == 0):
                                     _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
@@ -922,9 +922,9 @@ def _deliveryThread(srvObj,
                         try: # the following block must be atomic
                             _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
                                               fileVersion, filename)
-                            if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
+                            if (subscrbId in srvObj._subscrBlScheduledDic):
                                 k = _fileKey(fileId, fileVersion)
-                                if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
+                                if (k in srvObj._subscrBlScheduledDic[subscrbId]):
                                     del srvObj._subscrBlScheduledDic[subscrbId][k]
                         finally:
                             srvObj._subscrBlScheduledDic_Sem.release()
@@ -1154,10 +1154,10 @@ def subscriptionThread(srvObj,
                     subscrObj = srvObj.getSubscriberDic()[subscrId]
                     start_date = None
                     """
-                    if (scheduledStatus.has_key(subscrId) and scheduledStatus[subscrId]):
+                    if (subscrId in scheduledStatus and scheduledStatus[subscrId]):
                         start_date = scheduledStatus[subscrId]
                     """
-                    if (checkedStatus.has_key(subscrId) and checkedStatus[subscrId]):
+                    if (subscrId in checkedStatus and checkedStatus[subscrId]):
                         start_date = checkedStatus[subscrId]
                     elif subscrObj.getLastFileIngDate():
                         start_date = subscrObj.getLastFileIngDate()
@@ -1220,7 +1220,7 @@ def subscriptionThread(srvObj,
                     fileId  = fileInfo[0]
                     fileVersion = fileInfo[1]
                     fileIds[fileId] = 1
-                    if (fileRefDic.has_key(fileId)):
+                    if (fileId in fileRefDic):
                         fileRefDic[fileId].append(fileVersion)
                     else:
                         fileRefDic[fileId] = [fileVersion]
@@ -1245,7 +1245,7 @@ def subscriptionThread(srvObj,
             deliveredStatus = {}
             for subscrId in srvObj.getSubscriberDic().keys():
                 deliveredStatus[subscrId] = None
-                if (not scheduledStatus.has_key(subscrId)):
+                if (subscrId not in scheduledStatus):
                     scheduledStatus[subscrId] = None
             subscrIds = srvObj.getSubscriberDic().keys()
             subscrStatus = srvObj.getDb().\
@@ -1363,7 +1363,7 @@ def subscriptionThread(srvObj,
             # receive data.
             for subscrId in srvObj.getSubscriberDic().keys():
             #for subscrId in deliverReqDic.keys():
-                if (deliverReqDic.has_key(subscrId)):
+                if (subscrId in deliverReqDic):
                     deliverReqDic[subscrId].sort(_compFctIngDate)
                     #get the ingest_date of the last file in the queue (list)
                     lastScheduleDate = _convertFileInfo(deliverReqDic[subscrId][-1])[FILE_DATE]
@@ -1377,10 +1377,10 @@ def subscriptionThread(srvObj,
                 """
 
                 # multi-threaded concurrent transfer, added by chen.wu@icrar.org
-                if (not srvObj.getSubscriberDic().has_key(subscrId)): # this is possible since back log files can still use old subscriber names
+                if (subscrId not in srvObj.getSubscriberDic()): # this is possible since back log files can still use old subscriber names
                     continue
                 num_threads = float(srvObj.getSubscriberDic()[subscrId].getConcurrentThreads())
-                if queueDict.has_key(subscrId):
+                if subscrId in queueDict:
                     #debug_chen
                     logger.debug('Use existing queue for %s', subscrId)
                     quChunks = queueDict[subscrId]
@@ -1394,7 +1394,7 @@ def subscriptionThread(srvObj,
                     quChunks = buildSubscrQueue(srvObj, subscrId, dataMoverOnly)
                     queueDict[subscrId] = quChunks
 
-                if (deliverReqDic.has_key(subscrId)):
+                if (subscrId in deliverReqDic):
                     allFiles = deliverReqDic[subscrId]
                 else:
                     allFiles = []
@@ -1406,7 +1406,7 @@ def subscriptionThread(srvObj,
                     #quChunks.put(allFiles[jdx])
                     # Deliver the data - spawn off a Delivery Thread to do this job
                 logger.debug('Number of elements in Queue %s: %d', subscrId, quChunks.qsize())
-                if not deliveryThreadDic.has_key(subscrId):
+                if subscrId not in deliveryThreadDic:
                     deliveryThreads = []
                     for tid in range(int(num_threads)):
                         args = (srvObj, srvObj.getSubscriberDic()[subscrId], quChunks, fileDeliveryCountDic, fileDeliveryCountDic_Sem, None)

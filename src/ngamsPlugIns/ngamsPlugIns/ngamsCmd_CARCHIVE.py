@@ -272,7 +272,7 @@ def handleCmd(srvObj,
 
         # Keep track of the total size of the container
         uncomprSize = ngamsPlugInApi.getFileSize(filepath)
-        if not containerSizes.has_key(containerId):
+        if containerId not in containerSizes:
             containerSizes[containerId] = 0
         containerSizes[containerId] += uncomprSize
 

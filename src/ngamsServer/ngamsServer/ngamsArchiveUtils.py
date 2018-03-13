@@ -354,7 +354,7 @@ def replicateFile(dbConObj,
 
     # Get the ID for the Replication Disk.
     setObj = ngamsCfgObj.getStorageSetFromSlotId(piStat.getSlotId())
-    if (not diskDic.has_key(setObj.getRepDiskSlotId())):
+    if setObj.getRepDiskSlotId() not in diskDic:
         raise Exception("Error handling Archive Request - no Replication " +\
               "Disk found according to configuration. Replication Disk " +\
               "Slot ID: " + str(setObj.getRepDiskSlotId()))
@@ -426,7 +426,7 @@ def issueDiskSpaceWarning(srvObj,
     T = TRACE()
 
     global _diskSpaceWarningDic
-    if (_diskSpaceWarningDic.has_key(diskId) == 0):
+    if diskId not in _diskSpaceWarningDic:
         _diskSpaceWarningDic[diskId] = 0
     if (_diskSpaceWarningDic[diskId] == 0):
         diskInfo = ngamsDiskInfo.ngamsDiskInfo()

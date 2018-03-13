@@ -168,10 +168,10 @@ def resolveHostAddress(localHostId,
         for host in hostList:
             hostInfoDic[host] = None
 
-    if (not hostInfoDic.has_key(localHostId)):
+    if localHostId not in hostInfoDic:
         _addHostInDic(dbConObj, localHostId, hostInfoDic)
     for hostName in hostList:
-        if (not hostInfoDic.has_key(hostName)):
+        if hostName not in hostInfoDic:
             errMsg = genLog("NGAMS_AL_MIS_HOST", [hostName])
             raise Exception(errMsg)
         hi = hostInfoDic[hostName]
@@ -191,7 +191,7 @@ def resolveHostAddress(localHostId,
             if ((clusterName == None) or (clusterName.strip() == "")):
                 raise Exception("No Cluster Name specified in NGAS DB for " +\
                       "host: " + hi.getHostId())
-            if (not hostInfoDic.has_key(clusterName)):
+            if clusterName not in hostInfoDic:
                 _addHostInDic(dbConObj, clusterName, hostInfoDic)
             hi.\
                  setHostType(NGAMS_HOST_DOMAIN).\
@@ -201,7 +201,7 @@ def resolveHostAddress(localHostId,
             # It's a remote host somewhere 'in the world'. Set the information
             # about the host to be contacted for handling the request.
             clusterName = hi.getClusterName()
-            if (not hostInfoDic.has_key(clusterName)):
+            if clusterName not in hostInfoDic:
                 _addHostInDic(dbConObj, clusterName, hostInfoDic)
             hi.\
                  setHostType(NGAMS_HOST_REMOTE).\
@@ -277,7 +277,7 @@ def acquireDiskResource(ngamsCfgObj,
     if (not storageSet.getMutex()): return
 
     global _diskMutexSems
-    if (not _diskMutexSems.has_key(slotId)):
+    if slotId not in _diskMutexSems:
         _diskMutexSems[slotId] = threading.Semaphore(1)
     code = string.split(str(abs(random.gauss(10000000,10000000))), ".")[0]
     logger.debug("Requesting access to disk resource with Slot ID: %s (Code: %s)",
@@ -304,7 +304,7 @@ def releaseDiskResource(ngamsCfgObj,
     if (not storageSet.getMutex()): return
 
     global _diskMutexSems
-    if (not _diskMutexSems.has_key(slotId)):
+    if slotId not in _diskMutexSems:
         _diskMutexSems[slotId] = threading.Semaphore(1)
     logger.debug("Releasing disk resource with Slot ID: %s", slotId)
     _diskMutexSems[slotId].release()

@@ -42,7 +42,7 @@ def changeNumThreads(srvObj, subscrId, oldNum, newNum):
     # key: threadName (unique), value - dummy 0
     deliveryThreadRefDic = srvObj._subscrDeliveryThreadDicRef
     # key: subscriberId, value - a List of deliveryThreads for that subscriber
-    if (not srvObj._subscrDeliveryThreadDic.has_key(subscrId)): # threads have not started yet
+    if (subscrId not in srvObj._subscrDeliveryThreadDic): # threads have not started yet
         return
     deliveryThreadList = srvObj._subscrDeliveryThreadDic[subscrId]
 
@@ -54,7 +54,7 @@ def changeNumThreads(srvObj, subscrId, oldNum, newNum):
                 del deliveryThreadList[tid]
     elif (oldNum < newNum):
         num_threads = newNum - oldNum
-        if (not srvObj._subscrQueueDic.has_key(subscrId)):
+        if (subscrId not in srvObj._subscrQueueDic):
             raise Exception('Cannot find the file queue associated with subscriber %s' % subscrId)
         quChunks = srvObj._subscrQueueDic[subscrId]
 
@@ -93,7 +93,7 @@ def handleCmd(srvObj,
         return
 
     subscrId = reqPropsObj.getHttpPar("subscr_id")
-    if (not srvObj.getSubscriberDic().has_key(subscrId)):
+    if (subscrId not in srvObj.getSubscriberDic()):
         httpRef.send_status("USUBSCRIBE command failed: Cannot find subscriber '%s'" % subscrId,
                             status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
         return
@@ -135,10 +135,10 @@ def handleCmd(srvObj,
             lastIngDate = subscriber.getLastFileIngDate()
             if lastIngDate is not None: # either re-check past files or skip unchecked files
                 subscriber.setLastFileIngDate(None)
-            if (srvObj._subscrScheduledStatus.has_key(subscrId)):
+            if (subscrId in srvObj._subscrScheduledStatus):
                 #if (startDate < srvObj._subscrScheduledStatus[subscrId] and srvObj._subscrScheduledStatus[subscrId]): # enables trigger re-delivering files that have been previously delivered
                 del srvObj._subscrScheduledStatus[subscrId]
-            if (srvObj._subscrCheckedStatus.has_key(subscrId)):
+            if (subscrId in srvObj._subscrCheckedStatus):
                 del srvObj._subscrCheckedStatus[subscrId]
                 #if (srvObj._subscrScheduledStatus[subscrId]):# either re-check past files or skip unchecked files
                     #del srvObj._subscrScheduledStatus[subscrId]

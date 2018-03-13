@@ -72,7 +72,7 @@ def delSubscriber(srvObj,
     # remove all entries associated with this subscriber from in-memory dictionaries
 
     numThreads = 0
-    if (srvObj.getSubscriberDic().has_key(subscrId)):
+    if (subscrId in srvObj.getSubscriberDic()):
         subscriber = srvObj.getSubscriberDic()[subscrId]
         numThreads = subscriber.getConcurrentThreads()
         del srvObj.getSubscriberDic()[subscrId]
@@ -81,14 +81,14 @@ def delSubscriber(srvObj,
         err += 1
         errMsg += estr
 
-    if (srvObj._subscrScheduledStatus.has_key(subscrId)):
+    if (subscrId in srvObj._subscrScheduledStatus):
         del srvObj._subscrScheduledStatus[subscrId]
     else:
         estr = " Cannot find scheduled status for the subscriber '%s' kept internally. " % subscrId
         err += 1
         errMsg += estr
 
-    if (srvObj._subscrSuspendDic.has_key(subscrId)):
+    if (subscrId in srvObj._subscrSuspendDic):
         srvObj._subscrSuspendDic[subscrId].set() # resume all suspended deliveryThreads (if any) so they can know the subscriber is removed
         del srvObj._subscrDeliveryThreadDic[subscrId] # this does not kill those deliveryThreads, but only the list container
     else:
@@ -100,9 +100,9 @@ def delSubscriber(srvObj,
     deliveryFileDic = srvObj._subscrDeliveryFileDic
     for tid in range(int(numThreads)):
         thrdName = NGAMS_DELIVERY_THR + subscrId + str(tid)
-        if (deliveryThreadRefDic.has_key(thrdName)):
+        if (thrdName in deliveryThreadRefDic):
             del deliveryThreadRefDic[thrdName]
-        if (deliveryFileDic.has_key(thrdName)):
+        if (thrdName in deliveryFileDic):
             del deliveryFileDic[thrdName]
 
     fileDeliveryCountDic = srvObj._subscrFileCountDic
@@ -110,7 +110,7 @@ def delSubscriber(srvObj,
 
     # reduce the file reference count by 1 for all files that are in the queue to be delivered
     # and in the meantime, clear the queue before deleting it
-    if (srvObj._subscrQueueDic.has_key(subscrId)):
+    if (subscrId in srvObj._subscrQueueDic):
         if (srvObj.getCachingActive()):
             errOld = err
             qu = srvObj._subscrQueueDic[subscrId]
@@ -138,7 +138,7 @@ def delSubscriber(srvObj,
     filelist = srvObj.getDb().getSubscrBackLogBySubscrId(subscrId)
 
     # Mark back-logged files that have been in the queue (but not yet dequeued)
-    if (srvObj._subscrBlScheduledDic.has_key(subscrId)):
+    if (subscrId in srvObj._subscrBlScheduledDic):
         errOld = err
         myDic = srvObj._subscrBlScheduledDic[subscrId]
         srvObj._subscrBlScheduledDic_Sem.acquire()
@@ -147,7 +147,7 @@ def delSubscriber(srvObj,
                 fileId = fi[0]
                 fileVersion = fi[1]
                 k = ngamsSubscriptionThread._fileKey(fileId, fileVersion)
-                if (myDic.has_key(k)):
+                if (k in myDic):
                     del myDic[k]
         except:
             estr = " Error marking back-logged files that have been in the queue for subscriber %s"
@@ -188,7 +188,7 @@ def _reduceRefCount(fileDeliveryCountDic, fileDeliveryCountDic_Sem, fileId, file
     fkey = fileId + "/" + str(fileVersion)
     fileDeliveryCountDic_Sem.acquire()
     try:
-        if (fileDeliveryCountDic.has_key(fkey)):
+        if (fkey in fileDeliveryCountDic):
             fileDeliveryCountDic[fkey]  -= 1
             if (fileDeliveryCountDic[fkey] == 0):
                 del fileDeliveryCountDic[fkey]

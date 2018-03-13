@@ -196,7 +196,7 @@ def checkDuplicateValue(checkDic,
 
     Returns:     Void.
     """
-    if (checkDic.has_key(value)):
+    if value in checkDic:
         errMsg = "Duplicate value for property: " + property + ". Value: " +\
                  str(value)
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
@@ -654,7 +654,7 @@ class ngamsConfig:
                           setFilterPlugIn(self.getVal(nm % "FilterPlugIn")).\
                           setFilterPlugInPars(self.getVal(nm %\
                                                           "FilterPlugInPars"))
-                if (srcArchIdDic.has_key(mirSrcObj.getId())):
+                if mirSrcObj.getId() in srcArchIdDic:
                     msg = "Error parsing configuration file. Mirroring " +\
                           "Source Archive ID: %s specified multiple times"
                     raise Exception(msg % mirSrcObj.getId())
@@ -1910,7 +1910,7 @@ class ngamsConfig:
 
         Returns:   1 = user defined (integer/0|1).
         """
-        if (self.__authUserDic.has_key(user)):
+        if user in self.__authUserDic:
             return 1
         else:
             return 0
@@ -1925,7 +1925,7 @@ class ngamsConfig:
 
         Returns:   Password or None (string).
         """
-        if (not self.__authUserDic.has_key(user)):
+        if user not in self.__authUserDic:
             return None
         else:
             return self.__authUserDic[user]
@@ -1938,7 +1938,7 @@ class ngamsConfig:
 
         Returns:   Password or None (string).
         """
-        if (not self.__authUserCommandsDic.has_key(user)):
+        if user not in self.__authUserCommandsDic:
             return None
         else:
             return self.__authUserCommandsDic[user]
@@ -1955,7 +1955,7 @@ class ngamsConfig:
         Returns:     Authorization HTTP Header value (string).
         """
         if (not user): user = self.getAuthUsers()[0]
-        if (not self.__authUserDic.has_key(user)):
+        if user not in self.__authUserDic:
             raise Exception("Undefined user referenced: %s" % user)
         pwd = base64.b64decode(self.getAuthUserInfo(user))
         authHdrVal = "Basic " + base64.b64encode(user + ":" + pwd)
@@ -2037,7 +2037,7 @@ class ngamsConfig:
         """
         T = TRACE()
 
-        if (not self.__mirSrcObjDic.has_key(id)):
+        if id not in self.__mirSrcObjDic:
             msg = "No Mirroring Source found in configuration with ID: %s"
             raise Exception(msg % id)
         else:
@@ -2059,7 +2059,7 @@ class ngamsConfig:
         """
         T = TRACE()
 
-        if (not self.__mirSrcObjDic.has_key(srvList)):
+        if srvList not in self.__mirSrcObjDic:
             msg = "No Mirroring Source Object found for Server List: %s"
             raise Exception(msg % srvList)
         else:
@@ -2224,7 +2224,7 @@ class ngamsConfig:
                     logger.error(errMsg)
                     self.getCheckRep().append(errMsg)
                 for setId in stream.getStorageSetIdList():
-                    if (not storageSetDic.has_key(setId)):
+                    if setId not in storageSetDic:
                         errMsg = "Undefined Storage Set Id: "+str(setId)+" " +\
                                  "referenced in definition of Target " +\
                                  "Storage Set for Stream with mime-type: " +\
