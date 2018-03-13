@@ -28,7 +28,8 @@ import logging
 import os
 import subprocess
 import time
-from urlparse import urlparse
+
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 
 from ngamsLib.ngamsCore import checkCreatePath, getFileSize
 from ngamsServer import ngamsArchiveUtils, ngamsFileUtils
@@ -116,7 +117,7 @@ def get_params(request):
         uri = uri[4:]
 
     uri = 'ssh://' + uri
-    uri_parsed = urlparse(uri)
+    uri_parsed = urlparse.urlparse(uri)
     if uri_parsed.path.lower().startswith(invalid_paths):
         raise Exception('Requested to pull file from exluded location')
 

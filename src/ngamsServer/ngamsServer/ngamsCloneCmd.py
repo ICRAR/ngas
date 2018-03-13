@@ -35,7 +35,8 @@ import logging
 import os
 import threading
 import time
-import urllib
+
+from six.moves.urllib import request as urlrequest  # @UnresolvedImport
 
 from . import ngamsArchiveUtils, ngamsSrvUtils, ngamsFileUtils
 from . import ngamsCacheControlThread
@@ -489,8 +490,7 @@ def _cloneExec(srvObj,
             # encountered during cloning.
             for attempt in range(5):
                 try:
-                    filename, headers = urllib.urlretrieve(fileUrl,
-                                                           stagingFilename)
+                    filename, headers = urlrequest.urlretrieve(fileUrl, stagingFilename)
                     _checkFile(srvObj, fio, stagingFilename, headers,
                                checkChecksum)
                     # If we get to this point the transfer was (probably) OK.
@@ -827,11 +827,9 @@ def _cloneExplicit(srvObj,
         for attempt in range(5):
             try:
                 if (attempt == 0):
-                    filename, headers = urllib.urlretrieve(quickFileUrl,
-                                                           stagingFilename)
+                    filename, headers = urlrequest.urlretrieve(quickFileUrl, stagingFilename)
                 else:
-                    filename, headers = urllib.urlretrieve(fileUrl,
-                                                           stagingFilename)
+                    filename, headers = urlrequest.urlretrieve(fileUrl, stagingFilename)
                 _checkFile(srvObj, srcFileInfo, stagingFilename, headers, True)
                 # If we get to this point the transfer was (probably) OK.
                 break

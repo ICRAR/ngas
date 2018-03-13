@@ -30,7 +30,6 @@ import logging
 import os
 import socket
 import time
-import urllib
 
 from six.moves import http_client as httplib  # @UnresolvedImport
 from six.moves.urllib import parse as urlparse  # @UnresolvedImport
@@ -86,7 +85,7 @@ def _http_response(host, port, method, cmd,
         # urlib.urlencode expects tuple elements (if pars is a list)
         if not hasattr(pars, 'items'):
             pars = [(p[0], p[1]) for p in pars]
-        pars = urllib.urlencode(pars)
+        pars = urlparse.urlencode(pars)
         url += '?' + pars
 
     # Go, go, go!

@@ -38,7 +38,6 @@ import copy
 import logging
 import os
 import time
-import urllib
 
 from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 
@@ -151,13 +150,13 @@ class ngamsReqProps:
         # Handle the HTTP headers.
         for key in headers.keys():
             keyTmp = key.lower()
-            val = urllib.unquote(headers[key])
+            val = urlparse.unquote(headers[key])
             logger.debug("Parsing HTTP header key: %s with value: %s", key, val)
             self.__httpHdrDic[key] = val
             if (keyTmp == "content-disposition"):
                 pars = ngamsLib.parseHttpHdr(headers[key])
                 for name, val in pars.items():
-                    val = urllib.unquote(val)
+                    val = urlparse.unquote(val)
                     if name == "filename":
                         self.setFileUri(os.path.basename(val))
                     elif name == "mime_type":
@@ -172,10 +171,10 @@ class ngamsReqProps:
             elif (keyTmp == "content-length"):
                 self.setSize(val.strip(" \""))
             elif (keyTmp == "authorization"):
-                self.setAuthorization(urllib.unquote(val.strip()))
+                self.setAuthorization(urlparse.unquote(val.strip()))
 
         # Handle the information in the path.
-        path,query = urllib.splitquery(path)
+        path,query = urlparse.splitquery(path)
         self.setCmd(path.lstrip('/'))
         if (query):
             parList = urlparse.parse_qsl(query)
@@ -370,7 +369,7 @@ class ngamsReqProps:
         """
         if fileUri == "(null)":
             fileUri = "null"
-        self.__fileUri = urllib.unquote(str(fileUri))
+        self.__fileUri = urlparse.unquote(str(fileUri))
         self.__safeFileUri = ngamsLib.hidePassword(self.__fileUri)
         return self
 

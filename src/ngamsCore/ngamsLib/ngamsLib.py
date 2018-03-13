@@ -39,8 +39,8 @@ import logging
 import os
 import shutil
 import socket
-import urllib
 
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 from six.moves import cPickle # @UnresolvedImport
 
 from .ngamsCore import genLog, NGAMS_UNKNOWN_MT, rmFile
@@ -59,7 +59,7 @@ def hidePassword(fileUri):
     if not fileUri:
         return fileUri
 
-    tmpUri = urllib.unquote(fileUri)
+    tmpUri = urlparse.unquote(fileUri)
     if "ftp://" not in tmpUri or '@' not in tmpUri:
         return fileUri
 
