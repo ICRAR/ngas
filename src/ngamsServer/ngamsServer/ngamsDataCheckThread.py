@@ -423,7 +423,7 @@ def _schedNextFile(srvObj,
                 if diskId in disk_ids:
                     idx = disk_ids.index(diskId)
                     del disk_ids[idx]
-                for thrId in diskSchedDic.keys():
+                for thrId in list(diskSchedDic):
                     if (diskSchedDic[thrId] == diskId):
                         del diskSchedDic[thrId]
                 if (disk_ids):

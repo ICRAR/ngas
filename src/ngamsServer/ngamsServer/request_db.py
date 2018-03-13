@@ -67,7 +67,7 @@ class InMemoryRequestDB(object):
         return self.requests.get(req_id, None)
 
     def keys(self):
-        return self.requests.keys()
+        return list(self.requests)
 
 class DBMRequestDB(object):
     """A RequestDB backed up by a DBM file"""

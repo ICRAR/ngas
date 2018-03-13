@@ -687,7 +687,7 @@ class ngamsXmlMgr:
         T = TRACE()
 
         if (clear): self.clear()
-        xmlDicKeys = xmlDic.keys()
+        xmlDicKeys = list(xmlDic)
         xmlDicKeys.sort()
         # First element should be the root element.
         self.__rootElObj = xmlDic[xmlDicKeys[0]]
@@ -717,7 +717,7 @@ class ngamsXmlMgr:
                     (string).
         """
         buf = ""
-        keys = self.__xmlDic.keys()
+        keys = list(self.__xmlDic)
         if (sort): keys.sort()
         for key in keys:
             if (self.__xmlDic[key].getValue() != None):

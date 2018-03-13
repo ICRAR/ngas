@@ -307,7 +307,7 @@ class ngamsConfigBase:
             raise Exception("No DB connection object associated to " +\
                   "ngamsConfigBase object. Cannot access DB!")
         xmlDic = self.__xmlMgr.getXmlDic()
-        xmlDicKeys = xmlDic.keys()
+        xmlDicKeys = list(xmlDic)
         xmlDicKeys.sort()
         for xmlDicKey in xmlDicKeys:
             obj = xmlDic[xmlDicKey]

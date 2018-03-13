@@ -328,7 +328,7 @@ def handleCmd(srvObj,
         srvObj.getDb().addFileToContainer(containerId, resDapi.getFileId(), True)
 
         # Update the container sizes
-        for contSizeInfo in containerSizes.iteritems():
+        for contSizeInfo in containerSizes.items():
             srvObj.getDb().setContainerSize(contSizeInfo[0], contSizeInfo[1])
 
         # Inform the caching service about the new file.

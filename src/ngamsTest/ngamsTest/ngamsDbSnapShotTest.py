@@ -68,12 +68,12 @@ def _parseDbSnapshot(dbSnapshotDump):
             key, val = line.split(" = ")
             fileDic[key] = eval(val)
     convDbSnapshot = "CONVERTED DB SNAPSHOT:\n"
-    fileDicKeys = fileDic.keys()
+    fileDicKeys = list(fileDic)
     fileDicKeys.sort()
     for file in fileDicKeys:
         convDbSnapshot += "\nFILE: " + file + "\n"
         fileInfo = fileDic[file]
-        fileInfoKeys = fileInfo.keys()
+        fileInfoKeys = list(fileInfo)
         fileInfoKeys.sort()
         for key in fileInfoKeys:
             val = fileInfo[key]

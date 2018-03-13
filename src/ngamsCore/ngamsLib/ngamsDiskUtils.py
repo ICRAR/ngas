@@ -450,7 +450,7 @@ def checkDisks(hostId,
         # for the disk is updated, if no, a new entry is added.
         logger.info("Non Archiving System: Check if the disks mounted are " +\
              "registered in the DB ...")
-        slotIds = diskDic.keys()
+        slotIds = list(diskDic)
         slotIds.sort()
         for slotId in slotIds:
             diskId = diskDic[slotId].getDiskId()

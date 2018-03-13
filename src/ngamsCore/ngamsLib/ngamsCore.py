@@ -438,7 +438,7 @@ def createSortDicDump(dic):
     """
     if not isinstance(dic, dict):
         raise Exception("Object given is not a dictionary")
-    keys = dic.keys()
+    keys = list(dic)
     keys.sort()
     asciiDic = ""
     for key in keys: asciiDic += ", '%s': '%s'" % (key, dic[key])

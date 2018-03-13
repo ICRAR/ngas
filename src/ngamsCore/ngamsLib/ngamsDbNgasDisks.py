@@ -248,11 +248,13 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         if not res:
             return None
 
+        # TODO: change to simpler logic: run max() over a map() that extracts
+        # the integer from the disk logical name
         logNameDic = {}
         for subRes in res:
             tmpName = subRes[0]
             logNameDic[tmpName[(len(tmpName) - 6):]] = 1
-        logNames = logNameDic.keys()
+        logNames = list(logNameDic)
         logNames.sort()
         retVal = int(logNames[-1])
         return retVal

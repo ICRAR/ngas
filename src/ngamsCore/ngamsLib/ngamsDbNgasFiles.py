@@ -40,6 +40,7 @@ import os
 import re
 import tempfile
 
+import six
 from six.moves import cPickle  # @UnresolvedImport
 
 from . import ngamsDbCore, ngamsFileInfo, ngamsStatus, ngamsFileList
@@ -186,7 +187,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             sql.append(" WHERE ")
             sql.append(" AND ".join(cond_sql.keys()))
 
-        cursor = self.dbCursor(''.join(sql), args=cond_sql.values())
+        cursor = self.dbCursor(''.join(sql), args=list(six.itervalues(cond_sql)))
         with cursor:
             for x in cursor.fetch(fetch_size):
                 yield x

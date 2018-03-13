@@ -680,7 +680,7 @@ def flushEmailQueue():
                 pass
 
     # Now delete the mails.
-    mailList = mailDic.keys()
+    mailList = list(mailDic)
     mailList.sort()
     mailList.reverse()
     for mailNo in mailList:

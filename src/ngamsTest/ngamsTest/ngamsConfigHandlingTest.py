@@ -295,7 +295,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         # + set all values to a non-sense value.
         cfgName2 = "test_ServerLoad_2"
         tmpCfg = db_aware_cfg("src/ngamsCfg.xml")
-        for cfgKey in tmpCfg._getXmlDic().keys():
+        for cfgKey in list(tmpCfg._getXmlDic()):
             if ((cfgKey[-1] != "]") and (cfgKey.find("Db[1]") == -1)):
                 tmpCfg.storeVal(cfgKey, "0")
         tmpCfg.storeVal("NgamsCfg.Log[1].LocalLogFile",

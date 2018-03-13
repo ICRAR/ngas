@@ -94,7 +94,7 @@ def ngamsTestDppi1(srvObj,
 
     head.append("\nParameters Transferred:\n")
     httpParsDic = reqPropsObj.getHttpParsDic()
-    httpPars = httpParsDic.keys()
+    httpPars = list(httpParsDic)
     httpPars.sort()
     for httpPar in httpPars:
         head.append("%s=%s\n" % (httpPar,httpParsDic[httpPar]))

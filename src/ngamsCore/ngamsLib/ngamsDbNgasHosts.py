@@ -36,6 +36,8 @@ It should be used as part of the ngamsDbBase parent classes.
 
 import collections
 
+import six
+
 from. import ngamsDbCore
 from .ngamsCore import TRACE
 
@@ -188,8 +190,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         cols = ", ".join([table_columns[x] for x in args.keys()])
         params = ", ".join("{%d}" % (i) for i in range(len(args)))
         sql = "INSERT INTO ngas_hosts (%s) VALUES (%s)" % (cols, params)
-
-        self.query2(sql, args=args.values())
+        self.query2(sql, args=list(six.itervalues(args)))
 
 
     def updateSrvHostInfo(self,

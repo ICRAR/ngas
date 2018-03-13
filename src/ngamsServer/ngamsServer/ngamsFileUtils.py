@@ -157,7 +157,7 @@ def _locateArchiveFile(srvObj,
             if fileVer not in candFileDic:
                 candFileDic[fileVer] = []
             candFileDic[fileVer].append([location, fileInfo[0], fileInfo[1]])
-    fileVerList = candFileDic.keys()
+    fileVerList = list(candFileDic)
     fileVerList.sort()
     fileVerList.reverse()
     if logger.level <= logging.DEBUG:
@@ -186,7 +186,7 @@ def _locateArchiveFile(srvObj,
     for fileVer in fileVerList:
         for fileInfo in candFileDic[fileVer]:
             diskIdDic[fileInfo[1].getDiskId()] = fileInfo[1].getDiskId()
-    sqlDiskInfo = srvObj.getDb().getDiskInfoFromDiskIdList(diskIdDic.keys())
+    sqlDiskInfo = srvObj.getDb().getDiskInfoFromDiskIdList(list(diskIdDic))
     diskInfoDic = {}
     for diskInfo in sqlDiskInfo:
         diskInfoObj = ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(diskInfo)

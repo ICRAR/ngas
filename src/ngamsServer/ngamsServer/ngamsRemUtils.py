@@ -674,7 +674,7 @@ def checkFileCopiesAndReg(srvObj,
         checkDicKey, tmpDic = checkDicDbm.getNext()
         if (not checkDicKey): break
 
-        tmpDicKeys = tmpDic.keys()
+        tmpDicKeys = list(tmpDic)
         noOfCopies = len(tmpDicKeys)
         if (noOfCopies < minReqCopies):
             tmpFileInfo = tmpDic[tmpDicKeys[0]]

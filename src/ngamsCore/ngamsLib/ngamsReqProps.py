@@ -107,7 +107,7 @@ class ngamsReqProps:
                 ["FileUri", self.getFileUri()],
                 ["SafeFileUri", self.getSafeFileUri()],
                 ["HttpParsDic", self.getHttpParsDic()],
-                ["HttpParNames", self.getHttpParNames()],
+                ["HttpParNames", list(self.getHttpParNames())],
                 ["BytesReceived", self.getBytesReceived()],
                 ["StagingFilename", self.getStagingFilename()],
                 ["IoTime", self.getIoTime()],
