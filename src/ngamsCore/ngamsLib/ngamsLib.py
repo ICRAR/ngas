@@ -273,7 +273,7 @@ def createObjPickleFile(filename,
     """
     logger.debug("createObjPickleFile() - creating pickle file %s ...", filename)
     rmFile(filename)
-    with open(filename, "w") as pickleFo:
+    with open(filename, "wb") as pickleFo:
         cPickle.dump(object, pickleFo)
 
 
@@ -285,7 +285,7 @@ def loadObjPickleFile(filename):
 
     Returns:     Reconstructed object (<object>).
     """
-    with open(filename, "r") as pickleFo:
+    with open(filename, "rb") as pickleFo:
         return cPickle.load(pickleFo)
 
 def genFileKey(diskId,

@@ -395,7 +395,7 @@ def copyFile(srcFile,
     shutil.copy(srcFile, trgFile)
 
 
-def loadFile(filename):
+def loadFile(filename, mode='t'):
     """
     Read contents from file and return this.
 
@@ -403,10 +403,8 @@ def loadFile(filename):
 
     Returns:     Buffer containing contents of file (string).
     """
-    fo = open(filename)
-    buf = fo.read()
-    fo.close()
-    return buf
+    with open(filename, mode='r' + mode) as f:
+        return f.read()
 
 
 def genTmpFilename(prefix = ""):
@@ -839,7 +837,7 @@ def getThreadId(logFile,
     return tid
 
 def unzip(infile, outfile):
-    with contextlib.nested(gzip.open(infile, 'rb'), open(outfile, 'w')) as (gz, out):
+    with contextlib.nested(gzip.open(infile, 'rb'), open(outfile, 'wb')) as (gz, out):
         shutil.copyfileobj(gz, out)
 
 

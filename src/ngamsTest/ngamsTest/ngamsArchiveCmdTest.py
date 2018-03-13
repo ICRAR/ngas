@@ -405,9 +405,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         refFile = "ref/test_BackLogBuf_01_01_ref"
         self.checkFilesEq(refFile, tmpFile, "Unexpected reply from server")
         reqPropsFile = glob.glob("/tmp/ngamsTest/NGAS/back-log/*.pickle")[0]
-        fo = open(reqPropsFile)
-        tmpReqPropObj = cPickle.load(fo)
-        fo.close()
+        with open(reqPropsFile, 'rb') as fo:
+            tmpReqPropObj = cPickle.load(fo)
         tmpFile = saveInFile(None, filterDbStatus1(tmpReqPropObj.dumpBuf(),
                                                    filterTags=['RequestId']))
         refFile = "ref/test_BackLogBuf_01_02_ref"

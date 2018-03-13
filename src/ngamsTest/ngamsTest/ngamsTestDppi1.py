@@ -105,7 +105,7 @@ def ngamsTestDppi1(srvObj,
     # Generate status.
     if (cfgParDic["TARGET"] == "FILE"):
         outFile = procFile + "_ngamsTestDppi1"
-        with open(outFile, "a") as fo:
+        with open(outFile, "ab") as fo:
             fo.write(buf)
         resObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE, mimeType,
                                                  outFile, filename, procDir)

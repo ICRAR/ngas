@@ -828,10 +828,10 @@ def backLogBufferFiles(srvObj,
                                 os.path.basename(reqPropsFile))
         # Have to change the name of the Staging File in the Req. Prop.
         # Object = name of Back-Log Buffering File.
-        with open(reqPropsFile, "r") as fo:
+        with open(reqPropsFile, "rb") as fo:
             tmpReqPropObj = cPickle.load(fo).setStagingFilename(backLogBufFile)
 
-        with open(tmpBackLogBufReqFile, "w") as fo:
+        with open(tmpBackLogBufReqFile, "wb") as fo:
             cPickle.dump(tmpReqPropObj, fo)
 
         mvFile(tmpBackLogBufFile, backLogBufFile)

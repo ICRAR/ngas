@@ -121,7 +121,7 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         else:
             # Sending back illegal HTTP response
             time.sleep(0.500)
-            resp = loadFile("tmp/ngamsServerTestIllegalResp_tmp")
+            resp = loadFile("tmp/ngamsServerTestIllegalResp_tmp", mode='b')
             req_handler.wfile.write(resp)
 
 

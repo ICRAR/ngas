@@ -141,13 +141,12 @@ def _registerExec(srvObj,
     # TODO: Portatibility issue. Try to avoid UNIX shell commands for sorting.
     tmpFileList = tmpFilePat + "_FILE_LIST"
     rmFile(tmpFileList)
-    fo = open(tmpFileList, "w")
-    fileListDbm.initKeyPtr()
-    while (1):
-        dbmKey, fileInfo = fileListDbm.getNext()
-        if (not dbmKey): break
-        fo.write(dbmKey + "\n")
-    fo.close()
+    with open(tmpFileList, "wb") as fo:
+        fileListDbm.initKeyPtr()
+        while (1):
+            dbmKey, fileInfo = fileListDbm.getNext()
+            if (not dbmKey): break
+            fo.write(dbmKey + b"\n")
     sortFileList = tmpFilePat + "_SORT_FILE_LIST"
     rmFile(sortFileList)
     shellCmd = "sort %s > %s" % (tmpFileList, sortFileList)

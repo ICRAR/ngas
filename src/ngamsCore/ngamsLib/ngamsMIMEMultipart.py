@@ -166,7 +166,7 @@ class FilesystemWriterHandler(ContainerBuilderHandler):
         ContainerBuilderHandler.startFile(self, filename)
         path = self._curSavingDir() + '/' + filename
         logger.debug('Opening new file %s', path)
-        self._fdOut = open(path, 'w')
+        self._fdOut = open(path, 'wb')
         self._filename = path
         self._crc = 0
 
