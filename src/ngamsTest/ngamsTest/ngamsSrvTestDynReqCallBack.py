@@ -140,7 +140,6 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         else:
             time.sleep(0.250)
             self.killServer()
-            sys.exit(0)
 
 
     def reqCallBack_SrvCrash2(self, *args, **kwargs):
@@ -158,7 +157,6 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         else:
             time.sleep(0.250)
             self.killServer()
-            sys.exit(0)
 
 
 

@@ -56,8 +56,6 @@ class ngamsSrvTestAfterDapiInvocation(ngamsServer.ngamsServer):
         Returns:  Void.
         """
         self.killServer()
-        raise Exception, "test_AfterDapiInvocation: TEST METHOD KILLING " +\
-              "SERVER"
 
 
 if __name__ == '__main__':

@@ -57,7 +57,6 @@ class ngamsSrvTestKillBeforeRepFile(ngamsServer.ngamsServer):
         Returns:  Void.
         """
         self.killServer()
-        raise Exception, "test_BeforeRepFile: TEST METHOD KILLING SERVER"
 
 
 if __name__ == '__main__':

@@ -55,8 +55,6 @@ class ngamsSrvTestKillAfterStagingFile(ngamsServer.ngamsServer):
         Sub-class of ngamsServer killing itself after receiving Staging File.
         """
         self.killServer()
-        raise Exception, "test_AfterCreateOrgStagingFile: TEST METHOD " +\
-              "KILLING SERVER"
 
 
 if __name__ == '__main__':
