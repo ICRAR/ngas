@@ -78,11 +78,11 @@ def authorize(cfg, reqPropsObj):
     if len(auth_parts) != 2:
         raise UnauthenticatedError('Invalid Basic authentication, missing value')
 
-    user_pass = base64.b64decode(auth_parts[1]).split(':')
+    user_pass = base64.b64decode(auth_parts[1]).split(b':')
     if len(user_pass) < 2:
         raise UnauthenticatedError('Invalid Basic authentication, no password provided')
 
-    user, password = user_pass[0], ':'.join(user_pass[1:])
+    user, password = user_pass[0], b':'.join(user_pass[1:])
 
     # Get the user from the configuration.
     stored_pass = cfg.getAuthUserInfo(user)

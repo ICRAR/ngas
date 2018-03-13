@@ -87,9 +87,9 @@ def _readDb(snapShotDbObj,
 ##############################################################################
 # DON'T CHANGE THESE IDs!!!
 ##############################################################################
-NGAMS_SN_SH_ID2NM_TAG   = "___ID2NM___"
-NGAMS_SN_SH_NM2ID_TAG   = "___NM2ID___"
-NGAMS_SN_SH_MAP_COUNT   = "___MAP_COUNT___"
+NGAMS_SN_SH_ID2NM_TAG   = b"___ID2NM___"
+NGAMS_SN_SH_NM2ID_TAG   = b"___NM2ID___"
+NGAMS_SN_SH_MAP_COUNT   = b"___MAP_COUNT___"
 
 def _encName(dbSnapshot,
              name):
@@ -620,7 +620,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                 value = cPickle.loads(pickleValue)
 
                 # Check if an administrative element, if yes add it if necessary.
-                if (key.find("___") != -1):
+                if b"___" in key:
                     if (not tmpSnapshotDbm.has_key(key)):
                         tmpSnapshotDbm[key] = pickleValue
                 else:
@@ -695,7 +695,8 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
             #    if (not key): break
             for key,value in snapshotDelDbm.iteritems():
                 # jagonzal: We need to reformat the values and skip administrative elements #################
-                if (str(key).find("__") != -1): continue
+                if b'__' in key:
+                    continue
                 #############################################################################################
                 msg = "Removing entry: %s from DB Snapshot for disk with ID: %s"
                 logger.debug(msg, key, diskId)
@@ -731,7 +732,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                 value = cPickle.loads(pickleValue)
 
                 # Check if it is an administrative element, if yes add it if needed
-                if (key.find("___") != -1):
+                if b"___" in key:
                     if (not snapshotDbm.has_key(key)):
                         snapshotDbm[key] = pickleValue
                 else:

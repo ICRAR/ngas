@@ -98,9 +98,9 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         cfg = [("NgamsCfg.Authorization[1].%s" % name, val) for name, val in cfg]
         self.prepExtSrv(cfgProps=cfg)
 
-        auth1 = 'test1:' + pass1
-        auth2 = 'test2:' + pass2
-        auth3 = 'test3:' + pass3
+        auth1 = b'test1:' + pass1
+        auth2 = b'test2:' + pass2
+        auth3 = b'test3:' + pass3
 
         # No authentication
         self._assert_code(401)

@@ -40,7 +40,7 @@ import threading
 
 from six.moves import cPickle  # @UnresolvedImport
 
-from .ngamsCore import NGAMS_DBM_EXT, NGAMS_FILE_DB_COUNTER, rmFile
+from .ngamsCore import NGAMS_DBM_EXT, rmFile
 
 
 logger = logging.getLogger(__name__)
@@ -50,6 +50,7 @@ try:
 except:
     import bsddb3 as bsddb
 
+NGAMS_FILE_DB_COUNTER         = b"__COUNT__"
 
 class DbRunRecoveryError(Exception):
     pass
@@ -235,7 +236,8 @@ class ngamsDbm:
         """
         keyList = self.__dbmObj.keys()
         for idx in range((len(keyList) - 1), -1, -1):
-            if (keyList[idx].find("__") == 0): del keyList[idx]
+            if keyList[idx].startswith(b"__"):
+                del keyList[idx]
         return keyList
 
 
@@ -318,11 +320,12 @@ class ngamsDbm:
                         self.__keyPtr, dbVal = self.__dbmObj.next()
                     except:
                         self.__keyPtr, dbVal = (None, None)
-                    if (str(self.__keyPtr).find("__") != 0): break
+                    if self.__keyPtr is not None and not self.__keyPtr.startswith(b"__"):
+                        break
             else:
                 try:
                     self.__keyPtr, dbVal = self.__dbmObj.first()
-                    while (str(self.__keyPtr).find("__") == 0):
+                    while self.__keyPtr.startswith(b"__"):
                         self.__keyPtr, dbVal = self.__dbmObj.next()
                 except Exception:
                     self.__keyPtr, dbVal = (None, None)

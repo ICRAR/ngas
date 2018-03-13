@@ -123,7 +123,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         # The current subscription code requires a local user named 'ngas-int',
         # regardless of whether remote authentication is enabled or not
         # To make things simple we add the user to all servers of the cluster
-        ngas_int = ('Name', 'ngas-int'), ('Password', base64.b64encode('ngas-int'))
+        ngas_int = ('Name', 'ngas-int'), ('Password', base64.b64encode(b'ngas-int'))
         server_list = []
         for srvInfo in orig_server_list:
             port, cfg_pars = srvInfo, []

@@ -39,7 +39,6 @@ can be used to build up Python applications communicating with NG/AMS.
 import argparse
 import base64
 import contextlib
-import functools
 import logging
 import os
 import random
@@ -581,10 +580,8 @@ class ngamsPClient:
                 fname = os.path.join(fname, os.path.basename(parts['filename']))
 
             # Dump the data into the target file
-            readf = functools.partial(resp.read, 65536)
             with open(fname, 'wb') as f:
-                for buf in iter(readf, ''):
-                    f.write(buf)
+                shutil.copyfileobj(resp, f)
 
             return ngamsStatus.dummy_success_stat(host_id)
 

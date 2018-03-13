@@ -374,8 +374,8 @@ class MIMEMultipartParser(object):
                 readingFile = False
 
                 # Look for both delimiter and final delimiter
-                delIdx  = buf.find(CRLF + '--' + boundary + CRLF)
-                fDelIdx = buf.find(CRLF + '--' + boundary + '--')
+                delIdx  = buf.find(CRLF + b'--' + boundary + CRLF)
+                fDelIdx = buf.find(CRLF + b'--' + boundary + b'--')
                 if delIdx != -1:
                     # We don't actually need the delimiter itself
                     # delimiter = buf[:delIdx + 4 + len(boundary) + 2]
@@ -406,7 +406,7 @@ class MIMEMultipartParser(object):
             # When found, finish writing data, and pass the
             # delimiter to the ReadingState.delimiter state
             if state == self._ReadingState.data:
-                delIdx  = buf.find(CRLF + '--' + boundary)
+                delIdx  = buf.find(CRLF + b'--' + boundary)
                 if delIdx != -1:
                     logger.debug('Found end of file %s because we found boundary: %s', filename, boundary)
                     state = self._ReadingState.delimiter
@@ -465,8 +465,8 @@ class FileReader(BufferedReader):
 
         if self.f is None:
             finfo = self.finfo
-            self.buf += 'Content-Type: ' + finfo.mimetype + CRLF
-            self.buf += 'Content-Disposition: attachment; filename="' + finfo.name + '"' + CRLF + CRLF
+            self.buf += b'Content-Type: ' + finfo.mimetype + CRLF
+            self.buf += b'Content-Disposition: attachment; filename="' + finfo.name + b'"' + CRLF + CRLF
             self.f = finfo.opener()
 
         buf = self.f.read(n)

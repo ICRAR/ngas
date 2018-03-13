@@ -353,7 +353,7 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
         #    if (not fileKey): break
         for fileKey,dbVal in queueDbm.iteritems():
             # jagonzal: We need to reformat the values and skip administrative elements #################
-            if (str(fileKey).find("__") != -1): continue
+            if b"__" in fileKey: continue
             fileInfo = cPickle.loads(dbVal)
             #############################################################################################
             noOfFiles += 1
@@ -574,7 +574,7 @@ def _genReport(srvObj, unregistered, diskDic, dbmObjDic, stats):
                 #    if (not fileKey): break
                 for fileKey,dbVal in errDbm.iteritems():
                     # jagonzal: We need to reformat the values and skip administrative elements #################
-                    if (str(fileKey).find("__") != -1): continue
+                    if b"__" in fileKey: continue
                     errInfo = cPickle.loads(dbVal)
                     #############################################################################################
                     slotDiskId = errInfo[3] + ":" + errInfo[4]

@@ -840,8 +840,7 @@ def getThreadId(logFile,
 
 def unzip(infile, outfile):
     with contextlib.nested(gzip.open(infile, 'rb'), open(outfile, 'w')) as (gz, out):
-        for data in iter(functools.partial(gz.read, 1024), ''):
-            out.write(data)
+        shutil.copyfileobj(gz, out)
 
 
 ###########################################################################

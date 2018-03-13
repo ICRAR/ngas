@@ -903,7 +903,7 @@ def to_status(http_response, host_id, cmd):
     """
 
     data = http_response.read()
-    if data and "<?xml" in data:
+    if data and b'<?xml' in data:
         logger.debug("Parsing incoming HTTP data as ngamsStatus")
         return ngamsStatus().unpackXmlDoc(data, 1)
 

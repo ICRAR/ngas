@@ -713,7 +713,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Check if that's the case before proceeding
         try:
             with open(os.path.join(repDiskPath, 'dummy'), 'wb') as f:
-                f.write('b')
+                f.write(b'b')
             can_write = True
         except IOError:
             can_write = False
@@ -1445,14 +1445,14 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                   'mime_type': 'application/octet-stream'}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 400, None)
-            self.checkEqual('NGAMS_ER_MISSING_URI' in resp.read(), True, None)
+            self.checkEqual(b'NGAMS_ER_MISSING_URI' in resp.read(), True, None)
 
         # No mime-type given
         params = {'filename': 'test',
                   'mime_type': ''}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 400, None)
-            self.checkEqual('NGAMS_ER_UNKNOWN_MIME_TYPE' in resp.read(), True, None)
+            self.checkEqual(b'NGAMS_ER_UNKNOWN_MIME_TYPE' in resp.read(), True, None)
 
         # File is zero-length
         test_file = 'tmp/zerofile.fits'
@@ -1461,7 +1461,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                   'mime_type': 'application/octet-stream'}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 400, None)
-            self.checkEqual('Content-Length is 0' in resp.read(), True, None)
+            self.checkEqual(b'Content-Length is 0' in resp.read(), True, None)
 
         # Invalid file_version parameter, is not a number
         params = {'filename': 'src/SmallFile.fits',
@@ -1469,7 +1469,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                   'mime_type': 'application/octet-stream'}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.assertEqual(400, resp.status)
-            self.assertIn('invalid literal for int() with base 10', resp.read())
+            self.assertIn(b'invalid literal for int() with base 10', resp.read())
 
         # All is fine
         params = {'filename': 'src/SmallFile.fits',

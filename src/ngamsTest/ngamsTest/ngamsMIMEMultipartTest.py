@@ -102,7 +102,7 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
         output = io.BytesIO()
         reader = ngamsMIMEMultipart.ContainerReader(cinfo)
         rfunc = functools.partial(reader.read, bs)
-        for buf in iter(rfunc, ''):
+        for buf in iter(rfunc, b''):
             output.write(buf)
         message = output.getvalue()
 
@@ -114,18 +114,18 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
         contents = self._createMIMEMessage(onlyDirs)
 
         self.assertTrue(contents, "No contents found")
-        self.assertTrue(contents.find("MIME-Version: 1.0") != -1, "Content is not a MIME message")
-        self.assertTrue(contents.find("Content-Type: multipart/mixed") != -1, "Content is not a multipart message")
+        self.assertTrue(b"MIME-Version: 1.0" in contents, "Content is not a MIME message")
+        self.assertTrue(b"Content-Type: multipart/mixed" in contents, "Content is not a multipart message")
 
         # There should be a different boundaries declaration for each directory
         # since each will result in a multipart message
-        nBoundaries = self._findOccurences(contents, 'boundary="')
+        nBoundaries = self._findOccurences(contents, b'boundary="')
         self.assertEqual(nBoundaries, len(self.mydirs), "Didn't find all boundary definitions that were expected")
 
         # There should be a "filename" declaration for each file
         # since each will result in a MIME message inside one of the multiparts
         if not onlyDirs:
-            nFilenames = self._findOccurences(contents, 'filename="')
+            nFilenames = self._findOccurences(contents, b'filename="')
             self.assertEquals(nFilenames, len(self.myfiles), "Didn't find all filename definitions that were expected")
 
     def _test_MultipartParser(self, onlyDirs):
@@ -183,7 +183,7 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
 
         message = io.BytesIO()
         rfunc = functools.partial(reader.read, 65536)
-        for buf in iter(rfunc, ''):
+        for buf in iter(rfunc, b''):
             message.write(buf)
         message = message.getvalue()
         mlen = len(message)

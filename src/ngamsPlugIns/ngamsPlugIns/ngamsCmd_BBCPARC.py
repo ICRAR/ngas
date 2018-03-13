@@ -95,9 +95,9 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
 
     # extract c32 zip variant checksum from output and convert to signed 32 bit integer
     crc_info = ngamsFileUtils.get_checksum_info(crc_name)
-    bbcp_checksum = crc_info.from_bytes(checksum_out.split(' ')[2].decode('hex'))
+    bbcp_checksum = crc_info.from_bytes(checksum_out.split(b' ')[2].decode('hex'))
 
-    logger.info('BBCP final message: %s', out.split('\n')[-2]) # e.g. "1 file copied at effectively 18.9 MB/s"
+    logger.info('BBCP final message: %s', out.split(b'\n')[-2]) # e.g. "1 file copied at effectively 18.9 MB/s"
     logger.info("File: %s copied to filename: %s", srcFilename, targFilename)
 
     return str(bbcp_checksum[0])

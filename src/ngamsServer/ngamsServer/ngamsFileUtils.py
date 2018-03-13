@@ -720,7 +720,7 @@ def get_checksum_interruptible(blocksize, filename, checksum_variant,
     crc_m = crc_info.method
     crc = crc_info.init
     with open(filename, 'rb') as f:
-        for block in iter(functools.partial(f.read, blocksize), ''):
+        for block in iter(functools.partial(f.read, blocksize), b''):
             checksum_allow_evt.wait()
             if checksum_stop_evt.is_set():
                 return
