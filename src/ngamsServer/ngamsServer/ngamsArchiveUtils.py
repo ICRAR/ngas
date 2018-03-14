@@ -66,6 +66,10 @@ _diskSpaceWarningDic = {}
 VOLUME_STRATEGY_RANDOM = 0
 VOLUME_STRATEGY_STREAMS = 1
 
+class PluginNotFoundError(Exception):
+    """Raised when a configured plug-in cannot be loaded"""
+    pass
+
 def _random_target_volume(srv):
 
     # Get a random volume from the list of available volumes
@@ -999,6 +1003,10 @@ def dataHandler(srv, request, httpRef, volume_strategy=VOLUME_STRATEGY_STREAMS,
         _dataHandler(srv, request, httpRef, find_target_disk,
                      pickle_request=pickle_request, sync_disk=sync_disk,
                      do_replication=do_replication, transfer=transfer)
+    except PluginNotFoundError as e:
+        srv.setSubState(NGAMS_IDLE_SUBSTATE)
+        httpRef.send_status('No module named %s' % e.args[0], status=NGAMS_FAILURE)
+        return
     except Exception as e:
         try:
             errMsg = genLog("NGAMS_ER_ARCHIVE_PUSH_REQ",
@@ -1064,9 +1072,12 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         # changed
         skip_crc = False
         plugIn = srvObj.getMimeTypeDic()[mimeType]
-        modifies = loadPlugInEntryPoint(plugIn,
-                                        entryPointMethodName='modifies_content',
-                                        returnNone=True)
+        try:
+            modifies = loadPlugInEntryPoint(plugIn,
+                                            entryPointMethodName='modifies_content',
+                                            returnNone=True)
+        except ImportError:
+            raise PluginNotFoundError(plugIn)
         if modifies and modifies(srvObj, reqPropsObj):
             skip_crc = True
 
@@ -1107,7 +1118,10 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         # the only way). In that case they need to know the checksum method to
         # use, which we pass down via the 'crc_name' parameter (which we later
         # remove).
-        plugInMethod = loadPlugInEntryPoint(plugIn)
+        try:
+            plugInMethod = loadPlugInEntryPoint(plugIn)
+        except (ImportError, AttributeError):
+            raise PluginNotFoundError(plugIn)
 
         logger.info("Invoking DAPI: %s to handle data for file with URI: %s",
                     plugIn, os.path.basename(reqPropsObj.getFileUri()))
