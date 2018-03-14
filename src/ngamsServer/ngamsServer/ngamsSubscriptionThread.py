@@ -358,35 +358,6 @@ def _checkIfDeliverFile(srvObj,
         logger.debug('File %s is out, ingDate = %s, lastDelivery = %s', fileId, toiso8601(fileIngDate), toiso8601(lastDelivery))
 
 
-def _compFct(fileInfo1,
-             fileInfo2, sortField):
-    """
-    Sorter function to sort the elements in the file info list as returned by
-    ngamsDb.getFileSummary2() (according to the File Ingestion Date).
-
-    fileInfo1:
-    fileInfo2:    Lists with file information (list).
-
-    Returns:      -1 if fileInfo1.IngestionDate  < fileInfo2.IngestionDate
-                   0 if fileInfo1.IngestionDate == fileInfo2.IngestionDate
-                   1 if fileInfo1.IngestionDate  > fileInfo2.IngestionDate
-    """
-    fileInfo1 = _convertFileInfo(fileInfo1)
-    fileInfo2 = _convertFileInfo(fileInfo2)
-    if (fileInfo1[sortField] < fileInfo2[sortField]):
-        return -1
-    elif (fileInfo1[sortField] == fileInfo2[sortField]):
-        return 0
-    else:
-        return 1
-
-def _compFctIngDate(fileInfo1, fileInfo2):
-    return _compFct(fileInfo1, fileInfo2, FILE_DATE)
-
-def _compFctFileId(fileInfo1, fileInfo2):
-    return _compFct(fileInfo1, fileInfo2, FILE_ID)
-
-
 def _convertFileInfo(fileInfo):
     """
     Convert the file info (in DB Summary 2 format) to the internal format
@@ -1364,7 +1335,7 @@ def subscriptionThread(srvObj,
             for subscrId in srvObj.getSubscriberDic().keys():
             #for subscrId in deliverReqDic.keys():
                 if (subscrId in deliverReqDic):
-                    deliverReqDic[subscrId].sort(_compFctIngDate)
+                    deliverReqDic[subscrId].sort(key=lambda x: _convertFileInfo(x)[FILE_DATE])
                     #get the ingest_date of the last file in the queue (list)
                     lastScheduleDate = _convertFileInfo(deliverReqDic[subscrId][-1])[FILE_DATE]
                     if (lastScheduleDate > scheduledStatus[subscrId]):

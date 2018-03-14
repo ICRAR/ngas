@@ -679,8 +679,7 @@ def flushEmailQueue():
 
     # Now delete the mails.
     mailList = list(mailDic)
-    mailList.sort()
-    mailList.reverse()
+    mailList.sort(reverse=True)
     for mailNo in mailList:
         recvEmail(mailNo)
 

@@ -158,8 +158,7 @@ def _locateArchiveFile(srvObj,
                 candFileDic[fileVer] = []
             candFileDic[fileVer].append([location, fileInfo[0], fileInfo[1]])
     fileVerList = list(candFileDic)
-    fileVerList.sort()
-    fileVerList.reverse()
+    fileVerList.sort(reverse=True)
     if logger.level <= logging.DEBUG:
         msg = ""
         count = 1
