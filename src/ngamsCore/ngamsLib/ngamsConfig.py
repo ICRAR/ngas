@@ -40,6 +40,7 @@ import six
 
 from . import ngamsConfigBase, ngamsSubscriber
 from . import ngamsStorageSet, ngamsStream, ngamsMirroringSource
+from . import utils
 from .ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
 
 
@@ -1958,7 +1959,7 @@ class ngamsConfig:
         if user not in self.__authUserDic:
             raise Exception("Undefined user referenced: %s" % user)
         pwd = base64.b64decode(self.getAuthUserInfo(user))
-        authHdrVal = "Basic " + base64.b64encode(six.b(user) + b":" + pwd)
+        authHdrVal = "Basic " + utils.b2s(base64.b64encode(six.b(user) + b":" + pwd))
         return authHdrVal
 
 

@@ -48,6 +48,7 @@ import time
 import traceback
 import uuid
 
+import six
 from six.moves import reduce # @UnresolvedImport
 from six.moves import socketserver # @UnresolvedImport
 from six.moves import BaseHTTPServer  # @UnresolvedImport
@@ -281,7 +282,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         status = self.ngasServer.genStatus(status, message)
         xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, status.genXmlDoc())
-        self.send_data(xml, NGAMS_XML_MT, code=code, message=http_message, hdrs=hdrs)
+        self.send_data(six.b(xml), NGAMS_XML_MT, code=code, message=http_message, hdrs=hdrs)
 
     def send_ingest_status(self, msg, disk_info):
         """Reply to the client with a standard ingest status XML document"""
@@ -289,7 +290,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                  setReqStatFromReqPropsObj(self.ngas_request)
         xml = status.genXmlDoc(0, 1, 1)
         xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, xml)
-        self.send_data(xml, NGAMS_XML_MT)
+        self.send_data(six.b(xml), NGAMS_XML_MT)
 
     def proxy_request(self, host_id, host, port, timeout=300):
         """Proxy the current request to `host`:`port`"""

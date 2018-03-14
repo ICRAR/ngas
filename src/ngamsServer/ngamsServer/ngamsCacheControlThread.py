@@ -43,7 +43,8 @@ from six.moves import cPickle # @UnresolvedImport
 import sqlite3 as sqlite
 
 from ngamsLib.ngamsCore import TRACE, rmFile, genLog, loadPlugInEntryPoint
-from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
+from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib,\
+    utils
 
 
 logger = logging.getLogger(__name__)
@@ -415,7 +416,7 @@ def addEntryInCacheDbms(srvObj,
         cacheEntryObjPickle = cPickle.dumps(cacheEntryObj)
         # Have to encode the pickled object to be able to write it in the
         # DB table.
-        cacheEntryObjPickleEnc = base64.b32encode(cacheEntryObjPickle)
+        cacheEntryObjPickleEnc = utils.b2s(base64.b32encode(cacheEntryObjPickle))
         sqlQuery = _ADD_ENTRY_IN_CACHE_DBMS %\
                    (diskId, fileId, int(fileVersion), filename, fileSize,
                     delete, timeNow, timeNow, cacheEntryObjPickleEnc)
@@ -511,7 +512,7 @@ def setCacheEntryObjectCacheDbms(srvObj,
     T = TRACE()
 
     cacheEntryObjPickle = cPickle.dumps(cacheEntryObj)
-    cacheEntryObjPickleEnc = base64.b32encode(cacheEntryObjPickle)
+    cacheEntryObjPickleEnc = utils.b2s(base64.b32encode(cacheEntryObjPickle))
     sqlQuery = _SET_CACHE_ENTRY_OBJECT_CACHE_DBMS_QUERY %\
                (cacheEntryObjPickleEnc, cacheEntryObj.getDiskId(),
                 cacheEntryObj.getFileId(), cacheEntryObj.getFileVersion())

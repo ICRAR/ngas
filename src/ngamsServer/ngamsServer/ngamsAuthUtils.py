@@ -37,6 +37,8 @@ import base64
 
 import six
 
+from ngamsLib import utils
+
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +85,7 @@ def authorize(cfg, reqPropsObj):
     if len(user_pass) < 2:
         raise UnauthenticatedError('Invalid Basic authentication, no password provided')
 
-    user, password = user_pass[0], b':'.join(user_pass[1:])
+    user, password = utils.b2s(user_pass[0]), b':'.join(user_pass[1:])
 
     # Get the user from the configuration.
     stored_pass = cfg.getAuthUserInfo(user)

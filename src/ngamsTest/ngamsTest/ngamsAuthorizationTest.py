@@ -35,7 +35,7 @@ import base64
 import contextlib
 import os
 
-from ngamsLib import ngamsHttpUtils
+from ngamsLib import ngamsHttpUtils, utils
 from .ngamsTestLib import ngamsTestSuite
 
 
@@ -59,7 +59,7 @@ class ngamsAuthorizationTest(ngamsTestSuite):
     """
 
     def _assert_code(self, code, bauth=None, raw_auth=None, cmd='STATUS'):
-        auth = raw_auth or 'Basic ' + base64.b64encode(bauth) if bauth else None
+        auth = raw_auth or 'Basic ' + utils.b2s(base64.b64encode(bauth)) if bauth else None
         resp = ngamsHttpUtils.httpGet('127.0.0.1', 8888, cmd, auth=auth)
         with contextlib.closing(resp):
             self.assertEqual(code, resp.status)
@@ -88,9 +88,9 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         pass1 = os.urandom(16)
         pass2 = os.urandom(16)
         pass3 = os.urandom(16)
-        u1 = (('Name', 'test1'), ('Password', base64.b64encode(pass1)), ('Commands', '*'))
-        u2 = (('Name', 'test2'), ('Password', base64.b64encode(pass2)), ('Commands', 'STATUS'))
-        u3 = (('Name', 'test3'), ('Password', base64.b64encode(pass3)), ('Commands', 'DOESNT_EXIST'))
+        u1 = (('Name', 'test1'), ('Password', utils.b2s(base64.b64encode(pass1))), ('Commands', '*'))
+        u2 = (('Name', 'test2'), ('Password', utils.b2s(base64.b64encode(pass2))), ('Commands', 'STATUS'))
+        u3 = (('Name', 'test3'), ('Password', utils.b2s(base64.b64encode(pass3))), ('Commands', 'DOESNT_EXIST'))
 
         cfg = [('Enable', '1')]
         for i, u in enumerate((u1, u2, u3)):

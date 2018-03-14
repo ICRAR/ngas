@@ -57,9 +57,8 @@ import astropy.io.fits as pyfits
 import pkg_resources
 import psutil
 
-from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, ngamsStatus
-from ngamsLib.ngamsCore import getHostName, TRACE, \
-    ngamsCopyrightString, rmFile, \
+from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, ngamsStatus, utils
+from ngamsLib.ngamsCore import getHostName, TRACE, rmFile, \
     cpFile, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
     execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601
 from ngamsPClient import ngamsPClient
@@ -668,7 +667,7 @@ def flushEmailQueue():
     """
     _, stdout, _ = ngamsCoreExecCmd('echo "x" | mail')
     mailDic = {}
-    for line in stdout.split("\n"):
+    for line in utils.b2s(stdout).split("\n"):
         line = line.strip()
         if (line != ""):
             lineEls = filter(None, line.split(" "))
@@ -831,7 +830,7 @@ def getThreadId(logFile,
     grepCmd = "grep %s %s" % (tagList[0], logFile)
     for tag in tagList[1:]:
         grepCmd += " | grep %s" % tag
-    out = subprocess.check_output(grepCmd, shell=True)
+    out = utils.b2s(subprocess.check_output(grepCmd, shell=True))
     tid =  out.split("[")[2].split("]")[0].strip()
     return tid
 

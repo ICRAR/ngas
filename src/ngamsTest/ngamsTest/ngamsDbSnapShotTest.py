@@ -36,6 +36,7 @@ import os
 import subprocess
 import time
 
+from ngamsLib import utils
 from ngamsLib.ngamsCore import NGAMS_CLONE_CMD, NGAMS_REMFILE_CMD, \
     NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD, cpFile
 from .ngamsTestLib import saveInFile, ngamsTestSuite, sendPclCmd
@@ -132,7 +133,7 @@ def _checkContDbSnapshot(testSuiteObj,
             time.sleep(0.200)
         testSuiteObj.checkEqual(1, os.path.exists(complName),
                                 "DB Snapshot missing: " + complName)
-        out = subprocess.check_output(['ngamsDumpDbSnapshot', complName])
+        out = utils.b2s(subprocess.check_output(['ngamsDumpDbSnapshot', complName]))
         if (filterContents):
             snapshotDump = _parseDbSnapshot(out)
         else:

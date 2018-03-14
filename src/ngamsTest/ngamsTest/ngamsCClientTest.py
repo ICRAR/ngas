@@ -36,7 +36,7 @@ import subprocess
 import time
 import unittest
 
-from ngamsLib import ngamsStatus
+from ngamsLib import ngamsStatus, utils
 from ngamsLib.ngamsCore import getHostName, rmFile, cpFile, execCmd
 from .ngamsTestLib import ngamsTestSuite, saveInFile, loadFile, \
     filterOutLines, sendPclCmd, STD_DISK_STAT_FILT, has_program
@@ -68,6 +68,7 @@ def _execCClient(unpackXmlStat = 1,
     env = os.environ.copy()
     env['NGAMS_VERBOSE_LEVEL'] = '0'
     _, out, _ = execCmd(cmd, shell=False)
+    out = utils.b2s(out)
     if (unpackXmlStat):
         statObjList = []
         xmlStatList = out.split("Command repetition counter:")

@@ -35,7 +35,7 @@ import glob
 import logging
 import os
 
-from ngamsLib import ngamsDbm, ngamsDbCore, ngamsLib
+from ngamsLib import ngamsDbm, ngamsDbCore, ngamsLib, utils
 from ngamsLib import ngamsDiskInfo, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsNotification
 from ngamsLib.ngamsCore import TRACE, NGAMS_NOTIF_INFO, NGAMS_TEXT_MT, \
@@ -629,7 +629,7 @@ def checkFileCopiesAndReg(srvObj,
     while (fileId):
         fileId, dummy = fileIdDbm.getNext()
         if (fileId):
-            queryIds.append(fileId)
+            queryIds.append(utils.b2s(fileId))
             fileIdCount+= 1
             querySize += (len(fileId) + 4)
 

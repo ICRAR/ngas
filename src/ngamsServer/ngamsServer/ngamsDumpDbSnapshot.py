@@ -1,5 +1,3 @@
-
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -21,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasDumpDbSnapshot.py,v 1.2 2008/08/19 20:37:45 jknudstr Exp $"
@@ -39,6 +36,8 @@ in a human readible (ASCII) format.
 import sys
 
 from six.moves import cPickle  # @UnresolvedImport
+
+from ngamsLib import utils
 
 try:
     import bsddb
@@ -91,7 +90,7 @@ def dumpDbSnapshot(dbSnapshotName,
             dumpBuf = val.dumpBuf()
         except:
             dumpBuf = None
-        print("%s = %s" % (key, str(val)))
+        print("%s = %s" % (utils.b2s(key), str(val)))
         if (details and dumpBuf): print(dumpBuf)
         try:
             key, pickleVal = db.next()

@@ -16,6 +16,8 @@ import struct
 from subprocess import Popen, PIPE
 import time
 
+from ngamsLib import utils
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +41,7 @@ def readDMFStatus(filename):
     if proc.returncode != 0:
         raise Exception(out)
     try:
+        out = utils.b2s(out)
         status = out.split()[7][1:4]
         if status in ERROR_STATUS:
             raise Exception('dmls status error: %s filename: %s' % (status, filename))
