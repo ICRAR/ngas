@@ -1958,7 +1958,7 @@ class ngamsConfig:
         if user not in self.__authUserDic:
             raise Exception("Undefined user referenced: %s" % user)
         pwd = base64.b64decode(self.getAuthUserInfo(user))
-        authHdrVal = "Basic " + base64.b64encode(user + b":" + pwd)
+        authHdrVal = "Basic " + base64.b64encode(six.b(user) + b":" + pwd)
         return authHdrVal
 
 

@@ -36,6 +36,8 @@ import os
 import threading
 import time
 
+import six
+
 from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
     NGAMS_REGISTER_CMD, mvFile, getFileCreationTime, \
     NGAMS_FILE_STATUS_OK, genLog, NGAMS_SUCCESS, NGAMS_XML_MT, NGAMS_TEXT_MT, \
@@ -670,7 +672,7 @@ def register(srvObj,
     if (httpRef):
         xmlStat = status.genXmlDoc(0, 0, 0, 1, 0)
         xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
-        httpRef.send_data(xmlStat, NGAMS_XML_MT)
+        httpRef.send_data(six.b(xmlStat), NGAMS_XML_MT)
 
 
 def handleCmd(srvObj,

@@ -423,7 +423,7 @@ def genUniqueId():
 
     Returns:  Unique ID (string).
     """
-    return hashlib.md5("%.12f-%s" % (time.time(), getHostName())).hexdigest()
+    return hashlib.md5(six.b("%.12f-%s" % (time.time(), getHostName()))).hexdigest()
 
 
 def createSortDicDump(dic):

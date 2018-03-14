@@ -38,6 +38,7 @@ import logging
 import os
 import threading
 
+import six
 from six.moves import cPickle  # @UnresolvedImport
 
 from .ngamsCore import NGAMS_DBM_EXT, rmFile
@@ -63,6 +64,14 @@ def translated(f):
         except bsddb.db.DBRunRecoveryError:
             raise DbRunRecoveryError
     return wrapper
+
+def _ensure_binary(key):
+    # Keys must be either integers or bytes (str in python2, bytes in python3),
+    # but we still allow users to pass down text types (unicode in python2,
+    # str in python 3).
+    if isinstance(key, six.text_type):
+        key = key.encode('latin1')
+    return key
 
 class ngamsDbm:
     """
@@ -177,6 +186,7 @@ class ngamsDbm:
 
         Returns:   Reference to object itself.
         """
+        key = _ensure_binary(key)
         with self.__sem:
             dbVal = cPickle.dumps(object, 1)
             if (not self.__dbmObj.has_key(key)): self._incrDbCount(1)
@@ -220,6 +230,7 @@ class ngamsDbm:
 
         Returns:   Reference to object itself.
         """
+        key = _ensure_binary(key)
         with self.__sem:
             del self.__dbmObj[key]
             self._incrDbCount(-1)
@@ -251,6 +262,7 @@ class ngamsDbm:
 
         Returns:  1 = key in DB otherwise 0 is returned (integer/0|1).
         """
+        key = _ensure_binary(key)
         with self.__sem:
             return self.__dbmObj.has_key(key)
 
@@ -281,7 +293,7 @@ class ngamsDbm:
 
         Returns:   Element or None if not available (<Object>).
         """
-
+        key = _ensure_binary(key)
         if (self.__dbmObj.has_key(key)):
             return cPickle.loads(self.__dbmObj[key])
         else:

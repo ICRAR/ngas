@@ -34,6 +34,8 @@ import logging
 import os
 import time
 
+import six
+
 from . import ngamsContainer, ngamsFileInfo
 from .ngamsCore import checkCreatePath
 
@@ -337,9 +339,9 @@ class MIMEMultipartParser(object):
                         if boundary:
                             boundaries.append(boundary)
 
-                        boundary      = msg.get_param('boundary')
+                        boundary      = six.b(msg.get_param('boundary'))
                         containerName = msg.get_param('container_name')
-                        logger.debug('MIME multipart boundary: ' + boundary)
+                        logger.debug('MIME multipart boundary: %s', boundary)
 
                         # Fail if we're missing any of these
                         if not boundary or not containerName:
@@ -465,8 +467,8 @@ class FileReader(BufferedReader):
 
         if self.f is None:
             finfo = self.finfo
-            self.buf += b'Content-Type: ' + finfo.mimetype + CRLF
-            self.buf += b'Content-Disposition: attachment; filename="' + finfo.name + b'"' + CRLF + CRLF
+            self.buf += b'Content-Type: ' + six.b(finfo.mimetype) + CRLF
+            self.buf += b'Content-Disposition: attachment; filename="' + six.b(finfo.name) + b'"' + CRLF + CRLF
             self.f = finfo.opener()
 
         buf = self.f.read(n)
@@ -519,7 +521,7 @@ class ContainerReader(BufferedReader):
             cinfo = self.cinfo
             self.buf += b'MIME-Version: 1.0' + CRLF
             self.buf += b'Content-Type: multipart/mixed; ' + \
-                        b'container_name="' + cinfo.name + b'"; ' + \
+                        b'container_name="' + six.b(cinfo.name) + b'"; ' + \
                         b'boundary="' + self.boundary + b'"' + CRLF + CRLF
             self.infoit = iter(cinfo.files)
 

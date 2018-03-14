@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsAuthUtils.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -35,6 +34,8 @@ This module utilities used to authorization.
 
 import logging
 import base64
+
+import six
 
 
 logger = logging.getLogger(__name__)
@@ -90,7 +91,7 @@ def authorize(cfg, reqPropsObj):
         raise UnauthenticatedError("unknown user specified")
 
     # Password matches and command is allowed
-    stored_pass = base64.decodestring(stored_pass)
+    stored_pass = base64.decodestring(six.b(stored_pass))
     if password != stored_pass:
         raise UnauthenticatedError("wrong password for user " + user)
     if not cmdPermitted(cfg, reqPropsObj, user):

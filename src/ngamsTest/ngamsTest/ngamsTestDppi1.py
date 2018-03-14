@@ -34,6 +34,8 @@ with DPPI processing.
 
 import subprocess
 
+import six
+
 from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
 from ngamsLib.ngamsCore import NGAMS_PROC_FILE, NGAMS_PROC_DATA
 
@@ -91,14 +93,14 @@ def ngamsTestDppi1(srvObj,
     parList = list(cfgParDic)
     parList.sort()
     for par in parList:
-        head.append("%s=%s\n" % (par, cfgParDic[par]))
+        head.append(six.b("%s=%s\n" % (par, cfgParDic[par])))
 
     head.append(b"\nParameters Transferred:\n")
     httpParsDic = reqPropsObj.getHttpParsDic()
     httpPars = list(httpParsDic)
     httpPars.sort()
     for httpPar in httpPars:
-        head.append("%s=%s\n" % (httpPar,httpParsDic[httpPar]))
+        head.append(six.b("%s=%s\n" % (httpPar,httpParsDic[httpPar])))
     head.append(b"\nEOF\n")
 
     buf = b''.join(head)

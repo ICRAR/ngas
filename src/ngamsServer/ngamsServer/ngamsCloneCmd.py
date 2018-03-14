@@ -36,6 +36,7 @@ import os
 import threading
 import time
 
+import six
 from six.moves.urllib import request as urlrequest  # @UnresolvedImport
 
 from . import ngamsArchiveUtils, ngamsSrvUtils, ngamsFileUtils
@@ -1061,7 +1062,7 @@ def _clone(srvObj,
     if (httpRef):
         xmlStat = status.genXmlDoc(0, 0, 0, 1, 0)
         xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
-        httpRef.send_data(xmlStat, NGAMS_XML_MT)
+        httpRef.send_data(six.b(xmlStat), NGAMS_XML_MT)
 
 
 def clone(srvObj,

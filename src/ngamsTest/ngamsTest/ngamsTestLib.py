@@ -1248,7 +1248,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:    Void.
         """
-        self.failUnless("" == cmpFiles(refFile, tmpFile, sort),
+        self.assertTrue(not cmpFiles(refFile, tmpFile, sort),
                         genErrMsg(msg, refFile, tmpFile))
 
 

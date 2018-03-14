@@ -39,6 +39,8 @@ import re
 import sys
 import types
 
+import six
+
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL,\
     getHostName, genLog, genUniqueId, rmFile,\
     compressFile, NGAMS_GZIP_XML_MT, getNgamsVersion,\
@@ -575,7 +577,7 @@ def handleCmd(srvObj,
         xmlStat = status.genXmlDoc(genCfgStatus, genDiskStatus, genFileStatus,
                                    genStatesStatus)
         xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
-        httpRef.send_data(xmlStat, NGAMS_XML_MT)
+        httpRef.send_data(six.b(xmlStat), NGAMS_XML_MT)
     elif not httpRef.reply_sent:
         httpRef.send_status(msg)
 

@@ -66,6 +66,7 @@ def _addInDbm(snapShotDbObj,
 
     Returns:          Void.
     """
+    key = ngamsDbm._ensure_binary(key)
     snapShotDbObj[key] = cPickle.dumps(val, 1)
     if (sync): snapShotDbObj.sync()
 
@@ -81,6 +82,7 @@ def _readDb(snapShotDbObj,
 
     Returns:         Void.
     """
+    key = ngamsDbm._ensure_binary(key)
     return cPickle.loads(snapShotDbObj[key])
 
 
@@ -110,7 +112,7 @@ def _encName(dbSnapshot,
 
     Returns:         The ID allocated to that name (integer).
     """
-    nm2IdTag = NGAMS_SN_SH_NM2ID_TAG + name
+    nm2IdTag = NGAMS_SN_SH_NM2ID_TAG + six.b(name)
     if (dbSnapshot.has_key(nm2IdTag)):
         nameId = _readDb(dbSnapshot, nm2IdTag)
     else:
@@ -119,7 +121,7 @@ def _encName(dbSnapshot,
         else:
             count = 0
         nameId = count
-        id2NmTag = NGAMS_SN_SH_ID2NM_TAG + str(nameId)
+        id2NmTag = NGAMS_SN_SH_ID2NM_TAG + six.b(str(nameId))
 
         # Have to ensure that all three keys are entered in the DBM (this might
         # not be the right way, maybe there is something that can be done at
@@ -361,7 +363,7 @@ def checkDbChangeCache(srvObj,
 
             # Loop over the files in the temporary snapshot.
             for tmpFileInfoObj in tmpFileInfoObjList:
-                fileKey = _genFileKey(tmpFileInfoObj)
+                fileKey = ngamsDbm._ensure_binary(_genFileKey(tmpFileInfoObj))
                 fileInfoList = tmpFileInfoObj.genSqlResult()
                 encFileInfoDic = _encFileInfo(srvObj.getDb(), snapshotDbm,
                                               fileInfoList)
@@ -483,7 +485,7 @@ def _encFileInfo2Obj(dbConObj,
         sqlFileInfo.append(None)
     idxKeys = encFileInfoDic.keys()
     for idx in idxKeys:
-        kid = NGAMS_SN_SH_ID2NM_TAG + str(idx)
+        kid = NGAMS_SN_SH_ID2NM_TAG + six.b(str(idx))
         if (not dbSnapshot.has_key(kid)):
             logger.warning("dbSnapshot has no key '%s', is it corrupted?", str(kid))
             return None

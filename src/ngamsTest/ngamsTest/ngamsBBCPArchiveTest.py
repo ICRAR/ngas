@@ -32,6 +32,8 @@ import random
 import subprocess
 import unittest
 
+import six
+
 from ngamsLib import ngamsHttpUtils
 from .ngamsTestLib import ngamsTestSuite
 from ngamsServer import ngamsFileUtils
@@ -74,7 +76,7 @@ class ngamsBBCPArchiveTest(ngamsTestSuite):
         # 1 or 0, as required
         content = [b'\0'] * 1024
         while True:
-            content[random.randint(0, 1023)] = chr(random.randint(0, 255))
+            content[random.randint(0, 1023)] = six.b(chr(random.randint(0, 255)))
             f = io.BytesIO(b''.join(content))
             expected_crc = ngamsFileUtils.get_checksum(64*1024*240, f, crc_variant)
             crc_msb = (expected_crc & 0xffffffff) >> 31

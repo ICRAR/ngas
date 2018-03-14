@@ -34,6 +34,8 @@ Functions to handle the REMDISK command.
 import logging
 import os
 
+import six
+
 from ngamsLib import ngamsDiskInfo, ngamsDbm, ngamsDiskUtils, ngamsHighLevelLib
 from ngamsLib.ngamsCore import getHostName, \
     getDiskSpaceAvail, genLog, NGAMS_XML_MT, NGAMS_SUCCESS, TRACE, rmFile, \
@@ -235,7 +237,7 @@ def handleCmd(srvObj,
     else:
         httpStat = NGAMS_HTTP_BAD_REQ
 
-    httpRef.send_data(xmlStat, NGAMS_XML_MT, code=httpStat)
+    httpRef.send_data(six.b(xmlStat), NGAMS_XML_MT, code=httpStat)
 
 
 # EOF
