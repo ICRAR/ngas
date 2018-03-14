@@ -528,15 +528,16 @@ class ngamsXmlMgr:
             refEl = ngamsElement(elName, value = None, comment = None,
                                  context = curId)
             parElObj.addSubEl(refEl)
-        if (nodeObj._attrs.has_key("Id")):
-            curId = nodeObj._attrs["Id"].nodeValue
+        if nodeObj.hasAttribute('Id'):
+            curId = nodeObj.getAttribute('Id')
             refEl.setContext(curId)
         elDicKey = self._addElXmlDic(elDicKey, refEl)
 
         # Get attributes of the element.
-        for attrName in nodeObj._attrs.keys():
-            val = nodeObj._attrs[attrName].nodeValue
-            tmpAttrObj = ngamsAttribute(attrName, val, comment = None,
+        attrs = nodeObj.attributes
+        for i in range(attrs.length):
+            attr = nodeObj.attributes.item(i)
+            tmpAttrObj = ngamsAttribute(attr.localName, attr.value, comment = None,
                                         context = curId)
             refEl.addAttr(tmpAttrObj)
             self._addAttrXmlDic(elDicKey, tmpAttrObj)
