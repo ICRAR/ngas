@@ -42,7 +42,7 @@ from ngamsServer import ngamsFileUtils
 # e assume that the program is not there, and therefore skip all the tests
 try:
     out = subprocess.check_output(['bbcp', '--version'], shell=False)
-    bbcp_version = map(int, out.strip().split('.'))
+    bbcp_version = tuple(map(int, out.strip().split(b'.')))
 except:
     bbcp_version = None
 
@@ -141,7 +141,7 @@ class ngamsBBCPArchiveTest(ngamsTestSuite):
 
     def test_bbcp_with_crc32c(self):
 
-        if tuple(bbcp_version[:2]) >= (17, 1):
+        if bbcp_version[:2] >= (17, 1):
             self._test_correct_checksum('crc32c')
         else:
             self._test_unsupported_checksum('crc32c')

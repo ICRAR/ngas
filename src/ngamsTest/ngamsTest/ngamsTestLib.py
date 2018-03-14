@@ -1598,7 +1598,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:        Void.
         """
-        refQueryPlanLines = filter(None, loadFile(refQueryPlan).split("\n"))
+        refQueryPlanLines = list(filter(None, loadFile(refQueryPlan).split("\n")))
         self.assertEqual(len(refQueryPlanLines), len(queryPlanLines))
         for i, (query, refQuery) in enumerate(zip(queryPlanLines, refQueryPlanLines), 1):
             self._checkQuery(query, refQuery, refQueryPlan, i)
