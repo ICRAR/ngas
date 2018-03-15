@@ -39,6 +39,7 @@ import os
 import random
 import time
 
+from six.moves.urllib import parse as urlparse # @UnresolvedImport
 from six.moves.urllib import request as urlrequest # @UnresolvedImport
 from six.moves import cPickle # @UnresolvedImport
 
@@ -1025,7 +1026,13 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     # GET means pull, POST is push
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
         logger.info("Handling archive pull request")
-        handle = urlrequest.urlopen(reqPropsObj.getFileUri())
+
+        # Default to absolute path file:// scheme if url has no schema
+        url = reqPropsObj.getFileUri()
+        if not urlparse.urlparse(url).scheme:
+            url = 'file://' + os.path.abspath(os.path.normpath(url))
+
+        handle = urlrequest.urlopen(url)
         # urllib.urlopen will attempt to get the content-length based on the URI
         # i.e. file, ftp, http
         reqPropsObj.setSize(handle.info()['Content-Length'])
