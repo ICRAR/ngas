@@ -745,8 +745,9 @@ def _deliveryThread(srvObj,
                             logger.warning('Fail to get file checksum for file %s', fileId)
 
                         # TODO: validate the URL before blindly using it
-                        hdrs = {NGAMS_HTTP_HDR_CHECKSUM: fileChecksum,
-                                NGAMS_HTTP_HDR_FILE_INFO: fileInfoObjHdr}
+                        hdrs = {NGAMS_HTTP_HDR_CHECKSUM: fileChecksum}
+                        if fileInfoObjHdr:
+                            hdrs[NGAMS_HTTP_HDR_FILE_INFO] = fileInfoObjHdr
                         with open(filename, "rb") as f:
                             reply, msg, hdrs, data = \
                                    ngamsHttpUtils.httpPostUrl(sendUrl, f, fileMimeType,
