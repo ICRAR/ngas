@@ -633,16 +633,15 @@ def get_checksum_info(variant_or_name):
         # python version binascii.crc32 returns signed or unsigned values.
         # python version <2.6 returned signed/unsigned depending on the platform,
         # 2.6+ returns always signed, 3+ returns always unsigned).
-        # Since we support Python 2.7 only we assume values are signed,
-        # but this will bite us in the future
-        return checksum_info(0, binascii.crc32, lambda x: x, lambda x: struct.unpack('!i', x), _filter_none(lambda x, y: (int(x) & 0xffffffff) == (int(y) & 0xffffffff)))
+        fmt = '!i' if six.PY2 else '!I'
+        return checksum_info(0, binascii.crc32, lambda x: x, lambda x: struct.unpack(fmt, x)[0], _filter_none(lambda x, y: (int(x) & 0xffffffff) == (int(y) & 0xffffffff)))
     elif variant == CHECKSUM_CRC32C:
         if not _crc32c_available:
             raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
-        return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x), _filter_none(lambda x, y: int(x) == int(y)))
+        return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x)[0], _filter_none(lambda x, y: int(x) == int(y)))
     elif variant == CHECKSUM_CRC32Z:
         # A consistent way of using binascii.crc32.
-        return checksum_info(0, binascii.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x), _filter_none(lambda x, y: int(x) == int(y)))
+        return checksum_info(0, binascii.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x)[0], _filter_none(lambda x, y: int(x) == int(y)))
     raise Exception('Unknown CRC variant: %r' % (variant_or_name,))
 
 def get_checksum_name(variant_or_name):

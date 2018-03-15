@@ -100,7 +100,7 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
     logger.info('BBCP final message: %s', out.split(b'\n')[-2]) # e.g. "1 file copied at effectively 18.9 MB/s"
     logger.info("File: %s copied to filename: %s", srcFilename, targFilename)
 
-    return str(bbcp_checksum[0])
+    return str(bbcp_checksum)
 
 
 def get_params(request):
