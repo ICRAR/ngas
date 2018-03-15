@@ -214,6 +214,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         logger.info("Redirecting client to %s", location)
         self.send_response(NGAMS_HTTP_REDIRECT, hdrs={'Location': location})
+        self.end_headers()
 
     def send_file(self, f, mime_type, start_byte=0, fname=None):
         """
