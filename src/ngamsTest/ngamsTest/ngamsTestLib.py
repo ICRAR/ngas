@@ -835,7 +835,7 @@ def getThreadId(logFile,
     return tid
 
 def unzip(infile, outfile):
-    with contextlib.nested(gzip.open(infile, 'rb'), open(outfile, 'wb')) as (gz, out):
+    with gzip.open(infile, 'rb') as gz, open(outfile, 'wb') as out:
         shutil.copyfileobj(gz, out)
 
 
