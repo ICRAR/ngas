@@ -30,6 +30,7 @@ import logging
 import os
 import socket
 import time
+import sys
 
 from six.moves import http_client as httplib  # @UnresolvedImport
 from six.moves.urllib import parse as urlparse  # @UnresolvedImport
@@ -79,6 +80,30 @@ def _http_response(host, port, method, cmd,
 
     # Prepare all headers that need to be sent
     hdrs = dict(hdrs)
+
+    # In python 3.6 the http.client module changed how it uses the body of a
+    # request to automatically calculate the Content-Length header, if none has
+    # been previously specified.
+    # In particular, file objects before 3.6 were previously automatically
+    # handled by calling fstat(f).st_size on them. In 3.6 they now do not yield
+    # a Content-Length header, but instead are they are sent using chunked
+    # transfer encoding, which we do not support explicitly on the server side)
+    #
+    # In several places throughout the code we trusted on the pre-3.6 rules,
+    # so here we exercise them manually for 3.6+
+    if (data is not None and
+        sys.version_info >= (3, 6, 0) and
+        'content-length' not in hdrs and
+        'Content-Length' not in hdrs):
+        try:
+            thelen = len(data)
+        except (TypeError, AttributeError):
+            try:
+                thelen = os.fstat(data.fileno()).st_size
+            except (AttributeError, OSError):
+                thelen = None
+        if thelen is not None:
+            hdrs['Content-Length'] = thelen
 
     url = cmd
     if pars:
