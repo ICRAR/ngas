@@ -48,7 +48,7 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
     NGAMS_SUBSCR_BACK_LOG, NGAMS_DELIVERY_THR,\
     NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, NGAMS_FAILURE,\
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile, loadPlugInEntryPoint,\
-    toiso8601, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_HTTP_HDR_FILE_INFO
+    toiso8601, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_HTTP_HDR_FILE_INFO, fromiso8601
 from ngamsLib import ngamsDbm, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsDbCore,\
     ngamsHttpUtils
 
@@ -330,7 +330,7 @@ def _checkIfDeliverFile(srvObj,
     fileId              = fileInfo[FILE_ID]
     filename            = fileInfo[FILE_NM]
     fileVersion         = fileInfo[FILE_VER]
-    fileIngDate         = fileInfo[FILE_DATE]
+    fileIngDate         = fromiso8601(fileInfo[FILE_DATE], local=True)
     fileBackLogBuffered = fileInfo[FILE_BL]
     subs_start = subscrObj.getStartDate()
 
@@ -639,14 +639,14 @@ def _deliveryThread(srvObj,
             fileId         = fileInfo[FILE_ID]
             filename       = fileInfo[FILE_NM]
             fileVersion    = fileInfo[FILE_VER]
-            fileIngDate    = fileInfo[FILE_DATE]
+            fileIngDate    = fromiso8601(fileInfo[FILE_DATE], local=True)
             fileMimeType   = fileInfo[FILE_MIME]
             fileBackLogged = fileInfo[FILE_BL]
             diskId         = fileInfo[FILE_DISK_ID]
 
             if (fileIngDate < subscrObj.getStartDate() and fileBackLogged != NGAMS_SUBSCR_BACK_LOG): #but backlog files will be sent regardless
                 # subscr_start_date is changed (through USUBSCRIBE command) in order to skip unchechked files
-                logger.warning('File %s skipped, ingestion date %s < %s', fileId, fileIngDate, toiso8601(subscrObj.getStartDate()))
+                logger.warning('File %s skipped, ingestion date %s < %s', fileId, toiso8601(fileIngDate), toiso8601(subscrObj.getStartDate()))
                 continue
 
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not diskId)):
@@ -1339,7 +1339,7 @@ def subscriptionThread(srvObj,
                     deliverReqDic[subscrId].sort(key=lambda x: _convertFileInfo(x)[FILE_DATE])
                     #get the ingest_date of the last file in the queue (list)
                     lastScheduleDate = _convertFileInfo(deliverReqDic[subscrId][-1])[FILE_DATE]
-                    if (lastScheduleDate > scheduledStatus[subscrId]):
+                    if (scheduledStatus[subscrId] is None or lastScheduleDate > scheduledStatus[subscrId]):
                         scheduledStatus[subscrId] = lastScheduleDate
 
                 """
