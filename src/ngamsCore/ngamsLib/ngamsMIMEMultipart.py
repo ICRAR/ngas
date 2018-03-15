@@ -28,7 +28,7 @@ ngams/container
 import binascii
 import codecs
 import collections
-from email.parser import Parser
+import email.parser
 import functools
 import logging
 import os
@@ -329,7 +329,10 @@ class MIMEMultipartParser(object):
                     logger.debug('Processing headers')
                     headers  = buf[:idx+4]
                     buf      = buf[idx+4:]
-                    msg      = Parser().parsestr(headers, headersonly=True)
+                    if six.PY3:
+                        msg = email.parser.BytesHeaderParser().parsebytes(headers, headersonly=True)  # @UndefinedVariable
+                    else:
+                        msg = email.parser.HeaderParser().parsestr(headers, headersonly=True)
 
                     # It's a new container, recurse
                     mimeType = msg.get_content_type()
