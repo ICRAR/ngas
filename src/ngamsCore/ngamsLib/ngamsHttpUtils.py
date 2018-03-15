@@ -188,8 +188,8 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
 
         # How much do we need to read?
         size = 0
-        if "content-length" in hdrs:
-            size = int(hdrs["content-length"])
+        if "content-length" in resp.msg:
+            size = int(resp.msg["content-length"])
 
         # Accumulate the incoming stream and return it whole in `data`
         bs = 65536

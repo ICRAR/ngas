@@ -152,7 +152,7 @@ class ngamsReqProps:
             keyTmp = key.lower()
             val = urlparse.unquote(headers[key])
             logger.debug("Parsing HTTP header key: %s with value: %s", key, val)
-            self.__httpHdrDic[key] = val
+            self.__httpHdrDic[key.lower()] = val
             if (keyTmp == "content-disposition"):
                 pars = ngamsLib.parseHttpHdr(headers[key])
                 for name, val in pars.items():

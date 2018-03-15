@@ -348,12 +348,22 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         # Our code calculates the content length already, let's not send it twice
         # Similarly, let's avoid Content-Type rewriting
+        # Here "hdrs" is not a one of the nice email.message.Message objects
+        # which allows for case-insensitive lookup, but simply a dictionary,
+        # so we are forced to perform a case-sensitive lookup
         logger.info("Received response from %s:%d, sending to client", host, port)
         logger.info("Headers from response: %r", hdrs)
         if 'content-length' in hdrs:
             del hdrs['content-length']
-        mime_type = hdrs['content-type']
-        del hdrs['content-type']
+        if 'Content-Length' in hdrs:
+            del hdrs['Content-Length']
+        mime_type = ''
+        if 'content-type' in hdrs:
+            mime_type = hdrs['content-type']
+            del hdrs['content-type']
+        if 'Content-Type' in hdrs:
+            mime_type = hdrs['Content-Type']
+            del hdrs['Content-Type']
 
         self.send_data(data, mime_type, code=code, hdrs=hdrs)
 
