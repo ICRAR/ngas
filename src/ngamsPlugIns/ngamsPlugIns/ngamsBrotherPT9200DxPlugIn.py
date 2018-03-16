@@ -89,7 +89,7 @@ def genFontsDictionary(fnm):
         f = open(fnm)
         charArr = f.read()
         f.close()
-    except Exception, e:
+    except:
         errMsg = "Problems opening CharDict file"
         logger.error(errMsg)
         raise
@@ -166,7 +166,6 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
 
     # This was previously excluded during the "test mode"; a proper way is by
     # having a configurable parameter
-    print parDic
     if not 'keep_printer_file' in parDic:
         os.system("rm -f " + printerFilename)
 
@@ -183,8 +182,8 @@ if __name__ == '__main__':
     Main function.
     """
     if (len(sys.argv) != 3):
-        print "\nCorrect usage is:\n"
-        print "% (python) ngamsBrotherPT9200DxPlugIn <NGAMS CFG> <text>\n"
+        print("\nCorrect usage is:\n")
+        print("% (python) ngamsBrotherPT9200DxPlugIn <NGAMS CFG> <text>\n")
         sys.exit(1)
     cfg = ngamsConfig.ngamsConfig()
     cfg.load(sys.argv[1])

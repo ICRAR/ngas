@@ -56,12 +56,12 @@ def ngamsTileCompress(filename):
         if (stat != 0):
             msg = "Error compressing file: %s. Error: %s" %\
                   (filename, stat.replace("\n", "   "))
-            raise Exception, msg
+            raise Exception(msg)
         mvFile(tmpFilename, filename)
         logger.debug("Successfully tile compressed file: %s", filename)
-    except Exception, e:
+    except:
         rmFile(tmpFilename)
-        raise Exception, e
+        raise
 
 
 if __name__ == '__main__':
@@ -69,8 +69,8 @@ if __name__ == '__main__':
     Main routine to calculate checksum for a file given as input parameter.
     """
     if (len(sys.argv) != 2):
-        print "\nCorrect usage is:\n"
-        print "% ngamsTileCompress.py <filename>\n"
+        print("\nCorrect usage is:\n")
+        print("% ngamsTileCompress.py <filename>\n")
         sys.exit(1)
     ngamsTileCompress(sys.argv[1])
 

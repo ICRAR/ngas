@@ -87,7 +87,7 @@ def ngamsMWA_Compress_FilterPlugin(srvObj,
     try:
         #re = ngamsPlugInApi.execCmd(cmd, 60)
         re = commands.getstatusoutput(cmd)
-    except Exception, ex:
+    except Exception as ex:
         if (str(ex).find('timed out') != -1):
             logger.error('Timed out when checking FITS header %s', cmd)
         else:

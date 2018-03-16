@@ -58,7 +58,7 @@ def execCmd(cmd, timeout):
     logger.debug('Executing command: %s', cmd)
     try:
         ret = ngamsPlugInApi.execCmd(cmd, timeout)
-    except Exception, ex:
+    except Exception as ex:
         if (str(ex).find('timed out') != -1):
             return (-1, 'Timed out (%d seconds): %s' % (timeout, cmd))
         else:

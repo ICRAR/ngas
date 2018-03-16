@@ -151,7 +151,7 @@ def mountToMountpoint(devName,
     if not os.path.exists(mntPt):
         try:
             posix.mkdir(mntPt)
-        except exceptions.OSError,e:
+        except exceptions.OSError as e:
             errMsg = "Failed creating mountpoint " + mntPt + ":" + str(e)
             logger.exception(errMsg)
             raise
@@ -411,7 +411,7 @@ def ngamsMount(srvObj,
     if (len(hostInfo) != 1):
         errMsg = "Problem querying information about host: " + getHostName() +\
                  " from the NGAS DB."
-        raise Exception, errMsg
+        raise Exception(errMsg)
     else:
         hostInfoObj = ngamsHostInfo.ngamsHostInfo().\
                       unpackFromSqlQuery(hostInfo[0])
@@ -482,8 +482,8 @@ def umount(mtRootPt):
     Returns:     Void.
     """
     if (mtRootPt.strip() == ""):
-        raise Exception, "Error in ngamsLinuxSystemPlugInApi.umount(): " +\
-              "Mount Root Point cannot be \"\""
+        raise Exception("Error in ngamsLinuxSystemPlugInApi.umount(): " +\
+              "Mount Root Point cannot be \"\"")
     mtPtList = glob.glob("%s/data*" % mtRootPt)
     mtPtList += glob.glob("%s/volume*" % mtRootPt)
     for mtPt in mtPtList:

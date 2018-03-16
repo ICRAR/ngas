@@ -45,7 +45,7 @@ def checkTarball(filename):
         if (stat != 0):
             errMsg = str(out).replace("\n", " --- ")
             err = 1
-    except Exception, e:
+    except Exception as e:
         rmFile(tmpFilename)
         errMsg = str(e)
         err = 1

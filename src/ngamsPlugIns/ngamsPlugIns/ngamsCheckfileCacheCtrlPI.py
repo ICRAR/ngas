@@ -123,11 +123,11 @@ def _unpackCheckPlugInPars(srvObj):
                 CheckfileCacheCtrlPI_checkingPeriod = float(val)
             else:
                 msg = "Illegal plug-in parameter specified: %s"
-                raise Exception, msg % str(par)
-        except Exception, e:
+                raise Exception(msg % str(par))
+        except Exception as e:
             msg = "Error unpacking Cache Control Plug-In Parameters: %s. " +\
                   "Around parameter: %s. Error: %s"
-            raise Exception, msg % (str(plugInPars), str(par), str(e))
+            raise Exception(msg % (str(plugInPars), str(par), str(e)))
     CheckfileCacheCtrlPI_initialized = True
 
 
@@ -279,7 +279,7 @@ def ngamsCheckfileCacheCtrlPI(srvObj,
             # File was not available in at least one valid copy in all sets.
             return False
 
-    except Exception, e:
+    except Exception as e:
         msg = "Error ocurred executing Cache Control Plug-In. Error: %s" %\
               str(e)
         logger.error(msg)

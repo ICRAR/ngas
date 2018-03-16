@@ -96,7 +96,7 @@ def hasCompressed(filename):
     try:
         #re = ngamsPlugInApi.execCmd(cmd, 60)
         re = commands.getstatusoutput(cmd)
-    except Exception, ex:
+    except Exception as ex:
         if (str(ex).find('timed out') != -1):
             logger.error('Timed out when checking FITS header %s', cmd)
         else:
@@ -227,7 +227,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     else:
         try:
             crc = getFileCRC(newfn)
-        except Exception, exp:
+        except Exception as exp:
             errMsg = 'Failed to calculate the CRC for file %s: %s' % (newfn, str(exp))
             logger.error(errMsg)
             httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)
@@ -282,7 +282,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     else:
         try:
             srvObj.getDb().query2(query, args=(crc, new_fs, fileId, diskId, fileVersion))
-        except Exception, ex:
+        except Exception as ex:
             errMsg = 'Fail to update crc for file %s/%d/%s: %s' % (fileId, fileVersion, diskId, str(ex))
             logger.error(errMsg)
             httpRef.send_data(errMsg, NGAMS_TEXT_MT, code=500)

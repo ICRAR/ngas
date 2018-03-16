@@ -406,7 +406,7 @@ def _httpPostUrl(url,
 
     if (hdrs == None):
         errMsg = "Illegal/no response to HTTP request encountered!"
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     if (hdrs.has_key("content-length")):
         dataSize = int(hdrs["content-length"])
@@ -421,9 +421,9 @@ def _httpPostUrl(url,
             fd = open(dataTargFile, "w")
             fd.write(http.getfile().read(dataSize))
             fd.close()
-        except Exception, e:
+        except:
             if (fd != None): fd.close()
-            raise e
+            raise
 
     # Dump HTTP headers if Verbose Level >= 4.
     logger.debug("HTTP Header: HTTP/1.0 %s %s". str(reply), msg)
@@ -467,7 +467,7 @@ def _httpPost(srvObj, url, filename, sessionId):
             stat.clear().unpackXmlDoc(data)
         else:
             stat.clear().setStatus(NGAMS_SUCCESS)
-    except Exception, e:
+    except Exception as e:
             ex = str(e)
     if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
         (stat.getStatus() == NGAMS_FAILURE)):
@@ -485,7 +485,7 @@ def _httpPost(srvObj, url, filename, sessionId):
                 rereply = urllib2.urlopen('http://%s/failtodeliverfile?file_id=%s&to_url=%s&err_msg=%s' % (jobManHost, baseName, urllib2.quote(url), urllib2.quote(ex)), timeout = 15).read()
                 logger.debug('Reply from sending file %s failtodeliver event to server %s - %s',
                              baseName, jobManHost, rereply)
-            except Exception, err:
+            except Exception as err:
                 logger.error('Fail to send fail-to-deliver event to server %s, Exception: %s', jobManHost, str(err))
 
         return 1
@@ -663,7 +663,7 @@ def startAsyncQService(srvObj, reqPropsObj):
         pkl_file = open(saveFile, 'rb')
         saveObj = pickle.load(pkl_file)
         pkl_file.close()
-    except Exception, e:
+    except Exception as e:
         ex = str(e)
         return ex
 
@@ -723,7 +723,7 @@ def stopAsyncQService(srvObj, reqPropsObj):
         output = open(saveFile, 'wb')
         pickle.dump(saveObj, output)
         output.close()
-    except Exception, e:
+    except Exception as e:
         ex = str(e)
         return ex
 

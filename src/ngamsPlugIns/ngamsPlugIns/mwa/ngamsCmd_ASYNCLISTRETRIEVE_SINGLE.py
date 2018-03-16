@@ -119,7 +119,7 @@ def _pushThread(srvObj, hostname):
     while (pushQDic.has_key(hostname)): # in case push is cancelled
         try:
             fileInfo = pushQueue.get(timeout = 60 * 15)
-        except Empty, e:
+        except Empty:
             if (pushQDic.has_key(hostname)):
                 del pushQDic[hostname]
             break
@@ -476,7 +476,7 @@ def _httpPostUrl(url,
 
     if (hdrs == None):
         errMsg = "Illegal/no response to HTTP request encountered!"
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     if (hdrs.has_key("content-length")):
         dataSize = int(hdrs["content-length"])
@@ -491,7 +491,7 @@ def _httpPostUrl(url,
             fd = open(dataTargFile, "w")
             fd.write(http.getfile().read(dataSize))
             fd.close()
-        except Exception, e:
+        except Exception as e:
             if (fd != None): fd.close()
             raise e
 
@@ -542,7 +542,7 @@ def _httpPost(srvObj, url, filename, sessionId = None):
             stat.clear().unpackXmlDoc(data)
         else:
             stat.clear().setStatus(NGAMS_SUCCESS)
-    except Exception, e:
+    except Exception as e:
             ex = str(e)
     if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
         (stat.getStatus() == NGAMS_FAILURE)):
@@ -738,7 +738,7 @@ def startAsyncQService(srvObj, reqPropsObj):
         pkl_file = open(saveFile, 'rb')
         saveObj = pickle.load(pkl_file)
         pkl_file.close()
-    except Exception, e:
+    except Exception as e:
         ex = str(e)
         return ex
 
@@ -800,7 +800,7 @@ def stopAsyncQService(srvObj, reqPropsObj):
         output = open(saveFile, 'wb')
         pickle.dump(saveObj, output)
         output.close()
-    except Exception, e:
+    except Exception as e:
         ex = str(e)
         return ex
 

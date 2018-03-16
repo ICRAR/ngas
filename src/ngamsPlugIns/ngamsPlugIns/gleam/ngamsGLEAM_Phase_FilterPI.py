@@ -106,7 +106,7 @@ def ngamsGLEAM_Phase_FilterPI(srvObj,
     img_phase = None
     try:
         img_phase = getGLEAMPhase(filename)
-    except Exception, exp:
+    except Exception as exp:
         warning("cannot get phase info from %s, file not added: %s" % (filename, str(exp)))
         return 0
 

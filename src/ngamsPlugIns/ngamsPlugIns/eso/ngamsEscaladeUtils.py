@@ -168,7 +168,7 @@ def getControllers():
     cmd = "sudo /usr/local/sbin/tw_cli info"
     stat, out = commands.getstatusoutput(cmd)
     if (stat):
-        raise Exception, "Error invoking 3ware Command Line Tool: " + str(out)
+        raise Exception("Error invoking 3ware Command Line Tool: " + str(out))
     contList = []
     for line in out.split("\n"):
         line = line.strip()
@@ -470,8 +470,8 @@ def getContInfo(contList):
         stat, outTmp = commands.getstatusoutput(cmd)
         logger.debug("Executed 3ware client tool. Status: %d", stat)
         if (stat):
-            raise Exception, "Error invoking 3ware Command Line Tool: " +\
-                  str(out)
+            raise Exception("Error invoking 3ware Command Line Tool: " +\
+                  str(out))
         else:
             out += outTmp
         out += "\n"
@@ -667,7 +667,7 @@ if __name__ == '__main__':
     slotIds.sort()
     for diskId in slotIds:
         physDiskObj = diskDic[diskId]
-        print "\n\n" + physDiskObj.dumpBuf()
+        print("\n\n" + physDiskObj.dumpBuf())
 
 
 # EOF

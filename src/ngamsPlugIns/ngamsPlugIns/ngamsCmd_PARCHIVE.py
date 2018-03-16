@@ -66,7 +66,7 @@ def processHttpReply(http, basename, url):
     reply, msg, hdrs = http.getreply()
     if (hdrs == None):
         errMsg = "Illegal/no response to HTTP request encountered!"
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     if (hdrs.has_key("content-length")):
         dataSize = int(hdrs["content-length"])
@@ -269,7 +269,7 @@ def saveFromHttpToHttp(reqPropsObj,
             msg = genLog("NGAMS_ER_ARCH_RECV",
                          [reqPropsObj.getFileUri(), reqPropsObj.getSize(),
                           (reqPropsObj.getSize() - remSize)])
-            raise Exception, msg
+            raise Exception(msg)
 
         if (checkCRC):
             checksum = reqPropsObj.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
@@ -282,7 +282,7 @@ def saveFromHttpToHttp(reqPropsObj,
 
 
         processHttpReply(http, basename, nexturl)
-    except Exception, err:
+    except Exception as err:
         if (str(err).find('Connection refused') > -1):
             # The host on the nexturl is probably down
             logger.exception("Fail to connect to the nexturl '%s'", nexturl)

@@ -62,7 +62,7 @@ def ngamsLinuxOfflinePlugIn(srvObj,
     # generated wrongly due to a mistake by IBM, which lead to a wrong
     # implementation of the generation of the Disk ID.
     if (not parDicOnline.has_key("old_format")):
-        raise Exception, "Missing Online Plug-In Parameter: old_format=0|1"
+        raise Exception("Missing Online Plug-In Parameter: old_format=0|1")
     else:
         oldFormat = int(parDicOnline["old_format"])
 
@@ -105,7 +105,7 @@ def ngamsLinuxOfflinePlugIn(srvObj,
                 raise Exception(errMsg)
             if (parDicOffline.has_key("module")):
                 logger.info("Kernel module %s unloaded", parDicOnline["module"])
-        except Exception, e:
+        except:
             pass
 
         # Fallback umount.

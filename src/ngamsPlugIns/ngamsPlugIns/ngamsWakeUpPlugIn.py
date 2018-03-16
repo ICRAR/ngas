@@ -57,7 +57,7 @@ def ngamsWakeUpPlugIn(srvObj,
     if (not hostDic.has_key(hostId)):
         errMsg = "ngamsWakeUpPlugIn: Could not wake up host: " + hostId +\
                  " - host not defined in NGAS DB."
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     networkDevs = srvObj.getCfg().getWakeUpPlugInPars()
     cmdFormat = "sudo /sbin/ether-wake -i %s -b " +\
@@ -66,12 +66,12 @@ def ngamsWakeUpPlugIn(srvObj,
     for dev in networkDevs.split(","):
         cmd = cmdFormat % dev
         logger.debug("Broadcasting wake-up package - command: %s", cmd)
-        stat, out = commands.getstatusoutput(cmd)
+        stat, out, _ = execCmd(cmd)
         if (stat != 0):
             format = "ngamsWakeUpPlugIn: Problem waking up host: %s " +\
                      ". Error: %s."
             errMsg = format % (hostId, str(out).replace("\n", " "))
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
 
 # EOF

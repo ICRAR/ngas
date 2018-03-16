@@ -65,7 +65,7 @@ class FitsHead:
         """
         """
         self.verbose = int(verbose)
-        self.nbytes = 0l             # number of bytes read so far
+        self.nbytes = 0             # number of bytes read so far
         self.POS = []                # position of headers
         self.SIZE = []
         self.datasum = []            # datasum of headers if check!=0
@@ -81,7 +81,7 @@ class FitsHead:
             (self.fd, self.size) = self.openFile(file)
             if self.size == -1:
                 errMsg = "*** File %s does not exists ****" % file
-                raise Exception, errMsg
+                raise Exception(errMsg)
         elif type(file) == types.FileType:  # if fd != 0 we assume that a file object is passed
             (self.fd, self.size) = (file, file.tell())
             self.ID = self.fd.name
@@ -92,7 +92,7 @@ class FitsHead:
             self.name = ""
         else:
             errMsg = "Invalid type passed to file parameter during __init__"
-            raise Exception, errMsg
+            raise Exception(errMsg)
         self.HEAD = []               # list of list(s) of header cards
         self.analyzeStruct()
 
@@ -152,7 +152,7 @@ class FitsHead:
         Output: HEAD: array of header strings
         """
 
-        _BLOCKSIZE_ = 2880l
+        _BLOCKSIZE_ = 2880
         skey = self.KKeys[-1]
         rkkeys = self.KKeys[0]
         for kkey in self.KKeys[1:]:
@@ -267,7 +267,7 @@ class FitsHead:
                 of = open(ofile,'w')
                 wfl = 1
             except:
-                print "Problem opening output file:",ofile
+                print("Problem opening output file:",ofile)
                 return
         if wfl:
             for ii in range(nblocks):
@@ -417,11 +417,11 @@ class FitsHead:
                     value = m.group()[1:-1].strip()
                     vind = m.end()
                     typ = 'C'
-                except Exception, e:
+                except Exception:
                     errMsg = "Could not match expression '(''|[^'])*' against %s\n" % (rest)
                     errMsg += "FITS value of type string not properly quoted! Suspect card is:\n"
                     errMsg += line
-                    raise Exception, errMsg
+                    raise Exception(errMsg)
                 if rest[vind:].find("/") > -1:
                     comment = rest[vind:].split("/",1)[1]
                 else:
@@ -593,7 +593,7 @@ class FitsHead:
             try:
                 o = open(outfile,'w')
             except:
-                print "ERROR: Unable to open ",outfile
+                print("ERROR: Unable to open ",outfile)
                 return 1
 
             for xml in self.XHead:
@@ -752,12 +752,12 @@ class HeadDict(dict):
         self.update({'index':{},'nodes':{}})
         self.POS = pos
         self.NUMBER = number
-        self.HEADERSIZE = -1l
-        self.DATASIZE = (-1l,-1l)
+        self.HEADERSIZE = -1
+        self.DATASIZE = (-1,-1)
         self.XmlHead = []
 
 
-    def setHeaderSize(self, size=-1l):
+    def setHeaderSize(self, size=-1):
         """
         Set the SIZE variable, which contains the size in bytes of the header.
 
@@ -771,7 +771,7 @@ class HeadDict(dict):
             return 0
 
 
-    def setPos(self, position=-1l):
+    def setPos(self, position=-1):
         """
         Set the POS variable, which contains the position in bytes of the header.
 
@@ -807,10 +807,10 @@ class HeadDict(dict):
         OUTPUT:    int tuple, (datasize, <number of blocks>)
         """
         naxis = int(self.getKeyword('NAXIS')[1])
-        siz = 0l
+        siz = 0
         nblocks = 0
         if (naxis > 0):
-            siz = 1l
+            siz = 1
             ii  = 1
             while (ii <= naxis):
                 kk="NAXIS" + str(ii)
@@ -1036,7 +1036,7 @@ class HeadDict(dict):
         """
         try:
             recomp = re.compile(keyexp)
-        except Exception,e:
+        except Exception as e:
             return e
         matchlist = map(lambda x,y:(re.match(recomp,x) != None)*(y+1),\
             self['index'].values(),\
@@ -1738,57 +1738,49 @@ def usage():
         """
         Prints out a short help.
         """
-        print "Script dumps headers of FITS files to stdout or creates header"
-        print "files. It supports compressed files (.gz and .Z)"
-        print ""
-        print "Synopsis: printhead.py [-s <KEYWORD> -H <number> -M <extnum> -S -x <type> -e -h]" + \
-              " fname1 [fname2]..."
-        print ""
-        print "If only a file name is given, the primary header of that file is printed."
-        print ""
-        print "--extract|-e:   All the headers of the files found are then"
-        print "                extracted to directories with the same name as the last"
-        print "                directory found in the path-names of the files. The"
-        print "                header files will have the same base name as the file, but"
-        print "                with the extension '.hdr'."
-        print
-        print "--skey|-s:      if the given KEYWORD is found"
-        print "                in the header only the matching lines will be printed."
-        print ""
-        print "--header|-H:    <number> specifies the number of the header to be printed."
-        print "                If 99 is given, all headers are printed. If <number> is"
-        print "                negative only the structure of the file is printed."
-        print ""
-        print "--xml|-x:       <type> is either 'vo' or 'xf'. All the headers of the files found"
-        print "                are then extracted to directories with the same name as the last"
-        print "                directory found in the path-names of the files. The"
-        print "                header files will have the same base name as the file, but"
-        print "                with the extension '.xml'. The files use XFits as a format"
-        print "                if 'xf' is specified and VOTable format if 'vo' is specified"
-        print "                for <type>."
-        print
-        print "--Struct|-S     Show the structure of the FITS file"
-        print ""
-#        print "--Merge|-M      Merge extension number <extnum> as primary data part and write"
-#        print "                new file."
-#        print "                If there is already a primary data part or the extension is not"
-#        print "                an image extension the merge will not be carried out. Keywords"
-#        print "                from the extension header overwrite the same ones in the primary"
-#        print "                header."
-#        print ""
-        print "--tsv|-t        Print keywords as a tab-separated-value list. The list contains"
-        print "                the items: keyword name, keyword value, comment, keyword type, index"
-        print "                The index item is the running number of the keyword within the header."
-        print ""
-        print "--check|-c      If this flag is set the CRC32 checksum of the data part of the"
-        print "                extensions is calculated."
-        print "--mode-m        [1]|0: If set to 0 the program does not try to skip the data part"
-        print "                between headers. This is useful for interpreting header files."
-        print "--parse|-p      Switch the full parsing of the header on"
-        print "                extensions is calculated."
-        print "--help|-h:      print this help and exit."
-        print ""
-        print "Version: ",__version__
+        msg = ("Script dumps headers of FITS files to stdout or creates header"
+               "files. It supports compressed files (.gz and .Z)"
+               ""
+               "Synopsis: printhead.py [-s <KEYWORD> -H <number> -M <extnum> -S -x <type> -e -h]"
+               " fname1 [fname2]..."
+               ""
+               "If only a file name is given, the primary header of that file is printed."
+               ""
+               "--extract|-e:   All the headers of the files found are then"
+               "                extracted to directories with the same name as the last"
+               "                directory found in the path-names of the files. The"
+               "                header files will have the same base name as the file, but"
+               "                with the extension '.hdr'."
+               "--skey|-s:      if the given KEYWORD is found"
+               "                in the header only the matching lines will be printed."
+               ""
+               "--header|-H:    <number> specifies the number of the header to be printed."
+               "                If 99 is given, all headers are printed. If <number> is"
+               "                negative only the structure of the file is printed."
+               ""
+               "--xml|-x:       <type> is either 'vo' or 'xf'. All the headers of the files found"
+               "                are then extracted to directories with the same name as the last"
+               "                directory found in the path-names of the files. The"
+               "                header files will have the same base name as the file, but"
+               "                with the extension '.xml'. The files use XFits as a format"
+               "                if 'xf' is specified and VOTable format if 'vo' is specified"
+               "                for <type>."
+               "--Struct|-S     Show the structure of the FITS file"
+               ""
+               "--tsv|-t        Print keywords as a tab-separated-value list. The list contains"
+               "                the items: keyword name, keyword value, comment, keyword type, index"
+               "                The index item is the running number of the keyword within the header."
+               ""
+               "--check|-c      If this flag is set the CRC32 checksum of the data part of the"
+               "                extensions is calculated."
+               "--mode-m        [1]|0: If set to 0 the program does not try to skip the data part"
+               "                between headers. This is useful for interpreting header files."
+               "--parse|-p      Switch the full parsing of the header on"
+               "                extensions is calculated."
+               "--help|-h:      print this help and exit."
+               ""
+               "Version: " + __version__)
+        print(msg)
 
 
 def run(args,skey='END',header=0, mode=1):
@@ -1806,13 +1798,13 @@ def run(args,skey='END',header=0, mode=1):
                     heads = [header]
                 for h in heads:
                     if pH.Extension[h]['index'].values().count(skey) == 0:
-                        print '%s\t%3d\t%s\t*not found*' % (name, h, skey)
+                        print('%s\t%3d\t%s\t*not found*' % (name, h, skey))
                     else:
-                       print "%s\t%3d\t%s\t%s" % (name, h, skey, pH.Extension[h].getKeyword(skey)[1])
+                       print("%s\t%3d\t%s\t%s" % (name, h, skey, pH.Extension[h].getKeyword(skey)[1]))
             else:
-                print pH.HEAD[header]
-          except Exception, e:
-            print e
+                print(pH.HEAD[header])
+          except Exception as e:
+            print(e)
 #            sys.exit('<ERROR> unable to open file:' +name+' <ERROR>')
         return pH
 
@@ -1844,8 +1836,8 @@ def tsvFunc(args,skey='END',header=0, mode=1):
                         lines += ascii_load_lines([tupleList[hind][ind]],'\t','\n')
                 else:
                     lines += ascii_load_lines(tupleList[hind],'\t','\n')
-          except Exception, e:
-              print e
+          except Exception as e:
+              print(e)
               return
         return (pH, lines)
 
@@ -1880,9 +1872,9 @@ def hdrExtract(name, xmlfl='', xtract=0, skey='END', show=0, struct=1, check=0, 
     """
     file_list = glob(name)
     if xmlfl >= 1:
-		oext = '.xml'
+        oext = '.xml'
     else:
-		oext = '.hdr'
+        oext = '.hdr'
 
     if len(file_list) == 0:
         return -1
@@ -1928,7 +1920,7 @@ def hdrExtract(name, xmlfl='', xtract=0, skey='END', show=0, struct=1, check=0, 
                 try:
                     o = open(ofnm,'w')
                 except:
-                    print "ERROR: Unable to open ",outfile
+                    print("ERROR: Unable to open ", outfile)
                     return 1
 
                 for xml in XmlHead:
@@ -1964,14 +1956,14 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
     pH.parseFitsHead()
 
     if pH.SIZE[0] != 0:
-        print 'There is a primary data part already! Size: ', pH.SIZE[0], ' bytes'
-        print 'Bailing out!'
+        print('There is a primary data part already! Size: ', pH.SIZE[0], ' bytes')
+        print('Bailing out!')
         return pH
 
-    print len(pH.Extension)
+    print(len(pH.Extension))
     if pH.Extension[extnum].getKeyword('XTENSION')[1] != 'IMAGE':
-        print 'The extension is not an IMAGE but ', pH.Extension[extnum].getKeyword('XTENSION')[1]
-        print 'Bailing out!'
+        print('The extension is not an IMAGE but ', pH.Extension[extnum].getKeyword('XTENSION')[1])
+        print('Bailing out!')
         return pH
 
     extHead = pH.Extension[extnum]
@@ -1993,7 +1985,7 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
                     ind = pk[k]
             keyDict['index'].update({ind:k})
 
-            print keyDict
+            print(keyDict)
             pH.Extension[0].updateKeyword(keyDict,force=1)
 
 #            pH.Extension[0]['nodes'].update({k:extHead['nodes'][k]})
@@ -2041,7 +2033,7 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
     for dd in range(len(pH.Extension)):
         if dd != extnum:      # extnum header and data are with primary
                               # but keep other extensions.
-            if (verb):print "Extracting FITS header for extension number ",dd
+            if (verb):print("Extracting FITS header for extension number ",dd)
             if dd == 0:
                 pH.Extension[dd].sortKeys()
                 datapart = extnum
@@ -2064,7 +2056,7 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
                         outFd.write(x)
 
 #           append the binary part to the header
-            if (verb):print "Extracting datapart number ", datapart
+            if (verb):print("Extracting datapart number ", datapart)
             pH.fd.seek(pH.POS[datapart][0],0)
             dataBlocks = int(ceil(pH.SIZE[datapart]/2880.))
             data = ''
@@ -2144,7 +2136,7 @@ if __name__ == '__main__':
                         show = -1
                         struct = 1
                         breakfl = 1
-                        print ">>> Careful this does not work correctly!!!!"
+                        print(">>> Careful this does not work correctly!!!!")
                         for f in args:
                             pH = mergeExtPrimary(f,extnum=int(v),verb=1)
                     if o in ("-q","--quiet"):
@@ -2158,9 +2150,9 @@ if __name__ == '__main__':
                     if o in ("-h","--help"):
                         usage()
                         breakfl = 1
-            except Exception, e:
+            except Exception as e:
                 errMsg = "Problem parsing command line options: %s" % str(e)
-                print errMsg
+                print(errMsg)
                 break
             try:
                 if tsv == 1:
@@ -2168,7 +2160,7 @@ if __name__ == '__main__':
                     if head < 0: head = 0
                     (pH, lines) = tsvFunc(args, skey=skey, header = head, mode=mode)
                     for l in lines:
-                        print l[:-1]  # don't print the \n
+                        print(l[:-1])  # don't print the \n
 
                 elif xtract == 1:
                     if xmlfl != '':
@@ -2190,9 +2182,9 @@ if __name__ == '__main__':
                         XmlHead = pH.xmlHead(format=xmlfl, head=show)
                         for xml in XmlHead:
                             if type(xml) == type(''):
-                                print xml + "\n"
+                                print(xml + "\n")
                             elif type(xml) == type([]):
-                                print '\n'.join(xml)
+                                print('\n'.join(xml))
 
                 elif struct > 0:
                     if mergefl == 0:
@@ -2208,13 +2200,13 @@ if __name__ == '__main__':
                             else:
                                 output = "Invalid header number specified. Should be: [0-%d,99]" % \
                                 (len(pH.HEAD)-1)
-                            print output
+                            print(output)
                 elif breakfl == 1:
                     break
                 else:
                    pH = run(args)
                 break
-            except Exception,e:
+            except Exception as e:
                errMsg = "Problem extracting headers: %s" % str(e)
-               print errMsg
+               print(errMsg)
                break

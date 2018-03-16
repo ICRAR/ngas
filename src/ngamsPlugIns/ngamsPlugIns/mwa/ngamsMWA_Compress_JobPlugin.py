@@ -58,7 +58,7 @@ def execCmd(cmd, failonerror = True, okErr = []):
         if (failonerror):
             raise Exception(errMsg)
         else:
-            print errMsg
+            print(errMsg)
     return re
 
 def ngamsMWA_Compress_JobPlugin(srvObj,

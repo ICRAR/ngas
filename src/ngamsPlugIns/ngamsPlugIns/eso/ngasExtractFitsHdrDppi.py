@@ -218,7 +218,7 @@ def ngasExtractFitsHdrDppi(srvObj,
             (stat, result) = getstatusoutput(cmd)
             if stat != 0:
                 errMsg = "Processing of header for file %s failed: %s" % (filename, result)
-                raise Exception, errMsg
+                raise Exception(errMsg)
 
     resFilename = file_id + "." + ext
     try:

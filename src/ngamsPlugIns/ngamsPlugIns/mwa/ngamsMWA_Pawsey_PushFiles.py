@@ -62,9 +62,9 @@ def getMWADBConn():
                             password = ''.decode('base64'),
                             host = None)
         return g_db_conn
-    except Exception, e:
+    except Exception as e:
         errStr = 'Cannot create MWA DB Connection: %s' % str(e)
-        raise Exception, errStr
+        raise Exception(errStr)
 
 def getLTADBConn():
     global l_db_conn
@@ -75,9 +75,9 @@ def getLTADBConn():
                             password = ''.decode('base64'),
                             host = None)
         return l_db_conn
-    except Exception, e:
+    except Exception  as e:
         errStr = 'Cannot create LTA DB Connection: %s' % str(e)
-        raise Exception, errStr
+        raise Exception(errStr)
 
 def executeQuery(conn, sqlQuery):
     try:
@@ -110,7 +110,7 @@ def getFileIdsByObsNum(obs_num):
     sqlQuery = "SELECT filename FROM data_files WHERE observation_num = '%s' ORDER BY SUBSTRING(filename, 27);" % str(obs_num)
     try:
         mwa_conn = getMWADBConn()
-    except Exception, eee:
+    except Exception as eee:
         logger.error("MWA database connection error: %s" % str(eee))
         exit(1)
 
@@ -132,7 +132,7 @@ def getUnprocessedObs(isGleam = False):
         sqlQuery = "SELECT obs_id FROM ngas_migration WHERE async_sent = 0 ORDER BY obs_id DESC"
     try:
         lta_conn = getLTADBConn()
-    except Exception, eee:
+    except Exception as eee:
         logger.error("NGAS database connection error: %s" % str(eee))
         exit(1)
 
@@ -211,14 +211,14 @@ def parseOptions():
     (options, args) = parser.parse_args()
     if (None == options.push_host or None == options.port or None == options.data_mover):
         parser.print_help()
-        print 'Missing parameters'
+        print('Missing parameters')
         return None
     return options
 
 def hasPawseyGotIt(client, fileId):
     try:
         rest = client.get_status(NGAMS_STATUS_CMD, pars=[["file_id", fileId]])
-    except Exception, e:
+    except Exception as e:
         errMsg = "Error occurred during checking remote file status " +\
                      "Exception: " + str(e)
         logger.error(errMsg)

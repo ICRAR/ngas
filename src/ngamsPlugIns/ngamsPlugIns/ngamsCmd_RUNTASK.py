@@ -84,14 +84,14 @@ def _queScanThread(jobManHost, ngas_hostId, ngas_client):
             strRes = urllib2.urlopen(dqUrl + urllib2.quote(g_mrLocalTask._taskId), timeout = 15).read() #HTTP Get (need to encode url)
             if (strRes.find('Error response') > -1):
                 logger.error('Error when sending dequeue event to JobMAN: %s', strRes)
-        except urllib2.URLError, urlerr:
+        except urllib2.URLError as urlerr:
             logger.error('Fail to send dequeue event to JobMAN: %s', str(urlerr))
 
         # execute the task
         localTaskResult = None
         try:
             localTaskResult = g_mrLocalTask.execute()
-        except Exception, execErr:
+        except Exception as execErr:
             logger.exception('Fail to execute task %s: Unexpected exception', g_mrLocalTask._taskId)
             localTaskResult = MRLocalTaskResult(g_mrLocalTask._taskId, ERROR_LT_UNEXPECTED, str(execErr), True)
 
