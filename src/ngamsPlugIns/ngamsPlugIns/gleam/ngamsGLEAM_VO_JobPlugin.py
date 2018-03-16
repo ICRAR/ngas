@@ -33,7 +33,6 @@ by the SubscriptionThread._deliveryThread
 """
 # used to connect to MWA M&C database
 
-import commands
 import datetime
 import logging
 import os
@@ -43,12 +42,13 @@ from psycopg2.pool import ThreadedConnectionPool
 import astropy.io.fits as pyfits
 
 from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import getHostName
 
 
 logger = logging.getLogger(__name__)
 
 mime = "images/fits"
-myhost = commands.getstatusoutput('hostname')[1]
+myhost = getHostName()
 
 # maximum connection = 3
 g_db_pool = ThreadedConnectionPool(1, 3, database = None, user = None,

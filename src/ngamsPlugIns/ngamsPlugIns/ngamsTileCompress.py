@@ -32,13 +32,13 @@ Command line utility + function to tile compress a FITS file.
 For now the 'imcopy' utility of the CFITSIO package is invoked for this.
 """
 
-import commands
 import logging
 import sys
 
-logger = logging.getLogger(__name__)
+from ngamsLib.ngamsCore import mvFile, rmFile, execCmd
 
-from ngamsLib.ngamsCore import mvFile, rmFile
+
+logger = logging.getLogger(__name__)
 
 def ngamsTileCompress(filename):
     """
@@ -52,7 +52,7 @@ def ngamsTileCompress(filename):
     try:
         comprCmd = "imcopy %s '%s[compress]'" % (filename, tmpFilename)
         logger.debug("Command to tile compress file: %s", comprCmd)
-        stat, out = commands.getstatusoutput(comprCmd)
+        stat, out, _ = execCmd(comprCmd)
         if (stat != 0):
             msg = "Error compressing file: %s. Error: %s" %\
                   (filename, stat.replace("\n", "   "))

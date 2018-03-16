@@ -36,7 +36,6 @@ by the SubscriptionThread._deliveryThread
 # originally encoded joburi (during subscribe command)
 #     url=ngasjob://ngamsGLEAM_Decompress_JobPlugin%3Fredo_on_fail%3D0
 
-import commands
 from glob import glob
 import logging
 
@@ -136,7 +135,7 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
             url = 'http://%s:7777/LARCHIVE?fileUri=%s\&mimeType=application/octet-stream\&file_version=%d\&no_versioning=1\&versioning=0' % (archive_host, imgfile, fileVersion)
             cmd1 = 'curl --connect-timeout %d %s' % (timeout, url)
             logger.debug('Local archiving %s', cmd1)
-            re = commands.getstatusoutput(cmd1)
+            re = execCmd(cmd1)
             if (0 == re[0] and (re[1].count('Successfully handled Archive Pull Request') > 0)):
                 logger.debug('Successfully re-archived the untarred FITS file %s', imgfile)
             else:

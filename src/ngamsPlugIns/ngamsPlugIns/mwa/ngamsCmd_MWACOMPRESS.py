@@ -36,10 +36,10 @@ This command wil be invoked by a central processing client
 """
 
 import binascii
-import commands
 import logging
 import os
 
+from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize
 
 
@@ -55,7 +55,7 @@ remove_uc = 0
 timeout = 600 # each command should not run more than 10 min, otherwise something is wrong
 
 def execCmd(cmd, failonerror = False, okErr = []):
-    re = commands.getstatusoutput(cmd)
+    re = ngamsPlugInApi.execCmd(cmd)
     if (re[0] != 0 and not (re[0] in okErr)):
         errMsg = 'Fail to execute command: "%s". Exception: %s' % (cmd, re[1])
         if (failonerror):
@@ -95,7 +95,7 @@ def hasCompressed(filename):
     cmd = 'head -c %d %s' % (1024 * 3, filename)
     try:
         #re = ngamsPlugInApi.execCmd(cmd, 60)
-        re = commands.getstatusoutput(cmd)
+        re = execCmd(cmd)
     except Exception as ex:
         if (str(ex).find('timed out') != -1):
             logger.error('Timed out when checking FITS header %s', cmd)

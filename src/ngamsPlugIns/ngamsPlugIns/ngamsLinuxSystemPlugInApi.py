@@ -83,15 +83,13 @@ for Linux.
 #         if k == mntPt: return mntDict[k]
 #     return ""
 
-import commands
-import exceptions
 import glob
 import logging
 import os
-import posix
+import subprocess
 
 from ngamsLib import ngamsHostInfo
-from ngamsLib.ngamsCore import getHostName
+from ngamsLib.ngamsCore import getHostName, execCmd
 
 
 logger = logging.getLogger(__name__)
@@ -120,15 +118,11 @@ def mountToMountpoint(devName,
 
     Returns:    Void.
     """
-    #if (fstype): fstype = '-t ' + fstype
-    fstype = ""
+    command = ["sudo", "mount"]
     if (readOnly):
-        rdOnly = "-r "
-    else:
-        rdOnly = ""
-    #command = 'mount ' + rdOnly + ' ' + fstype + ' ' + devName + ' ' + mntPt
-    command = "sudo mount %s %s %s" % (rdOnly, devName, mntPt)
-    logger.debug("Command to mount disk: %s", command)
+        command.append('-r')
+    command += [devName, mntPt]
+    logger.debug("Command to mount disk: %s", subprocess.list2cmdline(command))
 
 #     if (getMountedDev(mntPt)):   # already mounted
 #         warnMsg = "Device " + getMountedDev(mntPt) + ' already mounted ' + \
@@ -150,13 +144,14 @@ def mountToMountpoint(devName,
 
     if not os.path.exists(mntPt):
         try:
-            posix.mkdir(mntPt)
-        except exceptions.OSError as e:
+            os.mkdir(mntPt)
+        except OSError as e:
             errMsg = "Failed creating mountpoint " + mntPt + ":" + str(e)
             logger.exception(errMsg)
             raise
-    stat, out = commands.getstatusoutput(command)
-    if ((stat != 0) and (out.find("already mounted") == -1)):
+
+    stat, out, _ = execCmd(command)
+    if stat != 0 or b'already mounted' in out:
         errMsg = "Failed mounting device. Device/mount point: %s/%s" %\
                  (devName, mntPt)
         raise Exception(errMsg)
@@ -172,9 +167,9 @@ def umountMountpoint(mntPt):
 
     Returns:   Void.
     """
-    command = "sudo umount %s" % mntPt
-    stat, out = commands.getstatusoutput(command)
-    if ((stat != 0) and (out.find("not mounted") == -1)):
+    command = ["sudo", "umount", mntPt]
+    stat, out, _ = execCmd(command)
+    if stat != 0 or b'not mounted' in out:
         errMsg = "Failed unmounting. Mount point: %s" % mntPt
         raise Exception(errMsg)
 
@@ -202,13 +197,13 @@ def checkModule(module):
 
     # command = "/sbin/modprobe -l | /bin/grep \"/" + module + ".o$\""
     command = "find /lib/modules -name " + module + ".*"
-    (stat,out) = commands.getstatusoutput(command)
+    stat, out, _ = execCmd(command)
 
     if stat > 0 or not out.strip():
         mex,ml = (0,0)    # there is no module like this
     else:
         mex = 1       # module exists
-        (stat,out) = commands.getstatusoutput("/sbin/lsmod | /bin/grep " + \
+        stat, out, _ = execCmd("/sbin/lsmod | /bin/grep " + \
                                               "\"^" + module + "\"")
         if out:
             ml = 1   # module is loaded
@@ -276,9 +271,8 @@ def rmMod(module):
     Returns:    0 upon success or if module is not loaded (int).
     """
     stat = checkModule(module)
-    rstat = 0
     if (stat[1]):
-        (rstat,out) = commands.getstatusoutput("/sbin/rmmod " + module)
+        execCmd("/sbin/rmmod " + module)
     else:
         return 0
 

@@ -28,16 +28,17 @@
 This module pushes missing files to MIT in a semi-automated fashion
 """
 
-import cPickle as pickle
-from cPickle import UnpicklingError
 from optparse import OptionParser
 import socket, base64
-import urllib2
+
+from six.moves import cPickle as pickle  # @UnresolvedImport
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
+from six.moves.urllib import request as urlrequest # @UnresolvedImport
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import NGAMS_STATUS_CMD, NGAMS_FAILURE, NGAMS_SOCK_TIMEOUT_DEF
 from ngamsPClient import ngamsPClient
-from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveRequest
+from .ngamsMWAAsyncProtocol import AsyncListRetrieveRequest
 import psycopg2
 
 
@@ -181,7 +182,7 @@ def getPushURL(hostId, gateway = None):
         gateways = gateway.split(',')
         gurl = 'http://%s/QARCHIVE' % hostId
         for gw in gateways:
-            gurl = 'http://%s/PARCHIVE?nexturl=%s' % (gw, urllib2.quote(gurl))
+            gurl = 'http://%s/PARCHIVE?nexturl=%s' % (gw, urlparse.quote(gurl))
         #return 'http://%s/PARCHIVE?nexturl=http://%s/QAPLUS' % (gateway, hostId)
         return gurl
     else:
@@ -227,10 +228,10 @@ def main():
         strReq = pickle.dumps(myReq)
         try:
             print("Sending async retrieve request to the data mover %s" % opts.data_mover)
-            request = urllib2.Request(stageUrl)
+            request = urlrequest.Request(stageUrl)
             base64string = base64.encodestring('ngasmgr:ngas$dba').replace('\n', '')
             request.add_header("Authorization", "Basic %s" % base64string)
-            strRes = urllib2.urlopen(request, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read()
+            strRes = urlrequest.urlopen(request, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read()
             myRes = pickle.loads(strRes)
             #strRes = urllib2.urlopen(stageUrl, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read()
             #myRes = pickle.loads(strRes)
@@ -238,7 +239,7 @@ def main():
                 print(myRes.errorcode)
             else:
                 print('Response is None when async staging files for obsNum %s' % obsNum)
-        except (UnpicklingError, socket.timeout) as uerr:
+        except (pickle.UnpicklingError, socket.timeout) as uerr:
             print("Something wrong while sending async retrieve request for obsNum %s, %s" % (obsNum, str(uerr)))
 
 if __name__ == "__main__":

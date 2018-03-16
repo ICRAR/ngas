@@ -2075,7 +2075,6 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
 if __name__ == '__main__':
 
         import getopt
-        from commands import getstatusoutput
 
         args = sys.argv[1:]
         opts,args = getopt.getopt(args,"s:H:x:M:m:peSctqh",\

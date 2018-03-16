@@ -36,8 +36,7 @@ import logging
 
 from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, NGAMS_PROC_DATA
-from ngamsPlugIns.ngamsAlmaMultipart import specificTreatment
-from ngamsPlugIns.printhead import head
+from .ngamsAlmaMultipart import specificTreatment
 
 
 logger = logging.getLogger(__name__)

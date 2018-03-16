@@ -35,12 +35,12 @@ instead of saveFromHttpToFile, it saveFromHttpToAnotherHttp
 """
 
 import binascii
-import httplib
 import logging
 import os
 import time
-import urllib
-import urllib2
+
+from six.moves import http_client as httplib  # @UnresolvedImport
+from six.moves.urllib import request as urlrequest  # @UnresolvedImport
 
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
     NGAMS_FAILURE, NGAMS_HTTP_POST, getHostName, \
@@ -292,13 +292,13 @@ def saveFromHttpToHttp(reqPropsObj,
                 logger.debug('Reporing this error to %s', rpurl)
                 urlreq = '%s?errorurl=%s&file_id=%s' % (rpurl, nexturl, basename)
                 try:
-                    urllib2.urlopen(urlreq)
+                    urlrequest.urlopen(urlreq)
                 except Exception:
                     logger.exception("Cannot report the error of nexturl '%s' to reporturl '%s' either", nexturl, rpurl)
 
             if (reportHost):
                 try:
-                    rereply = urllib2.urlopen('http://%s/report/hostdown?file_id=%s&next_url=%s' % (reportHost, basename, urllib2.quote(nexturl)), timeout = 15).read()
+                    rereply = urlrequest.urlopen('http://%s/report/hostdown?file_id=%s&next_url=%s' % (reportHost, basename, urllib2.quote(nexturl)), timeout = 15).read()
                     logger.info('Reply from sending file %s host-down event to server %s - %s', basename, reportHost, rereply)
                 except Exception:
                     logger.exception('Fail to send host-down event to server %s', reportHost)
@@ -348,7 +348,7 @@ def handleCmd(srvObj,
     logger.debug("Set reference in request handle object to the read socket.")
     rfile = httpRef.rfile
     if reqPropsObj.getFileUri().startswith('http://'):
-        readFd = urllib.urlopen(reqPropsObj.getFileUri())
+        readFd = urlrequest.urlopen(reqPropsObj.getFileUri())
         rfile = readFd
 
     logger.debug("Generate basename filename from URI: %s", reqPropsObj.getFileUri())

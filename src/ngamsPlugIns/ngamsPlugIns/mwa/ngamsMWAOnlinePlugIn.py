@@ -52,7 +52,8 @@ import glob
 import logging
 import os
 
-import cPickle as pickle
+from six.moves import cPickle as pickle  # @UnresolvedImport
+
 from ngamsLib import ngamsPhysDiskInfo, ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE
 from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \

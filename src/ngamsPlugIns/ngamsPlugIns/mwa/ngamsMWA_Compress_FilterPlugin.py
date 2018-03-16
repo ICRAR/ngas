@@ -31,9 +31,10 @@
 This filter will keep  all already-compressed FITS file from entering the job queue
 """
 
-import commands
 import logging
 import os
+
+from ngamsLib import ngamsPlugInApi
 
 
 logger = logging.getLogger(__name__)
@@ -85,8 +86,7 @@ def ngamsMWA_Compress_FilterPlugin(srvObj,
 
     cmd = 'head -c %d %s' % (1024 * 3, filename)
     try:
-        #re = ngamsPlugInApi.execCmd(cmd, 60)
-        re = commands.getstatusoutput(cmd)
+        re = ngamsPlugInApi.execCmd(cmd)
     except Exception as ex:
         if (str(ex).find('timed out') != -1):
             logger.error('Timed out when checking FITS header %s', cmd)

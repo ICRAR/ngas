@@ -83,7 +83,7 @@ import random
 import time
 
 from ngamsLib.ngamsCore import TRACE, NGAMS_CHECKFILE_CMD, NGAMS_FAILURE
-from ngamsLib import ngamsLib, ngamsStatus, ngamsHttpUtils
+from ngamsLib import ngamsStatus, ngamsHttpUtils
 
 
 logger = logging.getLogger(__name__)

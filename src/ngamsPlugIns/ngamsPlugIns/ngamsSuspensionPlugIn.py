@@ -31,9 +31,7 @@
 Test Suspension Plug-In to simulate the NGAS host suspension.
 """
 
-import commands
-
-from ngamsLib.ngamsCore import TRACE
+from ngamsLib.ngamsCore import execCmd
 
 
 def ngamsSuspensionPlugIn(srvObj):
@@ -44,9 +42,7 @@ def ngamsSuspensionPlugIn(srvObj):
 
     Returns:        Void.
     """
-    T = TRACE()
-
-    commands.getstatusoutput("sudo /sbin/shutdown -h now")
+    execCmd("sudo /sbin/shutdown -h now")
 
 
 # EOF

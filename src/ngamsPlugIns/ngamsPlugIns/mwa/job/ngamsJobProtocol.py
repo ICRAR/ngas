@@ -29,7 +29,8 @@ This module provides an MapReduce framework for running NGAS jobs, task and othe
 A particular job type (i.e. RTS) should implement these interfaces
 """
 
-import threading, datetime
+import datetime
+import threading
 
 STATUS_NOT_STARTED = 0
 STATUS_STARTED = 1 # started (esp children), but itself has not been running yet

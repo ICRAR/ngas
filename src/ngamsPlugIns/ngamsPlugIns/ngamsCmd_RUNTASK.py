@@ -33,16 +33,19 @@ This module is responsible for running local tasks, i.e.
 5. Monitor task progress, including error handling
 """
 
-import cPickle as pickle
 import logging
-from Queue import Queue
 import os
 import threading
-import urllib2
+
+from six.moves import cPickle as pickle  # @UnresolvedImport
+from six.moves.queue import Queue  # @UnresolvedImport
+from six.moves.urllib import error as urlerror # @UnresolvedImport
+from six.moves.urllib import parse as urlparse # @UnresolvedImport
+from six.moves.urllib import request as urlrequest # @UnresolvedImport
 
 from ngamsLib.ngamsCore import TRACE, NGAMS_TEXT_MT
 from ngamsPClient import ngamsPClient
-from ngamsPlugIns.ngamsJobProtocol import MRLocalTaskResult, ERROR_LT_UNEXPECTED
+from ngamsPlugIns.mwa.job.ngamsJobProtocol import MRLocalTaskResult, ERROR_LT_UNEXPECTED
 
 
 logger = logging.getLogger(__name__)
@@ -81,10 +84,10 @@ def _queScanThread(jobManHost, ngas_hostId, ngas_client):
         # before executing the task, inform JobMAN that
         # this task is just dequeued and about to start...
         try:
-            strRes = urllib2.urlopen(dqUrl + urllib2.quote(g_mrLocalTask._taskId), timeout = 15).read() #HTTP Get (need to encode url)
+            strRes = urlrequest.urlopen(dqUrl + urlparse.quote(g_mrLocalTask._taskId), timeout = 15).read() #HTTP Get (need to encode url)
             if (strRes.find('Error response') > -1):
                 logger.error('Error when sending dequeue event to JobMAN: %s', strRes)
-        except urllib2.URLError as urlerr:
+        except urlerror.URLError as urlerr:
             logger.error('Fail to send dequeue event to JobMAN: %s', str(urlerr))
 
         # execute the task
@@ -109,9 +112,9 @@ def _queScanThread(jobManHost, ngas_hostId, ngas_client):
         strReq = pickle.dumps(localTaskResult)
         logger.debug('Sending local result back to JobMAN %s', svrUrl)
         try:
-            strRes = urllib2.urlopen(svrUrl, data = strReq, timeout = 15).read() #HTTP Post
+            strRes = urlrequest.urlopen(svrUrl, data = strReq, timeout = 15).read() #HTTP Post
             logger.debug("Got result from JobMAN: '%s'", strRes)
-        except urllib2.URLError:
+        except urlerror.URLError:
             logger.exception('Fail to send local result to JobMAN')
 
 def _archiveFileLocal(fpath, localTaskResult, ngas_hostId, ngas_client):

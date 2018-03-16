@@ -35,7 +35,8 @@ import logging
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, genLog
-import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
+from . import ngamsLinuxSystemPlugInApi
+from .eso import ngamsEscaladeUtils
 
 
 logger = logging.getLogger(__name__)

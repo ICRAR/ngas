@@ -31,11 +31,11 @@
 Test WakeUp Plug-In to simulate the NGAS host suspension.
 """
 
-import commands
 import logging
 
 from ngamsLib import ngamsHighLevelLib
-from ngamsLib.ngamsCore import TRACE
+from ngamsLib.ngamsCore import execCmd
+
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +50,9 @@ def ngamsWakeUpPlugIn(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE(3)
-
     hostDic = ngamsHighLevelLib.\
               getHostInfoFromHostIds(srvObj.getDb(), [hostId])
-    if (not hostDic.has_key(hostId)):
+    if hostId not in hostDic:
         errMsg = "ngamsWakeUpPlugIn: Could not wake up host: " + hostId +\
                  " - host not defined in NGAS DB."
         raise Exception(errMsg)

@@ -31,18 +31,20 @@ usage:
 nohup python ngamsMWA_Pawsey_PushFiles.py -s 146.118.84.64 -p 7777 -m cortex.ivec.org:7781 > ~/MWA_HSM/test/pushfile.log &
 """
 
-import cPickle as pickle
-from cPickle import UnpicklingError
 import logging
 from optparse import OptionParser
 import socket
-import urllib2, time
+import time
 import psycopg2
+
+from six.moves import cPickle as pickle  # @UnresolvedImport
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
+from six.moves.urllib import request as urlrequest # @UnresolvedImport
 
 from ngamsLib.ngamsCore import NGAMS_STATUS_CMD, NGAMS_FAILURE, \
     NGAMS_SOCK_TIMEOUT_DEF
 from ngamsPClient import ngamsPClient
-from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveRequest
+from .ngamsMWAAsyncProtocol import AsyncListRetrieveRequest
 
 
 mime_type = 'application/octet-stream'
@@ -244,7 +246,7 @@ def getPushURL(hostId, gateway = None):
         gateways = gateway.split(',')
         gurl = 'http://%s/QARCHIVE' % hostId
         for gw in gateways:
-            gurl = 'http://%s/PARCHIVE?nexturl=%s' % (gw, urllib2.quote(gurl))
+            gurl = 'http://%s/PARCHIVE?nexturl=%s' % (gw, urlparse.quote(gurl))
         #return 'http://%s/PARCHIVE?nexturl=http://%s/QAPLUS' % (gateway, hostId)
         return gurl
     else:
@@ -257,7 +259,7 @@ def waitForNextObs(obsNum, statusUrl, sessionId, maxWaitTime, checkInterval = 60
         max_time += checkInterval
 
         try:
-            strRes = urllib2.urlopen(statusUrl + sessionId).read()
+            strRes = urlrequest.urlopen(statusUrl + sessionId).read()
             myRes = pickle.loads(strRes)
             if (0 == myRes.number_files_to_be_delivered):
                 # modify database
@@ -266,7 +268,7 @@ def waitForNextObs(obsNum, statusUrl, sessionId, maxWaitTime, checkInterval = 60
             elif (myRes.errorcode):
                 markObsDeliveredStatus(obsNum, -1, isGleam = isgleam)
                 break
-        except (UnpicklingError, socket.timeout) as uerr:
+        except (pickle.UnpicklingError, socket.timeout) as uerr:
             logger.error("Something wrong while getting status for obsNum %s, %s" % (obsNum, str(uerr)))
             continue
 
@@ -320,7 +322,7 @@ def main():
         sessionId = None
         try:
             logger.info("Sending async retrieve request to the data mover %s" % opts.data_mover)
-            strRes = urllib2.urlopen(stageUrl, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read()
+            strRes = urlrequest.urlopen(stageUrl, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read()
             myRes = pickle.loads(strRes)
             if (myRes):
                 errCode = myRes.errorcode
@@ -333,7 +335,7 @@ def main():
             else:
                 logger.error('Response is None when async staging files for obsNum %s' % obsNum)
                 continue
-        except (UnpicklingError, socket.timeout) as uerr:
+        except (pickle.UnpicklingError, socket.timeout) as uerr:
             logger.error("Something wrong while sending async retrieve request for obsNum %s, %s" % (obsNum, str(uerr)))
             continue
         markAsncSentStatus(obsNum, isGleam = gleam)

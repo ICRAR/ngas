@@ -33,7 +33,6 @@ read fits header, get cdel1,2 and epoch information
 Cutout a gleam FITS image, convert it into png, and display in the browser, then remove the jpeg file
 """
 
-import commands
 import logging
 import math
 import os
@@ -48,7 +47,7 @@ import astropy.units as u
 import astropy.wcs as pywcs
 import ephem
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT, execCmd as _execCmd
 
 
 logger = logging.getLogger(__name__)
@@ -197,7 +196,7 @@ def execCmd(cmd, failonerror = True, okErr=[]):
     sp = subprocess.Popen(cmd.split())
     return sp.wait()
     """
-    re = commands.getstatusoutput(cmd)
+    re = _execCmd(cmd)
     if (re[0] != 0 and not (re[0] in okErr)):
         errMsg = 'Fail to execute command: "%s". Exception: %s' % (cmd, re[1])
         if (failonerror):
