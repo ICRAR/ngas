@@ -35,9 +35,9 @@ from fabric.state import env
 from fabric.tasks import execute
 from fabric.utils import puts
 
-from ngas import ngas_root_dir, ngas_user, ngas_source_dir
-from system import get_fab_public_key
-from utils import check_ssh, generate_key_pair, run, success, failure,\
+from .ngas import ngas_root_dir, ngas_user, ngas_source_dir
+from .system import get_fab_public_key
+from .utils import check_ssh, generate_key_pair, run, success, failure,\
     default_if_empty, info
 
 

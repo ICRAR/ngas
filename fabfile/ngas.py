@@ -25,10 +25,8 @@ installing it and making sure it works after starting it.
 """
 import contextlib
 import functools
-import httplib
 import os
 import tempfile
-import urllib2
 
 from fabric.context_managers import settings, cd
 from fabric.contrib.files import exists, sed
@@ -36,12 +34,14 @@ from fabric.decorators import task, parallel
 from fabric.operations import local, put
 from fabric.state import env
 from fabric.utils import abort
+from six.moves import http_client as httplib # @UnresolvedImport
+from six.moves.urllib import parse as urlparse # @UnresolvedImport
 
-from pkgmgr import install_system_packages, check_brew_port, check_brew_cellar
-from system import check_dir, download, check_command, \
+from .pkgmgr import install_system_packages, check_brew_port, check_brew_cellar
+from .system import check_dir, download, check_command, \
     create_user, get_linux_flavor, python_setup, check_python, \
     MACPORT_DIR
-from utils import is_localhost, home, default_if_empty, sudo, run, success,\
+from .utils import is_localhost, home, default_if_empty, sudo, run, success,\
     failure, info
 
 # Don't re-export the tasks imported from other modules, only ours
@@ -452,7 +452,7 @@ def upload_to(host, filename, port=7777):
     Simple method to upload a file into NGAS
     """
     with contextlib.closing(httplib.HTTPConnection(host, port)) as conn:
-        conn.putrequest('POST', '/QARCHIVE?filename=%s' % (urllib2.quote(os.path.basename(filename)),) )
+        conn.putrequest('POST', '/QARCHIVE?filename=%s' % (urlparse.quote(os.path.basename(filename)),) )
         conn.putheader('Content-Length', os.stat(filename).st_size)
         conn.endheaders()
         with open(filename) as f:

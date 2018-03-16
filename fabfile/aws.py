@@ -33,8 +33,8 @@ from fabric.state import env
 from fabric.tasks import execute
 from fabric.utils import puts, abort, fastprint
 
-from ngas import ngas_revision, ngas_user
-from utils import default_if_empty, whatsmyip, check_ssh, \
+from .ngas import ngas_revision, ngas_user
+from .utils import default_if_empty, whatsmyip, check_ssh, \
     key_filename
 
 # Don't re-export the tasks imported from other modules
@@ -262,7 +262,7 @@ def print_instance(inst):
         ssh_user = ' -l%s' % (nuser) if nuser else ''
         puts("Connect:   ssh -i ~/.ssh/{0}.pem {1}{2}".format(key_name, pub_name, ssh_user))
         puts("Terminate: fab aws.terminate:instance_id={0}".format(inst_id))
-    print 'Launch time: {0}'.format(l_time)
+    puts('Launch time: {0}'.format(l_time))
 
 def color_ec2state(state):
     if state == 'running':

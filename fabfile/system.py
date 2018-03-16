@@ -23,7 +23,6 @@
 Module containing system-level utility methods and fabric tasks
 """
 import os
-import urlparse
 
 from fabric.colors import blue, green
 from fabric.context_managers import cd, settings
@@ -32,8 +31,9 @@ from fabric.operations import prompt
 from fabric.state import env
 from fabric.utils import puts, abort
 import pkg_resources
+from six.moves.urllib import parse as urlparse # @UnresolvedImport
 
-from utils import run, sudo, get_public_key
+from .utils import run, sudo, get_public_key
 
 
 # List of supported OSes
@@ -113,7 +113,7 @@ def get_linux_flavor():
     """
 
     # Already ran through this method
-    if env.has_key('linux_flavor'):
+    if 'linux_flavor' in env:
         return env.linux_flavor
 
     linux_flavor = None
