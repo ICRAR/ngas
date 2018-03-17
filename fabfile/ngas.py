@@ -70,6 +70,10 @@ NGAS_ROOT_DIR_NAME = 'NGAS'
 # This is relative to the NGAS_USER home directory
 NGAS_INSTALL_DIR_NAME = 'ngas_rt'
 
+# The python version used for the NGAS installation
+# It defaults to 2.7, but it could be one of the 3.* versions as well
+NGAS_PYTHON_VERSION = "2.7"
+
 # The type of server to configure after installation
 # Values are 'archive' and 'cache'
 NGAS_SERVER_TYPE = 'archive'
@@ -141,6 +145,10 @@ def ngas_revision():
     default_if_empty(env, 'NGAS_REV', default_ngas_revision)
     return env.NGAS_REV
 
+def ngas_python_version():
+    default_if_empty(env, 'NGAS_PYTHON_VERSION', NGAS_PYTHON_VERSION)
+    return env.NGAS_PYTHON_VERSION
+
 def extra_python_packages():
     key = 'NGAS_EXTRA_PYTHON_PACKAGES'
     if key in env:
@@ -191,15 +199,20 @@ def virtualenv_setup():
         run("rm -rf %s" % (ngasInstallDir,))
 
     # Check which python will be bound to the virtualenv
-    ppath = check_python()
+    pversion = ngas_python_version()
+    ppath = check_python(pversion)
     if not ppath:
-        ppath = python_setup(os.path.join(home(), 'python'))
+        ppath = python_setup(pversion, os.path.join(home(), 'python'))
 
     # Use our create_venv.sh script to create the virtualenv
     # It already handles the download automatically if no virtualenv command is
     # found in the system, and also allows to specify a python executable path
     with cd(ngas_source_dir()):
-        run("./create_venv.sh -p {0} {1}".format(ppath, ngasInstallDir))
+        if pversion == '2.7':
+            pversion = 2
+        else:
+            pversion = 3
+        run("./create_venv.sh -p {0} -{1} {2}".format(ppath, pversion, ngasInstallDir))
 
     # Download this particular certifcate; otherwise pip complains
     # in some platforms
