@@ -62,4 +62,4 @@ class ngamsQueryCmdTest(ngamsTestSuite):
 
         # Check that the archived file is listed
         data = stat.getData()
-        self.assertTrue("TEST.2001-05-08T15:25:00.123" in data)
+        self.assertTrue(b"TEST.2001-05-08T15:25:00.123" in data)
