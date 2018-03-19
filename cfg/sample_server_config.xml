@@ -144,10 +144,13 @@ passwords will be expressed literally.
 
 	    Logging levels are interpreted like this:
 	    0 = NONE, 1 = ERROR, 2 = WARNING, 3 = NOTICE, 4 = INFO, 5 = DEBUG.
+
+	    The flag ArchiveRotatedLogfiles controls whether the rotated log files
+	    are archived (=1) on the host or not (=0).
 	-->
 	<Log Id="Log" LocalLogFile="log/LogFile.nglog" LocalLogLevel="4"
 	     LogRotateCache="30" LogRotateInt="01T00:00:00" SysLog="0"
-	     SysLogPrefix="ngas"/>
+	     SysLogPrefix="ngas" ArchiveRotatedLogfiles="1"/>
 
 	<!--
 	    Archiving configuration

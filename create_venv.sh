@@ -91,7 +91,7 @@ then
 fi
 
 # Check that the python version is correct
-pythonVersion=$(python -V 2>&1)
+pythonVersion=$(${PYTHON_EXEC} -V 2>&1)
 if [[ ! "$pythonVersion" == *"2.7"* ]]
 then
 	error "Python 2.7 needed, found: $pythonVersion"

@@ -19,11 +19,23 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-from ngamsLib import ngamsCore
 from .ngamsTestLib import sendPclCmd, ngamsTestSuite
 
 
 class ngamsQueryCmdTest(ngamsTestSuite):
+
+    def test_invalid_requests(self):
+
+        self.prepExtSrv()
+        client = sendPclCmd()
+
+        # No query
+        self.assertStatus(client.get_status('QUERY'), 'FAILURE')
+
+        # Invalid queries
+        self.assertStatus(client.get_status('QUERY', pars=(('query', 'file_list'),)), 'FAILURE')
+        self.assertStatus(client.get_status('QUERY', pars=(('query', 'file_listss'),)), 'FAILURE')
+        self.assertStatus(client.get_status('QUERY', pars=(('query', ''),)), 'FAILURE')
 
     def test_files_list(self):
 
@@ -32,13 +44,21 @@ class ngamsQueryCmdTest(ngamsTestSuite):
 
         # No files archived, there was an error on the previous implementation
         stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
-        self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
+        self.assertStatus(stat)
 
         # One file archived, let's see what happens now
         stat = client.archive("src/SmallFile.fits")
-        self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
+        self.assertStatus(stat)
         stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
-        self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
+        self.assertStatus(stat)
+
+        # Make sure that the other formats work as well
+        stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'text']])
+        self.assertStatus(stat)
+        stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'json']])
+        self.assertStatus(stat)
+        stat = client.get_status("QUERY", pars = [['query', 'files_list']])
+        self.assertStatus(stat)
 
         # Check that the archived file is listed
         data = stat.getData()
