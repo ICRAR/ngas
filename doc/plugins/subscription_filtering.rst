@@ -15,6 +15,10 @@ with the same name of the module itself:
 
    def my_plugin_name(server, plugin_pars, file_name, file_id, file_version)
 
+``my_plugin_name`` needs to match the name of the module;
+in other words, the file containing it must be called
+``my_plugin_name.py``.
+
 The arguments are the following:
 
 * ``server`` is a reference to the ``ngamsServer`` instance
@@ -31,6 +35,11 @@ The arguments are the following:
 
 The method should return ``True`` if the file should be delivered,
 and ``False`` otherwise.
+
+Please note that filtering is done on a per-file basis.
+Calculating the list of files that will be fed into the plug-in
+is outside of the scope of this plug-in, and depends
+on the subscription settings, like its start date.
 
 Registration
 ============
