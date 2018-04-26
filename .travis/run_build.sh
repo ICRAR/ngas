@@ -44,6 +44,8 @@ fail() {
 # virtualenv though and manually source it whenever we use it.
 if [ "${TRAVIS_OS_NAME}" = "osx" ]
 then
+	brew unlink python || fail "Failed to brew unlink python"
+	brew install python@2 || fail "Failed to brew install python@2"
 	brew install berkeley-db || fail "Failed to brew install packages"
 
 	# Now create ourselves a virtualenv please and go in there
