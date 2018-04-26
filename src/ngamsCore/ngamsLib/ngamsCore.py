@@ -281,7 +281,7 @@ def ngamsCopyrightString():
 
     Returns:   Copyright string (string).
     """
-    return pkg_resources.resource_string('ngamsData', 'COPYRIGHT')
+    return utils.b2s(pkg_resources.resource_string('ngamsData', 'COPYRIGHT'))
 
 
 _logDef = logdefs.LogDefHolder(pkg_resources.resource_stream('ngamsData', 'ngamsLogDef.xml'))# @UndefinedVariable

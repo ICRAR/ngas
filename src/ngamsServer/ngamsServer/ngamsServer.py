@@ -68,6 +68,7 @@ from ngamsLib.ngamsCore import genLog, TRACE, getNgamsVersion, \
 from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils
 from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
+from ngamsLib import utils
 from . import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
 from . import ngamsJanitorThread
 from . import ngamsDataCheckThread
@@ -2421,7 +2422,7 @@ class ngamsServer(object):
 
         Returns:    Void.
         """
-        manPage = pkg_resources.resource_string(__name__, 'ngamsServer.txt')  # @UndefinedVariable
+        manPage = utils.b2s(pkg_resources.resource_string(__name__, 'ngamsServer.txt'))  # @UndefinedVariable
         print(manPage)
         print(ngamsCopyrightString())
 
