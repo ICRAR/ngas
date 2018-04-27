@@ -38,23 +38,18 @@ import os
 import re
 import shutil
 import socket
-import string
 import threading
 import random
 import tempfile
 import time
-import urllib
 
-from ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
+from .ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
     NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE,\
     NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
     checkCreatePath, checkAvailDiskSpace,\
     getFileSize, NGAMS_BAD_FILES_DIR, NGAMS_BAD_FILE_PREFIX, NGAMS_STATUS_CMD,\
     mvFile, rmFile, NGAMS_HTTP_UNAUTH, NGAMS_HTTP_SUCCESS
-import ngamsSmtpLib
-import ngamsLib
-import ngamsHostInfo, ngamsStatus
-import ngamsHttpUtils
+from . import ngamsSmtpLib, ngamsLib, ngamsHostInfo, ngamsHttpUtils
 
 
 logger = logging.getLogger(__name__)
@@ -135,7 +130,7 @@ def _addHostInDic(dbConObj,
     """
     tmpHostInfo = dbConObj.getHostInfoFromHostIds([hostId])
     if not tmpHostInfo:
-        raise Exception, genLog("NGAMS_AL_MIS_HOST", [hostId])
+        raise Exception(genLog("NGAMS_AL_MIS_HOST", [hostId]))
     sqlHostInfo = tmpHostInfo[0]
     hostDic[hostId] = ngamsHostInfo.ngamsHostInfo().\
                       unpackFromSqlQuery(sqlHostInfo)
@@ -167,17 +162,17 @@ def resolveHostAddress(localHostId,
 
     try:
         hostInfoDic = getHostInfoFromHostIds(dbConObj, hostList)
-    except Exception, e:
+    except:
         hostInfoDic = {}
         for host in hostList:
             hostInfoDic[host] = None
 
-    if (not hostInfoDic.has_key(localHostId)):
+    if localHostId not in hostInfoDic:
         _addHostInDic(dbConObj, localHostId, hostInfoDic)
     for hostName in hostList:
-        if (not hostInfoDic.has_key(hostName)):
+        if hostName not in hostInfoDic:
             errMsg = genLog("NGAMS_AL_MIS_HOST", [hostName])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         hi = hostInfoDic[hostName]
 
         # Find out if this host is local, within a cluster, within the same
@@ -193,9 +188,9 @@ def resolveHostAddress(localHostId,
             # host to be contacted for handling the request.
             clusterName = hi.getClusterName()
             if ((clusterName == None) or (clusterName.strip() == "")):
-                raise Exception, "No Cluster Name specified in NGAS DB for " +\
-                      "host: " + hi.getHostId()
-            if (not hostInfoDic.has_key(clusterName)):
+                raise Exception("No Cluster Name specified in NGAS DB for " +\
+                      "host: " + hi.getHostId())
+            if clusterName not in hostInfoDic:
                 _addHostInDic(dbConObj, clusterName, hostInfoDic)
             hi.\
                  setHostType(NGAMS_HOST_DOMAIN).\
@@ -205,7 +200,7 @@ def resolveHostAddress(localHostId,
             # It's a remote host somewhere 'in the world'. Set the information
             # about the host to be contacted for handling the request.
             clusterName = hi.getClusterName()
-            if (not hostInfoDic.has_key(clusterName)):
+            if clusterName not in hostInfoDic:
                 _addHostInDic(dbConObj, clusterName, hostInfoDic)
             hi.\
                  setHostType(NGAMS_HOST_REMOTE).\
@@ -281,9 +276,9 @@ def acquireDiskResource(ngamsCfgObj,
     if (not storageSet.getMutex()): return
 
     global _diskMutexSems
-    if (not _diskMutexSems.has_key(slotId)):
+    if slotId not in _diskMutexSems:
         _diskMutexSems[slotId] = threading.Semaphore(1)
-    code = string.split(str(abs(random.gauss(10000000,10000000))), ".")[0]
+    code = str(abs(random.gauss(10000000,10000000))).split(".")[0]
     logger.debug("Requesting access to disk resource with Slot ID: %s (Code: %s)",
                  slotId, str(code))
     _diskMutexSems[slotId].acquire()
@@ -308,7 +303,7 @@ def releaseDiskResource(ngamsCfgObj,
     if (not storageSet.getMutex()): return
 
     global _diskMutexSems
-    if (not _diskMutexSems.has_key(slotId)):
+    if slotId not in _diskMutexSems:
         _diskMutexSems[slotId] = threading.Semaphore(1)
     logger.debug("Releasing disk resource with Slot ID: %s", slotId)
     _diskMutexSems[slotId].release()
@@ -427,11 +422,11 @@ def genStagingFilename(ngamsCfgObj,
                     reqPropFilename)
         else:
             return stagingFilename
-    except Exception, e:
+    except Exception as e:
         errMsg = "Problem generating Staging Filename " +\
                  "(in ngamsHighLevelLib.genStagingFilename()). Exception: " +\
                  str(e)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 def checkIfFileExists(dbConObj,
@@ -502,22 +497,22 @@ def copyFile(ngamsCfgObj,
 
             logger.debug("File: %s copied to filename: %s",
                          srcFilename, trgFilename)
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_AL_CP_FILE",
                             [srcFilename, trgFilename, str(e)])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         # Release disk resouces
         releaseDiskResource(ngamsCfgObj, srcFileSlotId)
         if (srcFileSlotId != trgFileSlotId):
             releaseDiskResource(ngamsCfgObj, trgFileSlotId)
         return [deltaTime]
-    except Exception, e:
+    except:
         # Release disk resouces
         releaseDiskResource(ngamsCfgObj, srcFileSlotId)
         if (srcFileSlotId != trgFileSlotId):
             releaseDiskResource(ngamsCfgObj, trgFileSlotId)
-        raise Exception, e
+        raise
 
 
 def getNewFileVersion(dbConObj,
@@ -778,7 +773,7 @@ def sendEmail(ngamsCfgObj,
             server = ngamsSmtpLib.ngamsSMTP(smtpHost)
             server.sendMail("From: " + fromField, "Bcc: " + emailAdr, data,
                             [], [], dataInFile)
-        except Exception, e:
+        except Exception as e:
             if (dataInFile): rmFile(data)
             errMsg = genLog("NGAMS_ER_EMAIL_NOTIF",
                             [emailAdr, fromField, smtpHost,str(e)])

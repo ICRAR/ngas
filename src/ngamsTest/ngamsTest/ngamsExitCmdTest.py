@@ -32,7 +32,7 @@ This module contains the Test Suite for the EXIT Command.
 """
 
 from ngamsLib import ngamsCore
-from ngamsTestLib import ngamsTestSuite, sendPclCmd
+from .ngamsTestLib import ngamsTestSuite, sendPclCmd
 
 
 class ngamsExitCmdTest(ngamsTestSuite):

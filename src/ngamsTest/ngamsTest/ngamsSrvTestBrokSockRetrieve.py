@@ -78,7 +78,7 @@ def genReplyRetrieveFail(srvObj,
         srvObj.killServer()
         #############################################################
 
-    except Exception, e:
+    except Exception as e:
         cleanUpAfterProc(statusObjList)
         raise e
 

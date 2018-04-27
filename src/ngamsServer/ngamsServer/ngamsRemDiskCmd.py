@@ -34,11 +34,13 @@ Functions to handle the REMDISK command.
 import logging
 import os
 
+import six
+
 from ngamsLib import ngamsDiskInfo, ngamsDbm, ngamsDiskUtils, ngamsHighLevelLib
 from ngamsLib.ngamsCore import getHostName, \
     getDiskSpaceAvail, genLog, NGAMS_XML_MT, NGAMS_SUCCESS, TRACE, rmFile, \
     NGAMS_REMDISK_CMD, NGAMS_HTTP_SUCCESS, NGAMS_HTTP_BAD_REQ
-import ngamsRemUtils
+from . import ngamsRemUtils
 
 
 logger = logging.getLogger(__name__)
@@ -115,13 +117,13 @@ def _remDisk(srvObj,
         try:
             tmpDir = os.path.dirname(tmpFilePat)
             srvObj.getDb().deleteDiskInfo(diskId, 1)
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_DEL_DISK_DB", [diskId, str(e)])
             raise Exception(errMsg)
         logger.info("Deleting contents on disk with ID: %s", diskId)
         try:
             rmFile(os.path.normpath(diskInfo.getMountPoint() + "/*"))
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_DEL_DISK", [diskId, str(e)])
             raise Exception(errMsg)
         try:
@@ -211,17 +213,17 @@ def handleCmd(srvObj,
     if (diskId == ""):
         errMsg = genLog("NGAMS_ER_CMD_SYNTAX",
                         [NGAMS_REMDISK_CMD, "Missing parameter: disk_id"])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     if (not srvObj.getDb().diskInDb(diskId)):
         errMsg = genLog("NGAMS_ER_UNKNOWN_DISK", [diskId])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     if (reqPropsObj.hasHttpPar("execute")):
         try:
             execute = int(reqPropsObj.getHttpPar("execute"))
         except:
             errMsg = genLog("NGAMS_ER_REQ_HANDLING", ["Must provide proper " +\
                             "value for parameter: execute (0|1)"])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
     # Carry out the command.
     status = remDisk(srvObj, reqPropsObj, diskId, execute)
@@ -235,7 +237,7 @@ def handleCmd(srvObj,
     else:
         httpStat = NGAMS_HTTP_BAD_REQ
 
-    httpRef.send_data(xmlStat, NGAMS_XML_MT, code=httpStat)
+    httpRef.send_data(six.b(xmlStat), NGAMS_XML_MT, code=httpStat)
 
 
 # EOF

@@ -42,6 +42,8 @@ import os
 import subprocess
 import time
 
+import six
+
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, genLog, fromiso8601, tomjd, frommjd,\
     toiso8601, FMT_DATE_ONLY, rmFile
@@ -75,11 +77,11 @@ def getFitsKeys(fitsFile,
     try:
         for key in keyList:
             vals = pyfits.getval(fitsFile, key)
-            if isinstance(vals, basestring):
+            if isinstance(vals, six.string_types):
                 vals = [vals]
             keyDic[key] = list(vals)
         return keyDic
-    except Exception, e:
+    except Exception as e:
         msg = ". Error: %s" % str(e)
         errMsg = genLog("NGAMS_ER_RETRIEVE_KEYS", [str(keyList),
                                                    fitsFile + msg])
@@ -136,7 +138,7 @@ def checkFitsFileSize(filename):
             errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE",
                             [os.path.basename(filename),
                              "ngamsFitsPlugIn", errMsg % size])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
 
 def checkFitsChecksum(reqPropsObj,
@@ -169,7 +171,7 @@ def checkFitsChecksum(reqPropsObj,
         cmd = "chksumGenChecksum %s" % stgFile
         stat, out = ngamsPlugInApi.execCmd(cmd)
         if (out.strip().find("0/0000000000000000") == -1):
-            raise Exception, errMsg
+            raise Exception(errMsg)
         chksumUtil = "chksumGenChecksum"
     else:
         chksumUtil = "chksumVerFitsChksum"

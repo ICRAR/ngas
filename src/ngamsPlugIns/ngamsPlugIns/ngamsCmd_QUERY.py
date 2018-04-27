@@ -31,12 +31,15 @@
 Dynamic loadable command to query the DB associated with the NG/AMS instance.
 """
 
-import cPickle
 import decimal
 import io
 import json
 import logging
 import os
+
+import six
+from six.moves import cPickle  # @UnresolvedImport
+from six.moves import reduce  # @UnresolvedImport
 
 from ngamsLib import ngamsDbm, ngamsDbCore
 from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, TRACE, NGAMS_TEXT_MT, rmFile
@@ -133,14 +136,14 @@ def formatAsList(resultSet, colnames):
     rows = list(resultSet)
 
     max_col_lens = [reduce(max, map(len, map(str, r))) for r in zip(colnames, *rows)]
-    lines = ['-' * l for l in max_col_lens]
+    lines = [b'-' * l for l in max_col_lens]
     col_fmts = ['{:%d}' % l for l in max_col_lens]
 
     # Write upper set of lines, column names, and bottom lines
     buf = io.BytesIO()
     buf.write(b' '.join(lines))
     buf.write(b'\n')
-    buf.write(b' '.join((fmt.format(c) for fmt, c in zip(col_fmts, colnames))))
+    buf.write(b' '.join((six.b(fmt.format(c)) for fmt, c in zip(col_fmts, colnames))))
     buf.write(b'\n')
     buf.write(b' '.join(lines))
 
@@ -255,10 +258,10 @@ def handleCmd(srvObj,
             mimeType = NGAMS_PYTHON_PICKLE_MT
         elif out_format == "json":
             results = [{colname: val for colname, val in zip(colnames, row)} for row in res]
-            finalRes = json.dumps(results, default=encode_decimal)
+            finalRes = six.b(json.dumps(results, default=encode_decimal))
             mimeType = NGAMS_JSON_MT
         else:
-            finalRes = str(list(res))
+            finalRes = six.b(str(list(res)))
             mimeType = NGAMS_PYTHON_LIST_MT
 
         # Return the data and good bye.
@@ -307,9 +310,9 @@ def handleCmd(srvObj,
             # TODO: Make it possible to return ASCII List + XML.
             httpRef.send_data(str(resSet), NGAMS_PYTHON_LIST_MT)
 
-        except Exception, e:
+        except Exception as e:
             msg = "Error fetching from cursor with ID: %s. Error: %s"
-            raise Exception, msg % (cursorId, str(e))
+            raise Exception(msg % (cursorId, str(e)))
     elif (query and cursorId):
         logger.debug("Creating new cursor with ID: %s, query: %s",
                      cursorId, query)
@@ -331,7 +334,7 @@ def handleCmd(srvObj,
               "QUERY?query=<Query>[&out_format=<Format (list)>] or " +\
               "QUERY?query=<Query>&cursor_id=<ID> followed by N calls to " +\
               "QUERY?cursor_id=<ID>&fetch=<Number of Elements>"
-        raise Exception, msg
+        raise Exception(msg)
 
 
 # EOF

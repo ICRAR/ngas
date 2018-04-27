@@ -35,10 +35,10 @@ Contains the ngamsDb class
 
 import logging
 
-import ngamsDbNgasCfg, ngamsDbNgasDisks, ngamsDbNgasDisksHist
-import ngamsDbMirroring, ngamsDbNgasCache, ngamsDbJoin
-import ngamsDbNgasContainers
-import ngamsDbNgasFiles, ngamsDbNgasHosts, ngamsDbNgasSubscribers
+from . import ngamsDbNgasCfg, ngamsDbNgasDisks, ngamsDbNgasDisksHist
+from . import ngamsDbMirroring, ngamsDbNgasCache, ngamsDbJoin
+from . import ngamsDbNgasContainers
+from . import ngamsDbNgasFiles, ngamsDbNgasHosts, ngamsDbNgasSubscribers
 
 
 logger = logging.getLogger(__name__)

@@ -71,7 +71,7 @@ def ngamsExampleCacheCtrlPI(srvObj,
                 _maxCacheTime = float(plugInParDic["max_cache_time"])
             except:
                 msg = "Missing plug-in parameter: max_cache_time"
-                raise Exception, msg
+                raise Exception(msg)
 
         # Check if the cache time is exceeded.
         if ((time.time() - cacheEntryObj.getCacheTime()) > _maxCacheTime):

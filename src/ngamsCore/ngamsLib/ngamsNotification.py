@@ -37,12 +37,11 @@ import os
 import threading
 import time
 
-from ngamsCore import NGAMS_PICKLE_FILE_EXT, TRACE, NGAMS_NOTIF_ALERT,\
+from . import ngamsHighLevelLib, ngamsLib
+from .ngamsCore import NGAMS_PICKLE_FILE_EXT, TRACE, NGAMS_NOTIF_ALERT,\
     NGAMS_NOTIF_ERROR, NGAMS_NOTIF_DISK_SPACE, NGAMS_NOTIF_DISK_CHANGE,\
     NGAMS_NOTIF_NO_DISKS, NGAMS_NOTIF_DATA_CHECK, NGAMS_DEFINE,\
     isoTime2Secs, toiso8601
-import ngamsHighLevelLib
-import ngamsLib
 
 
 logger = logging.getLogger(__name__)
@@ -129,7 +128,7 @@ def _sendNotifMsg(hostId,
                                             [recipient], fromField, msg,
                                             contentType, attachmentName,
                                             dataInFile)
-            except Exception, e:
+            except:
                 pass
 
 
@@ -367,10 +366,10 @@ def checkNotifRetBuf(hostId,
 
         # Release Notification Semaphore.
         notifSem_.release()
-    except Exception, e:
+    except:
         # Release Notification Semaphore.
         notifSem_.release()
-        raise Exception, e
+        raise
 
 
 # EOF

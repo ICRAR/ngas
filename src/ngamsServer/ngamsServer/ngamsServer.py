@@ -32,9 +32,6 @@ This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
 """
 
-import BaseHTTPServer
-import Queue
-import SocketServer
 import collections
 import contextlib
 import logging
@@ -51,6 +48,12 @@ import time
 import traceback
 import uuid
 
+import six
+from six.moves import reduce # @UnresolvedImport
+from six.moves import socketserver # @UnresolvedImport
+from six.moves import BaseHTTPServer  # @UnresolvedImport
+from six.moves import queue as Queue  # @UnresolvedImport
+
 import netifaces
 import pkg_resources
 
@@ -65,13 +68,14 @@ from ngamsLib.ngamsCore import genLog, TRACE, getNgamsVersion, \
 from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils
 from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
-import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
-import ngamsJanitorThread
-import ngamsDataCheckThread
-import ngamsUserServiceThread
-import ngamsMirroringControlThread
-import ngamsCacheControlThread
-import request_db
+from ngamsLib import utils
+from . import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
+from . import ngamsJanitorThread
+from . import ngamsDataCheckThread
+from . import ngamsUserServiceThread
+from . import ngamsMirroringControlThread
+from . import ngamsCacheControlThread
+from . import request_db
 from . import pysendfile
 
 
@@ -86,7 +90,7 @@ def get_all_ipaddrs():
     inet_addrs = [addrs[proto] for addrs in iface_addrs if proto in addrs]
     return [addr['addr'] for addrs in inet_addrs for addr in addrs if 'addr' in addr]
 
-class ngamsHttpServer(SocketServer.ThreadingMixIn,
+class ngamsHttpServer(socketserver.ThreadingMixIn,
                       BaseHTTPServer.HTTPServer):
     """
     Class that provides the multithreaded HTTP server functionality.
@@ -115,7 +119,7 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
             wfile.write(b'HTTP/1.0 503 Service Unavailable\r\n\r\n')
             return
 
-        SocketServer.ThreadingMixIn.process_request(self, request, client_address)
+        socketserver.ThreadingMixIn.process_request(self, request, client_address)
 
 
 class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -211,6 +215,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         logger.info("Redirecting client to %s", location)
         self.send_response(NGAMS_HTTP_REDIRECT, hdrs={'Location': location})
+        self.end_headers()
 
     def send_file(self, f, mime_type, start_byte=0, fname=None):
         """
@@ -279,7 +284,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         status = self.ngasServer.genStatus(status, message)
         xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, status.genXmlDoc())
-        self.send_data(xml, NGAMS_XML_MT, code=code, message=http_message, hdrs=hdrs)
+        self.send_data(six.b(xml), NGAMS_XML_MT, code=code, message=http_message, hdrs=hdrs)
 
     def send_ingest_status(self, msg, disk_info):
         """Reply to the client with a standard ingest status XML document"""
@@ -287,7 +292,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                  setReqStatFromReqPropsObj(self.ngas_request)
         xml = status.genXmlDoc(0, 1, 1)
         xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, xml)
-        self.send_data(xml, NGAMS_XML_MT)
+        self.send_data(six.b(xml), NGAMS_XML_MT)
 
     def proxy_request(self, host_id, host, port, timeout=300):
         """Proxy the current request to `host`:`port`"""
@@ -344,12 +349,22 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         # Our code calculates the content length already, let's not send it twice
         # Similarly, let's avoid Content-Type rewriting
+        # Here "hdrs" is not a one of the nice email.message.Message objects
+        # which allows for case-insensitive lookup, but simply a dictionary,
+        # so we are forced to perform a case-sensitive lookup
         logger.info("Received response from %s:%d, sending to client", host, port)
         logger.info("Headers from response: %r", hdrs)
         if 'content-length' in hdrs:
             del hdrs['content-length']
-        mime_type = hdrs['content-type']
-        del hdrs['content-type']
+        if 'Content-Length' in hdrs:
+            del hdrs['Content-Length']
+        mime_type = ''
+        if 'content-type' in hdrs:
+            mime_type = hdrs['content-type']
+            del hdrs['content-type']
+        if 'Content-Type' in hdrs:
+            mime_type = hdrs['Content-Type']
+            del hdrs['Content-Type']
 
         self.send_data(data, mime_type, code=code, hdrs=hdrs)
 
@@ -940,7 +955,7 @@ class ngamsServer(object):
             errMsg = genLog("NGAMS_ER_IMPROPER_STATE", errMsg)
             self.relStateSem()
             logger.error(errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         if (newState != ""): self.setState(newState, updateDb)
         if (newSubState != ""): self.setSubState(newSubState)
@@ -1752,10 +1767,10 @@ class ngamsServer(object):
             if not httpRef.reply_sent:
                 httpRef.send_status("Successfully handled request")
 
-        except ngamsCmdHandling.NoSuchCommand, e:
+        except ngamsCmdHandling.NoSuchCommand as e:
             httpRef.send_status("Command not found", status=NGAMS_FAILURE, code=404)
 
-        except Exception, e:
+        except Exception as e:
 
             # Quickly respond with a 400 status code for unexpected exceptions
             # (although it should be a 5xx code)
@@ -1896,7 +1911,7 @@ class ngamsServer(object):
                 dirErrMsg = dirErrMsg[0:-2] + ")"
                 errMsg = genLog("NGAMS_AL_DISK_SPACE_SAT",
                                 [minDiskSpaceMb, dirErrMsg])
-                raise Exception, errMsg
+                raise Exception(errMsg)
 
 
     def init(self, argv):
@@ -1923,7 +1938,7 @@ class ngamsServer(object):
 
         try:
             self.handleStartUp()
-        except Exception, e:
+        except Exception as e:
 
             logger.exception("Error during startup, shutting system down")
 
@@ -1951,11 +1966,11 @@ class ngamsServer(object):
             pidFile = os.path.join(self.getCfg().getRootDirectory(), "." +
                                    self.getHostId()
                                    + ".pid")
-        except Exception, e:
+        except Exception as e:
             errMsg = "Error occurred generating PID file name. Check " +\
                      "Mount Root Directory + Port Number in configuration. "+\
                      "Error: " + str(e)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         return pidFile
 
 
@@ -2097,7 +2112,7 @@ class ngamsServer(object):
 
         try:
             self.setup_logging()
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_INIT_LOG", [logcfg.logfile, str(e)])
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM SETTING UP LOGGING", errMsg)
@@ -2187,7 +2202,7 @@ class ngamsServer(object):
                 path = os.path.dirname(path)
             if not os.path.ismount(path):
                 continue
-            if not self.__sysMtPtDic.has_key(path):
+            if path not in self.__sysMtPtDic:
                 self.__sysMtPtDic[path] = []
             self.__sysMtPtDic[path].append(dirInfo)
 
@@ -2244,7 +2259,7 @@ class ngamsServer(object):
         logger.info("Initializing HTTP server ...")
         try:
             self.serve()
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_OP_HTTP_SERV", [str(e)])
             logger.exception(errMsg)
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
@@ -2407,9 +2422,9 @@ class ngamsServer(object):
 
         Returns:    Void.
         """
-        manPage = pkg_resources.resource_string(__name__, 'ngamsServer.txt')  # @UndefinedVariable
-        print manPage
-        print ngamsCopyrightString()
+        manPage = utils.b2s(pkg_resources.resource_string(__name__, 'ngamsServer.txt'))  # @UndefinedVariable
+        print(manPage)
+        print(ngamsCopyrightString())
 
 
     def parseInputPars(self, argv):
@@ -2452,12 +2467,12 @@ class ngamsServer(object):
                     idx = self._incCheckIdx(idx, argv)
                     self.logcfg.syslog_prefix = argv[idx]
                 elif (par == "-VERSION"):
-                    print getNgamsVersion()
+                    print(getNgamsVersion())
                     exitValue = 0
                     silentExit = 1
                     sys.exit(0)
                 elif (par == "-LICENSE"):
-                    print getNgamsLicense()
+                    print(getNgamsLicense())
                     exitValue = 0
                     silentExit = 1
                     sys.exit(0)

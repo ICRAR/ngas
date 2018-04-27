@@ -35,8 +35,9 @@ Contains code for handling the CACHEDEL Command.
 
 import logging
 
-import ngamsFileUtils, ngamsCacheControlThread
 from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, TRACE
+
+from . import ngamsFileUtils, ngamsCacheControlThread
 
 
 logger = logging.getLogger(__name__)
@@ -131,7 +132,7 @@ def handleCmd(srvObj,
     if ((not diskId) or (not fileId) or (not fileVersion)):
         msg = "Must specify disk_id/file_id/file_version for " +\
               "CACHEDEL Command"
-        raise Exception, msg
+        raise Exception(msg)
 
     cacheDel(srvObj, reqPropsObj, httpRef, diskId, fileId, fileVersion)
 

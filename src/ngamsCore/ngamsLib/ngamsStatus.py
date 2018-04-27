@@ -35,12 +35,15 @@ the NG/AMS Status Report.
 import logging
 import xml.dom.minidom
 
-from ngamsCore import ngamsGetChildNodes, NGAMS_XML_STATUS_ROOT_EL, \
+import six
+
+from . import ngamsConfig, ngamsDiskInfo, ngamsFileList
+from . import ngamsContainer
+from . import utils
+from .ngamsCore import ngamsGetChildNodes, NGAMS_XML_STATUS_ROOT_EL, \
     getAttribValue, TRACE, prFormat1, toiso8601, fromiso8601, getNgamsVersion, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_SUCCESS, NGAMS_FAILURE, \
     NGAMS_HTTP_SUCCESS
-import ngamsConfig, ngamsDiskInfo, ngamsFileList
-import ngamsContainer
 
 
 logger = logging.getLogger(__name__)
@@ -612,10 +615,10 @@ class ngamsStatus:
             fd.close()
             self.unpackXmlDoc(doc, getStatus, ignoreVarDiskPars)
             return self
-        except Exception, e:
+        except Exception as e:
             errMsg = "Error loading status XML document: " + filename +\
                      ". Error: " + str(e)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
 
     def unpackXmlDoc(self,
@@ -637,6 +640,8 @@ class ngamsStatus:
 
         Returns:            Reference to object itself.
         """
+        if not isinstance(doc, six.string_types):
+            doc = utils.b2s(doc)
         dom = xml.dom.minidom.parseString(doc)
         ngamsStatusEl = ngamsGetChildNodes(dom, NGAMS_XML_STATUS_ROOT_EL)[0]
 
@@ -903,7 +908,7 @@ def to_status(http_response, host_id, cmd):
     """
 
     data = http_response.read()
-    if data and "<?xml" in data:
+    if data and b'<?xml' in data:
         logger.debug("Parsing incoming HTTP data as ngamsStatus")
         return ngamsStatus().unpackXmlDoc(data, 1)
 

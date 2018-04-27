@@ -36,7 +36,6 @@ by the SubscriptionThread._deliveryThread
 # originally encoded joburi (during subscribe command)
 #     url=ngasjob://ngamsMWA_Compress_JobPlugin%3Fredo_on_fail%3D0%26plugin_params%3Dscale_factor%3D4%2Cthreshold%3D1E-5%2Cbins%3D30%2Cremove_uc%3D1
 
-import commands
 import logging
 import os
 
@@ -52,13 +51,13 @@ uvcompress = '/home/ngas/processing/compression/uvcompress'
 archive_client = '/home/ngas/ngas_rt/bin/ngamsCClient'
 
 def execCmd(cmd, failonerror = True, okErr = []):
-    re = commands.getstatusoutput(cmd)
+    re = ngamsPlugInApi.execCmd(cmd)
     if (re[0] != 0 and not (re[0] in okErr)):
         errMsg = 'Fail to execute command: "%s". Exception: %s' % (cmd, re[1])
         if (failonerror):
             raise Exception(errMsg)
         else:
-            print errMsg
+            print(errMsg)
     return re
 
 def ngamsMWA_Compress_JobPlugin(srvObj,

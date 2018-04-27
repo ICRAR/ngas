@@ -35,15 +35,16 @@ to manage the contents in the cache archive when running the NG/AMS Server
 as a cache archive.
 """
 import base64
-import cPickle
 import logging
 import os
 import time
 
+from six.moves import cPickle # @UnresolvedImport
 import sqlite3 as sqlite
 
 from ngamsLib.ngamsCore import TRACE, rmFile, genLog, loadPlugInEntryPoint
-from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
+from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib,\
+    utils
 
 
 logger = logging.getLogger(__name__)
@@ -135,7 +136,7 @@ def createCacheDbms(srvObj, ready_evt):
     sqlQuery = "SELECT count(*) FROM ngas_cache"
     try:
         srvObj._cacheContDbmsCur.execute(sqlQuery)
-    except Exception, e:
+    except Exception as e:
         if (str(e) == "no such table: ngas_cache"):
             logger.info("Table ngas_cache not found in local Cache DBMS - " +\
                  "creating")
@@ -155,7 +156,7 @@ def createCacheDbms(srvObj, ready_evt):
             # Add an index for quicker INSERT/SELECT
             srvObj._cacheContDbmsCur.execute('CREATE INDEX cache_index ON ngas_cache(disk_id, file_id, file_version)')
         else:
-            raise Exception, e
+            raise
 
     # Create the DBM to hold information about new files that are registered
     # on this node (to be inserted into the Local Cache Contents DBMS).
@@ -226,10 +227,10 @@ def addEntryNewFilesDbm(srvObj,
         fileKey = ngamsLib.genFileKey(diskId, fileId, fileVersion)
         srvObj._cacheNewFilesDbm.add(fileKey, fileInfo)
         srvObj._cacheNewFilesDbmSem.release()
-    except Exception, e:
+    except Exception as e:
         srvObj._cacheNewFilesDbmSem.release()
         msg = "Error accessing %s DBM. Error: %s"
-        raise Exception, msg % (NGAMS_CACHE_NEW_FILES_DBM, str(e))
+        raise Exception(msg % (NGAMS_CACHE_NEW_FILES_DBM, str(e)))
 
 
 def getEntryNewFilesDbm(srvObj):
@@ -254,10 +255,10 @@ def getEntryNewFilesDbm(srvObj):
             fileInfo = None
         srvObj._cacheNewFilesDbmSem.release()
         return fileInfo
-    except Exception, e:
+    except Exception as e:
         srvObj._cacheNewFilesDbmSem.release()
         msg = "Error accessing %s DBM. Error: %s"
-        raise Exception, msg % (NGAMS_CACHE_NEW_FILES_DBM, str(e))
+        raise Exception(msg % (NGAMS_CACHE_NEW_FILES_DBM, str(e)))
 
 
 def queryCacheDbms(srvObj,
@@ -283,9 +284,9 @@ def queryCacheDbms(srvObj,
         srvObj._cacheContDbmsSem.release()
         logger.debug("Result of SQL query  (Cache DBMS) (%s): %s", sqlQuery, str(res))
         return res
-    except Exception, e:
+    except:
         srvObj._cacheContDbmsSem.release()
-        raise e
+        raise
 
 
 _ENTRY_IN_CACHE_DBMS_QUERY = "SELECT count(*) FROM ngas_cache WHERE " +\
@@ -415,7 +416,7 @@ def addEntryInCacheDbms(srvObj,
         cacheEntryObjPickle = cPickle.dumps(cacheEntryObj)
         # Have to encode the pickled object to be able to write it in the
         # DB table.
-        cacheEntryObjPickleEnc = base64.b32encode(cacheEntryObjPickle)
+        cacheEntryObjPickleEnc = utils.b2s(base64.b32encode(cacheEntryObjPickle))
         sqlQuery = _ADD_ENTRY_IN_CACHE_DBMS %\
                    (diskId, fileId, int(fileVersion), filename, fileSize,
                     delete, timeNow, timeNow, cacheEntryObjPickleEnc)
@@ -511,7 +512,7 @@ def setCacheEntryObjectCacheDbms(srvObj,
     T = TRACE()
 
     cacheEntryObjPickle = cPickle.dumps(cacheEntryObj)
-    cacheEntryObjPickleEnc = base64.b32encode(cacheEntryObjPickle)
+    cacheEntryObjPickleEnc = utils.b2s(base64.b32encode(cacheEntryObjPickle))
     sqlQuery = _SET_CACHE_ENTRY_OBJECT_CACHE_DBMS_QUERY %\
                (cacheEntryObjPickleEnc, cacheEntryObj.getDiskId(),
                 cacheEntryObj.getFileId(), cacheEntryObj.getFileVersion())
@@ -816,9 +817,9 @@ def _addEntryCacheCtrlPlugInDbm(srvObj,
         writeIdx = ((writeIdx + 1) % NGAMS_CACHE_CTRL_PI_DBM_MAX)
         srvObj._cacheCtrlPiDbm.add(NGAMS_CACHE_CTRL_PI_DBM_WR, writeIdx)
         srvObj._cacheCtrlPiThreadGr.releaseGenMux()
-    except Exception, e:
+    except:
         srvObj._cacheCtrlPiThreadGr.releaseGenMux()
-        raise Exception, e
+        raise
 
 
 def _getEntryCacheCtrlPlugInDbm(srvObj):
@@ -843,9 +844,9 @@ def _getEntryCacheCtrlPlugInDbm(srvObj):
         srvObj._cacheCtrlPiThreadGr.releaseGenMux()
 
         return cacheEntryObj
-    except Exception, e:
+    except:
         srvObj._cacheCtrlPiThreadGr.releaseGenMux()
-        raise Exception, e
+        raise
 
 
 def _getCountCacheCtrlPlugInDbm(srvObj):
@@ -865,9 +866,9 @@ def _getCountCacheCtrlPlugInDbm(srvObj):
         srvObj._cacheCtrlPiThreadGr.releaseGenMux()
 
         return noOfEls
-    except Exception, e:
+    except:
         srvObj._cacheCtrlPiThreadGr.releaseGenMux()
-        raise Exception, e
+        raise
 
 
 def _cacheCtrlPlugInThread(threadGrObj):
@@ -997,7 +998,7 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
                     delFilesDbm.addIncKey(sqlFileInfo)
             srvObj._cacheContDbms.commit()
             srvObj._cacheContDbmsSem.release()
-        except Exception, e:
+        except:
             srvObj._cacheContDbmsSem.release()
             raise
 
@@ -1062,7 +1063,7 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
                                     logger.info("Cannot delete file from the cache: %s/%s/%s",
                                           str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2]))
                                     continue
-                            except Exception, cee:
+                            except Exception as cee:
                                 if (str(cee).lower().find('file not found in ngas db') > -1):
                                     logger.warning("file already gone, still mark for deletion: %s/%s/%s",
                                             str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2]))
@@ -1081,9 +1082,9 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
                         if (cacheSum < maxCacheSize): break
                 srvObj._cacheContDbms.commit()
                 srvObj._cacheContDbmsSem.release()
-            except Exception, e:
+            except:
                 srvObj._cacheContDbmsSem.release()
-                raise Exception, e
+                raise
 
             # Now, loop over the selected files and mark them for deletion.
             delFilesDbm.initKeyPtr()
@@ -1138,9 +1139,9 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
                         if (count >= noOfFilesToRemove): break
                 srvObj._cacheContDbms.commit()
                 srvObj._cacheContDbmsSem.release()
-            except Exception, e:
+            except:
                 srvObj._cacheContDbmsSem.release()
-                raise Exception, e
+                raise
 
             # Now, marked the selected files for deletion.
             delFilesDbm.initKeyPtr()
@@ -1177,9 +1178,9 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
                     _addEntryCacheCtrlPlugInDbm(srvObj, cacheEntryObj)
             srvObj._cacheContDbms.commit()
             srvObj._cacheContDbmsSem.release()
-        except Exception, e:
+        except:
             srvObj._cacheContDbmsSem.release()
-            raise Exception, e
+            raise
 
         # Wait for all entries in the Cache Control Plug-In DBM to be handled.
         while (True):
@@ -1238,7 +1239,7 @@ def removeFile(srvObj,
              diskInfoObj.getDiskId(), fileId, str(fileVersion))
         srvObj.getDb().deleteFileInfo(srvObj.getHostId(), diskInfoObj.getDiskId(), fileId,
                                       fileVersion)
-    except Exception, e:
+    except Exception as e:
         msg = genLog("NGAMS_ER_DEL_FILE_DB", [diskInfoObj.getDiskId(),
                                               fileId, fileVersion, str(e)])
         logger.error(msg)
@@ -1286,9 +1287,9 @@ def cleanUpCache(srvObj):
             #cleanUpDbm.addIncKey(res)
         srvObj._cacheContDbms.commit()
         srvObj._cacheContDbmsSem.release()
-    except Exception, e:
+    except:
         srvObj._cacheContDbmsSem.release()
-        raise Exception, e
+        raise
 
     # Now, loop over the entries to delete.
     diskInfoDic = {}
@@ -1306,7 +1307,7 @@ def cleanUpCache(srvObj):
 
         # Remove the entry from the cache:
         # - First get the information for the disk hosting the file.
-        if (not diskInfoDic.has_key(diskId)):
+        if diskId not in diskInfoDic:
             diskInfo = srvObj.getDb().getDiskInfoFromDiskId(diskId)
             if (not diskInfo):
                 msg = "Illegal Disk ID referenced in Cache Contents " +\
@@ -1321,7 +1322,7 @@ def cleanUpCache(srvObj):
         #   - Remove from ngas_files (+ update ngas_disks):
         try:
             removeFile(srvObj, diskInfoObj, fileId, fileVersion, filename)
-        except Exception, e:
+        except:
             msg = "Error removing file information from the RDBMS and the " +\
                   "file copy for file %s/%s/%s"
             logger.exception(msg, diskId, fileId, str(fileVersion))
@@ -1329,7 +1330,7 @@ def cleanUpCache(srvObj):
         #   - Remove from Cache Content DBMS's:
         try:
             delEntryFromCacheDbms(srvObj, diskId, fileId, fileVersion)
-        except Exception, e:
+        except:
             msg = "Error removing file information from the Cache Table in " +\
                   "the local DBMS and in the RDBMS for file " +\
                   "%s/%s/%s"

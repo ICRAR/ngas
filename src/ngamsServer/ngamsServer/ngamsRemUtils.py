@@ -35,7 +35,7 @@ import glob
 import logging
 import os
 
-from ngamsLib import ngamsDbm, ngamsDbCore, ngamsLib
+from ngamsLib import ngamsDbm, ngamsDbCore, ngamsLib, utils
 from ngamsLib import ngamsDiskInfo, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsNotification
 from ngamsLib.ngamsCore import TRACE, NGAMS_NOTIF_INFO, NGAMS_TEXT_MT, \
@@ -502,7 +502,7 @@ def checkFileCopiesAndReg(srvObj,
         errMsg = "ngamsSrvUtils.checkFileCopiesAndReg(): Must specify " +\
                  "either a DBM with files to be checked or a Disk ID"
         logger.warning(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Create DBMs:
 
@@ -570,7 +570,7 @@ def checkFileCopiesAndReg(srvObj,
         if ((not ignoreMounted) and ( not diskInfoObj.getMounted())):
             errMsg = "Rejecting request for removing disk with ID: " +\
                      diskId + " - disk not mounted!"
-            raise Exception, errMsg
+            raise Exception(errMsg)
         if (not ignoreMounted):
             basePath = os.path.normpath(diskInfoObj.getMountPoint())
             pattern = "/*"
@@ -629,7 +629,7 @@ def checkFileCopiesAndReg(srvObj,
     while (fileId):
         fileId, dummy = fileIdDbm.getNext()
         if (fileId):
-            queryIds.append(fileId)
+            queryIds.append(utils.b2s(fileId))
             fileIdCount+= 1
             querySize += (len(fileId) + 4)
 
@@ -674,7 +674,7 @@ def checkFileCopiesAndReg(srvObj,
         checkDicKey, tmpDic = checkDicDbm.getNext()
         if (not checkDicKey): break
 
-        tmpDicKeys = tmpDic.keys()
+        tmpDicKeys = list(tmpDic)
         noOfCopies = len(tmpDicKeys)
         if (noOfCopies < minReqCopies):
             tmpFileInfo = tmpDic[tmpDicKeys[0]]
@@ -690,7 +690,7 @@ def checkFileCopiesAndReg(srvObj,
         # Remove this file from the Files On Disk DBM - do this only
         # if a Disk ID is specified.
         if (diskId):
-            if (tmpDic.has_key(diskId)):
+            if (diskId in tmpDic):
                 fileInfo = tmpDic[diskId]
                 filename = os.path.\
                            normpath(fileInfo[ngamsDbCore.SUM1_MT_PT] +\

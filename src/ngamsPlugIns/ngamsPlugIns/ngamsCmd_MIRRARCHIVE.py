@@ -173,7 +173,7 @@ def __handleCmd(srvObj, reqPropsObj):
     logger.debug("Checking if this NG/AMS permitted to handle Archive Requests?")
     if (not srvObj.getCfg().getAllowArchiveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Archive"])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Generate staging filename.
     stgFilename = reqPropsObj.getStagingFilename()
@@ -200,11 +200,9 @@ def __handleCmd(srvObj, reqPropsObj):
         reqPropsObj.incIoTime(stagingInfo[0])
         checksumPlugIn = "ngamsGenCrc32"
         checksum = stagingInfo[1]
-    except ngamsFailedDownloadException.FailedDownloadException, e:
+    except (ngamsFailedDownloadException.FailedDownloadException, ngamsFailedDownloadException.PostponeException):
         raise
-    except ngamsFailedDownloadException.PostponeException, e:
-        raise
-    except Exception, e:
+    except Exception as e:
         if getattr(e, 'errno', 0) == 28:
             # we can't resume, otherwise the same host will be used next time
             logger.warning("ran out of disk space during the download to %s. Marking as FAILURE", stgFilename)

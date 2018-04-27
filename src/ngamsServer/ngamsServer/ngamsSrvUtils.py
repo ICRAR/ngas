@@ -49,8 +49,7 @@ from ngamsLib import ngamsPhysDiskInfo
 from ngamsLib import ngamsSubscriber
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
 from ngamsLib import ngamsNotification
-import ngamsArchiveUtils
-import ngamsSubscriptionThread
+from . import ngamsSubscriptionThread
 
 
 logger = logging.getLogger(__name__)
@@ -321,6 +320,22 @@ def handleOnline(srvObj,
             srvObj.registerSubscriber(tmpSubscrObj)
 
     try:
+
+        # rtobar, Feb 2018
+        #
+        # We need to do this import here if we want support both python 2 and 3.
+        # This is due to the following circular dependency:
+        #
+        # ngamsArchiveUtils -> ngamsFileUtils -> ngamsSrvUtils -> ngamsArchiveUtils
+        #
+        # A top-level absolute import is impossible, because
+        # "import ngamsServer.ngamsArchiveUtils" interprets ngamsServer as the
+        # sibling module in python 2 (and thus fails).
+        # A top-level relative import fails in python 2 too.
+        #
+        # TODO: in the long run we should avoid the circular dependency, of course
+        from . import ngamsArchiveUtils
+
         # Get information about the disks of this system.
         srvObj.setDiskDic(getDiskInfo(srvObj, reqPropsObj))
         ngamsArchiveUtils.resetDiskSpaceWarnings()

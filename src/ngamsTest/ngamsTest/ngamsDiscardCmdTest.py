@@ -34,7 +34,7 @@ This module contains the Test Suite for the SUBSCRIBE Command.
 import os
 
 from ngamsLib.ngamsCore import NGAMS_DISCARD_CMD, cpFile
-from ngamsTestLib import ngamsTestSuite, sendExtCmd, sendPclCmd
+from .ngamsTestLib import ngamsTestSuite, sendExtCmd, sendPclCmd
 
 
 try:

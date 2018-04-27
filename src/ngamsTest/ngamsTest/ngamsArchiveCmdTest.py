@@ -33,7 +33,6 @@ Contains the Test Suite for the ARCHIVE Command.
 """
 
 import contextlib
-import cPickle
 import functools
 import getpass
 import glob
@@ -42,11 +41,13 @@ import subprocess
 from multiprocessing.pool import ThreadPool
 from unittest.case import skip, skipIf
 
+from six.moves import cPickle # @UnresolvedImport
+
 from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
     NGAMS_SUCCESS, getDiskSpaceAvail, mvFile, NGAMS_FAILURE
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
     ngamsCore, ngamsHttpUtils
-from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
+from .ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     saveInFile, filterDbStatus1, sendPclCmd, pollForFile, \
     sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
     copyFile, genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp
@@ -404,9 +405,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         refFile = "ref/test_BackLogBuf_01_01_ref"
         self.checkFilesEq(refFile, tmpFile, "Unexpected reply from server")
         reqPropsFile = glob.glob("/tmp/ngamsTest/NGAS/back-log/*.pickle")[0]
-        fo = open(reqPropsFile)
-        tmpReqPropObj = cPickle.load(fo)
-        fo.close()
+        with open(reqPropsFile, 'rb') as fo:
+            tmpReqPropObj = cPickle.load(fo)
         tmpFile = saveInFile(None, filterDbStatus1(tmpReqPropObj.dumpBuf(),
                                                    filterTags=['RequestId']))
         refFile = "ref/test_BackLogBuf_01_02_ref"
@@ -712,7 +712,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Check if that's the case before proceeding
         try:
             with open(os.path.join(repDiskPath, 'dummy'), 'wb') as f:
-                f.write('b')
+                f.write(b'b')
             can_write = True
         except IOError:
             can_write = False
@@ -1213,7 +1213,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         noOfNodes = len(ports)
         nodeCount = 0
         counts = {p: 0 for p in ports}
-        for _ in xrange(100):
+        for _ in range(100):
             stat = sendPclCmd(port=8000).\
                    archive("src/TinyTestFile.fits")
             self.assertEquals(stat.getStatus(), 'SUCCESS', "Didn't successfully archive file: %s / %s" % (stat.getStatus(), stat.getMessage()))
@@ -1444,14 +1444,14 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                   'mime_type': 'application/octet-stream'}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 400, None)
-            self.checkEqual('NGAMS_ER_MISSING_URI' in resp.read(), True, None)
+            self.checkEqual(b'NGAMS_ER_MISSING_URI' in resp.read(), True, None)
 
         # No mime-type given
         params = {'filename': 'test',
                   'mime_type': ''}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 400, None)
-            self.checkEqual('NGAMS_ER_UNKNOWN_MIME_TYPE' in resp.read(), True, None)
+            self.checkEqual(b'NGAMS_ER_UNKNOWN_MIME_TYPE' in resp.read(), True, None)
 
         # File is zero-length
         test_file = 'tmp/zerofile.fits'
@@ -1460,7 +1460,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                   'mime_type': 'application/octet-stream'}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 400, None)
-            self.checkEqual('Content-Length is 0' in resp.read(), True, None)
+            self.checkEqual(b'Content-Length is 0' in resp.read(), True, None)
 
         # Invalid file_version parameter, is not a number
         params = {'filename': 'src/SmallFile.fits',
@@ -1468,7 +1468,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                   'mime_type': 'application/octet-stream'}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.assertEqual(400, resp.status)
-            self.assertIn('invalid literal for int() with base 10', resp.read())
+            self.assertIn(b'invalid literal for int() with base 10', resp.read())
 
         # All is fine
         params = {'filename': 'src/SmallFile.fits',
@@ -1599,12 +1599,12 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         client = sendPclCmd(timeout=120)
         kb = 2 ** 10
-        for log_blockSize_kb in xrange(8):
+        for log_blockSize_kb in range(8):
 
             blockSize = (2**log_blockSize_kb) * kb
             self.prepExtSrv(cfgProps=[['NgamsCfg.Server[1].BlockSize', blockSize]])
 
-            for log_fsize_mb in xrange(13):
+            for log_fsize_mb in range(13):
                 size = (2**log_fsize_mb) * kb * kb
 
                 for crc32_variant in (0, 1):
@@ -1641,7 +1641,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
             blockSize = (2**log_blockSize_kb) * kb
 
-            for nfiles in xrange(5):
+            for nfiles in range(5):
                 nfiles += 1
                 tp = ThreadPool(nfiles)
 

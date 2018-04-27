@@ -99,7 +99,7 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
                 try:
                     ngamsDiscardCmd._discardFile(srvObj, fileDelInfo[0], fileDelInfo[1], int(fileDelInfo[2]), execute = 1)
                     num_done += 1
-                except Exception, e1:
+                except Exception as e1:
                     if (str(e1).find('DISCARD Command can only be executed locally') > -1):
                         #warning(str(e1))
                         continue

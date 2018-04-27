@@ -103,13 +103,13 @@ def archiveFromFile(srvObj,
                 stagingFile = trgDiskInfo.getMountPoint()+ '/staging/' + os.path.basename(filename)
                 cpFile(filename, stagingFile)
                 reqPropsObjLoc.setStagingFilename(stagingFile)
-            except Exception, e:
+            except Exception as e:
                 errMsg = str(e) + ". Attempting to archive local file: " +\
                          filename
                 ngamsPlugInApi.notify(srvObj,
                                          NGAMS_NOTIF_NO_DISKS,
                                          "NO DISKS AVAILABLE", errMsg)
-                raise Exception, errMsg
+                raise Exception(errMsg)
 
         # Set the log cache to 1 during the handling of the file.
         plugIn = srvObj.getMimeTypeDic()[mimeType]
@@ -124,7 +124,7 @@ def archiveFromFile(srvObj,
 
         ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain,
                                                 trgDiskInfo)
-    except Exception, e:
+    except Exception as e:
         # If another error occurs, than one qualifying for Back-Log
         # Buffering the file, we have to log an error.
         if (ngamsHighLevelLib.performBackLogBuffering(srvObj.getCfg(),
@@ -181,7 +181,7 @@ def handleCmd(srvObj,
     logger.debug("Check if the URI is correctly set.")
     logger.debug("ReqPropsObj status: %s", reqPropsObj.getObjStatus())
     parsDic = reqPropsObj.getHttpParsDic()
-    if (not parsDic.has_key('fileUri') or parsDic['fileUri'] == ""):
+    if 'fileUri' not in parsDic or not parsDic['fileUri']:
         errMsg = genLog("NGAMS_ER_MISSING_URI")
         raise Exception(errMsg)
     else:
@@ -191,7 +191,7 @@ def handleCmd(srvObj,
     logger.debug("Is this NG/AMS permitted to handle Archive Requests?")
     if (not srvObj.getCfg().getAllowArchiveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Archive"])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     srvObj.checkSetState("Archive Request", [NGAMS_ONLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
                          NGAMS_ONLINE_STATE, NGAMS_BUSY_SUBSTATE,
@@ -199,7 +199,7 @@ def handleCmd(srvObj,
 
     # Get mime-type (try to guess if not provided as an HTTP parameter).
     logger.debug("Get mime-type (try to guess if not provided as an HTTP parameter).")
-    if (not parsDic.has_key('mimeType') or parsDic['mimeType'] == ""):
+    if 'mimeType' not in parsDic or not parsDic['mimeType']:
         mimeType = ""
         reqPropsObj.setMimeType("")
     else:

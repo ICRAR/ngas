@@ -121,7 +121,7 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         else:
             # Sending back illegal HTTP response
             time.sleep(0.500)
-            resp = loadFile("tmp/ngamsServerTestIllegalResp_tmp")
+            resp = loadFile("tmp/ngamsServerTestIllegalResp_tmp", mode='b')
             req_handler.wfile.write(resp)
 
 
@@ -140,7 +140,6 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         else:
             time.sleep(0.250)
             self.killServer()
-            sys.exit(0)
 
 
     def reqCallBack_SrvCrash2(self, *args, **kwargs):
@@ -158,7 +157,6 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         else:
             time.sleep(0.250)
             self.killServer()
-            sys.exit(0)
 
 
 

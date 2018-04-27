@@ -46,7 +46,6 @@ import functools
 import logging
 import os
 import random
-import thread
 import threading
 import time
 
@@ -94,7 +93,7 @@ def checkStopMirControlThread(srvObj):
 
     if (not srvObj.getThreadRunPermission()):
         logger.info("Stopping the Mirroring Service")
-        raise Exception, NGAMS_MIR_CONTROL_THR_STOP
+        raise Exception(NGAMS_MIR_CONTROL_THR_STOP)
 
 
 def addEntryMirQueue(srvObj,
@@ -125,11 +124,11 @@ def addEntryMirQueue(srvObj,
                               add(NGAMS_MIR_DBM_COUNTER, newKey).sync()
         if (updateDb): srvObj.getDb().updateMirReq(mirReqObj)
         srvObj._mirQueueDbmSem.release()
-    except Exception, e:
+    except Exception as e:
         srvObj._mirQueueDbmSem.release()
         msg = "Error adding new element to DBM Mirroring Queue. Error: %s" %\
               str(e)
-        raise Exception, msg
+        raise Exception(msg)
 
 
 def addEntryErrQueue(srvObj,
@@ -156,11 +155,11 @@ def addEntryErrQueue(srvObj,
         srvObj._errQueueDbm.add(mirReqObj.genFileKey(), mirReqObj).sync()
         if (updateDb): srvObj.getDb().updateMirReq(mirReqObj)
         srvObj._errQueueDbmSem.release()
-    except Exception, e:
+    except Exception as e:
         srvObj._errQueueDbmSem.release()
         msg = "Error adding new element to DBM Mirroring Error Queue. " +\
               "Error: %s"
-        raise Exception, msg % str(e)
+        raise Exception(msg % str(e))
 
 
 def popEntryQueue(srvObj,
@@ -192,7 +191,7 @@ def popEntryQueue(srvObj,
 
         if (not dbm.hasKey(mirReqObj.genFileKey())):
             msg = "Mirroring Request: %s not found in DBM Queue: %s"
-            raise Exception, msg % (mirReqObj.genSummary(), dbm.getDbmName())
+            raise Exception(msg % (mirReqObj.genSummary(), dbm.getDbmName()))
 
         mirReqObj = dbm.get(mirReqObj.genFileKey())
         dbm.rem(mirReqObj.genFileKey())
@@ -200,10 +199,10 @@ def popEntryQueue(srvObj,
         dbmSem.release()
         return mirReqObj
 
-    except Exception, e:
+    except Exception as e:
         dbmSem.release()
         msg = "Error retrieving element from DBM queue: %s. Error: %s"
-        raise Exception, msg % (dbm.getDbmName(), str(e))
+        raise Exception(msg % (dbm.getDbmName(), str(e)))
 
 
 def dumpKeysQueue(srvObj,
@@ -236,10 +235,10 @@ def dumpKeysQueue(srvObj,
             if (not key): break
             keyDbm.add(key, data)
         dbmSem.release()
-    except Exception, e:
+    except Exception as e:
         dbmSem.release()
         msg = "Error dumping keys from DBM: %s. Error: %s"
-        raise Exception, msg % (dbm.getDbmName(), str(e))
+        raise Exception(msg % (dbm.getDbmName(), str(e)))
 
     dbmName = keyDbm.sync().getDbmName()
     return dbmName
@@ -269,11 +268,11 @@ def addEntryComplQueue(srvObj,
         srvObj._complQueueDbm.add(mirReqObj.genFileKey(), mirReqObj).sync()
         if (updateDb): srvObj.getDb().updateMirReq(mirReqObj)
         srvObj._complQueueDbmSem.release()
-    except Exception, e:
+    except Exception as e:
         srvObj._complQueueDbmSem.release()
         msg = "Error adding new element to DBM Mirroring Completed Queue. " +\
               "Error: %s"
-        raise Exception, msg % str(e)
+        raise Exception(msg % str(e))
 
 
 def scheduleMirReq(srvObj,
@@ -348,11 +347,11 @@ def getMirRequestFromQueue(srvObj):
         srvObj._mirQueueDbmSem.release()
         return mirReqObj
 
-    except Exception, e:
+    except Exception as e:
         srvObj._mirQueueDbmSem.release()
         msg = "Error adding new element to DBM Mirroring Queue. Error: %s" %\
               str(e)
-        raise Exception, msg
+        raise Exception(msg)
 
 
 def startMirroringThreads(srvObj):
@@ -592,7 +591,7 @@ def handleMirRequest(srvObj,
                                           ngamsMirroringRequest.\
                                           NGAMS_MIR_REQ_STAT_ERR_RETRY_NO)
         msg = "Error handling Mirroring Request: %s" % mirReqObj.genSummary()
-        raise Exception, msg
+        raise Exception(msg)
     else:
         msg = "Successfully handled Mirroring Request: %s"
         logger.debug(msg, mirReqObj.genSummary())
@@ -645,7 +644,7 @@ def mirroringThread(srvObj,
                     srvObj.getDb().updateStatusMirReq(mirReqObj.getFileId(),
                                                       fileVer, mirroringStat)
                     addEntryComplQueue(srvObj, mirReqObj)
-            except Exception, e:
+            except Exception as e:
                 if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): raise e
                 msg = "Error handling Mirroring Request. Putting in Error " +\
                       "Queue. Error: %s" % str(e)
@@ -662,8 +661,9 @@ def mirroringThread(srvObj,
                 addEntryErrQueue(srvObj, mirReqObj)
             ###################################################################
 
-        except Exception, e:
-            if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): thread.exit()
+        except Exception as e:
+            if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1):
+                return
             errMsg = "Error occurred during execution of the Mirroring " +\
                      "Control Thread"
             logger.exception(errMsg)
@@ -824,7 +824,7 @@ def retrieveFileList(srvObj,
                     rmFile("%s*" % rawFileListCompr[:-3])
                     statObj = ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read())
                     msg = "Error accessing NGAS Node: %s/%d. Error: %s"
-                    raise Exception, msg % (node, port, statObj.getMessage())
+                    raise Exception(msg % (node, port, statObj.getMessage()))
 
                 with open(rawFileListCompr, 'wb') as f:
                     readf = functools.partial(resp.read, 65536)
@@ -862,7 +862,7 @@ def retrieveFileList(srvObj,
             if (count == 100):
                 msg = "Illegal file list received as response to " +\
                       "STATUS?file_list Request"
-                raise Exception, msg
+                raise Exception(msg)
             fo.seek(0)
 
             # Read out the file info and figure out whether to schedule it
@@ -913,9 +913,9 @@ def retrieveFileList(srvObj,
             # Stop if there are no more elements to read out.
             if (remainingEls == 0): break
 
-    except Exception, e:
+    except Exception as e:
         msg = "Error retrieving file list. Error: %s"
-        raise Exception, msg % str(e)
+        raise Exception(msg % str(e))
 
 
 def checkSourceArchives(srvObj):
@@ -1022,7 +1022,7 @@ def checkSourceArchives(srvObj):
                 # The retrieval of the file list was successful, we don't need
                 # to contacting others of the specified contact nodes.
                 break
-            except Exception, e:
+            except Exception as e:
                 # Create log entry in case it was not possible to communicate
                 # to this Mirroring Source Archive. Continue to the next
                 # Mirroring Source Archive in that case.
@@ -1109,7 +1109,7 @@ def checkErrorQueue(srvObj):
                                               srvObj._errQueueDbm,
                                               srvObj._errQueueDbmSem)
                     addEntryMirQueue(srvObj, mirReqObj)
-                except Exception, e:
+                except Exception as e:
                     msg = "Error moving Mirroring Request from Error DBM " +\
                           "Queue to the Mirroring DBM Queue: %s"
                     logger.error(msg, str(e))
@@ -1161,7 +1161,7 @@ def generateReport(srvObj):
                                       srvObj._complQueueDbm,
                                       srvObj._complQueueDbmSem)
             completedCount += 1
-        except Exception, e:
+        except Exception as e:
             msg = "Error popping Mirroring Request from the Completed " +\
                   "DBM Queue: %s"
             logger.error(msg, str(e))
@@ -1185,7 +1185,7 @@ def generateReport(srvObj):
                                           srvObj._errQueueDbm,
                                           srvObj._errQueueDbmSem)
                 errAbandonCount += 1
-            except Exception, e:
+            except Exception as e:
                 msg = "Error popping Mirroring Request from Error DBM " +\
                       "Queue: %s"
                 logger.error(msg, str(e))
@@ -1196,7 +1196,7 @@ def generateReport(srvObj):
                                           srvObj._errQueueDbm,
                                           srvObj._errQueueDbmSem)
                 errTimeoutCount += 1
-            except Exception, e:
+            except Exception as e:
                 msg = "Error popping Mirroring Request from Error DBM " +\
                       "Queue: %s"
                 logger.error(msg, str(e))
@@ -1308,8 +1308,9 @@ def mirControlThread(srvObj, stopEvt):
                     return
 
 
-            except Exception, e:
-                if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): thread.exit()
+            except Exception as e:
+                if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1):
+                    return
                 errMsg = "Error occurred during execution of the ALMA Mirroring " +\
                          "Control Thread"
                 logger.exception(errMsg)
@@ -1353,8 +1354,8 @@ def mirControlThread(srvObj, stopEvt):
                 try:
                     pauseMirThreads(srvObj)
                     checkSourceArchives(srvObj)
-                except Exception, e:
-                    if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): raise e
+                except Exception as e:
+                    if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): raise
                 resumeMirThreads(srvObj)
 
                 # Check if there are entries in Error State, which should be
@@ -1378,7 +1379,8 @@ def mirControlThread(srvObj, stopEvt):
                     return
 
             except Exception:
-                if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): thread.exit()
+                if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1):
+                    return
                 errMsg = "Error occurred during execution of the Mirroring " +\
                          "Control Thread"
                 logger.exception(errMsg)

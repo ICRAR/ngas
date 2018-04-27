@@ -36,7 +36,8 @@ import logging
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import genLog
-import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
+from . import ngamsLinuxSystemPlugInApi
+from .eso import ngamsEscaladeUtils
 
 
 logger = logging.getLogger(__name__)
@@ -61,14 +62,14 @@ def ngamsLinuxOfflinePlugIn(srvObj,
     # Old format = unfortunately some Disk IDs of WDC/Maxtor were
     # generated wrongly due to a mistake by IBM, which lead to a wrong
     # implementation of the generation of the Disk ID.
-    if (not parDicOnline.has_key("old_format")):
-        raise Exception, "Missing Online Plug-In Parameter: old_format=0|1"
+    if "old_format" not in parDicOnline:
+        raise Exception("Missing Online Plug-In Parameter: old_format=0|1")
     else:
         oldFormat = int(parDicOnline["old_format"])
 
     # The controllers Plug-In Parameter, specifies the number of controller
     # in the system.
-    if (not parDicOnline.has_key("controllers")):
+    if "controllers" not in parDicOnline:
         controllers = None
     else:
         controllers = parDicOnline["controllers"]
@@ -86,7 +87,7 @@ def ngamsLinuxOfflinePlugIn(srvObj,
 
     # This is only unmounting the NGAMS disks and may lead to problems
     # if someone mounts other disks off-line.
-    if (parDicOffline.has_key("unmount")):
+    if "unmount" in parDicOffline:
         unmount = int(parDicOffline["unmount"])
     else:
         unmount = 1
@@ -94,7 +95,7 @@ def ngamsLinuxOfflinePlugIn(srvObj,
         try:
             ngamsLinuxSystemPlugInApi.ngamsUmount(diskDic,
                                                   srvObj.getCfg().getSlotIds())
-            if (parDicOffline.has_key("module")):
+            if "module" in parDicOffline:
                 stat = ngamsLinuxSystemPlugInApi.rmMod(parDicOnline["module"])
             else:
                 stat = 0
@@ -103,9 +104,9 @@ def ngamsLinuxOfflinePlugIn(srvObj,
                          "The system is in not in a safe state!"
                 errMsg = genLog("NGAMS_ER_OFFLINE_PLUGIN", [errMsg])
                 raise Exception(errMsg)
-            if (parDicOffline.has_key("module")):
+            if "module" in parDicOffline:
                 logger.info("Kernel module %s unloaded", parDicOnline["module"])
-        except Exception, e:
+        except:
             pass
 
         # Fallback umount.

@@ -43,7 +43,7 @@ import uuid
 
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SERVICE_NA
-from ngamsTestLib import ngamsTestSuite, saveInFile, sendPclCmd, this_dir
+from .ngamsTestLib import ngamsTestSuite, saveInFile, sendPclCmd, this_dir
 
 
 # This module is used as a command by one of its own tests,
@@ -87,13 +87,13 @@ class ngamsServerTest(ngamsTestSuite):
         s = socket.socket()
         s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 256)
         s.connect(('localhost', 8888))
-        s.send('GET /RETRIEVE?file_id=some-file.data&send_buffer=1024 HTTP/1.0\r\n')
-        s.send('\r\n')
+        s.send(b'GET /RETRIEVE?file_id=some-file.data&send_buffer=1024 HTTP/1.0\r\n')
+        s.send(b'\r\n')
         time.sleep(timeout + 2) # More than enough to provoke a server timeout
 
         data = s.recv(amount_of_data, socket.MSG_WAITALL)
         self.assertLess(len(data), amount_of_data, "Should have read less data")
-        self.assertEquals('', s.recv(amount_of_data - len(data)))
+        self.assertEquals(b'', s.recv(amount_of_data - len(data)))
         s.close()
 
     def test_too_many_requests(self):

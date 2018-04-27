@@ -32,7 +32,7 @@ This module contains the Test Suite for the HELP Command.
 """
 
 from ngamsLib.ngamsCore import NGAMS_HELP_CMD
-from ngamsTestLib import ngamsTestSuite, sendExtCmd
+from .ngamsTestLib import ngamsTestSuite, sendExtCmd
 
 
 class ngamsHelpCmdTest(ngamsTestSuite):

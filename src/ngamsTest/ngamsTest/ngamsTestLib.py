@@ -57,9 +57,8 @@ import astropy.io.fits as pyfits
 import pkg_resources
 import psutil
 
-from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, ngamsStatus
-from ngamsLib.ngamsCore import getHostName, TRACE, \
-    ngamsCopyrightString, rmFile, \
+from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, ngamsStatus, utils
+from ngamsLib.ngamsCore import getHostName, TRACE, rmFile, \
     cpFile, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
     execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601
 from ngamsPClient import ngamsPClient
@@ -107,7 +106,7 @@ if (os.path.exists("/opt/sybase/interfaces")):
                      "that might be able to connect to ESOECF, ASTOPP or " +\
                      "OLASLS. Remove entries for these DB servers from " +\
                      "/opt/sybase/interfaces and run the test again"
-            raise Exception, errMsg
+            raise Exception(errMsg)
 ###########################################################################
 
 ###########################################################################
@@ -130,8 +129,8 @@ if (os.path.exists("/etc/mail/sendmail.cf")):
     #        if (line.find("yes") != -1):
                 foundDaemonYes = 1
     if (not foundDaemonYes):
-        raise Exception, "Mail configuration incorrect. Set parameter: " + \
-              "DAEMON=yes in /etc/mail/sendmail.cf"
+        raise Exception("Mail configuration incorrect. Set parameter: " + \
+              "DAEMON=yes in /etc/mail/sendmail.cf")
     out = subprocess.check_output("ps -efww|grep sendmail", shell=True)
     psLines = out.split("\n")
     sendMailRunning = 0
@@ -143,8 +142,7 @@ if (os.path.exists("/etc/mail/sendmail.cf")):
     if (not sendMailRunning):
         errMsg = "Start local SMTP server as root " + \
                  "(# /etc/init.d/sendmail start)"
-        print errMsg
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 if (os.path.exists("/etc/aliases")):
     # Check that no entry is defined for ngasmgr in /etc/aliases.
@@ -159,8 +157,7 @@ if (os.path.exists("/etc/aliases")):
                          "run newaliases as root before running the tests. " + \
                          "Afterwards remember to restore the original settings!"
                 errMsg = errMsg % line
-                print line
-                raise Exception, errMsg
+                raise Exception(errMsg)
 ###########################################################################
 
 def has_program(program):
@@ -202,7 +199,7 @@ def execCmd(cmd,
     out = stdOut + stdErr
     if (exitCode and raiseEx):
         errMsg = "Error executing shell command. Exit status: %d, ouput: %s"
-        raise Exception, errMsg % (exitCode, out)
+        raise Exception(errMsg % (exitCode, out))
     return (exitCode, out)
 
 
@@ -277,17 +274,6 @@ def getNoCleanUp():
     return _noCleanUp
 
 
-def correctUsage():
-    """
-    Print out correct usage.
-
-    Returns:   Void.
-    """
-    print "Input parameters for NG/AMS test programs:\n"
-    print "<test program> [-v <level>] [-tests <test name>] [-noCleanUp]\n"
-    print ngamsCopyrightString()
-
-
 def cmpFiles(refFile,
              testFile,
              sort = 0):
@@ -349,7 +335,7 @@ def pollForFile(pattern,
             errMsg = "The expected number of matches: %d to pattern: %s was "+\
                      "not obtained within the given timeout: %f"
             errMsg = errMsg % (expNoOfCopies, pattern, timeOut)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 def genErrMsg(msg,
@@ -408,7 +394,7 @@ def copyFile(srcFile,
     shutil.copy(srcFile, trgFile)
 
 
-def loadFile(filename):
+def loadFile(filename, mode='t'):
     """
     Read contents from file and return this.
 
@@ -416,10 +402,8 @@ def loadFile(filename):
 
     Returns:     Buffer containing contents of file (string).
     """
-    fo = open(filename)
-    buf = fo.read()
-    fo.close()
-    return buf
+    with open(filename, mode='r' + mode) as f:
+        return f.read()
 
 
 def genTmpFilename(prefix = ""):
@@ -683,7 +667,7 @@ def flushEmailQueue():
     """
     _, stdout, _ = ngamsCoreExecCmd('echo "x" | mail')
     mailDic = {}
-    for line in stdout.split("\n"):
+    for line in utils.b2s(stdout).split("\n"):
         line = line.strip()
         if (line != ""):
             lineEls = filter(None, line.split(" "))
@@ -693,9 +677,8 @@ def flushEmailQueue():
                 pass
 
     # Now delete the mails.
-    mailList = mailDic.keys()
-    mailList.sort()
-    mailList.reverse()
+    mailList = list(mailDic)
+    mailList.sort(reverse=True)
     for mailNo in mailList:
         recvEmail(mailNo)
 
@@ -847,14 +830,13 @@ def getThreadId(logFile,
     grepCmd = "grep %s %s" % (tagList[0], logFile)
     for tag in tagList[1:]:
         grepCmd += " | grep %s" % tag
-    out = subprocess.check_output(grepCmd, shell=True)
+    out = utils.b2s(subprocess.check_output(grepCmd, shell=True))
     tid =  out.split("[")[2].split("]")[0].strip()
     return tid
 
 def unzip(infile, outfile):
-    with contextlib.nested(gzip.open(infile, 'rb'), open(outfile, 'w')) as (gz, out):
-        for data in iter(functools.partial(gz.read, 1024), ''):
-            out.write(data)
+    with gzip.open(infile, 'rb') as gz, open(outfile, 'wb') as out:
+        shutil.copyfileobj(gz, out)
 
 
 ###########################################################################
@@ -1137,7 +1119,7 @@ class ngamsTestSuite(unittest.TestCase):
                 logger.info("Sending OFFLINE command to external server ...")
                 stat = pCl.offline(1)
             status = stat.getStatus()
-        except Exception, e:
+        except Exception as e:
             logger.info("Error encountered sending OFFLINE command: %s", str(e))
             status = NGAMS_FAILURE
 
@@ -1149,7 +1131,7 @@ class ngamsTestSuite(unittest.TestCase):
             logger.info("External server in Offline State - sending EXIT command ...")
             try:
                 stat = pCl.exit()
-            except Exception, e:
+            except Exception as e:
                 logger.info("Error encountered sending EXIT command: %s", str(e))
             else:
                 # Wait for the server to be definitively terminated.
@@ -1265,7 +1247,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:    Void.
         """
-        self.failUnless("" == cmpFiles(refFile, tmpFile, sort),
+        self.assertTrue(not cmpFiles(refFile, tmpFile, sort),
                         genErrMsg(msg, refFile, tmpFile))
 
 
@@ -1616,7 +1598,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:        Void.
         """
-        refQueryPlanLines = filter(None, loadFile(refQueryPlan).split("\n"))
+        refQueryPlanLines = list(filter(None, loadFile(refQueryPlan).split("\n")))
         self.assertEqual(len(refQueryPlanLines), len(queryPlanLines))
         for i, (query, refQuery) in enumerate(zip(queryPlanLines, refQueryPlanLines), 1):
             self._checkQuery(query, refQuery, refQueryPlan, i)

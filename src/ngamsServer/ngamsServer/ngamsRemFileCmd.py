@@ -34,10 +34,12 @@ Functions to handle the REMFILE Command.
 import logging
 import os
 
+import six
+
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsHighLevelLib
 from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, \
     rmFile, NGAMS_SUCCESS, TRACE, NGAMS_XML_MT
-import ngamsRemUtils
+from . import ngamsRemUtils
 
 
 logger = logging.getLogger(__name__)
@@ -146,7 +148,7 @@ def _remFile(srvObj,
                                      [diskId, fileId, fileVer])
                     logger.debug(infoMsg)
                     successDelCount += 1
-                except Exception, e:
+                except Exception as e:
                     failedDelCount += 1
                     errMsg = genLog("NGAMS_ER_DEL_FILE_DB",
                                     [diskId, fileId, fileVer, str(e)])
@@ -155,7 +157,7 @@ def _remFile(srvObj,
                 msg = "Deleting copy of file: %s/%s/%d: %s"
                 logger.debug(msg, diskId, fileId, fileVer, complFilename)
                 rmFile(complFilename)
-            except Exception, e:
+            except Exception as e:
                 failedDelCount += 1
                 errMsg = genLog("NGAMS_ER_DEL_FILE_DISK",
                                 [diskId, fileId, fileVer, str(e)])
@@ -297,7 +299,7 @@ def handleCmd(srvObj,
     # Send reply back to requestor.
     xmlStat = status.genXmlDoc(0, 1, 1, 1, 0)
     xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
-    httpRef.send_data(xmlStat, NGAMS_XML_MT)
+    httpRef.send_data(six.b(xmlStat), NGAMS_XML_MT)
 
 
 # EOF

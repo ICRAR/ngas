@@ -26,7 +26,7 @@ import string
 
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE, toiso8601
 from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
-from ngamsTestLib import sendPclCmd, ngamsTestSuite
+from .ngamsTestLib import sendPclCmd, ngamsTestSuite
 
 
 class ngamsContainerTest(ngamsTestSuite):
@@ -332,8 +332,8 @@ class ngamsContainerTest(ngamsTestSuite):
 
 		# Add dir names so we can treat them as proper paths
 		addDir = lambda d, f: d + os.sep + f
-		files1 = map(addDir, [dir1 for _ in xrange(len(files1))], files1)
-		files2 = map(addDir, [dir2 for _ in xrange(len(files2))], files2)
+		files1 = list(map(addDir, [dir1 for _ in range(len(files1))], files1))
+		files2 = list(map(addDir, [dir2 for _ in range(len(files2))], files2))
 
 		# Files actually have the same size, we recurse on dirs
 		for idx, f in [(idx, f) for idx, f in enumerate(files1)]:

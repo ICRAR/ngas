@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsAuthUtils.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -35,6 +34,10 @@ This module utilities used to authorization.
 
 import logging
 import base64
+
+import six
+
+from ngamsLib import utils
 
 
 logger = logging.getLogger(__name__)
@@ -78,11 +81,11 @@ def authorize(cfg, reqPropsObj):
     if len(auth_parts) != 2:
         raise UnauthenticatedError('Invalid Basic authentication, missing value')
 
-    user_pass = base64.b64decode(auth_parts[1]).split(':')
+    user_pass = base64.b64decode(auth_parts[1]).split(b':')
     if len(user_pass) < 2:
         raise UnauthenticatedError('Invalid Basic authentication, no password provided')
 
-    user, password = user_pass[0], ':'.join(user_pass[1:])
+    user, password = utils.b2s(user_pass[0]), b':'.join(user_pass[1:])
 
     # Get the user from the configuration.
     stored_pass = cfg.getAuthUserInfo(user)
@@ -90,7 +93,7 @@ def authorize(cfg, reqPropsObj):
         raise UnauthenticatedError("unknown user specified")
 
     # Password matches and command is allowed
-    stored_pass = base64.decodestring(stored_pass)
+    stored_pass = base64.decodestring(six.b(stored_pass))
     if password != stored_pass:
         raise UnauthenticatedError("wrong password for user " + user)
     if not cmdPermitted(cfg, reqPropsObj, user):

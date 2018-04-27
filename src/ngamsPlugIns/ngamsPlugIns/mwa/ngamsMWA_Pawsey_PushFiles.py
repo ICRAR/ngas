@@ -31,18 +31,20 @@ usage:
 nohup python ngamsMWA_Pawsey_PushFiles.py -s 146.118.84.64 -p 7777 -m cortex.ivec.org:7781 > ~/MWA_HSM/test/pushfile.log &
 """
 
-import cPickle as pickle
-from cPickle import UnpicklingError
 import logging
 from optparse import OptionParser
 import socket
-import urllib2, time
+import time
 import psycopg2
+
+from six.moves import cPickle as pickle  # @UnresolvedImport
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
+from six.moves.urllib import request as urlrequest # @UnresolvedImport
 
 from ngamsLib.ngamsCore import NGAMS_STATUS_CMD, NGAMS_FAILURE, \
     NGAMS_SOCK_TIMEOUT_DEF
 from ngamsPClient import ngamsPClient
-from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveRequest
+from .ngamsMWAAsyncProtocol import AsyncListRetrieveRequest
 
 
 mime_type = 'application/octet-stream'
@@ -62,9 +64,9 @@ def getMWADBConn():
                             password = ''.decode('base64'),
                             host = None)
         return g_db_conn
-    except Exception, e:
+    except Exception as e:
         errStr = 'Cannot create MWA DB Connection: %s' % str(e)
-        raise Exception, errStr
+        raise Exception(errStr)
 
 def getLTADBConn():
     global l_db_conn
@@ -75,9 +77,9 @@ def getLTADBConn():
                             password = ''.decode('base64'),
                             host = None)
         return l_db_conn
-    except Exception, e:
+    except Exception  as e:
         errStr = 'Cannot create LTA DB Connection: %s' % str(e)
-        raise Exception, errStr
+        raise Exception(errStr)
 
 def executeQuery(conn, sqlQuery):
     try:
@@ -110,7 +112,7 @@ def getFileIdsByObsNum(obs_num):
     sqlQuery = "SELECT filename FROM data_files WHERE observation_num = '%s' ORDER BY SUBSTRING(filename, 27);" % str(obs_num)
     try:
         mwa_conn = getMWADBConn()
-    except Exception, eee:
+    except Exception as eee:
         logger.error("MWA database connection error: %s" % str(eee))
         exit(1)
 
@@ -132,7 +134,7 @@ def getUnprocessedObs(isGleam = False):
         sqlQuery = "SELECT obs_id FROM ngas_migration WHERE async_sent = 0 ORDER BY obs_id DESC"
     try:
         lta_conn = getLTADBConn()
-    except Exception, eee:
+    except Exception as eee:
         logger.error("NGAS database connection error: %s" % str(eee))
         exit(1)
 
@@ -211,14 +213,14 @@ def parseOptions():
     (options, args) = parser.parse_args()
     if (None == options.push_host or None == options.port or None == options.data_mover):
         parser.print_help()
-        print 'Missing parameters'
+        print('Missing parameters')
         return None
     return options
 
 def hasPawseyGotIt(client, fileId):
     try:
         rest = client.get_status(NGAMS_STATUS_CMD, pars=[["file_id", fileId]])
-    except Exception, e:
+    except Exception as e:
         errMsg = "Error occurred during checking remote file status " +\
                      "Exception: " + str(e)
         logger.error(errMsg)
@@ -244,7 +246,7 @@ def getPushURL(hostId, gateway = None):
         gateways = gateway.split(',')
         gurl = 'http://%s/QARCHIVE' % hostId
         for gw in gateways:
-            gurl = 'http://%s/PARCHIVE?nexturl=%s' % (gw, urllib2.quote(gurl))
+            gurl = 'http://%s/PARCHIVE?nexturl=%s' % (gw, urlparse.quote(gurl))
         #return 'http://%s/PARCHIVE?nexturl=http://%s/QAPLUS' % (gateway, hostId)
         return gurl
     else:
@@ -257,7 +259,7 @@ def waitForNextObs(obsNum, statusUrl, sessionId, maxWaitTime, checkInterval = 60
         max_time += checkInterval
 
         try:
-            strRes = urllib2.urlopen(statusUrl + sessionId).read()
+            strRes = urlrequest.urlopen(statusUrl + sessionId).read()
             myRes = pickle.loads(strRes)
             if (0 == myRes.number_files_to_be_delivered):
                 # modify database
@@ -266,7 +268,7 @@ def waitForNextObs(obsNum, statusUrl, sessionId, maxWaitTime, checkInterval = 60
             elif (myRes.errorcode):
                 markObsDeliveredStatus(obsNum, -1, isGleam = isgleam)
                 break
-        except (UnpicklingError, socket.timeout) as uerr:
+        except (pickle.UnpicklingError, socket.timeout) as uerr:
             logger.error("Something wrong while getting status for obsNum %s, %s" % (obsNum, str(uerr)))
             continue
 
@@ -320,7 +322,7 @@ def main():
         sessionId = None
         try:
             logger.info("Sending async retrieve request to the data mover %s" % opts.data_mover)
-            strRes = urllib2.urlopen(stageUrl, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read()
+            strRes = urlrequest.urlopen(stageUrl, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read()
             myRes = pickle.loads(strRes)
             if (myRes):
                 errCode = myRes.errorcode
@@ -333,7 +335,7 @@ def main():
             else:
                 logger.error('Response is None when async staging files for obsNum %s' % obsNum)
                 continue
-        except (UnpicklingError, socket.timeout) as uerr:
+        except (pickle.UnpicklingError, socket.timeout) as uerr:
             logger.error("Something wrong while sending async retrieve request for obsNum %s, %s" % (obsNum, str(uerr)))
             continue
         markAsncSentStatus(obsNum, isGleam = gleam)

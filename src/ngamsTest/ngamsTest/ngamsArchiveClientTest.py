@@ -40,7 +40,7 @@ import unittest
 
 from ngamsLib import ngamsStatus
 from ngamsLib.ngamsCore import terminate_or_kill
-from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
+from .ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
     has_program
 
 

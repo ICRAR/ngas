@@ -64,7 +64,7 @@ def ngamsEsoArchDppi(srvObj,
             errMsg = "ngamsEsoArchDppi: Problems during archiving! " +\
                      "Decompressing the file: " + filename + " failed. " +\
                      "Error message: " + str(stdErr)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         resFilename = procFilename[0:-2]
     else:
         resFilename = filename

@@ -33,7 +33,6 @@ read fits header, get cdel1,2 and epoch information
 Cutout a gleam FITS image, convert it into png, and display in the browser, then remove the jpeg file
 """
 
-import commands
 import logging
 import math
 import os
@@ -48,7 +47,7 @@ import astropy.units as u
 import astropy.wcs as pywcs
 import ephem
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT, execCmd as _execCmd
 
 
 logger = logging.getLogger(__name__)
@@ -197,14 +196,14 @@ def execCmd(cmd, failonerror = True, okErr=[]):
     sp = subprocess.Popen(cmd.split())
     return sp.wait()
     """
-    re = commands.getstatusoutput(cmd)
+    re = _execCmd(cmd)
     if (re[0] != 0 and not (re[0] in okErr)):
         errMsg = 'Fail to execute command: "%s". Exception: %s' % (cmd, re[1])
         if (failonerror):
             raise Exception(errMsg)
         else:
-            print errMsg
-    return re
+            print(errMsg)
+    return re[0], re[1]
 
 def is_mosaic(file_id):
     return file_id.startswith('mosaic_')
@@ -229,7 +228,7 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir, projection="ZEA"):
     if (projection != 'ZEA'):
         try:
             del head['RADESYS']
-        except KeyError, ke:
+        except KeyError:
             pass
         head['EQUINOX'] = 2000.
         head['CTYPE1'] = "RA---{0}".format(projection)
@@ -472,7 +471,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if (check_overlap):
         try:
             overlap_check(float(coord[0]), float(coord[1]), float(reqPropsObj.getHttpPar("radius")))
-        except Exception, ex:
+        except Exception as ex:
             httpRef.send_data(str(ex), NGAMS_TEXT_MT, code=500)
             return
 
@@ -511,7 +510,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             ra = str(ephem.hours(float(coord[0]) * math.pi / 180)).split('.')[0] # convert degree to hour:minute:second, and ignore decimal seconds
             dec = str(ephem.degrees(float(coord[1]) * math.pi / 180)).split('.')[0] # convert degree to degree:minute:second, and ignore decimal seconds
         radius = float(reqPropsObj.getHttpPar("radius"))
-    except Exception, ex:
+    except Exception as ex:
         httpRef.send_status("GLEAMCUTOUT parameter validation failed: '%s'" % str(ex),
                             status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
         return
@@ -583,13 +582,13 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                     """
                     try:
                         add_header(work_dir + '/' + cut_fitsnm, get_bparam(ra, dec, psf_path), ing_date, get_date_obs(fileId), completeness=(ra, dec))
-                    except Exception, hdr_except:
+                    except Exception as hdr_except:
                         if (reqPropsObj.hasHttpPar('skip_psf_err') and '1' == reqPropsObj.getHttpPar("skip_psf_err")):
                             logger.debug("PSF error skipped: %s", hdr_except)
                         else:
                             raise AddPSFException(str(hdr_except))
 
-    except Exception, excmd1:
+    except Exception as excmd1:
         """
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
                      "Cutout failed: '%s'" % str(excmd1))
@@ -642,7 +641,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             os.environ['DISPLAY'] = ":7777"
             logger.debug("Executing command: %s", cmd2)
             execCmd(cmd2)
-        except Exception, excmd2:
+        except Exception as excmd2:
             msg = "Conversion from FITS to JPEG failed: '%s', display = '%s'" % (str(excmd2), os.getenv('DISPLAY', 'NOTSET!'))
             httpRef.send_status(msg, status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
             return

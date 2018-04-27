@@ -128,7 +128,7 @@ def ngamsGLEAM_RRI_FilterPI(srvObj,
             if (rest.getStatus().find(NGAMS_FAILURE) != -1):
                 return 1 # matched since file id does not exist
 
-        except Exception, e:
+        except Exception as e:
             errMsg = "Error occurred during checking remote file status " +\
                          "ngamsGLEAM_VUW_FilterPI. Exception: " + str(e)
             logger.error(errMsg)

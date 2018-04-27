@@ -37,7 +37,7 @@ import logging
 import os
 import urllib
 
-from ngamsLib import ngamsPlugInApi, ngamsHttpUtils
+from ngamsLib import ngamsPlugInApi, ngamsHttpUtils, utils
 from ngamsLib.ngamsCore import TRACE, getHostName, genLog
 
 
@@ -108,9 +108,8 @@ def loadVolInfoFile(volInfoFile):
     """
     T = TRACE()
 
-    fo = open(volInfoFile, "r")
-    volInfoBuf = base64.decodestring(fo.read())
-    fo.close()
+    with open(volInfoFile, "rb") as fo:
+        volInfoBuf = utils.b2s(base64.decodestring(fo.read()))
     dic = {}
     for line in volInfoBuf.split("\n"):
         line = line.strip()

@@ -22,8 +22,8 @@
 
 import os
 import socket
-import ngamsTestLib
 
+from . import ngamsTestLib
 from ngamsPlugIns.mwa.ngamsMWAPawseyTapeApi import isFileOffline, readDMFStatus,\
     pawseyMWAdmget, releaseFiles
 

@@ -31,12 +31,10 @@
 This module contains tools for interacting with the Escalade 6800 controller.
 """
 
-import commands
 import logging
-import string
 import urllib
 
-from ngamsLib.ngamsCore import TRACE
+from ngamsLib.ngamsCore import TRACE, execCmd
 from ngamsLib import ngamsPhysDiskInfo
 
 
@@ -64,7 +62,7 @@ def parseHtmlInfo(url,
 
     # Check if the 3ware WEB server can be accessed.
     cmd = "wget -T 2 -t 1 %s" % url
-    stat, out = commands.getstatusoutput(cmd)
+    stat, _, _ = execCmd(cmd)
     if (stat):
         logger.warning("Problem contacting local 3ware WEB server via URL: %s", url)
         return {}
@@ -73,7 +71,7 @@ def parseHtmlInfo(url,
     #fd = open(url)
     buf = fd.read()
     fd.close()
-    lines = string.split(buf, "\n")
+    lines = buf.split("\n")
     idx = 0
     length = len(lines)
     takeAllSlots = 0
@@ -82,7 +80,7 @@ def parseHtmlInfo(url,
             takeAllSlots = 1
     diskInfoDic = {}
     while (idx < length):
-        if (string.find(lines[idx], "tech_drive_header\">Port") >= 0):
+        if "tech_drive_header\">Port" in lines[idx]:
             # We expect the following output:
             #
             # <tr><td class="tech_drive_header">Port 0</td></tr>
@@ -109,7 +107,7 @@ def parseHtmlInfo(url,
             # <li>Model: IBM-DTLA-305040
             # <li>Serial number: YJ0YJ070913
             # <li>Unit number: 7
-            portNo = int(string.split(string.split(lines[idx], " ")[2],"<")[0])
+            portNo = int(lines[idx].split(" ")[2].split("<")[0])
 
             # Check if this slot should be taken into account, i.e., if the
             # current Slot ID is in the list given as input to the function.
@@ -120,18 +118,14 @@ def parseHtmlInfo(url,
                 continue
 
             idx = idx + 3
-            status = string.split(string.split(lines[idx], ">")[5], "<")[0]
+            status = lines[idx].split(">")[5].split("<")[0]
             idx = idx + 1
-            capacityGb = float(string.split(string.split(lines[idx], ">")[4],
-                                            " ")[0])
-            capacityBlocks = int(string.split(string.split(string.\
-                                                           split(lines[idx],
-                                                                 ">")[4],
-                                                           "(")[1], " ")[0])
+            capacityGb = float(lines[idx].split(">")[4].split(" ")[0])
+            capacityBlocks = int(lines[idx].split(">")[4].split("(")[1].split(" ")[0])
             idx = idx + 1
-            model = string.split(string.split(lines[idx], ">")[4], " ")[0]
+            model = lines[idx].split(">")[4].split(" ")[0]
             diskType = "MAGNETIC DISK/ATA"
-            manufacturer = string.split(model, "-")[0]
+            manufacturer = model.split("-")[0]
             if (manufacturer[0:2] == "IC"): manufacturer = "IBM"
             idx = idx + 1
             serialNo = lines[idx].split(">")[4].split("<")[0].strip()
@@ -166,9 +160,9 @@ def getControllers():
     T = TRACE()
 
     cmd = "sudo /usr/local/sbin/tw_cli info"
-    stat, out = commands.getstatusoutput(cmd)
+    stat, out, _ = execCmd(cmd)
     if (stat):
-        raise Exception, "Error invoking 3ware Command Line Tool: " + str(out)
+        raise Exception("Error invoking 3ware Command Line Tool: " + str(out))
     contList = []
     for line in out.split("\n"):
         line = line.strip()
@@ -273,7 +267,7 @@ def parseGen1Controller(rootMtPt,
                 idx = 2
             serialNo = lineEls2[idx]
             capGb    = int(float(lineEls2[idx + 1]) + 0.5)
-            manufact = string.split(model, "-")[0]
+            manufact = model.split("-")[0]
             if (manufact[0:2] == "IC"): manufact = "IBM"
             diskId   = model + "-" + serialNo
             mtPt     = rootMtPt + "/data" + slotId
@@ -410,7 +404,7 @@ def parseGen2Controller(rootMtPt,
                         cmd = "sudo /usr/local/sbin/tw_cli info c%d p%d " +\
                               "status model serial capacity"
                         cmd = cmd % (int(contNo), int(portNo))
-                        stat, out = commands.getstatusoutput(cmd)
+                        stat, out, _ = execCmd(cmd)
                         outLines = out.split("\n")
                         status   = filter(None, outLines[0].split(" "))[3]
                         model    = filter(None, outLines[1].split(" "))[3]
@@ -467,11 +461,11 @@ def getContInfo(contList):
     for contId in contList:
         cmd = "sudo /usr/local/sbin/tw_cli info c%s" % str(contId)
         logger.debug("Executing 3ware client tool: %s", cmd)
-        stat, outTmp = commands.getstatusoutput(cmd)
+        stat, outTmp, _ = execCmd(cmd)
         logger.debug("Executed 3ware client tool. Status: %d", stat)
         if (stat):
-            raise Exception, "Error invoking 3ware Command Line Tool: " +\
-                  str(out)
+            raise Exception("Error invoking 3ware Command Line Tool: " +\
+                  str(out))
         else:
             out += outTmp
         out += "\n"
@@ -504,7 +498,7 @@ def exportCont(contId):
     # p2     OK               u0     372.61 GB   781422768     KRFS26RAGWB7ZC
     # ...
     cmd = "sudo /usr/local/sbin/tw_cli info c%s" % str(contId)
-    stat, out = commands.getstatusoutput(cmd)
+    stat, out, _ = execCmd(cmd)
     # Just look for lines starting with "u".
     unitList = []
     for line in out.split("\n"):
@@ -515,7 +509,7 @@ def exportCont(contId):
         cmd = "sudo /usr/local/sbin/tw_cli /c%d/%s export quiet" %\
               (int(contId), unit)
         logger.debug("Invoking command to export 3ware unit: %s ...", cmd)
-        stat, out = commands.getstatusoutput(cmd)
+        stat, out, _ = execCmd(cmd)
         logger.debug("Result of command: %s to export 3ware unit: %d", cmd, stat)
 
 
@@ -533,7 +527,7 @@ def rescanCont(contId):
 
     cmd = "sudo /usr/local/sbin/tw_cli /c%d rescan" % (int(contId))
     logger.debug("Invoking command to rescan 3ware unit: %s ...", cmd)
-    stat, out = commands.getstatusoutput(cmd)
+    stat, out, _ = execCmd(cmd)
     logger.debug("Result of command: %s to rescan 3ware unit: %d", cmd, stat)
 
 
@@ -667,7 +661,7 @@ if __name__ == '__main__':
     slotIds.sort()
     for diskId in slotIds:
         physDiskObj = diskDic[diskId]
-        print "\n\n" + physDiskObj.dumpBuf()
+        print("\n\n" + physDiskObj.dumpBuf())
 
 
 # EOF

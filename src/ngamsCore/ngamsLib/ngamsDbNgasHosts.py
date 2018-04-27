@@ -36,8 +36,10 @@ It should be used as part of the ngamsDbBase parent classes.
 
 import collections
 
-from   ngamsCore import TRACE
-import ngamsDbCore
+import six
+
+from. import ngamsDbCore
+from .ngamsCore import TRACE
 
 
 class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
@@ -60,10 +62,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         T = TRACE()
 
         sqlQuery = ["SELECT %s FROM ngas_hosts nh WHERE host_id IN (" % ngamsDbCore.getNgasHostsCols()]
-        for x in xrange(len(hostList)):
-            sqlQuery.append("{}")
-            if x < len(hostList) - 1:
-                sqlQuery.append(", ")
+        sqlQuery.append(', '.join(["{}"] * len(hostList)))
         sqlQuery.append(")")
         return self.query2(''.join(sqlQuery), args=[str(h) for h in hostList])
 
@@ -100,7 +99,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             return res[0][0]
         else:
             errMsg = "Error retrieving Cluster Name for host: " + hostId
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
     def getSrvSuspended(self,
                         contactAddr,
@@ -129,7 +128,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         else:
             errMsg = "Error retrieving Server Suspended Flag for host: " +\
                      str(ngasHostId)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
 
     def getSrvDataChecking(self,
@@ -151,7 +150,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         else:
             # If we get to this point, the entry was not found.
             errMsg = "Error retrieving Data Checking Flag - host: " + hostId
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
 
     def writeHostInfo(self,
@@ -189,10 +188,9 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         # Get column names and placeholder values to put into the SQL statement
         table_columns = ngamsDbCore.getNgasHostsMap()
         cols = ", ".join([table_columns[x] for x in args.keys()])
-        params = ", ".join("{%d}" % (i) for i in xrange(len(args)))
+        params = ", ".join("{%d}" % (i) for i in range(len(args)))
         sql = "INSERT INTO ngas_hosts (%s) VALUES (%s)" % (cols, params)
-
-        self.query2(sql, args=args.values())
+        self.query2(sql, args=list(six.itervalues(args)))
 
 
     def updateSrvHostInfo(self,
@@ -344,7 +342,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             return int(res[0][0])
         else:
             errMsg = "Error retrieving port number for host: " + hostId
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
 
     def updateDataCheckStat(self,

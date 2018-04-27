@@ -32,11 +32,12 @@ This module contains the Test Suite for the handling of Idle Suspension.
 """
 
 import time
-import urllib
+
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_STATUS_CMD, \
     NGAMS_CHECKFILE_CMD, rmFile, NGAMS_SUCCESS
-from ngamsTestLib import ngamsTestSuite, sendPclCmd, \
+from .ngamsTestLib import ngamsTestSuite, sendPclCmd, \
     filterOutLines, saveInFile, loadFile, genTmpFilename, unzip
 
 
@@ -538,7 +539,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         # Check that expected log entries found in the Sub-Node Log File.
         tmpTag = "File list to check: (1: Location:LOCAL, Host:%s, " +\
                  "Version:1) (2: Location:LOCAL, Host:%s, Version:1)"
-        testTags = [('CHECKFILE?file_id=' + urllib.quote(file_id) +
+        testTags = [('CHECKFILE?file_id=' + urlparse.quote(file_id) +
                     '&file_version=1&time_out=60.0'),
                     tmpTag % (subNode1, subNode1)]
         subNodeLogBuf = loadFile(subNode1Log)

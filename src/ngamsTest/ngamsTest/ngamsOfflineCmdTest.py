@@ -32,7 +32,7 @@ This module contains the Test Suite for the OFFLINE Command.
 """
 
 from ngamsLib.ngamsCore import NGAMS_OFFLINE_CMD
-from ngamsTestLib import ngamsTestSuite, sendExtCmd
+from .ngamsTestLib import ngamsTestSuite, sendExtCmd
 
 
 class ngamsOfflineCmdTest(ngamsTestSuite):

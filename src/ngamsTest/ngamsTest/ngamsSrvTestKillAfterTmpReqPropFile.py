@@ -56,7 +56,6 @@ class ngamsSrvTestKillAfterTmpReqPropFile(ngamsServer.ngamsServer):
         Prop. File.
         """
         self.killServer()
-        sys.exit(0)
 
 
 if __name__ == '__main__':

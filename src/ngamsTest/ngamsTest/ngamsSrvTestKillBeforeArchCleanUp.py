@@ -57,7 +57,6 @@ class ngamsSrvTestKillBeforeArchCleanUp(ngamsServer.ngamsServer):
         Returns:  Void.
         """
         self.killServer()
-        raise Exception, "test_BeforeArchCleanUp: TEST METHOD KILLING SERVER"
 
 
 if __name__ == '__main__':

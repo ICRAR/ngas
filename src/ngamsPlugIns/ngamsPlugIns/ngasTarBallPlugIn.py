@@ -17,13 +17,12 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
-import commands
 import logging
 import os
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import rmFile, genLog, toiso8601, FMT_DATE_ONLY,\
-    fromiso8601, tomjd
+    fromiso8601, tomjd, execCmd
 
 
 logger = logging.getLogger(__name__)
@@ -39,13 +38,13 @@ def checkTarball(filename):
     err = 0
     tmpFilename = filename.replace(":", "_") + "_tmp"
     try:
-        commands.getstatusoutput("ln -s " + filename + " " + tmpFilename)
-        stat, out = commands.getstatusoutput("tar -tf " + tmpFilename)
+        execCmd("ln -s " + filename + " " + tmpFilename)
+        stat, out, _ = execCmd("tar -tf " + tmpFilename)
         rmFile(tmpFilename)
         if (stat != 0):
             errMsg = str(out).replace("\n", " --- ")
             err = 1
-    except Exception, e:
+    except Exception as e:
         rmFile(tmpFilename)
         errMsg = str(e)
         err = 1

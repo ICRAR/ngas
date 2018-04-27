@@ -57,8 +57,6 @@ class ngamsSrvTestKillBeforeDbUpdateRepFile(ngamsServer.ngamsServer):
         Returns:  Void.
         """
         self.killServer()
-        raise Exception, "test_BeforeDbUpdateRepFile: TEST METHOD KILLING " +\
-              "SERVER"
 
 
 if __name__ == '__main__':

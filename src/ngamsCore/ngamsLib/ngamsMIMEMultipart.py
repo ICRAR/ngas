@@ -28,14 +28,16 @@ ngams/container
 import binascii
 import codecs
 import collections
-from email.parser import Parser
+import email.parser
 import functools
 import logging
 import os
 import time
 
-import ngamsContainer, ngamsFileInfo
-from ngamsCore import checkCreatePath
+import six
+
+from . import ngamsContainer, ngamsFileInfo
+from .ngamsCore import checkCreatePath
 
 
 logger = logging.getLogger(__name__)
@@ -166,7 +168,7 @@ class FilesystemWriterHandler(ContainerBuilderHandler):
         ContainerBuilderHandler.startFile(self, filename)
         path = self._curSavingDir() + '/' + filename
         logger.debug('Opening new file %s', path)
-        self._fdOut = open(path, 'w')
+        self._fdOut = open(path, 'wb')
         self._filename = path
         self._crc = 0
 
@@ -327,7 +329,10 @@ class MIMEMultipartParser(object):
                     logger.debug('Processing headers')
                     headers  = buf[:idx+4]
                     buf      = buf[idx+4:]
-                    msg      = Parser().parsestr(headers, headersonly=True)
+                    if six.PY3:
+                        msg = email.parser.BytesHeaderParser().parsebytes(headers, headersonly=True)  # @UndefinedVariable
+                    else:
+                        msg = email.parser.HeaderParser().parsestr(headers, headersonly=True)
 
                     # It's a new container, recurse
                     mimeType = msg.get_content_type()
@@ -337,9 +342,9 @@ class MIMEMultipartParser(object):
                         if boundary:
                             boundaries.append(boundary)
 
-                        boundary      = msg.get_param('boundary')
+                        boundary      = six.b(msg.get_param('boundary'))
                         containerName = msg.get_param('container_name')
-                        logger.debug('MIME multipart boundary: ' + boundary)
+                        logger.debug('MIME multipart boundary: %s', boundary)
 
                         # Fail if we're missing any of these
                         if not boundary or not containerName:
@@ -374,8 +379,8 @@ class MIMEMultipartParser(object):
                 readingFile = False
 
                 # Look for both delimiter and final delimiter
-                delIdx  = buf.find(CRLF + '--' + boundary + CRLF)
-                fDelIdx = buf.find(CRLF + '--' + boundary + '--')
+                delIdx  = buf.find(CRLF + b'--' + boundary + CRLF)
+                fDelIdx = buf.find(CRLF + b'--' + boundary + b'--')
                 if delIdx != -1:
                     # We don't actually need the delimiter itself
                     # delimiter = buf[:delIdx + 4 + len(boundary) + 2]
@@ -406,7 +411,7 @@ class MIMEMultipartParser(object):
             # When found, finish writing data, and pass the
             # delimiter to the ReadingState.delimiter state
             if state == self._ReadingState.data:
-                delIdx  = buf.find(CRLF + '--' + boundary)
+                delIdx  = buf.find(CRLF + b'--' + boundary)
                 if delIdx != -1:
                     logger.debug('Found end of file %s because we found boundary: %s', filename, boundary)
                     state = self._ReadingState.delimiter
@@ -416,7 +421,7 @@ class MIMEMultipartParser(object):
                 buf = self._handler.handleData(buf, state == self._ReadingState.data)
                 if buf and len(buf):
                     if prevBuf:
-                        raise Exception, 'No data should be returned when delimiter has been found'
+                        raise Exception('No data should be returned when delimiter has been found')
                     prevBuf = buf
 
             # If nothing was read, and nothing
@@ -465,8 +470,8 @@ class FileReader(BufferedReader):
 
         if self.f is None:
             finfo = self.finfo
-            self.buf += 'Content-Type: ' + finfo.mimetype + CRLF
-            self.buf += 'Content-Disposition: attachment; filename="' + finfo.name + '"' + CRLF + CRLF
+            self.buf += b'Content-Type: ' + six.b(finfo.mimetype) + CRLF
+            self.buf += b'Content-Disposition: attachment; filename="' + six.b(finfo.name) + b'"' + CRLF + CRLF
             self.f = finfo.opener()
 
         buf = self.f.read(n)
@@ -519,7 +524,7 @@ class ContainerReader(BufferedReader):
             cinfo = self.cinfo
             self.buf += b'MIME-Version: 1.0' + CRLF
             self.buf += b'Content-Type: multipart/mixed; ' + \
-                        b'container_name="' + cinfo.name + b'"; ' + \
+                        b'container_name="' + six.b(cinfo.name) + b'"; ' + \
                         b'boundary="' + self.boundary + b'"' + CRLF + CRLF
             self.infoit = iter(cinfo.files)
 

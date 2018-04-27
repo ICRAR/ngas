@@ -31,13 +31,15 @@
 Pick images based on its GLEAM phase (phase 1 or 2?)
 """
 
+import logging
 import os
 
 import astropy.io.fits as pyfits
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import warning
 
+
+logger = logging.getLogger(__name__)
 
 def isGLEAMImage(fileId):
     return (fileId.lower().endswith('.fits') and (len(fileId.split('_')) == 5) and (fileId.find('mosaic') == -1))
@@ -106,8 +108,8 @@ def ngamsGLEAM_Phase_FilterPI(srvObj,
     img_phase = None
     try:
         img_phase = getGLEAMPhase(filename)
-    except Exception, exp:
-        warning("cannot get phase info from %s, file not added: %s" % (filename, str(exp)))
+    except Exception as exp:
+        logger.warning("cannot get phase info from %s, file not added: %s" % (filename, str(exp)))
         return 0
 
     if (phase == img_phase):

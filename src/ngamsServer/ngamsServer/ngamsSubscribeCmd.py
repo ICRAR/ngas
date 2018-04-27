@@ -97,7 +97,7 @@ def handleCmd(srvObj,
     else:
         errMsg = genLog("NGAMS_ER_CMD_SYNTAX",
                         [NGAMS_SUBSCRIBE_CMD, "Missing parameter: url"])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     if (reqPropsObj.hasHttpPar("start_date")):
         tmpStartDate = reqPropsObj.getHttpPar("start_date").strip()
         if tmpStartDate:

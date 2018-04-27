@@ -40,10 +40,13 @@ by the SubscriptionThread._deliveryThread
 7. update the NGAS DB (checksum, size, etc.)
 """
 
-import os, commands, binascii
+import binascii
+import os
 
-from ngamsLib.ngamsCore import getFileSize
 import astropy.io.fits as pyfits
+
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import getFileSize
 
 
 work_dir = '/home/ngas/NGAS/volume1/processing/phase2fix'
@@ -65,7 +68,7 @@ dict_dec = {'2013-08-03':-55.0,'2013-08-05':-26.7,'2013-08-06':-13.0,'2013-08-07
 '2014-10-30':-72.0,'2014-10-31':-13.0,'2014-11-01':1.6,'2014-11-02':18.0} # key - obs_date, value - dec (float)
 
 def execCmd(cmd, failonerror = True):
-    re = commands.getstatusoutput(cmd)
+    re = ngamsPlugInApi.execCmd(cmd)
     if (failonerror and (not os.WIFEXITED(re[0]))):
         errMsg = 'Fail to execute command: "%s". Exception: %s' % (cmd, re[1])
         raise Exception(errMsg)

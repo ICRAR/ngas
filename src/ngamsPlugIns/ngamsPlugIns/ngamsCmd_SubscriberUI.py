@@ -19,12 +19,12 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
-import cStringIO
+import io
 
 import pkg_resources
 
 from ngamsLib import ngamsDbCore
+import six
 
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
@@ -44,7 +44,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     # We write all contents into a buffer
     # which we write back to the client and at the end
-    f = cStringIO.StringIO()
+    f = io.StringIO()
 
     # Write header contents
     f_PageHdr = pkg_resources.resource_stream(__name__, 'subscription_ui/header.html')  # @UndefinedVariable
@@ -78,4 +78,4 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             f.write(line)
 
     # Get final buffer contents and write it back to the client
-    httpRef.send_data(f.getvalue(), 'text/html')
+    httpRef.send_data(six.b(f.getvalue()), 'text/html')

@@ -29,8 +29,8 @@ from fabric.decorators import task
 from fabric.state import env
 from fabric.utils import puts, abort
 
-from system import check_command, get_linux_flavor
-from utils import sudo, run
+from .system import check_command, get_linux_flavor
+from .utils import sudo, run
 
 
 # Don't re-export the tasks imported from other modules, only ours
@@ -132,10 +132,10 @@ def check_yum(package):
              combine_stderr=True, warn_only=True)
     #print res
     if res.find(package) > 0:
-        print "Installed package {0}".format(package)
+        puts("Installed package {0}".format(package))
         return True
     else:
-        print "NOT installed package {0}".format(package)
+        puts("NOT installed package {0}".format(package))
         return False
 
 
@@ -149,10 +149,10 @@ def check_apt(package):
     with hide('stdout','running'):
         res = sudo('dpkg -L | grep {0}'.format(package))
     if res.find(package) > -1:
-        print "Installed package {0}".format(package)
+        puts("Installed package {0}".format(package))
         return True
     else:
-        print "NOT installed package {0}".format(package)
+        puts("NOT installed package {0}".format(package))
         return False
 
 def check_brew_port():

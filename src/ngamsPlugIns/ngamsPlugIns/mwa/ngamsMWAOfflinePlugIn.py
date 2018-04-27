@@ -34,8 +34,9 @@ Module that contains a generic Offline Plug-In for NGAS.
 import logging
 import os
 
-import cPickle as pickle
-from ngamsGenericPlugInLib import notifyRegistrationService
+from six.moves import cPickle as pickle  # @UnresolvedImport
+
+from ngamsPlugIns.ngamsGenericPlugInLib import notifyRegistrationService
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE
 from ngamsServer import ngamsSubscriptionThread

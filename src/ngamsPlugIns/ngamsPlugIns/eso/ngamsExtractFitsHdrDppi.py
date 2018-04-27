@@ -32,14 +32,12 @@
 Contains a DDPI which is used to extract the main header from FITS files.
 """
 
-from commands import getstatusoutput
 import logging
 import os
 import re
-from sets import Set
 
 from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, NGAMS_PROC_DATA
+from ngamsLib.ngamsCore import TRACE, NGAMS_PROC_DATA, execCmd
 
 
 logger = logging.getLogger(__name__)
@@ -121,7 +119,7 @@ def ngasExtractFitsHdrDppi(srvObj,
 
     logger.debug("ngasExtractFitsHdrDppi: %s %r", filename, pars)
 
-    PARS = Set(['header', 'xml', 'skey', 'struct', 'tsv', 'check'])
+    PARS = set(['header', 'xml', 'skey', 'struct', 'tsv', 'check'])
 
     # initial settings for printhead
     xtract = 0
@@ -211,8 +209,8 @@ def ngasExtractFitsHdrDppi(srvObj,
     pos = base.rfind('.fits')
     file_id = base[:pos]
 
-    if len(Set(pars) - PARS) != 0:  # detect unsupported parameters
-        xpars = Set(pars) - PARS
+    if len(set(pars) - PARS) != 0:  # detect unsupported parameters
+        xpars = set(pars) - PARS
         err   = "ngasExtractFitsHdrDppi: Unsupported option(s): %s\n" + \
                 "Valid options are:\n" + \
                 "header=<number> where number is an integer between 0 " +\
@@ -237,10 +235,10 @@ def ngasExtractFitsHdrDppi(srvObj,
         for f in fils:
             cmd = constructCommand(f, head, struct, skey, tsv, xmlfl, mode, check)
             logger.debug('Executing command: %s', cmd)
-            (stat, result) = getstatusoutput(cmd)
+            stat, result, _ = execCmd(cmd)
             if stat != 0:
                 errMsg = "Processing of header for file %s failed: %s" % (filename, result)
-                raise Exception, errMsg
+                raise Exception(errMsg)
 
     resFilename = file_id + "." + ext
     try:

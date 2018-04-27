@@ -32,7 +32,7 @@ Contains definition of class for handling information in connection with
 one NGAS host.
 """
 
-from ngamsCore import prFormat1, ignoreValue, toiso8601, fromiso8601
+from .ngamsCore import prFormat1, ignoreValue, toiso8601, fromiso8601
 
 
 class ngamsHostInfo:

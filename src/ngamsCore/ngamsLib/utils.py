@@ -1,6 +1,6 @@
 #
 #    ICRAR - International Centre for Radio Astronomy Research
-#    (c) UWA - The University of Western Australia, 2012
+#    (c) UWA - The University of Western Australia, 2018
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
 #
@@ -19,30 +19,12 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-#******************************************************************************
-#
-# "@(#) $Id: ngamsSuspensionPlugIn.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
-#
-# Who       When        What
-# --------  ----------  -------------------------------------------------------
-# jknudstr  23/01/2002  Created
-#
-"""
-Test Suspension Plug-In to simulate the NGAS host suspension.
-"""
 
-from ngamsLib.ngamsCore import execCmd
+import sys
 
-
-def ngamsSuspensionPlugIn(srvObj):
-    """
-    Suspension Plug-In to suspend an NGAS host.
-
-    srvObj:         Reference to instance of the NG/AMS Server (ngamsServer).
-
-    Returns:        Void.
-    """
-    execCmd("sudo /sbin/shutdown -h now")
-
-
-# EOF
+if sys.version_info[0] > 2:
+    def b2s(b, enc='utf8'):
+        return b.decode(enc)
+else:
+    def b2s(b, _='utf8'):
+        return b

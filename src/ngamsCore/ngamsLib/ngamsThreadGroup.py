@@ -82,7 +82,7 @@ When the
 import threading
 import time
 
-from ngamsCore import TRACE
+from .ngamsCore import TRACE
 
 
 # Constants.
@@ -253,7 +253,7 @@ class ngamsThreadGroup:
         try:
             self.__threadTiming[self.getThreadId()] = time.time()
             self.__function(self)
-        except Exception, e:
+        except Exception as e:
             if (str(e).find(NGAMS_THR_GROUP_STOP_NORMAL) != -1):
                 # Execution stopped 'normally'.
                 return
@@ -369,7 +369,7 @@ class ngamsThreadGroup:
                 if (curTimeout < 0):
                     msg = "Timeout encountered while waiting for threads " +\
                           "to terminate"
-                    raise Exception, msg
+                    raise Exception(msg)
             thrWaitingList[0].join(curTimeout)
             if (not thrWaitingList[0].isAlive()): del thrWaitingList[0]
             if (thrWaitingList == []):
@@ -386,7 +386,7 @@ class ngamsThreadGroup:
         T = TRACE()
 
         self.__pauseEvent.set()
-        raise Exception, NGAMS_THR_GROUP_STOP_NORMAL
+        raise Exception(NGAMS_THR_GROUP_STOP_NORMAL)
 
 
     def terminateError(self,
@@ -400,7 +400,7 @@ class ngamsThreadGroup:
         T = TRACE()
 
         self.__pauseEvent.set()
-        raise Exception, "%s: %s" % (NGAMS_THR_GROUP_STOP_ERROR, str(error))
+        raise Exception("%s: %s" % (NGAMS_THR_GROUP_STOP_ERROR, str(error)))
 
 
 # EOF

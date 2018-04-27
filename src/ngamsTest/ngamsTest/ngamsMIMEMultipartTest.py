@@ -20,8 +20,8 @@
 #    MA 02111-1307  USA
 #
 
-import StringIO
 import functools
+import io
 import os
 import random
 import string
@@ -29,7 +29,7 @@ import tempfile
 
 from ngamsLib import ngamsMIMEMultipart
 from ngamsLib.ngamsCore import rmFile, checkCreatePath
-import ngamsTestLib
+from . import ngamsTestLib
 
 
 class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
@@ -99,10 +99,10 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
 
         cinfo = ngamsMIMEMultipart.cinfo_from_filesystem('toplevel', 'application/octet-stream')
         bs = 65536
-        output = StringIO.StringIO()
+        output = io.BytesIO()
         reader = ngamsMIMEMultipart.ContainerReader(cinfo)
         rfunc = functools.partial(reader.read, bs)
-        for buf in iter(rfunc, ''):
+        for buf in iter(rfunc, b''):
             output.write(buf)
         message = output.getvalue()
 
@@ -114,24 +114,24 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
         contents = self._createMIMEMessage(onlyDirs)
 
         self.assertTrue(contents, "No contents found")
-        self.assertTrue(contents.find("MIME-Version: 1.0") != -1, "Content is not a MIME message")
-        self.assertTrue(contents.find("Content-Type: multipart/mixed") != -1, "Content is not a multipart message")
+        self.assertTrue(b"MIME-Version: 1.0" in contents, "Content is not a MIME message")
+        self.assertTrue(b"Content-Type: multipart/mixed" in contents, "Content is not a multipart message")
 
         # There should be a different boundaries declaration for each directory
         # since each will result in a multipart message
-        nBoundaries = self._findOccurences(contents, 'boundary="')
+        nBoundaries = self._findOccurences(contents, b'boundary="')
         self.assertEqual(nBoundaries, len(self.mydirs), "Didn't find all boundary definitions that were expected")
 
         # There should be a "filename" declaration for each file
         # since each will result in a MIME message inside one of the multiparts
         if not onlyDirs:
-            nFilenames = self._findOccurences(contents, 'filename="')
+            nFilenames = self._findOccurences(contents, b'filename="')
             self.assertEquals(nFilenames, len(self.myfiles), "Didn't find all filename definitions that were expected")
 
     def _test_MultipartParser(self, onlyDirs):
 
         message = self._createMIMEMessage(onlyDirs)
-        inputContent= StringIO.StringIO(message)
+        inputContent= io.BytesIO(message)
         handler = ngamsMIMEMultipart.ContainerBuilderHandler()
         parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, inputContent, len(message), 1024000)
         parser.parse()
@@ -163,9 +163,9 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
     def test_MultipartParserSeveralReadingSizes(self):
         # The pure fact that the parser ends is good,
         # there's really nothing else to check.
-        for size in [2**i for i in xrange(20)]:
+        for size in [2**i for i in range(20)]:
             message = self._createMIMEMessage(True)
-            inputContent= StringIO.StringIO(message)
+            inputContent= io.BytesIO(message)
             handler = ngamsMIMEMultipart.ContainerBuilderHandler()
             parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, inputContent, len(message), size)
             parser.parse()
@@ -181,9 +181,9 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
         reader = ngamsMIMEMultipart.FileReader(finfo)
         rlen = len(reader)
 
-        message = StringIO.StringIO()
+        message = io.BytesIO()
         rfunc = functools.partial(reader.read, 65536)
-        for buf in iter(rfunc, ''):
+        for buf in iter(rfunc, b''):
             message.write(buf)
         message = message.getvalue()
         mlen = len(message)

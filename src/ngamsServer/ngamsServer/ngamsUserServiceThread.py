@@ -80,7 +80,7 @@ def userServiceThread(srvObj, stopEvt, userServicePlugin):
             if stopEvt.wait(sleepTime):
                 return
 
-        except Exception, e:
+        except:
             errMsg = "Error occurred during execution of the User " +\
                      "Service Thread"
             logger.exception(errMsg)

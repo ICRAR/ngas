@@ -35,8 +35,8 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-from ngamsCore import TRACE, fromiso8601
-import ngamsDbCore
+from . import ngamsDbCore
+from .ngamsCore import TRACE, fromiso8601
 
 
 class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):

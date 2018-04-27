@@ -33,8 +33,8 @@
 Class to handle the information in connection with one entry in the NGAS Cache.
 """
 
-from ngamsCore import TRACE, getBoolean
-import ngamsDbCore
+from .ngamsCore import TRACE, getBoolean
+from . import ngamsDbCore
 
 
 class ngamsFileSummary1:
@@ -206,7 +206,7 @@ class ngamsFileSummary1:
             self.__fileVersion = int(fileVersion)
         except:
             msg = "Wrong format of File Version given: %s" % str(fileVersion)
-            raise Exception, msg
+            raise Exception(msg)
         return self
 
 

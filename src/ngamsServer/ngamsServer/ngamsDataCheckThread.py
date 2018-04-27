@@ -32,7 +32,6 @@ This module contains the code for the Data Check Thread, which is used
 to check the data holding in connection with one NGAS host.
 """
 
-import cPickle
 import glob
 import logging
 import os
@@ -40,7 +39,9 @@ import random
 import time
 import threading
 
-import ngamsFileUtils
+from six.moves import cPickle # @UnresolvedImport
+
+from . import ngamsFileUtils
 from ngamsLib.ngamsCore import TRACE, NGAMS_DATA_CHECK_THR, \
     NGAMS_CACHE_DIR, checkCreatePath, isoTime2Secs, \
     rmFile, genLog, mvFile, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
@@ -352,7 +353,7 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
         #    if (not fileKey): break
         for fileKey,dbVal in queueDbm.iteritems():
             # jagonzal: We need to reformat the values and skip administrative elements #################
-            if (str(fileKey).find("__") != -1): continue
+            if b"__" in fileKey: continue
             fileInfo = cPickle.loads(dbVal)
             #############################################################################################
             noOfFiles += 1
@@ -387,7 +388,7 @@ def _schedNextFile(srvObj,
     with reqFileInfoSem:
         while True:
             fileInfo = None
-            if (not diskSchedDic.has_key(threadId)):
+            if threadId not in diskSchedDic:
                 if (disk_ids):
                     idx = random.randint(0, (len(disk_ids) - 1))
                     diskId = disk_ids[idx]
@@ -422,7 +423,7 @@ def _schedNextFile(srvObj,
                 if diskId in disk_ids:
                     idx = disk_ids.index(diskId)
                     del disk_ids[idx]
-                for thrId in diskSchedDic.keys():
+                for thrId in list(diskSchedDic):
                     if (diskSchedDic[thrId] == diskId):
                         del diskSchedDic[thrId]
                 if (disk_ids):
@@ -573,7 +574,7 @@ def _genReport(srvObj, unregistered, diskDic, dbmObjDic, stats):
                 #    if (not fileKey): break
                 for fileKey,dbVal in errDbm.iteritems():
                     # jagonzal: We need to reformat the values and skip administrative elements #################
-                    if (str(fileKey).find("__") != -1): continue
+                    if b"__" in fileKey: continue
                     errInfo = cPickle.loads(dbVal)
                     #############################################################################################
                     slotDiskId = errInfo[3] + ":" + errInfo[4]

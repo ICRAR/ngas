@@ -34,6 +34,8 @@ with DPPI processing.
 
 import subprocess
 
+import six
+
 from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
 from ngamsLib.ngamsCore import NGAMS_PROC_FILE, NGAMS_PROC_DATA
 
@@ -78,33 +80,34 @@ def ngamsTestDppi1(srvObj,
         while True:
             line = f.read(80)
             assert(line and len(line) == 80)
-            head.append(line + "\n")
-            if 'END' in line:
+            head.append(line)
+            head.append(b'\n')
+            if b'END' in line:
                 break
 
     mimeType = "TEST-MIME-TYPE"
     rawPiPars = srvObj.getCfg().dppi_plugins["ngamsTest.ngamsTestDppi1"].pars
     cfgParDic = ngamsPlugInApi.parseRawPlugInPars(rawPiPars)
 
-    head.append("\n\nConfiguration Parameters:\n")
-    parList = cfgParDic.keys()
+    head.append(b"\n\nConfiguration Parameters:\n")
+    parList = list(cfgParDic)
     parList.sort()
     for par in parList:
-        head.append("%s=%s\n" % (par, cfgParDic[par]))
+        head.append(six.b("%s=%s\n" % (par, cfgParDic[par])))
 
-    head.append("\nParameters Transferred:\n")
+    head.append(b"\nParameters Transferred:\n")
     httpParsDic = reqPropsObj.getHttpParsDic()
-    httpPars = httpParsDic.keys()
+    httpPars = list(httpParsDic)
     httpPars.sort()
     for httpPar in httpPars:
-        head.append("%s=%s\n" % (httpPar,httpParsDic[httpPar]))
-    head.append("\nEOF\n")
+        head.append(six.b("%s=%s\n" % (httpPar,httpParsDic[httpPar])))
+    head.append(b"\nEOF\n")
 
-    buf = ''.join(head)
+    buf = b''.join(head)
     # Generate status.
     if (cfgParDic["TARGET"] == "FILE"):
         outFile = procFile + "_ngamsTestDppi1"
-        with open(outFile, "a") as fo:
+        with open(outFile, "ab") as fo:
             fo.write(buf)
         resObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE, mimeType,
                                                  outFile, filename, procDir)

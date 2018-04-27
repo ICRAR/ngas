@@ -23,12 +23,14 @@
 NGAS Command Plug-In, implementing a Archive Pull Command using BBCP
 """
 
+import codecs
 from collections import namedtuple
 import logging
 import os
 import subprocess
 import time
-from urlparse import urlparse
+
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 
 from ngamsLib.ngamsCore import checkCreatePath, getFileSize
 from ngamsServer import ngamsArchiveUtils, ngamsFileUtils
@@ -90,16 +92,17 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
     checksum_out, out = p1.communicate()
 
     if p1.returncode != 0:
-        raise Exception, "bbcp returncode: %d error: %s" % (p1.returncode, out)
+        raise Exception("bbcp returncode: %d error: %s" % (p1.returncode, out))
 
     # extract c32 zip variant checksum from output and convert to signed 32 bit integer
     crc_info = ngamsFileUtils.get_checksum_info(crc_name)
-    bbcp_checksum = crc_info.from_bytes(checksum_out.split(' ')[2].decode('hex'))
+    checksum_bytes = codecs.decode(checksum_out.split(b' ')[2], 'hex')
+    bbcp_checksum = crc_info.from_bytes(checksum_bytes)
 
-    logger.info('BBCP final message: %s', out.split('\n')[-2]) # e.g. "1 file copied at effectively 18.9 MB/s"
+    logger.info('BBCP final message: %s', out.split(b'\n')[-2]) # e.g. "1 file copied at effectively 18.9 MB/s"
     logger.info("File: %s copied to filename: %s", srcFilename, targFilename)
 
-    return str(bbcp_checksum[0])
+    return str(bbcp_checksum)
 
 
 def get_params(request):
@@ -116,7 +119,7 @@ def get_params(request):
         uri = uri[4:]
 
     uri = 'ssh://' + uri
-    uri_parsed = urlparse(uri)
+    uri_parsed = urlparse.urlparse(uri)
     if uri_parsed.path.lower().startswith(invalid_paths):
         raise Exception('Requested to pull file from exluded location')
 

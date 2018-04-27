@@ -73,7 +73,7 @@ import logging
 import re
 import xml.dom.minidom
 
-from ngamsCore import TRACE, genLog, rmFile
+from .ngamsCore import TRACE, genLog, rmFile
 
 
 logger = logging.getLogger(__name__)
@@ -344,9 +344,9 @@ class ngamsXmlMgr:
             fd = open(self.setXmlDoc(xmlDoc).getXmlDoc())
             doc = fd.read()
             fd.close()
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_LOAD_CFG", [xmlDoc, str(e)])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         # The Expat parser does not like XSL declarations. Can be removed if
         # a parser is used which conforms with the XML standards.
@@ -477,15 +477,14 @@ class ngamsXmlMgr:
         domObj = None
         try:
             domObj = xml.dom.minidom.parseString(xmlDoc)
-        except Exception, e:
+        except Exception as e:
             if (domObj != None): domObj.unlink()
-            ex = str(e)
             lineNo = str(e).split(":")[1]
             errMsg = "Error parsing NG/AMS XML Configuration. " +\
                      "Probably around line number: " + str(lineNo) + ". " +\
                      "Exception: " + str(e)
             errMsg = genLog("NGAMS_ER_CONF_FILE", [errMsg])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         # Check that the root element is present.
         rootElName = self.__rootElObj.getName()
@@ -494,15 +493,15 @@ class ngamsXmlMgr:
             msg = "XML document, does not have the " +\
                   "proper root element: %s! Aborting."
             errMsg = genLog("NGAMS_ER_CONF_FILE", [msg % rootElName])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         try:
             self.clear()
             curId = None
             self._unpack(nodeList[0], "", None, curId)
             domObj.unlink()
-        except Exception, e:
+        except:
             if (domObj): domObj.unlink()
-            raise e
+            raise
         return self
 
 
@@ -529,15 +528,16 @@ class ngamsXmlMgr:
             refEl = ngamsElement(elName, value = None, comment = None,
                                  context = curId)
             parElObj.addSubEl(refEl)
-        if (nodeObj._attrs.has_key("Id")):
-            curId = nodeObj._attrs["Id"].nodeValue
+        if nodeObj.hasAttribute('Id'):
+            curId = nodeObj.getAttribute('Id')
             refEl.setContext(curId)
         elDicKey = self._addElXmlDic(elDicKey, refEl)
 
         # Get attributes of the element.
-        for attrName in nodeObj._attrs.keys():
-            val = nodeObj._attrs[attrName].nodeValue
-            tmpAttrObj = ngamsAttribute(attrName, val, comment = None,
+        attrs = nodeObj.attributes
+        for i in range(attrs.length):
+            attr = nodeObj.attributes.item(i)
+            tmpAttrObj = ngamsAttribute(attr.localName, attr.value, comment = None,
                                         context = curId)
             refEl.addAttr(tmpAttrObj)
             self._addAttrXmlDic(elDicKey, tmpAttrObj)
@@ -574,7 +574,7 @@ class ngamsXmlMgr:
         Returns:        Name of the key in the XML Dictionary (string).
         """
         if (elObj == self.__rootElObj):
-            if (not self.__xmlDic.has_key(elDicKey)):
+            if elDicKey not in self.__xmlDic:
                 self.__xmlDic[self.__rootElObj.getName()] = self.__rootElObj
             return self.__rootElObj.getName()
         elif (elDicKey):
@@ -582,7 +582,7 @@ class ngamsXmlMgr:
             idx = 1
             while (1):
                 newElDicKey = newElDicKeyFormat % idx
-                if (not self.__xmlDic.has_key(newElDicKey)):
+                if newElDicKey not in self.__xmlDic:
                     self.__xmlDic[newElDicKey] = elObj
                     break
                 else:
@@ -660,7 +660,7 @@ class ngamsXmlMgr:
         for pathEl in pathEls[1:-1]:
             tmpPath += "." + pathEl
             # Check if this element is already in the otherwise add it.
-            if (not self.__xmlDic.has_key(tmpPath)):
+            if tmpPath not in self.__xmlDic:
                 self.addElOrAttr(tmpPath, ngamsElement(pathEl.split("[")[0],
                                                        context = context))
         self.addElOrAttr(tmpPath + "." + pathEls[-1],
@@ -688,7 +688,7 @@ class ngamsXmlMgr:
         T = TRACE()
 
         if (clear): self.clear()
-        xmlDicKeys = xmlDic.keys()
+        xmlDicKeys = list(xmlDic)
         xmlDicKeys.sort()
         # First element should be the root element.
         self.__rootElObj = xmlDic[xmlDicKeys[0]]
@@ -718,7 +718,7 @@ class ngamsXmlMgr:
                     (string).
         """
         buf = ""
-        keys = self.__xmlDic.keys()
+        keys = list(self.__xmlDic)
         if (sort): keys.sort()
         for key in keys:
             if (self.__xmlDic[key].getValue() != None):
@@ -764,7 +764,7 @@ if __name__ == '__main__':
     keyList = xmlDic.keys()
     keyList.sort()
     for key in keyList:
-        print "%s: %s" % (key, xmlDic[key])
+        print("%s: %s" % (key, xmlDic[key]))
 
 
 # EOF

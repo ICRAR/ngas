@@ -61,21 +61,23 @@ import calendar
 import collections
 import errno
 import glob
+import hashlib
 import importlib
 import logging
 import math
-import md5
 import os
 import shutil
 import socket
 import threading
 import time
-import types
 import subprocess
 
 import pkg_resources
+import six
 
-import logdefs
+from . import utils
+from . import logdefs
+
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +85,7 @@ logger = logging.getLogger(__name__)
 # Handle NG/AMS Version.
 _NGAMS_SW_VER   = ""
 _NGAMS_VER_DATE = ""
-for line in pkg_resources.resource_string('ngamsData', 'VERSION').splitlines():
+for line in utils.b2s(pkg_resources.resource_string('ngamsData', 'VERSION')).splitlines():
     if "NGAMS_SW_VER" in line:
         _NGAMS_SW_VER = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]
     elif "VER_DATE" in line:
@@ -98,7 +100,7 @@ def getNgamsLicense():
 
     Returns:   Contents of license agreement (string).
     """
-    return pkg_resources.resource_string('ngamsData', 'COPYING')
+    return utils.b2s(pkg_resources.resource_string('ngamsData', 'COPYING'))
 
 
 def prFormat1():
@@ -116,7 +118,6 @@ NGAMS_SUBSCR_BACK_LOG_DIR     = "subscr-back-log"
 NGAMS_SUBSCR_BACK_LOG         = NGAMS_SUBSCR_BACK_LOG_DIR
 NGAMS_STAGING_DIR             = "staging"
 NGAMS_PROC_DIR                = "processing"
-NGAMS_FILE_DB_COUNTER         = "__COUNT__"
 NGAMS_TMP_FILE_PREFIX         = "NGAMS_TMP_FILE___"
 NGAMS_BACK_LOG_TMP_PREFIX     = "NGAMS_BACK_LOG_TMP___"
 NGAMS_BAD_FILE_PREFIX         = "BAD-FILE-"
@@ -280,7 +281,7 @@ def ngamsCopyrightString():
 
     Returns:   Copyright string (string).
     """
-    return pkg_resources.resource_string('ngamsData', 'COPYRIGHT')
+    return utils.b2s(pkg_resources.resource_string('ngamsData', 'COPYRIGHT'))
 
 
 _logDef = logdefs.LogDefHolder(pkg_resources.resource_stream('ngamsData', 'ngamsLogDef.xml'))# @UndefinedVariable
@@ -385,7 +386,7 @@ def ignoreValue(ignoreEmptyField,
     Returns:              1 if field should be ignored, otherwise 0
                           (integer/0|1).
     """
-    if (type(fieldValue) == types.IntType):
+    if isinstance(fieldValue, six.integer_types):
         if (ignoreEmptyField and (fieldValue == -1)): return 1
     elif (ignoreEmptyField and (str(fieldValue).strip() == "")):
         return 1
@@ -422,7 +423,7 @@ def genUniqueId():
 
     Returns:  Unique ID (string).
     """
-    return md5.new("%.12f-%s" % (time.time(), getHostName())).hexdigest()
+    return hashlib.md5(six.b("%.12f-%s" % (time.time(), getHostName()))).hexdigest()
 
 
 def createSortDicDump(dic):
@@ -434,9 +435,9 @@ def createSortDicDump(dic):
 
     Returns: Sorted dictionary ASCII representation (string).
     """
-    if (type(dic) != types.DictType):
-        raise Exception, "Object given is not a dictionary"
-    keys = dic.keys()
+    if not isinstance(dic, dict):
+        raise Exception("Object given is not a dictionary")
+    keys = list(dic)
     keys.sort()
     asciiDic = ""
     for key in keys: asciiDic += ", '%s': '%s'" % (key, dic[key])
@@ -504,7 +505,7 @@ def checkCreatePath(path):
     """
     # Check if path exists, if not, create it.
     try:
-        os.makedirs(path, 0775)
+        os.makedirs(path, 0o775)
     except OSError as e:
         # no worries!
         if e.errno == errno.EEXIST:
@@ -562,7 +563,7 @@ def mvFile(srcFilename,
         shutil.move(srcFilename, trgFilename)
         deltaTime = time.time() - start
 
-    except Exception, e:
+    except Exception as e:
         errMsg = genLog("NGAMS_AL_MV_FILE", [srcFilename, trgFilename, str(e)])
         raise Exception(errMsg)
     logger.debug("File: %s moved to filename: %s", srcFilename, trgFilename)
@@ -592,7 +593,7 @@ def cpFile(srcFilename,
         start = time.time()
         shutil.copyfile(srcFilename, trgFilename)
         deltaTime = time.time() - start
-    except Exception, e:
+    except Exception as e:
         errMsg = genLog("NGAMS_AL_CP_FILE", [srcFilename, trgFilename, str(e)])
         raise Exception(errMsg)
     logger.debug("File: %s copied to filename: %s", srcFilename, trgFilename)
@@ -643,7 +644,7 @@ def decompressFile(srcFilename,
     trgFilename = srcFilename[:-3]
     if os.path.exists(trgFilename):
         return trgFilename
-    raise Exception, "Error decompressing file: %s" % srcFilename
+    raise Exception("Error decompressing file: %s" % srcFilename)
 
 
 def isoTime2Secs(isoTime):
@@ -691,7 +692,7 @@ def getBoolean(val):
         return True
     else:
         msg = "Value given: %s, does not seem to be a boolean"
-        raise Exception, msg % str(val)
+        raise Exception(msg % str(val))
 
 def loadPlugInEntryPoint(plugInName, entryPointMethodName=None, returnNone=False):
     """
@@ -807,6 +808,7 @@ def fromiso8601(s, local=False, fmt=FMT_DATETIME):
     t = totime(time.strptime(s, fmt.format))
     return t + ms
 
+_long = int if six.PY3 else long
 def toiso8601(t=None, local=False, fmt=FMT_DATETIME):
     """
     Converts the time value `t` to a string formatted using the ISO 8601
@@ -827,7 +829,7 @@ def toiso8601(t=None, local=False, fmt=FMT_DATETIME):
     totuple = time.gmtime if not local else time.localtime
     timeStamp = time.strftime(fmt.format, totuple(t))
     if fmt.msecs:
-        t = (t - long(t)) * 1000
+        t = (t - _long(t)) * 1000
         timeStamp += '.%03d' % int(t)
 
     return timeStamp

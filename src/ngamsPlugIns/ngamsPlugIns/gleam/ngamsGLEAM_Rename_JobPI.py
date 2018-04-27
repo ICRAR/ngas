@@ -32,11 +32,12 @@ This job plugin rename all phase 2 measurementset files
 The system must already have pigz installed
 """
 
-import commands
 import logging
 import os
 import re
 import shutil
+
+from ngamsLib import ngamsPlugInApi
 
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ phase2_label = "phase2"
 mount_point = '/mnt/gleam/NGAS/volume1' #store02
 
 def execCmd(cmd, failonerror = True):
-    re = commands.getstatusoutput(cmd)
+    re = ngamsPlugInApi.execCmd(cmd)
     if (failonerror and (not os.WIFEXITED(re[0]))):
         errMsg = 'Fail to execute command: "%s". Exception: %s' % (cmd, re[1])
         raise Exception(errMsg)

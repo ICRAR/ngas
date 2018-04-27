@@ -32,7 +32,7 @@ This module contains the Test Suite for the INIT Command.
 """
 
 from ngamsLib.ngamsCore import NGAMS_INIT_CMD
-from ngamsTestLib import ngamsTestSuite, sendExtCmd
+from .ngamsTestLib import ngamsTestSuite, sendExtCmd
 
 
 class ngamsInitCmdTest(ngamsTestSuite):

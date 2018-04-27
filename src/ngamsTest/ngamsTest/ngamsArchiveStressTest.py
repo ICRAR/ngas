@@ -33,12 +33,11 @@ Archive Command handling
 """
 
 import os
-import thread
 import threading
 import time
 
 from ngamsLib.ngamsCore import cpFile
-from ngamsTestLib import incArcfile, sendPclCmd, ngamsTestSuite, AUTH
+from .ngamsTestLib import incArcfile, sendPclCmd, ngamsTestSuite, AUTH
 
 
 TST_STR1 = "Successfully handled Archive Push Request for data file " +\
@@ -82,7 +81,6 @@ def archiveThread(testObj,
         if (statObj.getMessage() != testStr):
             THREAD_STAT[no] = "FAILURE: Archive Request failed"
     THREAD_STAT[no] = "SUCCESS"
-    thread.exit()
 
 
 class ngamsArchiveStressTest(ngamsTestSuite):
@@ -151,7 +149,7 @@ class ngamsArchiveStressTest(ngamsTestSuite):
             THREAD_STAT[n] = None
         startTime = time.time()
         while ((time.time() - startTime) < 100):
-            for key in THREADS.keys():
+            for key in list(THREADS):
                 if (not THREADS[key].isAlive()): del THREADS[key]
                 if (THREADS == {}): break
             if (THREADS == {}): break
