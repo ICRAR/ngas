@@ -5,69 +5,52 @@ create index ac_ts_index on ac(ts);
 .import 2015-08-01T19-42-25-int.csv ac
 
 # postgresql on MC database
+# psql -h mwa-metadata01.pawsey.org.au -U mwa mwa
 \f ','
 \a
 \t
 \o obsId_prjId.csv
 select starttime, projectid from mwa_setting;
 
-#sqlite
+#sqlite, observation-projectId mapping
 create table opm(obs_id integer, proj_id varchar(256));
 create index opm_obs_id_idx on opm(obs_id);
 .separator ","
 .import obsId_prjId.csv opm
 
+# postgresql on MWA NGAS database
+# psql -h mwa-pawsey-db01.pawsey.org.au -U ngas_ro ngas
+\f ','
+\a
+\t
+\o all_vis_2017_12_06.csv
+# select substring(file_id, 1, 10), file_size from ngas_files where disk_id <> '848575aeeb7a8a6b5579069f2b72282c';
+# this will include voltage as well as visibilities
+select substring(file_id, 1, 10), file_size from ngas_files;
+
+# create table vis(obs_id integer, file_size integer, ingestion_date varchar(256));
 create table vis(obs_id integer, file_size integer);
 create index vis_obs_id_idx on vis(obs_id);
 .separator ","
-.import all_vis.csv vis
+.import all_vis_2017_12_06.csv vis
 
-# sqlite getting file distribution by project id (joined with NGAS table)
-select sum(a.file_size) proj_size, b.proj_id from vis a, opm b where a.obs_id = b.obs_id group by b.proj_id order by proj_size desc;
+\f ','
+\a
+\t
+\o all_vis_2017_12_06_from_1_July_2017.csv
+# get vis in the last 6 months
+select substring(file_id, 1, 10), file_size from ngas_files where ingestion_date > '2017-06-30T23:59:59.999';
 
-# sqlite find out utilisation for each project
-.mode csv
-.header off
-.out ingested_not_retrieved.csv
-
-select distinct(a.obs_id) from
-  (select obs_id from ac where offline = -1) a
-left outer join
-  (select obs_id from ac where offline <> -1) b
-on b.obs_id = a.obs_id
-where b.obs_id is NULL;
-
-# import ingested and retrieved into the sqlite db
-create table inr(obs_id integer);
-create index inr_obs_id_idx on inr(obs_id);
+create table vis_new(obs_id integer, file_size integer);
+create index vis_new_obs_id_idx on vis_new(obs_id);
 .separator ","
-.import ingested_not_retrieved.csv inr
+.import all_vis_2017_12_06_from_1_July_2017.csv vis_new
 
-# join with the project table
+# sqlite getting file distribution by project id (joined with NGAS table) during the entire archive time
+select b.proj_id, sum(a.file_size) proj_size from vis a, opm b where a.obs_id = b.obs_id group by b.proj_id order by proj_size desc;
 
-select a.proj_id, count(c.ac_obsid) total_count from opm a,
-(select distinct(obs_id) as ac_obsid from ac where offline = -1) c
-where a.obs_id = c.ac_obsid
-group by a.proj_id
-order by a.proj_id
-
-select a.proj_id, count(b.obs_id) non_count from opm a, inr b
-where a.obs_id = b.obs_id
-group by a.proj_id
-order by a.proj_id
-
-select aa.proj_id, aa.total_count, ifnull(bb.non_count, 0) from
-(select a.proj_id, count(c.ac_obsid) total_count from opm a,
-(select distinct(obs_id) as ac_obsid from ac where offline = -1) c
-where a.obs_id = c.ac_obsid
-group by a.proj_id) aa
-left join
-(select a.proj_id, count(b.obs_id) non_count from opm a, inr b
-where a.obs_id = b.obs_id
-group by a.proj_id
-order by a.proj_id) bb
-on aa.proj_id = bb.proj_id
-order by aa.total_count desc
+# sqlite getting file distribution by project id (joined with NGAS table) in the last six months
+select b.proj_id, sum(a.file_size) proj_size from vis_new a, opm b where a.obs_id = b.obs_id group by b.proj_id order by proj_size desc;
 
 # sqlite getting file distribution by project id (joined with access table)
 select sum(a.file_size) proj_size, b.proj_id from ac a, opm b where a.offline = -1 and a.obs_id = b.obs_id group by b.proj_id order by proj_size desc;
@@ -107,3 +90,75 @@ select sum(a.file_size) proj_size, b.proj_id from ac a, opm b where a.offline = 
 
 # NGAS postgresql (archive volume by)
 select substring(file_id, 1, 10), file_size from ngas_files where disk_id <> '848575aeeb7a8a6b5579069f2b72282c';
+
+
+--- advanced options -------------
+# group IP address
+.mode csv
+.header off
+.out ip_count_june_2016.csv
+select user_ip, count(user_ip) ipc from ac where offline > -1 group by user_ip order by ipc desc;
+
+# source ~/pyws/bin/activate
+# python resolve_ip.py /Users/Chen/data/ngas_logs/ip_count_june_2016.csv /Users/Chen/data/ngas_logs/ip_map_june_2016.csv
+
+create table ipm(rg varchar(256), cc integer);
+.separator ","
+.import ip_map_june_2016.csv ipm
+
+
+select user_ip, sum(file_size) ipc from ac where offline > -1 group by user_ip order by ipc desc;
+
+create table ipvm(rg varchar(256), ss integer);
+.separator ","
+.import ip_vol_map_june_2016.csv ipvm
+
+# find all files belong to GLEAM or EOR
+# select a.file_size from ac a, opm b where a.offline > -1 and a.obs_id = b.obs_id and b.proj_id = 'G0009';
+select a.user_ip, sum(a.file_size) ipc from ac a, opm b where a.offline > -1 and a.obs_id = b.obs_id and b.proj_id = 'G0009' group by user_ip order by ipc desc;
+
+-- 3917462398121714,G0002
+-------
+# sqlite find out utilisation for each project
+.mode csv
+.header off
+.out ingested_not_retrieved.csv
+
+# import ingested and retrieved into the sqlite db
+create table inr(obs_id integer);
+create index inr_obs_id_idx on inr(obs_id);
+.separator ","
+.import ingested_not_retrieved.csv inr
+
+# join with the project table
+
+select a.proj_id, count(c.ac_obsid) total_count from opm a,
+(select distinct(obs_id) as ac_obsid from ac where offline = -1) c
+where a.obs_id = c.ac_obsid
+group by a.proj_id
+order by a.proj_id
+
+select a.proj_id, count(b.obs_id) non_count from opm a, inr b
+where a.obs_id = b.obs_id
+group by a.proj_id
+order by a.proj_id
+
+select aa.proj_id, aa.total_count, ifnull(bb.non_count, 0) from
+(select a.proj_id, count(c.ac_obsid) total_count from opm a,
+(select distinct(obs_id) as ac_obsid from ac where offline = -1) c
+where a.obs_id = c.ac_obsid
+group by a.proj_id) aa
+left join
+(select a.proj_id, count(b.obs_id) non_count from opm a, inr b
+where a.obs_id = b.obs_id
+group by a.proj_id
+order by a.proj_id) bb
+on aa.proj_id = bb.proj_id
+order by aa.total_count desc
+
+select distinct(a.obs_id) from
+  (select obs_id from ac where offline = -1) a
+left outer join
+  (select obs_id from ac where offline <> -1) b
+on b.obs_id = a.obs_id
+where b.obs_id is NULL;
