@@ -52,8 +52,8 @@ select b.proj_id, sum(a.file_size) proj_size from vis a, opm b where a.obs_id = 
 # sqlite getting file distribution by project id (joined with NGAS table) in the last six months
 select b.proj_id, sum(a.file_size) proj_size from vis_new a, opm b where a.obs_id = b.obs_id group by b.proj_id order by proj_size desc;
 
-# sqlite getting file distribution by project id (joined with access table)
-select sum(a.file_size) proj_size, b.proj_id from ac a, opm b where a.offline = -1 and a.obs_id = b.obs_id group by b.proj_id order by proj_size desc;
+# sqlite getting file distribution by project id (joined with access table)-retrieved by project
+select sum(a.file_size) proj_size, b.proj_id from ac a, opm b where a.offline <> -1 and a.obs_id = b.obs_id group by b.proj_id order by proj_size desc;
 -- 3917462398121714,G0002
 -- 2621903780153924,G0008
 -- 2551582246323487,G0009
@@ -88,7 +88,7 @@ select sum(a.file_size) proj_size, b.proj_id from ac a, opm b where a.offline = 
 -- 128215255272,G0019
 -- 99214529130,OA002
 
-# NGAS postgresql (archive volume by)
+# NGAS postgresql (archive volume by) ignores fe4 (vcs)
 select substring(file_id, 1, 10), file_size from ngas_files where disk_id <> '848575aeeb7a8a6b5579069f2b72282c';
 
 
