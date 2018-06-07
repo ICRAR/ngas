@@ -121,12 +121,26 @@ class ngamsHttpServer(socketserver.ThreadingMixIn,
         socketserver.ThreadingMixIn.process_request(self, request, client_address)
 
 
+class _atomic_counter(object):
+    """A simple atomic counter"""
+
+    def __init__(self, val):
+        self.val = val
+        self.lock = threading.Lock()
+
+    def inc(self):
+        with self.lock:
+            val = self.val
+            self.val += 1
+            return val
+
 class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
     Class used to handle an HTTP request.
     """
 
     server_version = "NGAMS/" + getNgamsVersion()
+    req_count = _atomic_counter(0)
 
     def setup(self):
 
@@ -137,6 +151,12 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # a sensible value)
         cfg = self.ngasServer.getCfg()
         self.timeout = cfg.getTimeOut() or 60
+
+        # Make the name of the current thread more unique
+        # This is important because we currently use the thread name to uniquely
+        # map log statements to individual requests. Log statements use
+        req_num = self.req_count.inc()
+        threading.current_thread().setName('R-%d' % req_num)
 
         BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
 
