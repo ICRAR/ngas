@@ -31,38 +31,12 @@
 Child class of ngamsServer crashing immediately after creating the Temp.
 Req. Prop. File.
 """
-
-import sys
-
 from ngamsServer import ngamsServer
 
 
 class ngamsSrvTestKillAfterTmpReqPropFile(ngamsServer.ngamsServer):
-    """
-    Child class of ngamsServer crashing immediately after creating the Temp.
-    Req. Prop. File.
-    """
-
-    def __init__(self):
-        """
-        Constructor method.
-        """
-        ngamsServer.ngamsServer.__init__(self)
-
-
     def test_AfterCreateTmpPropFile(self):
-        """
-        Sub-class of ngamsServer killing itself after creating Temp. Req.
-        Prop. File.
-        """
         self.killServer()
 
-
 if __name__ == '__main__':
-    """
-    Main program executing the test NG/AMS Server
-    """
-    ngamsTestSrv = ngamsSrvTestKillAfterTmpReqPropFile()
-    ngamsTestSrv.init(sys.argv)
-
-# EOF
+    ngamsServer.main(server_class=ngamsSrvTestKillAfterTmpReqPropFile)

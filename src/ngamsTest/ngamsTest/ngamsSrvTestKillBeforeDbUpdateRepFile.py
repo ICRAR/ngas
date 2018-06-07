@@ -31,39 +31,12 @@
 Child class of ngamsServer killing itself after creating the Replication File,
 before updating its info in the DB.
 """
-
-import sys
-
 from ngamsServer import ngamsServer
 
 
 class ngamsSrvTestKillBeforeDbUpdateRepFile(ngamsServer.ngamsServer):
-    """
-    Child class of ngamsServer killing itself after creating the Replication
-    File, before updating its info in the DB.
-    """
-
-    def __init__(self):
-        """
-        Constructor method.
-        """
-        ngamsServer.ngamsServer.__init__(self)
-
-
     def test_BeforeDbUpdateRepFile(self):
-        """
-        Tets method killing server.
-
-        Returns:  Void.
-        """
         self.killServer()
 
-
 if __name__ == '__main__':
-    """
-    Main program executing the test NG/AMS Server
-    """
-    ngamsTestSrv = ngamsSrvTestKillBeforeDbUpdateRepFile()
-    ngamsTestSrv.init(sys.argv)
-
-# EOF
+    ngamsServer.main(server_class=ngamsSrvTestKillBeforeDbUpdateRepFile)

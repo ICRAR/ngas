@@ -30,39 +30,12 @@
 """
 Child class of ngamsServer killing itself immediately before invoking the DAPI.
 """
-
-import sys
-
 from ngamsServer import ngamsServer
 
 
 class ngamsSrvTestBeforeDapiInvocation(ngamsServer.ngamsServer):
-    """
-    Child class of ngamsServer killing itself immediately before invoking
-    the DAPI.
-    """
-
-    def __init__(self):
-        """
-        Constructor method.
-        """
-        ngamsServer.ngamsServer.__init__(self)
-
-
     def test_BeforeDapiInvocation(self):
-        """
-        Tets method killing server.
-
-        Returns:  Void.
-        """
         self.killServer()
 
-
 if __name__ == '__main__':
-    """
-    Main program executing the test NG/AMS Server
-    """
-    ngamsTestSrv = ngamsSrvTestBeforeDapiInvocation()
-    ngamsTestSrv.init(sys.argv)
-
-# EOF
+    ngamsServer.main(server_class=ngamsSrvTestBeforeDapiInvocation)

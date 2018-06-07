@@ -53,8 +53,7 @@ def start(args, cfg, pidfile):
 
     # Go, go, go!
     with daemon.DaemonContext(pidfile=lockfile.pidlockfile.PIDLockFile(pidfile, timeout=1)):
-        ngamsSrv = ngamsServer.ngamsServer()
-        ngamsSrv.init(args)
+        ngamsServer.main(args=args[1:], prog='ngamsDaemon')
 
     return 0
 

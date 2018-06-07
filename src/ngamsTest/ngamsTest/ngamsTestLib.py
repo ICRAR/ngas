@@ -985,8 +985,8 @@ class ngamsTestSuite(unittest.TestCase):
         execCmd += ["-cfg", tmpCfg, "-v", str(verbose)]
         execCmd += ['-path', parent_dir]
         if force:        execCmd.append('-force')
-        if autoOnline:   execCmd.append("-autoOnline")
-        if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
+        if autoOnline:   execCmd.append("-autoonline")
+        if dbCfgName:    execCmd.extend(["-dbcfgid", dbCfgName])
 
         logger.info("Starting external NG/AMS Server in port %d with command: %s", port, " ".join(execCmd))
         with self._proc_startup_lock:

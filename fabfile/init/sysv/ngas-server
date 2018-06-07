@@ -36,7 +36,7 @@ case "$1" in
 		if [ "${CACHE}" = "YES" ]; then
 			OPTS="$OPTS -cache"
 		elif [ "${DATA_MOVER}" = "YES" ]; then
-			OPTS="$OPTS -dataMover"
+			OPTS="$OPTS -datamover"
 		fi
 		if [ "${AUTOONLINE}" = "YES" ]; then
 			OPTS="$OPTS -autoonline"

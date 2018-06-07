@@ -33,7 +33,6 @@ are handled.
 """
 
 import os
-import sys
 import time
 
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, \
@@ -158,13 +157,5 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
             time.sleep(0.250)
             self.killServer()
 
-
-
 if __name__ == '__main__':
-    """
-    Main program executing the special test NG/AMS Server
-    """
-    ngamsTestSrv = ngamsServerTestDynReqCallBack()
-    ngamsTestSrv.init(sys.argv)
-
-# EOF
+    ngamsServer.main(server_class=ngamsServerTestDynReqCallBack)

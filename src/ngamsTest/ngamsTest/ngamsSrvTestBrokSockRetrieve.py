@@ -31,10 +31,6 @@
 Special version of the NG/AMS Server class used to send back a non-sense
 (corrupted/illegal) HTTP response.
 """
-
-import sys
-
-from ngamsLib.ngamsCore import TRACE
 from ngamsServer import ngamsServer
 
 
@@ -54,7 +50,6 @@ def genReplyRetrieveFail(srvObj,
     methods are (and should continue to be identical apart from the section
     indicated below with 'TEST:').
     """
-    T = TRACE()
 
     # Send back reply with the result queried.
     try:
@@ -82,30 +77,10 @@ def genReplyRetrieveFail(srvObj,
         cleanUpAfterProc(statusObjList)
         raise e
 
-
-class ngamsServerTestBrokSockRetrieve(ngamsServer.ngamsServer):
-    """
-    Special version of the NG/AMS Server class used to send back a non-sense
-    (corrupted/illegal) HTTP response.
-    """
-
-    def __init__(self):
-        """
-        Constructor method.
-        """
-        ngamsServer.ngamsServer.__init__(self)
-        # Replace the function ngamsRetrieveCmd.genReplyRetrieve() used to
-        # reply to the RETRIEVE Command with the test version provoking a
-        # broken socket situation.
-        from ngamsServer import ngamsRetrieveCmd
-        ngamsRetrieveCmd.genReplyRetrieve = genReplyRetrieveFail
-
-
 if __name__ == '__main__':
-    """
-    Main program executing the special test NG/AMS Server
-    """
-    ngamsTestSrv = ngamsServerTestBrokSockRetrieve()
-    ngamsTestSrv.init(sys.argv)
-
-# EOF
+    # Replace the function ngamsRetrieveCmd.genReplyRetrieve() used to
+    # reply to the RETRIEVE Command with the test version provoking a
+    # broken socket situation.
+    from ngamsServer import ngamsRetrieveCmd
+    ngamsRetrieveCmd.genReplyRetrieve = genReplyRetrieveFail
+    ngamsServer.main()

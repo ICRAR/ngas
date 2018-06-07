@@ -31,37 +31,12 @@
 Child class of ngamsServer crashing immediately after receiving Staging
 File during Archive Request handling.
 """
-
-import sys
-
 from ngamsServer import ngamsServer
 
 
 class ngamsSrvTestKillAfterStagingFile(ngamsServer.ngamsServer):
-    """
-    Child class of ngamsServer crashing immediately after receiving Staging
-    File during Archive Request handling.
-    """
-
-    def __init__(self):
-        """
-        Constructor method.
-        """
-        ngamsServer.ngamsServer.__init__(self)
-
-
     def test_AfterSaveInStagingFile(self):
-        """
-        Sub-class of ngamsServer killing itself after receiving Staging File.
-        """
         self.killServer()
 
-
 if __name__ == '__main__':
-    """
-    Main program executing the test NG/AMS Server
-    """
-    ngamsTestSrv = ngamsSrvTestKillAfterStagingFile()
-    ngamsTestSrv.init(sys.argv)
-
-# EOF
+    ngamsServer.main(server_class=ngamsSrvTestKillAfterStagingFile)
