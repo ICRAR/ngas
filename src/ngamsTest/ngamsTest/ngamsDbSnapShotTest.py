@@ -317,7 +317,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         client.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
         client.get_status(NGAMS_REMDISK_CMD, pars = [["disk_id", diskId], ["execute", "1"]])
-        time.sleep(1)
+        time.sleep(2)
         _checkContDbSnapshot(self, 4, ["FitsStorage1-Main-1"])
 
 
