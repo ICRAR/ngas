@@ -39,7 +39,7 @@ iosize = 1073741824l    # default size of one test: 1 GB
 blocksize = 1024    # default size of IO blocks
 tcpsndbuf = None    # default tcp send buffer size
 dev = None              # no default for the actual device
-method = 'dd'           # default method for performing the tests
+method = 'myDD'           # default method for performing the tests
 pattern = 'abcd'        # default pattern to be used for writeTest
 bspeed = None
 old = 0
@@ -392,6 +392,11 @@ def writeTestDD(dev, skip, testcount, iosize, blocksize):
     blocksize = long(blocksize)/4 * 4   # blocksize multiple of 4
     iosize = long(iosize)/4 * 4   # blocksize multiple of 4
     iocount = iosize/blocksize
+    if dioflag:
+        blocksize = long(blocksize)/512 * 512   # blocksize multiple of 512
+        iosize = long(iosize)/512 * 512   # blocksize multiple of 512
+        iocount = iosize/blocksize
+
     bspeed = []
     cspeed = []
     tspeed = []
@@ -624,7 +629,7 @@ def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
                             m.seek(0, 0)
                             m.write(block)
                             os.write(fd, m)
-                            block = m
+                            #block = m
                         else:
                             os.write(fd, block)
                     else:
@@ -759,6 +764,10 @@ if __name__ == '__main__':
             llflag = 1
             if v == 'direct':
                 dioflag = 1
+                # DIRECT I/O only works with 512 mutiples
+                blocksize = long(blocksize)/512 * 512   # blocksize 512 multpl
+                iosize = long(iosize)/512 * 512   # blocksize multiple of 512
+                iocount = iosize/blocksize
             elif v == 'async':
                 asyncflag = 1
             elif v == 'sync':
