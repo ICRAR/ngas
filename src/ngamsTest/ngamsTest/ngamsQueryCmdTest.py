@@ -19,7 +19,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-from ngamsTestLib import sendPclCmd, ngamsTestSuite
+from .ngamsTestLib import sendPclCmd, ngamsTestSuite
 
 
 class ngamsQueryCmdTest(ngamsTestSuite):
@@ -62,4 +62,4 @@ class ngamsQueryCmdTest(ngamsTestSuite):
 
         # Check that the archived file is listed
         data = stat.getData()
-        self.assertTrue("TEST.2001-05-08T15:25:00.123" in data)
+        self.assertTrue(b"TEST.2001-05-08T15:25:00.123" in data)

@@ -29,7 +29,8 @@ This module provides an MapReduce framework for running NGAS jobs, task and othe
 A particular job type (i.e. RTS) should implement these interfaces
 """
 
-import threading, datetime
+import datetime
+import threading
 
 STATUS_NOT_STARTED = 0
 STATUS_STARTED = 1 # started (esp children), but itself has not been running yet
@@ -86,7 +87,7 @@ class MapReduceTask:
         self._endtime = None
         if (None == Id or '' == Id):
             errStr = 'Invalid task id: %s' % Id
-            raise Exception, errStr
+            raise Exception(errStr)
         self.__id = Id
         #self.__status = STATUS_NOT_STARTED # not running
         self.setReducer()
@@ -110,7 +111,7 @@ class MapReduceTask:
         if (len(self.__mapList) > 0):
             if (self.__reducer == None):
                 errStr = 'Reducer missing for the MRtask %s, which has at least one child mapper.' % str(self.getId())
-                raise Exception, errStr
+                raise Exception(errStr)
             mrThreads = []
             for mrTask in self.__mapList:
                 #parallelise this in a separate thread
@@ -323,10 +324,10 @@ class TestMRTask(MapReduceTask):
 
     def combine(self, mapOutput):
         self.__rednum += mapOutput
-        print '%s is combined: %s' % (self.getId(), str(self.__rednum))
+        print('%s is combined: %s' % (self.getId(), str(self.__rednum)))
 
     def reduce(self):
-        print '%s is reduced: %s' % (self.getId(), str(self.__rednum))
+        print('%s is reduced: %s' % (self.getId(), str(self.__rednum)))
         return self.__rednum
 
 class TestMRLeafTask(TestMRTask):
@@ -336,7 +337,7 @@ class TestMRLeafTask(TestMRTask):
         self.__mapnum = mapnum
 
     def map(self, mapInput = None):
-        print '%s is mapped' % self.getId()
+        print('%s is mapped' % self.getId())
         return self.__mapnum
 
 
@@ -364,7 +365,7 @@ def buildTestMRTask():
     mrtk0.setReducer(mrtk0) # set reducer to itself, but this could be omitted
 
     result = mrtk0.start()
-    print 'Final result = %s' % str(result)
+    print('Final result = %s' % str(result))
 
 class MRLocalTask():
     """

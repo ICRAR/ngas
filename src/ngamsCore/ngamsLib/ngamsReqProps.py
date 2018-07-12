@@ -38,14 +38,13 @@ import copy
 import logging
 import os
 import time
-import types
-import urllib
-import urlparse
 
-from ngamsCore import TRACE, NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
+
+from . import ngamsLib
+from .ngamsCore import TRACE, NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
     NGAMS_HTTP_POST, NGAMS_ARCHIVE_CMD, NGAMS_ARCH_REQ_MT, genLog,\
     NGAMS_UNKNOWN_MT, createSortDicDump, ignoreValue, prFormat1
-import ngamsLib
 
 
 logger = logging.getLogger(__name__)
@@ -108,7 +107,7 @@ class ngamsReqProps:
                 ["FileUri", self.getFileUri()],
                 ["SafeFileUri", self.getSafeFileUri()],
                 ["HttpParsDic", self.getHttpParsDic()],
-                ["HttpParNames", self.getHttpParNames()],
+                ["HttpParNames", list(self.getHttpParNames())],
                 ["BytesReceived", self.getBytesReceived()],
                 ["StagingFilename", self.getStagingFilename()],
                 ["IoTime", self.getIoTime()],
@@ -151,13 +150,13 @@ class ngamsReqProps:
         # Handle the HTTP headers.
         for key in headers.keys():
             keyTmp = key.lower()
-            val = urllib.unquote(headers[key])
+            val = urlparse.unquote(headers[key])
             logger.debug("Parsing HTTP header key: %s with value: %s", key, val)
-            self.__httpHdrDic[key] = val
+            self.__httpHdrDic[key.lower()] = val
             if (keyTmp == "content-disposition"):
                 pars = ngamsLib.parseHttpHdr(headers[key])
                 for name, val in pars.items():
-                    val = urllib.unquote(val)
+                    val = urlparse.unquote(val)
                     if name == "filename":
                         self.setFileUri(os.path.basename(val))
                     elif name == "mime_type":
@@ -172,10 +171,10 @@ class ngamsReqProps:
             elif (keyTmp == "content-length"):
                 self.setSize(val.strip(" \""))
             elif (keyTmp == "authorization"):
-                self.setAuthorization(urllib.unquote(val.strip()))
+                self.setAuthorization(urlparse.unquote(val.strip()))
 
         # Handle the information in the path.
-        path,query = urllib.splitquery(path)
+        path,query = urlparse.splitquery(path)
         self.setCmd(path.lstrip('/'))
         if (query):
             parList = urlparse.parse_qsl(query)
@@ -197,15 +196,15 @@ class ngamsReqProps:
             ((self.getMimeType() == "") or
              ((self.getMimeType() == NGAMS_ARCH_REQ_MT)))):
             if (self.getFileUri().strip() == ""):
-                raise Exception, genLog("NGAMS_ER_CMD_EXEC",
+                raise Exception(genLog("NGAMS_ER_CMD_EXEC",
                                         [NGAMS_ARCHIVE_CMD,
-                                         "Missing parameter: filename"])
+                                         "Missing parameter: filename"]))
             mimeType = ngamsLib.detMimeType(ngamsCfgObj.getMimeTypeMappings(),
                                             self.getFileUri(), 1)
             if (mimeType == NGAMS_UNKNOWN_MT):
                 errMsg = genLog("NGAMS_ER_UNKNOWN_MIME_TYPE1",
                                 [self.getFileUri()])
-                raise Exception, errMsg
+                raise Exception(errMsg)
             else:
                 self.setMimeType(mimeType)
 
@@ -217,7 +216,7 @@ class ngamsReqProps:
             if (not ngamsCfgObj.getStreamFromMimeType(self.getMimeType())):
                 errMsg = genLog("NGAMS_ER_UNKNOWN_MIME_TYPE2",
                                 [self.getMimeType(), self.getFileUri()])
-                raise Exception, errMsg
+                raise Exception(errMsg)
 
         return self
 
@@ -238,7 +237,7 @@ class ngamsReqProps:
         Returns:      1 if referenced HTTP header was contained in the
                       request otherwise 0 (integer/0|1).
         """
-        return self.__httpHdrDic.has_key(httpHdr.lower())
+        return httpHdr.lower() in self.__httpHdrDic
 
 
     def getHttpHdr(self,
@@ -370,7 +369,7 @@ class ngamsReqProps:
         """
         if fileUri == "(null)":
             fileUri = "null"
-        self.__fileUri = urllib.unquote(str(fileUri))
+        self.__fileUri = urlparse.unquote(str(fileUri))
         self.__safeFileUri = ngamsLib.hidePassword(self.__fileUri)
         return self
 
@@ -441,7 +440,7 @@ class ngamsReqProps:
         Returns:    1 if parameter is contained in object,
                     otherwise 0 (integer).
         """
-        return self.__httpPars.has_key(httpPar)
+        return httpPar in self.__httpPars
 
 
     def getHttpPar(self,
@@ -653,9 +652,9 @@ class ngamsReqProps:
         objStat = self.getObjStatus()
         for fieldName, val in objStat:
             if (not ignoreValue(ignoreUndefFields, val)):
-                if (type(val) == types.DictType):
+                if isinstance(val, dict):
                     val2 = createSortDicDump(val)
-                elif (type(val) == types.ListType):
+                elif isinstance(val, list):
                     val2 = str(val.sort())
                     val2 = copy.deepcopy(val)
                     val2.sort()

@@ -36,7 +36,7 @@ import traceback
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_CLONE_CMD
 from ngamsLib import ngamsFileInfo, ngamsLib
-from ngamsTestLib import flushEmailQueue, saveInFile, \
+from .ngamsTestLib import flushEmailQueue, saveInFile, \
     filterDbStatus1, getEmailMsg, ngamsTestSuite, waitReqCompl, genErrMsgVals, \
     sendPclCmd, unzip, genTmpFilename
 
@@ -76,7 +76,7 @@ def _sortRepFileList(report):
 
     Returns:   Sorted Clone Status Report (string).
     """
-    print report
+    print(report)
     try:
         sortBuf = ""
         repLines = report.split("\n")
@@ -99,9 +99,9 @@ def _sortRepFileList(report):
         for line in repLines[idx:]:
             sortBuf += line + "\n"
         return sortBuf
-    except Exception, e:
+    except:
         traceback.print_exc()
-        raise Exception, "Wrong format of Clone Status Report"
+        raise Exception("Wrong format of Clone Status Report")
 
 
 def _execCloneTest(testObj,

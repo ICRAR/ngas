@@ -33,8 +33,8 @@
 Contains the ngamsConfigBase class to handle the NG/AMS Configuration.
 """
 
-from ngamsCore import TRACE, genLog
-import ngamsXmlMgr
+from . import ngamsXmlMgr
+from .ngamsCore import TRACE, genLog
 
 
 class ngamsConfigBase:
@@ -104,7 +104,7 @@ class ngamsConfigBase:
         """
         if (xmlDicKey.find("NgamsCfg") != 0):
             xmlDicKey = "NgamsCfg." + xmlDicKey
-        if (self.getXmlDic().has_key(xmlDicKey)):
+        if xmlDicKey in self.getXmlDic():
             return str(self.getXmlDic()[xmlDicKey].getValue())
         else:
             return None
@@ -147,9 +147,9 @@ class ngamsConfigBase:
         try:
             self.__xmlMgr.load(xmlDoc)
             self.setXmlDoc(xmlDoc)
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_LOAD_CFG", [xmlDoc, str(e)])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         return self
 
 
@@ -248,7 +248,7 @@ class ngamsConfigBase:
                    (ngamsElement|ngamsAttribute|None).
         """
         if (objPath.find("NgamsCfg") != 0): objPath = "NgamsCfg." + objPath
-        if (self.getXmlDic().has_key(objPath)):
+        if objPath in self.getXmlDic():
             return self.getXmlDic()[objPath]
         else:
             return None
@@ -269,8 +269,8 @@ class ngamsConfigBase:
         T = TRACE()
 
         if (not self.__dbObj):
-            raise Exception, "No DB connection object associated to " +\
-                  "ngamsConfigBase object. Cannot access DB!"
+            raise Exception("No DB connection object associated to " +\
+                  "ngamsConfigBase object. Cannot access DB!")
         cfgPars = self.__dbObj.getCfgPars(name)
         xmlDic = {}
         for cfgParInfo in cfgPars:
@@ -289,7 +289,7 @@ class ngamsConfigBase:
                 tmpObj = ngamsXmlMgr.ngamsElement(elName, value, comment,
                                                   groupId)
             xmlDic[key] = tmpObj
-        if (not xmlDic.has_key("NgamsCfg")):
+        if "NgamsCfg" not in xmlDic:
             xmlDic["NgamsCfg"] = ngamsXmlMgr.ngamsElement("NgamsCfg", "")
         self.__xmlMgr.digestXmlDic(xmlDic, clear)
         return self
@@ -304,10 +304,10 @@ class ngamsConfigBase:
         T = TRACE()
 
         if (not self.__dbObj):
-            raise Exception, "No DB connection object associated to " +\
-                  "ngamsConfigBase object. Cannot access DB!"
+            raise Exception("No DB connection object associated to " +\
+                  "ngamsConfigBase object. Cannot access DB!")
         xmlDic = self.__xmlMgr.getXmlDic()
-        xmlDicKeys = xmlDic.keys()
+        xmlDicKeys = list(xmlDic)
         xmlDicKeys.sort()
         for xmlDicKey in xmlDicKeys:
             obj = xmlDic[xmlDicKey]

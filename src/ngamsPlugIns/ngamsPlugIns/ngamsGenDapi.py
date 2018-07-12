@@ -91,9 +91,9 @@ def extract_compression_params(reqPropsObj, plugin_pars):
         plugin_pars[COMPRESSION_EXT] = reqPropsObj[COMPRESSION_EXT]
     if ((plugin_pars[COMPRESSION] and plugin_pars[COMPRESSION_EXT] is None) or
         (not plugin_pars[COMPRESSION] and plugin_pars[COMPRESSION_EXT] is not None)):
-        raise Exception, genLog("NGAMS_ER_DAPI",
+        raise Exception(genLog("NGAMS_ER_DAPI",
                                 ["Parameters compression and compression_ext"
-                                 "must be given together."])
+                                 "must be given together."]))
 
 def handlePars(reqPropsObj,
                parDic):
@@ -309,7 +309,7 @@ def ngamsGenDapi(srvObj,
                                                  compression, relPath,
                                                  diskInfo.getSlotId(),
                                                  fileExists, complFilename)
-    except Exception, e:
+    except Exception as e:
         msg = "Error occurred in DAPI: %s" % str(e)
         logger.error(msg)
         raise Exception(genLog("NGAMS_ER_DAPI_RM", [msg]))

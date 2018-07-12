@@ -31,10 +31,10 @@
 This module contains the Test Suite for the NG/AMS Janitor Thread.
 """
 
-from ngamsTestLib import ngamsTestSuite
+from . import ngamsTestLib
 
 
-class ngamsJanitorThreadTest(ngamsTestSuite):
+class ngamsJanitorThreadTest(ngamsTestLib.ngamsTestSuite):
     """
     Synopsis:
     Test Suite NG/AMS Janitor Thread.

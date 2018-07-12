@@ -37,15 +37,14 @@ import shutil
 import socket
 import time
 
-from ngamsLib import ngamsDppiStatus, ngamsHttpUtils
-from ngamsLib import ngamsHighLevelLib, ngamsLib
+from ngamsLib import ngamsDppiStatus
 from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize, \
-    TRACE, genLog, NGAMS_PROC_FILE, NGAMS_HTTP_SUCCESS, NGAMS_PROC_DATA, \
+    TRACE, genLog, NGAMS_PROC_FILE, \
     NGAMS_HOST_LOCAL, \
-    NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, checkCreatePath, NGAMS_RETRIEVE_CMD, \
-    NGAMS_PROC_STREAM, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
+    NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, \
+    NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
-import ngamsSrvUtils, ngamsFileUtils, pysendfile
+from . import ngamsFileUtils
 
 
 logger = logging.getLogger(__name__)
@@ -130,7 +129,7 @@ def performProcessing(srvObj,
         # is supported by this NG/AMS.
         if dppi not in srvObj.getCfg().dppi_plugins:
             errMsg = genLog("NGAMS_ER_ILL_DPPI", [dppi])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         # Invoke the DPPI.
         logger.info("Invoking DPPI: %s to process file: %s", dppi, filename)
         plugInMethod = loadPlugInEntryPoint(dppi)
@@ -303,32 +302,15 @@ def _handleCmdRetrieve(srvObj,
     elif location in (NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE) and \
          srvObj.getCfg().getProxyMode():
 
-        logger.debug("NG/AMS Server acting as proxy - requesting file with ID: %s " +\
+        logger.info("NG/AMS Server acting as proxy - requesting file with ID: %s " +\
                      "from NG/AMS Server on host/port: %s/%s",
                      fileId, host, str(port))
 
         # Act as proxy - get the file from the NGAS host specified and
         # send back the contents. The file is temporarily stored in the
         # Processing Area.
-        procDir = ngamsHighLevelLib.genProcDirName(srvObj.getCfg())
-        checkCreatePath(procDir)
-        pars = []
-        for par in reqPropsObj.getHttpParNames():
-            pars.append([par, reqPropsObj.getHttpPar(par)])
-
-        authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
         timeout = float(reqPropsObj['timeout']) if 'timeout' in reqPropsObj else 60
-        conn = ngamsHttpUtils.httpGet(ipAddress, port, NGAMS_RETRIEVE_CMD, pars=pars,
-                                timeout=timeout, auth=authHdr)
-
-        hdrs = {h[0]: h[1] for h in conn.getheaders()}
-        dataSize = int(hdrs["content-length"])
-
-        tmpPars = ngamsLib.parseHttpHdr(hdrs["content-disposition"])
-        dataFilename = tmpPars["filename"]
-
-        data = ngamsHttpUtils.sizeaware(conn, dataSize)
-        httpRef.send_data(data, mimeType, fname=dataFilename)
+        httpRef.proxy_request(host, ipAddress, port, timeout=timeout)
         return
 
     else:

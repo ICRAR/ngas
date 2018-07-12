@@ -42,7 +42,8 @@ import re
 import struct
 import time
 
-import ngamsSrvUtils
+import six
+
 from ngamsLib import ngamsDbCore, ngamsDiskInfo, ngamsStatus, \
     ngamsHttpUtils, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib
@@ -50,6 +51,7 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
     NGAMS_STATUS_CMD, NGAMS_CACHE_DIR, \
     NGAMS_DATA_CHECK_THR, getFileSize, loadPlugInEntryPoint
+from . import ngamsSrvUtils
 
 _crc32c_available = True
 try:
@@ -98,7 +100,7 @@ def _locateArchiveFile(srvObj,
         if (diskId): tmpFileRef += "/Disk ID: " + diskId
         if (hostId): tmpFileRef += "/Host ID: " + hostId
         errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [tmpFileRef])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # We now sort the file information sub-lists in the file list.
     # The priori is as follows:
@@ -152,11 +154,11 @@ def _locateArchiveFile(srvObj,
         for fileInfo in fileList:
             fileVer = fileInfo[0].getFileVersion()
             # Create a list in connection with each File Version key.
-            if (not candFileDic.has_key(fileVer)): candFileDic[fileVer] = []
+            if fileVer not in candFileDic:
+                candFileDic[fileVer] = []
             candFileDic[fileVer].append([location, fileInfo[0], fileInfo[1]])
-    fileVerList = candFileDic.keys()
-    fileVerList.sort()
-    fileVerList.reverse()
+    fileVerList = list(candFileDic)
+    fileVerList.sort(reverse=True)
     if logger.level <= logging.DEBUG:
         msg = ""
         count = 1
@@ -175,7 +177,7 @@ def _locateArchiveFile(srvObj,
         else:
             fileRef = fileId
         errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [fileRef])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # We generate a list with the Disk IDs (which we need later).
     # Generate a dictionary with Disk Info Objects.
@@ -183,7 +185,7 @@ def _locateArchiveFile(srvObj,
     for fileVer in fileVerList:
         for fileInfo in candFileDic[fileVer]:
             diskIdDic[fileInfo[1].getDiskId()] = fileInfo[1].getDiskId()
-    sqlDiskInfo = srvObj.getDb().getDiskInfoFromDiskIdList(diskIdDic.keys())
+    sqlDiskInfo = srvObj.getDb().getDiskInfoFromDiskIdList(list(diskIdDic))
     diskInfoDic = {}
     for diskInfo in sqlDiskInfo:
         diskInfoObj = ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(diskInfo)
@@ -281,7 +283,7 @@ def _locateArchiveFile(srvObj,
     # If no file was found we raise an exception.
     if (not foundFile):
         errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [fileId])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # The file was found, get the info necessary for the acquiring the file.
     ipAddress = hostDic[host].getIpAddress()
@@ -497,7 +499,7 @@ def checkFile(srvObj,
                     logger.info("Checked %s in %.4f [s] using %s. Check ran at %.3f [MB/s]. Checksum file/db:  %s / %s",
                                 filename, duration, str(crc_variant), fsize_mb / duration,
                                 str(checksumFile), checksumDb)
-                except Exception, e:
+                except Exception:
                     # We assume an IO error:
                     # "[Errno 2] No such file or directory"
                     # This problem has already been registered further
@@ -567,10 +569,10 @@ def syncCachesCheckFiles(srvObj,
             logger.warning("No Disk Sync Plug-In defined - consider to provide one!")
         #commands.getstatusoutput("sync")
         for file in filenames: os.stat(file)
-    except Exception, e:
+    except Exception as e:
         errMsg = "Severe error occurred! Could not sync file caches or " +\
                  "file not accessible! Error: " + str(e)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 CHECKSUM_NULL = -1
@@ -586,7 +588,7 @@ def _normalize_variant(variant_or_name):
         variant = CHECKSUM_NULL
 
     # A plug-in name or variant name
-    elif isinstance(variant, basestring):
+    elif isinstance(variant, six.string_types):
         # In NGAS versions <= 8 the CRC was calculated as a separate step after
         # archiving a file, and therefore was loaded as a plugin that received a
         # filename when invoked.
@@ -631,16 +633,15 @@ def get_checksum_info(variant_or_name):
         # python version binascii.crc32 returns signed or unsigned values.
         # python version <2.6 returned signed/unsigned depending on the platform,
         # 2.6+ returns always signed, 3+ returns always unsigned).
-        # Since we support Python 2.7 only we assume values are signed,
-        # but this will bite us in the future
-        return checksum_info(0, binascii.crc32, lambda x: x, lambda x: struct.unpack('!i', x), _filter_none(lambda x, y: (int(x) & 0xffffffff) == (int(y) & 0xffffffff)))
+        fmt = '!i' if six.PY2 else '!I'
+        return checksum_info(0, binascii.crc32, lambda x: x, lambda x: struct.unpack(fmt, x)[0], _filter_none(lambda x, y: (int(x) & 0xffffffff) == (int(y) & 0xffffffff)))
     elif variant == CHECKSUM_CRC32C:
         if not _crc32c_available:
             raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
-        return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x), _filter_none(lambda x, y: int(x) == int(y)))
+        return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x)[0], _filter_none(lambda x, y: int(x) == int(y)))
     elif variant == CHECKSUM_CRC32Z:
         # A consistent way of using binascii.crc32.
-        return checksum_info(0, binascii.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x), _filter_none(lambda x, y: int(x) == int(y)))
+        return checksum_info(0, binascii.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x)[0], _filter_none(lambda x, y: int(x) == int(y)))
     raise Exception('Unknown CRC variant: %r' % (variant_or_name,))
 
 def get_checksum_name(variant_or_name):
@@ -678,7 +679,7 @@ def get_checksum(blocksize, fin, checksum_variant):
     # fin can be a filename, in which case we open (and then close) it
     my_fileobj = None
     fileobj = fin
-    if isinstance(fin, basestring):
+    if isinstance(fin, six.string_types):
         my_fileobj = fileobj = open(fin, 'rb')
 
     # Read and checksum, thank you very much
@@ -717,7 +718,7 @@ def get_checksum_interruptible(blocksize, filename, checksum_variant,
     crc_m = crc_info.method
     crc = crc_info.init
     with open(filename, 'rb') as f:
-        for block in iter(functools.partial(f.read, blocksize), ''):
+        for block in iter(functools.partial(f.read, blocksize), b''):
             checksum_allow_evt.wait()
             if checksum_stop_evt.is_set():
                 return

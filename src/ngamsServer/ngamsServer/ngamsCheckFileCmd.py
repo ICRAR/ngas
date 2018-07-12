@@ -35,7 +35,7 @@ Contains the functions to handle the CHECKFILE command.
 
 import logging
 
-import ngamsFileUtils
+from . import ngamsFileUtils
 from ngamsLib import ngamsDbCore
 from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, genLog, NGAMS_HOST_CLUSTER
 
@@ -73,7 +73,7 @@ def handleCmd(srvObj,
     # At least File ID must be specified (File Version is defaulted to 1).
     if (not fileId):
         errMsg = "Must specify a File ID for the CHECKFILE command."
-        raise  Exception, errMsg
+        raise  Exception(errMsg)
 
     # Get the info for the file matching the query.
     fileLocInfo = ngamsFileUtils.locateArchiveFile(srvObj, fileId, fileVersion,

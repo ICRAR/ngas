@@ -108,11 +108,11 @@ def ngamsGenericOnlinePlugIn(srvObj,
             capGb      = -1
             model      = NGAS_VOL_INFO_IGNORE
             serialNo   = NGAS_VOL_INFO_IGNORE
-            if (volInfoDic.has_key(NGAS_VOL_INFO_TYPE)):
+            if NGAS_VOL_INFO_TYPE in volInfoDic:
                 diskType = volInfoDic[NGAS_VOL_INFO_TYPE]
             else:
                 diskType = NGAS_VOL_INFO_IGNORE
-            if (volInfoDic.has_key(NGAS_VOL_INFO_MANUFACT)):
+            if NGAS_VOL_INFO_MANUFACT in volInfoDic:
                 manufact = volInfoDic[NGAS_VOL_INFO_MANUFACT]
             else:
                 manufact = NGAS_VOL_INFO_IGNORE

@@ -72,11 +72,11 @@ def specificTreatment(fo):
     try:
         message = rfc822.Message(fo)
         type, tparams = cgi.parse_header(message["Content-Type"])
-    except Exception, e:
+    except Exception as e:
         err = "Parsing of mime message failed: " + str(e)
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
                                                    _PLUGIN_ID, err])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     try:
        almaUid, aparams = cgi.parse_header(message["alma-uid"])
     except:
@@ -84,13 +84,13 @@ def specificTreatment(fo):
         err = "Mandatory alma-uid parameter not found in mime header!"
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
                                                _PLUGIN_ID, err])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     if not uidTempl.match(almaUid):
         err = "Invalid alma-uid found: " + almaUid
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
                                                _PLUGIN_ID, err])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 # Now, build final filename. We do that by looking for the UID in
 # the message mime-header.
@@ -108,11 +108,11 @@ def specificTreatment(fo):
 #        if os.path.splitext(finalFileName)[-1] != _EXT:
 #            finalFileName += _EXT
 
-    except Exception, e:
+    except Exception as e:
         err = "Problem constructing final file name: " + str(e)
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
                                                _PLUGIN_ID, err])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
     return (fileId, finalFileName, type)
@@ -191,20 +191,20 @@ def ngamsAlmaMultipart(srvObj,
                                                  compression, relPath,
                                                  diskInfo.getSlotId(),
                                                  fileExists, complFilename)
-    except Exception, e:
+    except Exception as e:
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(stagingFilename),
                                                    _PLUGIN_ID, str(e)])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
-        print "Usage: ngamsAlmaMultipart.py <test_file>"
+        print("Usage: ngamsAlmaMultipart.py <test_file>")
         sys.exit()
     try:
         fo = open(sys.argv[1],'r')
         (file_id,fileName, type) = specificTreatment(fo)
-        print file_id, fileName, type
+        print(file_id, fileName, type)
     except:
         raise
 

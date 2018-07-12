@@ -33,10 +33,10 @@ Function + code to handle the OFFLINE command.
 
 import logging
 
+from . import ngamsSrvUtils
 from ngamsLib.ngamsCore import \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_OFFLINE_STATE, \
     NGAMS_BUSY_SUBSTATE
-import ngamsSrvUtils
 
 
 logger = logging.getLogger(__name__)

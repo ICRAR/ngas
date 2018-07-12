@@ -41,7 +41,7 @@ import smtplib
 import time
 
 from ngamsLib.ngamsCore import getHostName, getFileCreationTime, \
-    NGAMS_STATUS_CMD, NGAMS_NOT_RUN_STATE, NGAMS_COPYRIGHT_TEXT
+    NGAMS_STATUS_CMD, NGAMS_NOT_RUN_STATE, ngamsCopyrightString
 from ngamsPClient import ngamsPClient
 
 
@@ -506,7 +506,7 @@ def genOptDicAndDoc(toolOptions):
                                    str(optInfo[NGAS_OPT_VAL]),
                                    optInfo[NGAS_OPT_TYPE])
             optDoc += optInfo[NGAS_OPT_DOC] + "\n\n"
-    optDoc += "\n" + NGAMS_COPYRIGHT_TEXT
+    optDoc += "\n" + ngamsCopyrightString()
     return (optDic, optDoc)
 
 

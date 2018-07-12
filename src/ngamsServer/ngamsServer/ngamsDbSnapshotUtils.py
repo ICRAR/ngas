@@ -24,12 +24,13 @@ A collection of methods used to deal with the DbSnapshot feature and its
 bits and pieces
 """
 
-import cPickle
 import glob
 import logging
 import os
 import time
-import types
+
+import six
+from six.moves import cPickle # @UnresolvedImport
 
 from ngamsLib import ngamsDbCore, ngamsLib, ngamsFileInfo, ngamsHighLevelLib, \
     ngamsDbm, ngamsNotification
@@ -37,7 +38,7 @@ from ngamsLib.ngamsCore import NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, \
     checkCreatePath, NGAMS_DB_CH_CACHE, rmFile, NGAMS_PICKLE_FILE_EXT, \
     NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, \
     toiso8601, NGAMS_NOTIF_DATA_CHECK, NGAMS_TEXT_MT
-from ngamsJanitorCommon import checkStopJanitorThread, StopJanitorThreadException
+from .ngamsJanitorCommon import checkStopJanitorThread, StopJanitorThreadException
 
 
 try:
@@ -65,6 +66,7 @@ def _addInDbm(snapShotDbObj,
 
     Returns:          Void.
     """
+    key = ngamsDbm._ensure_binary(key)
     snapShotDbObj[key] = cPickle.dumps(val, 1)
     if (sync): snapShotDbObj.sync()
 
@@ -80,15 +82,16 @@ def _readDb(snapShotDbObj,
 
     Returns:         Void.
     """
+    key = ngamsDbm._ensure_binary(key)
     return cPickle.loads(snapShotDbObj[key])
 
 
 ##############################################################################
 # DON'T CHANGE THESE IDs!!!
 ##############################################################################
-NGAMS_SN_SH_ID2NM_TAG   = "___ID2NM___"
-NGAMS_SN_SH_NM2ID_TAG   = "___NM2ID___"
-NGAMS_SN_SH_MAP_COUNT   = "___MAP_COUNT___"
+NGAMS_SN_SH_ID2NM_TAG   = b"___ID2NM___"
+NGAMS_SN_SH_NM2ID_TAG   = b"___NM2ID___"
+NGAMS_SN_SH_MAP_COUNT   = b"___MAP_COUNT___"
 
 def _encName(dbSnapshot,
              name):
@@ -109,7 +112,7 @@ def _encName(dbSnapshot,
 
     Returns:         The ID allocated to that name (integer).
     """
-    nm2IdTag = NGAMS_SN_SH_NM2ID_TAG + name
+    nm2IdTag = NGAMS_SN_SH_NM2ID_TAG + six.b(name)
     if (dbSnapshot.has_key(nm2IdTag)):
         nameId = _readDb(dbSnapshot, nm2IdTag)
     else:
@@ -118,25 +121,25 @@ def _encName(dbSnapshot,
         else:
             count = 0
         nameId = count
-        id2NmTag = NGAMS_SN_SH_ID2NM_TAG + str(nameId)
+        id2NmTag = NGAMS_SN_SH_ID2NM_TAG + six.b(str(nameId))
 
         # Have to ensure that all three keys are entered in the DBM (this might
         # not be the right way, maybe there is something that can be done at
         # bsddb level.
         try:
             _addInDbm(dbSnapshot, NGAMS_SN_SH_MAP_COUNT, count)
-        except Exception, e:
+        except:
             _addInDbm(dbSnapshot, NGAMS_SN_SH_MAP_COUNT, count)
             _addInDbm(dbSnapshot, nm2IdTag, nameId)
             _addInDbm(dbSnapshot, id2NmTag, name, 1)
-            raise e
+            raise
         try:
             _addInDbm(dbSnapshot, nm2IdTag, nameId)
-        except Exception, e:
+        except:
             _addInDbm(dbSnapshot, NGAMS_SN_SH_MAP_COUNT, count)
             _addInDbm(dbSnapshot, nm2IdTag, nameId)
             _addInDbm(dbSnapshot, id2NmTag, name, 1)
-            raise e
+            raise
         _addInDbm(dbSnapshot, id2NmTag, name, 1)
 
     return nameId
@@ -184,8 +187,7 @@ def _genFileKey(fileInfo):
 
     Returns:        File key (string).
     """
-    if ((type(fileInfo) == types.ListType) or
-        (type(fileInfo) == types.TupleType)):
+    if isinstance(fileInfo, (list, tuple)):
         fileId  = fileInfo[ngamsDbCore.NGAS_FILES_FILE_ID]
         fileVer = fileInfo[ngamsDbCore.NGAS_FILES_FILE_VER]
     else:
@@ -325,12 +327,8 @@ def checkDbChangeCache(srvObj,
 
         # Sort files by their creation date, to ensure we apply
         # the DB changes in the order they were generated
-        def creation_date_cmp(x, y):
-            d1 = os.stat(x).st_ctime
-            d2 = os.stat(y).st_ctime
-            return 0 if d1 == d2 else 1 if d1 > d2 else -1
         tmpCacheFiles = glob.glob(dbCacheFilePat)
-        tmpCacheFiles.sort(cmp=creation_date_cmp)
+        tmpCacheFiles.sort(key=lambda x: os.stat(x).st_ctime)
 
         cacheStatObj = None
         count = 0
@@ -345,7 +343,7 @@ def checkDbChangeCache(srvObj,
                 continue
 
             cacheStatObj = ngamsLib.loadObjPickleFile(cacheFile)
-            if (isinstance(cacheStatObj, types.ListType)):
+            if isinstance(cacheStatObj, list):
                 # A list type in the Temporary DB Snapshot means that the
                 # file has been removed.
                 cacheStatList = cacheStatObj
@@ -365,7 +363,7 @@ def checkDbChangeCache(srvObj,
 
             # Loop over the files in the temporary snapshot.
             for tmpFileInfoObj in tmpFileInfoObjList:
-                fileKey = _genFileKey(tmpFileInfoObj)
+                fileKey = ngamsDbm._ensure_binary(_genFileKey(tmpFileInfoObj))
                 fileInfoList = tmpFileInfoObj.genSqlResult()
                 encFileInfoDic = _encFileInfo(srvObj.getDb(), snapshotDbm,
                                               fileInfoList)
@@ -487,7 +485,7 @@ def _encFileInfo2Obj(dbConObj,
         sqlFileInfo.append(None)
     idxKeys = encFileInfoDic.keys()
     for idx in idxKeys:
-        kid = NGAMS_SN_SH_ID2NM_TAG + str(idx)
+        kid = NGAMS_SN_SH_ID2NM_TAG + six.b(str(idx))
         if (not dbSnapshot.has_key(kid)):
             logger.warning("dbSnapshot has no key '%s', is it corrupted?", str(kid))
             return None
@@ -595,7 +593,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
             count = 0
             try:
                 key, pickleValue = snapshotDbm.first()
-            except Exception, e:
+            except Exception as e:
                 msg = "Exception raised accessing DB Snapshot for disk: %s. " +\
                       "Error: %s"
                 logger.debug(msg, diskId, str(e))
@@ -620,7 +618,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                 value = cPickle.loads(pickleValue)
 
                 # Check if an administrative element, if yes add it if necessary.
-                if (key.find("___") != -1):
+                if b"___" in key:
                     if (not tmpSnapshotDbm.has_key(key)):
                         tmpSnapshotDbm[key] = pickleValue
                 else:
@@ -695,7 +693,8 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
             #    if (not key): break
             for key,value in snapshotDelDbm.iteritems():
                 # jagonzal: We need to reformat the values and skip administrative elements #################
-                if (str(key).find("__") != -1): continue
+                if b'__' in key:
+                    continue
                 #############################################################################################
                 msg = "Removing entry: %s from DB Snapshot for disk with ID: %s"
                 logger.debug(msg, key, diskId)
@@ -718,7 +717,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
             count = 0
             try:
                 key, pickleValue = tmpSnapshotDbm.first()
-            except Exception, e:
+            except:
                 key = None
                 tmpSnapshotDbm.dbc = None
 
@@ -731,7 +730,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                 value = cPickle.loads(pickleValue)
 
                 # Check if it is an administrative element, if yes add it if needed
-                if (key.find("___") != -1):
+                if b"___" in key:
                     if (not snapshotDbm.has_key(key)):
                         snapshotDbm[key] = pickleValue
                 else:

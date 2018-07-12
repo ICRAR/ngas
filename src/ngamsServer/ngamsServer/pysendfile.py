@@ -31,11 +31,19 @@ import io
 import os
 import select
 import socket
+import sys
 
+# sendfile is provided via os.sendfile in python3.3+, or via the pysendfile
+# distribution, but only in posix systems
+os_sendfile = None
 if os.name == 'posix':
-    import sendfile as pysendfile
-else:
-    pysendfile = None
+    if sys.version_info[0] == 3:
+        os_sendfile = os.sendfile
+    else:
+        try:
+            from sendfile import sendfile as os_sendfile  # @UnresolvedImport
+        except ImportError:
+            pass
 
 
 _RETRY = frozenset((errno.EAGAIN, errno.EALREADY, errno.EWOULDBLOCK,
@@ -46,7 +54,7 @@ class _GiveupOnSendfile(Exception):
     pass
 
 
-if pysendfile is not None:
+if os_sendfile is not None:
 
     def _sendfile_use_sendfile(sock, file, offset=0, count=None):
         _check_sendfile_params(sock, file, offset, count)
@@ -92,8 +100,6 @@ if pysendfile is not None:
                     raise socket._socket.timeout('timed out')
 
         total_sent = 0
-        # localize variable access to minimize overhead
-        os_sendfile = pysendfile.sendfile
         try:
             while True:
                 if timeout:

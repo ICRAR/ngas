@@ -34,17 +34,18 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-import cPickle
 import collections
 import logging
 import os
 import re
 import tempfile
 
-from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE
-from ngamsCore import rmFile, getNgamsVersion, toiso8601, fromiso8601, mvFile
-import ngamsDbCore
-import ngamsFileInfo, ngamsStatus, ngamsFileList
+import six
+from six.moves import cPickle  # @UnresolvedImport
+
+from . import ngamsDbCore, ngamsFileInfo, ngamsStatus, ngamsFileList
+from .ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE
+from .ngamsCore import rmFile, getNgamsVersion, toiso8601, fromiso8601, mvFile
 
 
 logger = logging.getLogger(__name__)
@@ -186,7 +187,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             sql.append(" WHERE ")
             sql.append(" AND ".join(cond_sql.keys()))
 
-        cursor = self.dbCursor(''.join(sql), args=cond_sql.values())
+        cursor = self.dbCursor(''.join(sql), args=list(six.itervalues(cond_sql)))
         with cursor:
             for x in cursor.fetch(fetch_size):
                 yield x
@@ -276,7 +277,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             msg = "Cannot remove file. File ID: %s, " +\
                   "File Version: %d, Disk ID: %s"
             errMsg = msg % (fileId, fileVersion, diskId)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         sql = "DELETE FROM ngas_files WHERE disk_id={0} AND file_id={1} AND file_version={2}"
         self.query2(sql, args=(diskId, fileId, fileVersion))
@@ -365,7 +366,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         # Sort the File Info Objects according to disks.
         fileInfoObjDic = {}
         for fileInfo in fileInfoObjList:
-            if (not fileInfoObjDic.has_key(fileInfo.getDiskId())):
+            if fileInfo.getDiskId() not in fileInfoObjDic:
                 fileInfoObjDic[fileInfo.getDiskId()] = []
             fileInfoObjDic[fileInfo.getDiskId()].append(fileInfo)
 

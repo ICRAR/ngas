@@ -61,7 +61,7 @@ def run(srvObj, stopEvt):
     try:
         plugInMethod = loadPlugInEntryPoint(suspPi)
         plugInMethod(srvObj)
-    except Exception, e:
+    except Exception as e:
         errMsg = "Error suspending server with Suspension Plug-In %s"
         logger.exception(errMsg, suspPi)
         ngamsNotification.notify(hostId, cfg, NGAMS_NOTIF_ERROR,

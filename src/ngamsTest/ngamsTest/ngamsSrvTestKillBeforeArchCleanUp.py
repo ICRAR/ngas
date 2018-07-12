@@ -31,40 +31,12 @@
 Child class of ngamsServer killing itself before cleaning up the temporary
 Staging Files.
 """
-
-import sys
-
 from ngamsServer import ngamsServer
 
 
 class ngamsSrvTestKillBeforeArchCleanUp(ngamsServer.ngamsServer):
-    """
-    Child class of ngamsServer killing itself before cleaning up the temporary
-    Staging Files.
-    """
-
-    def __init__(self):
-        """
-        Constructor method.
-        """
-        ngamsServer.ngamsServer.__init__(self)
-
-
     def test_BeforeArchCleanUp(self):
-        """
-        Tets method killing server.
-
-        Returns:  Void.
-        """
         self.killServer()
-        raise Exception, "test_BeforeArchCleanUp: TEST METHOD KILLING SERVER"
-
 
 if __name__ == '__main__':
-    """
-    Main program executing the test NG/AMS Server
-    """
-    ngamsTestSrv = ngamsSrvTestKillBeforeArchCleanUp()
-    ngamsTestSrv.init(sys.argv)
-
-# EOF
+    ngamsServer.main(server_class=ngamsSrvTestKillBeforeArchCleanUp)

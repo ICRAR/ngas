@@ -37,7 +37,7 @@ import time
 
 from ngamsLib import ngamsFileInfo
 from ngamsLib.ngamsCore import checkCreatePath, getHostName, NGAMS_REGISTER_CMD
-from ngamsTestLib import ngamsTestSuite, sendExtCmd, saveInFile, \
+from .ngamsTestLib import ngamsTestSuite, sendExtCmd, saveInFile, \
     filterDbStatus1
 
 

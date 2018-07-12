@@ -23,7 +23,6 @@
 Module containing system-level utility methods and fabric tasks
 """
 import os
-import urlparse
 
 from fabric.colors import blue, green
 from fabric.context_managers import cd, settings
@@ -32,8 +31,9 @@ from fabric.operations import prompt
 from fabric.state import env
 from fabric.utils import puts, abort
 import pkg_resources
+from six.moves.urllib import parse as urlparse # @UnresolvedImport
 
-from utils import run, sudo, get_public_key
+from .utils import run, sudo, get_public_key
 
 
 # List of supported OSes
@@ -113,7 +113,7 @@ def get_linux_flavor():
     """
 
     # Already ran through this method
-    if env.has_key('linux_flavor'):
+    if 'linux_flavor' in env:
         return env.linux_flavor
 
     linux_flavor = None
@@ -229,37 +229,36 @@ def download(url, target=None, root=False):
     return target
 
 
-APP_PYTHON_VERSION = '2.7'
-APP_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.14/Python-2.7.14.tgz'
+APP_PYTHON27_URL = 'https://www.python.org/ftp/python/2.7.14/Python-2.7.14.tgz'
 
-@task
-def check_python():
+def check_python(version):
     """
     Check for the existence of correct version of python
     """
-    return check_command('python{0}'.format(APP_PYTHON_VERSION))
+    return check_command('python%s' % version)
 
 @task
-def python_setup(ppath):
+def python_setup(version, prefix):
     """
     Ensure that there is the right version of python available
     If not install it from scratch in user directory.
     """
+    if version != '2.7':
+        raise Exception("Installing anything other than python 2.7 is still unsupported")
     with cd('/tmp'):
         download(APP_PYTHON_URL)
-        base = os.path.basename(APP_PYTHON_URL)
+        base = os.path.basename(APP_PYTHON27_URL)
         pdir = os.path.splitext(base)[0]
         run('tar -xzf {0}'.format(base))
     with cd('/tmp/{0}'.format(pdir)):
         puts('Python BUILD log-file can be found in: /tmp/py_install.log')
         puts(green('Configuring Python.....'))
-        run('./configure --prefix {0} > /tmp/py_install.log 2>&1;'.format(ppath))
+        run('./configure --prefix {0} > /tmp/py_install.log 2>&1;'.format(prefix))
         puts(green('Building Python.....'))
         run('make >> /tmp/py_install.log 2>&1;')
         puts(green('Installing Python.....'))
         run('make install >> /tmp/py_install.log 2>&1')
-        ppath = '{0}/bin/python{1}'.format(ppath,APP_PYTHON_VERSION)
-    return ppath
+        return '{0}/bin/python27'.format(prefix)
 
 def get_fab_public_key():
     """

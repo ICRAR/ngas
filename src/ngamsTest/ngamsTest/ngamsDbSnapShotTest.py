@@ -36,9 +36,10 @@ import os
 import subprocess
 import time
 
+from ngamsLib import utils
 from ngamsLib.ngamsCore import NGAMS_CLONE_CMD, NGAMS_REMFILE_CMD, \
     NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD, cpFile
-from ngamsTestLib import saveInFile, ngamsTestSuite, sendPclCmd
+from .ngamsTestLib import saveInFile, ngamsTestSuite, sendPclCmd
 
 
 NM2IDX = "___NM2ID___"
@@ -68,12 +69,12 @@ def _parseDbSnapshot(dbSnapshotDump):
             key, val = line.split(" = ")
             fileDic[key] = eval(val)
     convDbSnapshot = "CONVERTED DB SNAPSHOT:\n"
-    fileDicKeys = fileDic.keys()
+    fileDicKeys = list(fileDic)
     fileDicKeys.sort()
     for file in fileDicKeys:
         convDbSnapshot += "\nFILE: " + file + "\n"
         fileInfo = fileDic[file]
-        fileInfoKeys = fileInfo.keys()
+        fileInfoKeys = list(fileInfo)
         fileInfoKeys.sort()
         for key in fileInfoKeys:
             val = fileInfo[key]
@@ -132,7 +133,7 @@ def _checkContDbSnapshot(testSuiteObj,
             time.sleep(0.200)
         testSuiteObj.checkEqual(1, os.path.exists(complName),
                                 "DB Snapshot missing: " + complName)
-        out = subprocess.check_output(['ngamsDumpDbSnapshot', complName])
+        out = utils.b2s(subprocess.check_output(['ngamsDumpDbSnapshot', complName]))
         if (filterContents):
             snapshotDump = _parseDbSnapshot(out)
         else:
@@ -316,7 +317,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         client.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
         client.get_status(NGAMS_REMDISK_CMD, pars = [["disk_id", diskId], ["execute", "1"]])
-        time.sleep(1)
+        time.sleep(2)
         _checkContDbSnapshot(self, 4, ["FitsStorage1-Main-1"])
 
 

@@ -34,16 +34,16 @@ NG/AMS implementation.
 The functions in this module can be used in all the NG/AMS code.
 """
 
-import cPickle
 import gzip
 import logging
 import os
 import shutil
 import socket
-import string
-import urllib
 
-from ngamsCore import genLog, NGAMS_UNKNOWN_MT, rmFile
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
+from six.moves import cPickle # @UnresolvedImport
+
+from .ngamsCore import genLog, NGAMS_UNKNOWN_MT, rmFile
 
 
 logger = logging.getLogger(__name__)
@@ -59,13 +59,13 @@ def hidePassword(fileUri):
     if not fileUri:
         return fileUri
 
-    tmpUri = urllib.unquote(fileUri)
+    tmpUri = urlparse.unquote(fileUri)
     if "ftp://" not in tmpUri or '@' not in tmpUri:
         return fileUri
 
     # ARCHIVE?filename="ftp://jknudstr:*****@host//home/...
-    lst1 = string.split(tmpUri,"@")
-    lst2 = string.split(lst1[0], ":")
+    lst1 = tmpUri.split("@")
+    lst2 = lst1[0].split(":")
     return lst2[0] + ":" + lst2[1] + ":*****@" + lst1[1]
 
 
@@ -82,9 +82,9 @@ def parseHttpHdr(httpHdr):
                  [[<par>, <value>], [<par>, <value>], ...]
     """
     retDic = {}
-    els = string.split(httpHdr, ";")
+    els = httpHdr.split(";")
     for el in els:
-        subEls = string.split(el, "=")
+        subEls = el.split("=")
         key = subEls[0].strip("\" ")
         if (len(subEls) > 1):
             value = subEls[1].strip("\" ")
@@ -141,7 +141,7 @@ def makeFileReadOnly(completeFilename):
 
     Returns:             Void.
     """
-    os.chmod(completeFilename, 0444)
+    os.chmod(completeFilename, 0o444)
     logger.debug("File: %s made read-only", completeFilename)
 
 
@@ -171,18 +171,18 @@ def parseRawPlugInPars(rawPars):
     # Plug-In Parameters. Expect:
     # "<field name>=<field value>[,field name>=<field value>]"
     parDic = {}
-    pars = string.split(rawPars, ",")
+    pars = rawPars.split(",")
     for par in pars:
         if (par != ""):
             try:
-                parVal = string.split(par, "=")
+                parVal = par.split("=")
                 par = parVal[0].strip()
                 parDic[par] = parVal[1].strip()
                 logger.debug("Found plug-in parameter: %s with value: %s",
                              par, parDic[par])
             except:
                 errMsg = genLog("NGAMS_ER_PLUGIN_PAR", [rawPars])
-                raise Exception, errMsg
+                raise Exception(errMsg)
     logger.debug("Generated parameter dictionary: %s", str(parDic))
     return parDic
 
@@ -211,7 +211,7 @@ def detMimeType(mimeTypeMaps,
     mimeType = ""
     for map in mimeTypeMaps:
         ext = "." + map[1]
-        idx = string.find(filename, ext)
+        idx = filename.find(ext)
         if ((idx != -1) and ((idx + len(ext)) == len(filename))):
             found = 1
             mimeType = map[0]
@@ -220,7 +220,7 @@ def detMimeType(mimeTypeMaps,
         return NGAMS_UNKNOWN_MT
     elif (not found):
         errMsg = genLog("NGAMS_ER_UNKNOWN_MIME_TYPE1", [filename])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     else:
         logger.debug("Mime-type of file with URI: %s determined: %s",
                      filename, mimeType)
@@ -273,7 +273,7 @@ def createObjPickleFile(filename,
     """
     logger.debug("createObjPickleFile() - creating pickle file %s ...", filename)
     rmFile(filename)
-    with open(filename, "w") as pickleFo:
+    with open(filename, "wb") as pickleFo:
         cPickle.dump(object, pickleFo)
 
 
@@ -285,7 +285,7 @@ def loadObjPickleFile(filename):
 
     Returns:     Reconstructed object (<object>).
     """
-    with open(filename, "r") as pickleFo:
+    with open(filename, "rb") as pickleFo:
         return cPickle.load(pickleFo)
 
 def genFileKey(diskId,

@@ -33,7 +33,6 @@ by the SubscriptionThread._deliveryThread
 """
 # used to connect to MWA M&C database
 
-import commands
 import datetime
 import logging
 import os
@@ -43,12 +42,13 @@ from psycopg2.pool import ThreadedConnectionPool
 import astropy.io.fits as pyfits
 
 from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import getHostName
 
 
 logger = logging.getLogger(__name__)
 
 mime = "images/fits"
-myhost = commands.getstatusoutput('hostname')[1]
+myhost = getHostName()
 
 # maximum connection = 3
 g_db_pool = ThreadedConnectionPool(1, 3, database = None, user = None,
@@ -179,7 +179,7 @@ def execCmd(cmd, timeout):
     logger.debug('Executing command: %s', cmd)
     try:
         ret = ngamsPlugInApi.execCmd(cmd, timeout)
-    except Exception, ex:
+    except Exception as ex:
         if (str(ex).find('timed out') != -1):
             return (-1, 'Timed out (%d seconds): %s' % (timeout, cmd))
         else:
@@ -316,7 +316,7 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
         cur.execute(sqlStr)
         conn.commit()
         logger.debug('File %s added to VO database.', fileId)
-    except Exception, exp:
+    except Exception as exp:
         logger.exception("Unable to execute %s", sqlStr)
         return (1, str(exp))
     finally:

@@ -28,16 +28,17 @@
 This module pushes missing files to MIT in a semi-automated fashion
 """
 
-import cPickle as pickle
-from cPickle import UnpicklingError
 from optparse import OptionParser
 import socket, base64
-import urllib2
+
+from six.moves import cPickle as pickle  # @UnresolvedImport
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
+from six.moves.urllib import request as urlrequest # @UnresolvedImport
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import NGAMS_STATUS_CMD, NGAMS_FAILURE, NGAMS_SOCK_TIMEOUT_DEF
 from ngamsPClient import ngamsPClient
-from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveRequest
+from .ngamsMWAAsyncProtocol import AsyncListRetrieveRequest
 import psycopg2
 
 
@@ -61,9 +62,9 @@ def getMWADBConn():
                             password = ''.decode('base64'),
                             host = None)
         return g_db_conn
-    except Exception, e:
+    except Exception as e:
         errStr = 'Cannot create MWA DB Connection: %s' % str(e)
-        raise Exception, errStr
+        raise Exception(errStr)
 
 def getLTADBConn():
 
@@ -72,9 +73,9 @@ def getLTADBConn():
                             password = ''.decode('base64'),
                             host = lta_db_host)
         return l_db_conn
-    except Exception, e:
+    except Exception as e:
         errStr = 'Cannot create LTA DB Connection: %s' % str(e)
-        raise Exception, errStr
+        raise Exception(errStr)
 
 def executeQuery(conn, sqlQuery):
     try:
@@ -133,14 +134,14 @@ def parseOptions():
     (options, args) = parser.parse_args()
     if (None == options.obs_list or None == options.push_host or None == options.port or None == options.data_mover):
         parser.print_help()
-        print 'Missing parameters'
+        print('Missing parameters')
         return None
     return options
 
 def hasMITGotIt(client, fileId):
     try:
         rest = client.get_status(NGAMS_STATUS_CMD, pars=[["file_id", fileId]])
-    except Exception, e:
+    except Exception as e:
         errMsg = "Error occurred during checking remote file status " +\
                      "Exception: " + str(e)
         print(errMsg)
@@ -153,18 +154,18 @@ def hasMITGotIt(client, fileId):
 
 def stageFile(filename):
     cmd = "stage -w " + filename
-    print "File %s is on tape, staging it now..." % filename
+    print("File %s is on tape, staging it now..." % filename)
     ngamsPlugInApi.execCmd(cmd, -1) #stage it back to disk cache
-    print "File " + filename + " staging completed."
+    print("File " + filename + " staging completed.")
 
 def archiveFile(filename, client):
     try:
         stat = client.pushFile(filename, mime_type, cmd = 'QARCHIVE')
     except Exception as e:
-        print "Exception '%s' occurred while archiving file %s" % (str(e), filename)
+        print("Exception '%s' occurred while archiving file %s" % (str(e), filename))
     msg = stat.getMessage().split()[0]
     if (msg != 'Successfully'):
-        print "Exception '%s' occurred while archiving file %s" % (stat.getMessage(), filename)
+        print("Exception '%s' occurred while archiving file %s" % (stat.getMessage(), filename))
 
 def getPushURL(hostId, gateway = None):
     """
@@ -181,7 +182,7 @@ def getPushURL(hostId, gateway = None):
         gateways = gateway.split(',')
         gurl = 'http://%s/QARCHIVE' % hostId
         for gw in gateways:
-            gurl = 'http://%s/PARCHIVE?nexturl=%s' % (gw, urllib2.quote(gurl))
+            gurl = 'http://%s/PARCHIVE?nexturl=%s' % (gw, urlparse.quote(gurl))
         #return 'http://%s/PARCHIVE?nexturl=http://%s/QAPLUS' % (gateway, hostId)
         return gurl
     else:
@@ -202,7 +203,7 @@ def main():
     stageUrl = 'http://%s/ASYNCLISTRETRIEVE' % opts.data_mover
 
     for obsNum in obsList:
-        print "Checking observation: %s" % obsNum
+        print("Checking observation: %s" % obsNum)
         files = getFileIdsByObsNum(obsNum)
         deliverFileIds = []
         for fileId in files:
@@ -221,25 +222,25 @@ def main():
                 archiveFile(fileName, client)
                 """
             else:
-                print "\tFile %s is already at MIT. Skip it." % fileId
+                print("\tFile %s is already at MIT. Skip it." % fileId)
 
         myReq = AsyncListRetrieveRequest(deliverFileIds, toUrl)
         strReq = pickle.dumps(myReq)
         try:
-            print "Sending async retrieve request to the data mover %s" % opts.data_mover
-            request = urllib2.Request(stageUrl)
+            print("Sending async retrieve request to the data mover %s" % opts.data_mover)
+            request = urlrequest.Request(stageUrl)
             base64string = base64.encodestring('ngasmgr:ngas$dba').replace('\n', '')
             request.add_header("Authorization", "Basic %s" % base64string)
-            strRes = urllib2.urlopen(request, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read()
+            strRes = urlrequest.urlopen(request, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read()
             myRes = pickle.loads(strRes)
             #strRes = urllib2.urlopen(stageUrl, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read()
             #myRes = pickle.loads(strRes)
             if (myRes):
-                print myRes.errorcode
+                print(myRes.errorcode)
             else:
-                print 'Response is None when async staging files for obsNum %s' % obsNum
-        except (UnpicklingError, socket.timeout) as uerr:
-            print "Something wrong while sending async retrieve request for obsNum %s, %s" % (obsNum, str(uerr))
+                print('Response is None when async staging files for obsNum %s' % obsNum)
+        except (pickle.UnpicklingError, socket.timeout) as uerr:
+            print("Something wrong while sending async retrieve request for obsNum %s, %s" % (obsNum, str(uerr)))
 
 if __name__ == "__main__":
     main()

@@ -33,9 +33,10 @@ This is an extension of the original QARCHIVE command, basically does
 """
 
 import logging
-import urllib2
 
-import ngamsCmd_QARCHIVE
+from six.moves.urllib import request as urlrequest  # @UnresolvedImport
+
+from . import ngamsCmd_QARCHIVE
 
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ def handleCmd(srvObj,
     (fileId, filePath, ingestRate) = ngamsCmd_QARCHIVE.handleCmd(srvObj, reqPropsObj, httpRef)
     jobManHost = srvObj.getCfg().getNGASJobMANHost()
     try:
-        reply = urllib2.urlopen('http://%s/ingest?file_id=%s&file_path=%s&to_host=%s&ingest_rate=%.2f' % (jobManHost, fileId, filePath, srvObj.getHostId(), ingestRate), timeout = 15).read()
+        reply = urlrequest.urlopen('http://%s/ingest?file_id=%s&file_path=%s&to_host=%s&ingest_rate=%.2f' % (jobManHost, fileId, filePath, srvObj.getHostId(), ingestRate), timeout = 15).read()
         logger.info('Reply from sending file %s ingestion event to server %s - %s', fileId, jobManHost, reply)
     except Exception:
         logger.exception('Fail to send file ingestion event to server %s', jobManHost)

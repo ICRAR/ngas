@@ -39,9 +39,9 @@ implemented and NG/AMS configured to use it.
 
 import logging
 
-import ngamsFitsPlugIn
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import rmFile
+from . import ngamsFitsPlugIn
 
 
 logger = logging.getLogger(__name__)

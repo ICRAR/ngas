@@ -67,10 +67,10 @@ def specificTreatment(fo):
     try:
         message = rfc822.Message(fo)
         type, tparams = cgi.parse_header(message["Content-Type"])
-    except Exception, e:
+    except Exception as e:
         err = "Parsing of mime message failed: " + str(e)
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),_PLUGIN_ID, err])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     try:
         almaUid = message["alma-uid"]
     except:
@@ -79,12 +79,12 @@ def specificTreatment(fo):
         except:
             err = "Mandatory alma-uid or Content-Location parameter not found in mime header!"
             errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),_PLUGIN_ID, err])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
     if not uidTempl.match(almaUid):
         err = "Invalid alma-uid found in Content-Location: " + almaUid
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),_PLUGIN_ID, err])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     try:
         almaUid = almaUid.split('//',2)[1].split('#')[0]
@@ -93,10 +93,10 @@ def specificTreatment(fo):
         fileId = almaUid
         finalFileName = almaUid.replace('/',':')
 
-    except Exception, e:
+    except Exception as e:
         err = "Problem constructing final file name: " + str(e)
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),_PLUGIN_ID, err])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
     return (fileId, finalFileName, type)
@@ -161,7 +161,7 @@ def ngamsGeneric(srvObj,reqPropsObj):
         format = reqPropsObj.getMimeType()
     else:
         errMsg = "mime_type not specified in MIRRARCHIVE request"
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # File Uri format: http://ngasbe03.aiv.alma.cl:7777/RETRIEVE?disk_id=59622720f79296473f6106c15e5c2240&host_id=ngasbe03:7777&quick_location=1&file_version=1&file_id=backup.2011-02-02T22:01:59.tar
 
@@ -210,7 +210,7 @@ def ngamsGeneric(srvObj,reqPropsObj):
                                                  compression, relPath,
                                                  diskInfo.getSlotId(),
                                                  fileExists, complFilename)
-    except Exception, e:
+    except Exception as e:
         err = "Problem processing file in stagging area: " + str(e)
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [stagingFilename,_PLUGIN_ID, err])
-        raise Exception, errMsg
+        raise Exception(errMsg)

@@ -32,16 +32,14 @@ This module contains the Test Suite for the RETRIEVE Command.
 """
 
 import contextlib
-from functools import partial
 import io
-import gzip
 import os
 import subprocess
 
 from ngamsLib import ngamsConfig, ngamsHttpUtils
 from ngamsLib.ngamsCore import getHostName, \
     checkCreatePath, rmFile, NGAMS_SUCCESS, mvFile
-from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
+from .ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
     sendPclCmd, genTmpFilename, unzip
 
 
@@ -199,9 +197,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                           "Retrieval")
 
         outFilePath = 'tmp/test_RetrieveCmd_3_1_tmp_unzip'
-        with gzip.open(trgFile, 'rb') as gz, open(outFilePath, 'wb') as out:
-            for data in iter(partial(gz.read, 1024), ''):
-                out.write(data)
+        unzip(trgFile, outFilePath)
 
         # Check the retrieved file (checksum).
         refFile = "src/TinyTestFile.fits"

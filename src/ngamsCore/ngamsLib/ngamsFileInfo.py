@@ -35,7 +35,7 @@ an archived file.
 
 import xml.dom.minidom
 
-from ngamsCore import ignoreValue, getAttribValue, prFormat1, TRACE, genLog, fromiso8601, toiso8601
+from .ngamsCore import ignoreValue, getAttribValue, prFormat1, TRACE, genLog, fromiso8601, toiso8601
 
 
 # TODO:
@@ -741,7 +741,7 @@ class ngamsFileInfo:
                 fileInfo = fileInfo[0]
         if (fileInfo == []):
             errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [fileId])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         else:
             self.unpackSqlResult(fileInfo)
         return self

@@ -31,12 +31,12 @@
 Contains functions for handling the REGISTER command.
 """
 
-import commands
 import logging
 import os
-import thread
 import threading
 import time
+
+import six
 
 from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
     NGAMS_REGISTER_CMD, mvFile, getFileCreationTime, \
@@ -47,8 +47,8 @@ from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint, toiso8601
 from ngamsLib import ngamsDbm, ngamsReqProps, ngamsFileInfo, ngamsDbCore, \
     ngamsHighLevelLib, ngamsDiskUtils, ngamsLib, ngamsFileList, \
-    ngamsNotification, ngamsDiskInfo, ngamsPlugInApi
-import ngamsArchiveUtils, ngamsCacheControlThread
+    ngamsNotification, ngamsDiskInfo, ngamsPlugInApi, ngamsCore
+from . import ngamsArchiveUtils, ngamsCacheControlThread
 
 logger = logging.getLogger(__name__)
 
@@ -143,20 +143,19 @@ def _registerExec(srvObj,
     # TODO: Portatibility issue. Try to avoid UNIX shell commands for sorting.
     tmpFileList = tmpFilePat + "_FILE_LIST"
     rmFile(tmpFileList)
-    fo = open(tmpFileList, "w")
-    fileListDbm.initKeyPtr()
-    while (1):
-        dbmKey, fileInfo = fileListDbm.getNext()
-        if (not dbmKey): break
-        fo.write(dbmKey + "\n")
-    fo.close()
+    with open(tmpFileList, "wb") as fo:
+        fileListDbm.initKeyPtr()
+        while (1):
+            dbmKey, fileInfo = fileListDbm.getNext()
+            if (not dbmKey): break
+            fo.write(dbmKey + b"\n")
     sortFileList = tmpFilePat + "_SORT_FILE_LIST"
     rmFile(sortFileList)
     shellCmd = "sort %s > %s" % (tmpFileList, sortFileList)
-    stat, out = commands.getstatusoutput(shellCmd)
+    stat, out, err = ngamsCore.execCmd(shellCmd)
     if (stat != 0):
-        raise Exception, "Error executing command: %s. Error: %s" %\
-              (shellCmd, str(out))
+        raise Exception("Error executing command: %s. Error: %s, %s" %\
+              (shellCmd, str(out), str(err)))
     rmFile(tmpFileList)
 
     # Go through each file in the list, check if the mime-type is among the
@@ -294,7 +293,7 @@ def _registerExec(srvObj,
             regTime = time.time() - reg_start
             msg = msg + ". Time: %.3fs." % (regTime)
             logger.info(msg, extra={'to_syslog': 1})
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_FILE_REG_FAILED", [filename, str(e)])
             logger.error(errMsg)
             if (emailNotif):
@@ -456,7 +455,7 @@ def _registerThread(srvObj,
         _registerExec(srvObj, fileListDbmName, tmpFilePat, diskInfoDic,
                       reqPropsObj)
         rmFile(tmpFilePat + "*")
-        thread.exit()
+        return
     except Exception:
         logger.exception("Exception raised in Register Sub-Thread")
         rmFile(tmpFilePat + "*")
@@ -498,7 +497,7 @@ def register(srvObj,
     if (not os.path.exists(path)):
         errMsg = genLog("NGAMS_ER_FILE_REG_FAILED",
                         [path, "Non-existing file or path."])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Check if the given path/file is on one of the NGAS Disks.
     foundPath = 0
@@ -511,7 +510,7 @@ def register(srvObj,
         errMsg = genLog("NGAMS_ER_FILE_REG_FAILED",
                         [path, "File or path specified is not located on an "
                          "NGAS Disk."])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Create file pattern for temporary files.
     tmpFilePat=ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),"REGISTER_CMD")
@@ -527,7 +526,7 @@ def register(srvObj,
                                 ["Mime-type specified: " + mt + " " +\
                                  "in connection with REGISTER command " +\
                                  "does not have a DAPI defined"])
-                raise Exception, errMsg
+                raise Exception(errMsg)
     else:
         mimeTypeDic = srvObj.getMimeTypeDic()
 
@@ -673,7 +672,7 @@ def register(srvObj,
     if (httpRef):
         xmlStat = status.genXmlDoc(0, 0, 0, 1, 0)
         xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
-        httpRef.send_data(xmlStat, NGAMS_XML_MT)
+        httpRef.send_data(six.b(xmlStat), NGAMS_XML_MT)
 
 
 def handleCmd(srvObj,

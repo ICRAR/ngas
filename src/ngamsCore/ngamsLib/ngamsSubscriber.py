@@ -33,10 +33,11 @@ the complete set of Subscribers.
 """
 
 import random
-import urlparse
 import xml.dom.minidom
 
-from ngamsCore import fromiso8601, toiso8601, TRACE, prFormat1
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
+
+from .ngamsCore import fromiso8601, toiso8601, TRACE, prFormat1
 
 
 def validate_url(url):

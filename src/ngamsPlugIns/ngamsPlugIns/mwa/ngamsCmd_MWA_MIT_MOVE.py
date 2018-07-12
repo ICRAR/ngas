@@ -182,7 +182,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                 else:
                     deliver_success = True
                     break
-            except Exception, hexp:
+            except Exception as hexp:
                 logger.warning("Attempt %d failed: %s", i, str(hexp))
                 last_deliv_err = str(hexp).replace('\n', '--')
                 continue
@@ -195,7 +195,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     try:
         ngamsDiscardCmd._discardFile(srvObj, diskId, fileId, fileVersion, execute = 1)
-    except Exception, e1:
+    except Exception as e1:
         logger.warning('Fail to remove file %s: %s', filename, str(e1))
         httpRef.send_data('Remove error: %s' % str(e1).replace('\n', '--'), NGAMS_TEXT_MT)
         return

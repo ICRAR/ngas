@@ -97,7 +97,7 @@ def ngamsNgLogPlugIn(srvObj,
         if (exitCode != 0):
             errMsg = "ngamsNgLogPlugIn: Problems during archiving! " +\
                      "Compressing the file failed"
-            raise Exception, errMsg
+            raise Exception(errMsg)
         stagingFilename = stagingFilename + ".gz"
         # Remember to update the Temporary Filename in the Request
         # Properties Object.
@@ -136,8 +136,8 @@ def ngamsNgLogPlugIn(srvObj,
                                                  diskInfo.getSlotId(),
                                                  fileExists, complFilename)
     except Exception:
-        raise Exception, "ngamsNgLogPlugIn: Error handling log file: " +\
-              stagingFilename + ". Rejecting."
+        raise Exception("ngamsNgLogPlugIn: Error handling log file: " +\
+              stagingFilename + ". Rejecting.")
 
 
 # EOF

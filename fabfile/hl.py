@@ -31,11 +31,11 @@ from fabric.operations import local
 from fabric.state import env
 from fabric.tasks import execute
 
-from aws import create_aws_instances
-from dockerContainer import setup_container, create_final_image
-from ngas import install_and_check, prepare_install_and_check, create_sources_tarball, upload_to, ngas_revision
-from utils import repo_root, check_ssh, append_desc
-from system import check_sudo
+from .aws import create_aws_instances
+from .dockerContainer import setup_container, create_final_image
+from .ngas import install_and_check, prepare_install_and_check, create_sources_tarball, upload_to, ngas_revision
+from .utils import repo_root, check_ssh, append_desc
+from .system import check_sudo
 
 
 # Don't re-export the tasks imported from other modules, only ours

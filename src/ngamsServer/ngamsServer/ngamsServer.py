@@ -32,9 +32,7 @@ This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
 """
 
-import BaseHTTPServer
-import Queue
-import SocketServer
+import argparse
 import collections
 import contextlib
 import logging
@@ -51,8 +49,13 @@ import time
 import traceback
 import uuid
 
+import six
+from six.moves import reduce # @UnresolvedImport
+from six.moves import socketserver # @UnresolvedImport
+from six.moves import BaseHTTPServer  # @UnresolvedImport
+from six.moves import queue as Queue  # @UnresolvedImport
+
 import netifaces
-import pkg_resources
 
 from ngamsLib.ngamsCore import genLog, TRACE, getNgamsVersion, \
     getFileSize, getDiskSpaceAvail, checkCreatePath,\
@@ -65,13 +68,13 @@ from ngamsLib.ngamsCore import genLog, TRACE, getNgamsVersion, \
 from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils
 from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
-import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
-import ngamsJanitorThread
-import ngamsDataCheckThread
-import ngamsUserServiceThread
-import ngamsMirroringControlThread
-import ngamsCacheControlThread
-import request_db
+from . import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
+from . import ngamsJanitorThread
+from . import ngamsDataCheckThread
+from . import ngamsUserServiceThread
+from . import ngamsMirroringControlThread
+from . import ngamsCacheControlThread
+from . import request_db
 from . import pysendfile
 
 
@@ -86,7 +89,7 @@ def get_all_ipaddrs():
     inet_addrs = [addrs[proto] for addrs in iface_addrs if proto in addrs]
     return [addr['addr'] for addrs in inet_addrs for addr in addrs if 'addr' in addr]
 
-class ngamsHttpServer(SocketServer.ThreadingMixIn,
+class ngamsHttpServer(socketserver.ThreadingMixIn,
                       BaseHTTPServer.HTTPServer):
     """
     Class that provides the multithreaded HTTP server functionality.
@@ -115,8 +118,21 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
             wfile.write(b'HTTP/1.0 503 Service Unavailable\r\n\r\n')
             return
 
-        SocketServer.ThreadingMixIn.process_request(self, request, client_address)
+        socketserver.ThreadingMixIn.process_request(self, request, client_address)
 
+
+class _atomic_counter(object):
+    """A simple atomic counter"""
+
+    def __init__(self, val):
+        self.val = val
+        self.lock = threading.Lock()
+
+    def inc(self):
+        with self.lock:
+            val = self.val
+            self.val += 1
+            return val
 
 class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
@@ -124,6 +140,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
 
     server_version = "NGAMS/" + getNgamsVersion()
+    req_count = _atomic_counter(0)
 
     def setup(self):
 
@@ -134,6 +151,12 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # a sensible value)
         cfg = self.ngasServer.getCfg()
         self.timeout = cfg.getTimeOut() or 60
+
+        # Make the name of the current thread more unique
+        # This is important because we currently use the thread name to uniquely
+        # map log statements to individual requests. Log statements use
+        req_num = self.req_count.inc()
+        threading.current_thread().setName('R-%d' % req_num)
 
         BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
 
@@ -211,6 +234,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         logger.info("Redirecting client to %s", location)
         self.send_response(NGAMS_HTTP_REDIRECT, hdrs={'Location': location})
+        self.end_headers()
 
     def send_file(self, f, mime_type, start_byte=0, fname=None):
         """
@@ -279,7 +303,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         status = self.ngasServer.genStatus(status, message)
         xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, status.genXmlDoc())
-        self.send_data(xml, NGAMS_XML_MT, code=code, message=http_message, hdrs=hdrs)
+        self.send_data(six.b(xml), NGAMS_XML_MT, code=code, message=http_message, hdrs=hdrs)
 
     def send_ingest_status(self, msg, disk_info):
         """Reply to the client with a standard ingest status XML document"""
@@ -287,7 +311,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                  setReqStatFromReqPropsObj(self.ngas_request)
         xml = status.genXmlDoc(0, 1, 1)
         xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, xml)
-        self.send_data(xml, NGAMS_XML_MT)
+        self.send_data(six.b(xml), NGAMS_XML_MT)
 
     def proxy_request(self, host_id, host, port, timeout=300):
         """Proxy the current request to `host`:`port`"""
@@ -344,12 +368,22 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         # Our code calculates the content length already, let's not send it twice
         # Similarly, let's avoid Content-Type rewriting
+        # Here "hdrs" is not a one of the nice email.message.Message objects
+        # which allows for case-insensitive lookup, but simply a dictionary,
+        # so we are forced to perform a case-sensitive lookup
         logger.info("Received response from %s:%d, sending to client", host, port)
         logger.info("Headers from response: %r", hdrs)
         if 'content-length' in hdrs:
             del hdrs['content-length']
-        mime_type = hdrs['content-type']
-        del hdrs['content-type']
+        if 'Content-Length' in hdrs:
+            del hdrs['Content-Length']
+        mime_type = ''
+        if 'content-type' in hdrs:
+            mime_type = hdrs['content-type']
+            del hdrs['content-type']
+        if 'Content-Type' in hdrs:
+            mime_type = hdrs['Content-Type']
+            del hdrs['Content-Type']
 
         self.send_data(data, mime_type, code=code, hdrs=hdrs)
 
@@ -449,12 +483,11 @@ class ngamsServer(object):
     cfg = None
     """The underlying configuration object"""
 
-    def __init__(self):
+    def __init__(self, cfg_fname):
         """
         Constructor method.
         """
-        self._serverName              = "ngamsServer"
-        self.__ngamsCfg               = ""
+        self.__ngamsCfg               = cfg_fname
         self.cfg                      = ngamsConfig.ngamsConfig()
         self.__dbCfgId                = ""
         self.force_start              = False
@@ -940,7 +973,7 @@ class ngamsServer(object):
             errMsg = genLog("NGAMS_ER_IMPROPER_STATE", errMsg)
             self.relStateSem()
             logger.error(errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         if (newState != ""): self.setState(newState, updateDb)
         if (newSubState != ""): self.setSubState(newSubState)
@@ -1540,19 +1573,6 @@ class ngamsServer(object):
         return self.__diskDic
 
 
-    def setCfgFilename(self,
-                       filename):
-        """
-        Set the name of the NG/AMS Configuration File.
-
-        filename:     Name of configuration file (string).
-
-        Returns:      Reference to object itself.
-        """
-        self.__ngamsCfg = filename
-        return self
-
-
     def getCfgFilename(self):
         """
         Return name of NG/AMS Configuration file.
@@ -1752,10 +1772,10 @@ class ngamsServer(object):
             if not httpRef.reply_sent:
                 httpRef.send_status("Successfully handled request")
 
-        except ngamsCmdHandling.NoSuchCommand, e:
+        except ngamsCmdHandling.NoSuchCommand as e:
             httpRef.send_status("Command not found", status=NGAMS_FAILURE, code=404)
 
-        except Exception, e:
+        except Exception as e:
 
             # Quickly respond with a 400 status code for unexpected exceptions
             # (although it should be a 5xx code)
@@ -1896,10 +1916,10 @@ class ngamsServer(object):
                 dirErrMsg = dirErrMsg[0:-2] + ")"
                 errMsg = genLog("NGAMS_AL_DISK_SPACE_SAT",
                                 [minDiskSpaceMb, dirErrMsg])
-                raise Exception, errMsg
+                raise Exception(errMsg)
 
 
-    def init(self, argv):
+    def init(self):
         """
         Initialize the NG/AMS Server.
 
@@ -1908,10 +1928,6 @@ class ngamsServer(object):
 
         Returns:    Reference to object itself.
         """
-        # Parse input parameters, set up signal handlers, connect to DB,
-        # load NGAMS configuration, start NG/AMS HTTP server.
-        self.parseInputPars(argv)
-
         logger.info("NG/AMS Server version: %s", getNgamsVersion())
         logger.info("Python version: %s", re.sub("\n", "", sys.version))
 
@@ -1923,7 +1939,7 @@ class ngamsServer(object):
 
         try:
             self.handleStartUp()
-        except Exception, e:
+        except Exception as e:
 
             logger.exception("Error during startup, shutting system down")
 
@@ -1951,11 +1967,11 @@ class ngamsServer(object):
             pidFile = os.path.join(self.getCfg().getRootDirectory(), "." +
                                    self.getHostId()
                                    + ".pid")
-        except Exception, e:
+        except Exception as e:
             errMsg = "Error occurred generating PID file name. Check " +\
                      "Mount Root Directory + Port Number in configuration. "+\
                      "Error: " + str(e)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         return pidFile
 
 
@@ -2097,7 +2113,7 @@ class ngamsServer(object):
 
         try:
             self.setup_logging()
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_INIT_LOG", [logcfg.logfile, str(e)])
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM SETTING UP LOGGING", errMsg)
@@ -2187,7 +2203,7 @@ class ngamsServer(object):
                 path = os.path.dirname(path)
             if not os.path.ismount(path):
                 continue
-            if not self.__sysMtPtDic.has_key(path):
+            if path not in self.__sysMtPtDic:
                 self.__sysMtPtDic[path] = []
             self.__sysMtPtDic[path].append(dirInfo)
 
@@ -2244,7 +2260,7 @@ class ngamsServer(object):
         logger.info("Initializing HTTP server ...")
         try:
             self.serve()
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_OP_HTTP_SERV", [str(e)])
             logger.exception(errMsg)
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
@@ -2400,97 +2416,6 @@ class ngamsServer(object):
         if (idx == len(argv)): self.correctUsage()
         return idx
 
-
-    def correctUsage(self):
-        """
-        Print out correct usage message.
-
-        Returns:    Void.
-        """
-        manPage = pkg_resources.resource_string(__name__, 'ngamsServer.txt')  # @UndefinedVariable
-        print manPage
-        print ngamsCopyrightString()
-
-
-    def parseInputPars(self, argv):
-        """
-        Parse input parameters.
-
-        argv:       Tuple containing command line parameters (tuple)
-
-        Returns:
-        """
-        exitValue = 1
-        silentExit = 0
-        idx = 1
-        extra_paths = []
-
-        while idx < len(argv):
-            par = argv[idx].upper()
-            try:
-                if (par == "-CFG"):
-                    idx = self._incCheckIdx(idx, argv)
-                    self.setCfgFilename(argv[idx])
-                elif par == '-DATAMOVER':
-                    self._dataMoverOnly = True
-                elif (par == "-DBCFGID"):
-                    idx = self._incCheckIdx(idx, argv)
-                    self.__dbCfgId = argv[idx]
-                elif (par == "-V"):
-                    idx = self._incCheckIdx(idx, argv)
-                    self.logcfg.stdout_level = int(argv[idx])
-                elif (par == "-LOCLOGFILE"):
-                    idx = self._incCheckIdx(idx, argv)
-                    self.logcfg.logfile = argv[idx]
-                elif (par == "-LOCLOGLEVEL"):
-                    idx = self._incCheckIdx(idx, argv)
-                    self.logcfg.file_level = int(argv[idx])
-                elif (par == "-SYSLOG"):
-                    idx = self._incCheckIdx(idx, argv)
-                    self.logcfg.syslog = bool(argv[idx])
-                elif (par == "-SYSLOGPREFIX"):
-                    idx = self._incCheckIdx(idx, argv)
-                    self.logcfg.syslog_prefix = argv[idx]
-                elif (par == "-VERSION"):
-                    print getNgamsVersion()
-                    exitValue = 0
-                    silentExit = 1
-                    sys.exit(0)
-                elif (par == "-LICENSE"):
-                    print getNgamsLicense()
-                    exitValue = 0
-                    silentExit = 1
-                    sys.exit(0)
-                elif (par == "-FORCE"):
-                    self.force_start = True
-                elif (par == "-AUTOONLINE"):
-                    self.autoonline = True
-                elif (par == "-NOAUTOEXIT"):
-                    self.no_autoexit = True
-                elif par == "-PATH":
-                    idx = self._incCheckIdx(idx, argv)
-                    extra_paths = set(filter(None, argv[idx].split(os.pathsep)))
-                else:
-                    self.correctUsage()
-                    silentExit = 1
-                    sys.exit(1)
-                idx = idx + 1
-            except Exception:
-                if (not silentExit): self.correctUsage()
-                sys.exit(exitValue)
-
-        # Check correctness of the command line parameters.
-        if (self.getCfgFilename() == ""):
-            self.correctUsage()
-            sys.exit(1)
-
-        # Add extra paths at the beginning of the sys.path
-        for p in extra_paths:
-            p = os.path.expanduser(p)
-            if not os.path.exists(p):
-                raise ValueError("Path %s doesn't exist" % (p,))
-            sys.path.insert(0,p)
-
     ########################################################################
     # The following methods are used for the NG/AMS Unit Tests.
     # The method do not contain any code, but in the Unit Test code it is
@@ -2570,12 +2495,88 @@ class ngamsServer(object):
         pass
     ########################################################################
 
-def main(argv=sys.argv):
-    """
-    Main function instantiating the NG/AMS Server Class and starting the server.
-    """
-    ngams = ngamsServer()
-    ngams.init(argv)
+
+def _parse_and_run(args, prog, server_class):
+
+    # The old parser supported case-insensitive argument names.
+    # We want to be nice, so we support them too (for a while)
+    _lower = ('-version', '-license', '-cfg', '-path', '-autoonline', '-force',
+              '-v', '-loclogfile', '-locloglevel', '-syslog', '-syslogprefix',
+              '-dbcfgid', '-noautoexit', '-datamover')
+    modified_args = []
+    for arg in args:
+        larg = arg.lower()
+        if larg in _lower:
+            if larg != arg:
+                print("WARNING: case-insenstive command-line option names are "
+                      "deprecated and will be removed in the future. To avoid this "
+                      "message change '%s' by '%s'" % (arg, larg))
+            modified_args.append(larg)
+        else:
+            modified_args.append(arg)
+
+    parser = argparse.ArgumentParser(prog=prog, epilog=ngamsCopyrightString())
+
+    genopts = parser.add_argument_group('General options')
+    genopts.add_argument('-version', action='store_true', help='Show version and exit')
+    genopts.add_argument('-license', action='store_true', help='Show license and exit')
+
+    startopts = parser.add_argument_group('Startup options')
+    startopts.add_argument('-cfg', help='Path to server XML configuration file')
+    startopts.add_argument('-path', help='Colon-separated list of extra directories containing NGAS plugins')
+    startopts.add_argument('-autoonline', action='store_true', help='Automatically set the server in the ONLINE state when starting')
+    startopts.add_argument('-force', action='store_true', help='Force the start of the server, even if a PID file is present')
+
+    logopts = parser.add_argument_group('Logging options')
+    logopts.add_argument('-v', type=int, help='stdout verbosity level (5=DEBUG, 4=INFO, 3=WARN, 2=ERROR, 1=CRITICAL)', default=3)
+    logopts.add_argument('-loclogfile', help='The location of the server logfile')
+    logopts.add_argument('-locloglevel', type=int, help='logfile verbosity level (see -v), defaults to configuration file setting', default=None)
+    logopts.add_argument('-syslog', action='store_true', help='Enable syslog logging')
+    logopts.add_argument('-syslogprefix', help='Syslog log prefix')
+
+    advopts = parser.add_argument_group('Advanced options')
+    advopts.add_argument('-dbcfgid', help='ID of the configuration in the database that should be loaded')
+    advopts.add_argument('-noautoexit', action='store_true', help='Do not automatically shutdown the server on startup failures')
+    advopts.add_argument('-datamover', action='store_true', help="Start this server as a DataMover server")
+
+    opts = parser.parse_args(modified_args)
+    if opts.version:
+        print(getNgamsVersion())
+        return 0
+    if opts.license:
+        print(getNgamsLicense())
+        return 0
+
+    if not opts.cfg:
+        parser.error('No configuration file specified via -cfg')
+
+    if opts.path:
+        for p in set(filter(None, opts.path.split(os.pathsep))):
+            p = os.path.expanduser(p)
+            if not os.path.exists(p):
+                raise ValueError("Path %s doesn't exist" % (p,))
+            sys.path.insert(0, p)
+
+    server = server_class(opts.cfg)
+    server.autoonline = opts.autoonline
+    server.force_start = opts.force
+
+    server.logcfg.stdout_level = opts.v
+    server.logcfg.file_level = opts.locloglevel
+    server.logcfg.logfile = opts.loclogfile
+    server.logcfg.syslog = opts.syslog
+    server.logcfg.syslog_prefix = opts.syslogprefix
+
+    server.no_autoexit = opts.noautoexit
+    server._dataMoverOnly = opts.datamover
+    server.__dbCfgId = opts.dbcfgid
+
+    server.init()
+
+def main(args=None, prog='ngamsServer', server_class=ngamsServer):
+    if args is None:
+        args = sys.argv[1:]
+    _parse_and_run(args, prog, server_class)
 
 if __name__ == '__main__':
     main()

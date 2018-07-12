@@ -27,8 +27,8 @@ Contains classes related to the handling of Containers in ngams
 
 from xml.dom import minidom
 
-from ngamsCore import toiso8601, fromiso8601
-import ngamsFileInfo
+from . import ngamsFileInfo
+from .ngamsCore import toiso8601, fromiso8601
 
 class ngamsContainer(object):
     """

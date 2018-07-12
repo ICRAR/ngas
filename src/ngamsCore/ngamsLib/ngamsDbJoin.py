@@ -38,13 +38,9 @@ It should be used as part of the ngamsDbBase parent classes.
 
 import logging
 
-from ngamsCore import TRACE, rmFile
-from ngamsCore import NGAMS_FILE_STATUS_OK, NGAMS_FILE_CHK_ACTIVE,NGAMS_DB_CH_FILE_UPDATE, NGAMS_DB_CH_FILE_INSERT
-import ngamsDbm, ngamsDbCore
-import ngamsLib
-
-# TODO: Avoid using these classes in this module (mutual dependency):
-import ngamsFileInfo
+from . import ngamsDbm, ngamsDbCore, ngamsLib, ngamsFileInfo
+from .ngamsCore import TRACE, rmFile
+from .ngamsCore import NGAMS_FILE_STATUS_OK, NGAMS_FILE_CHK_ACTIVE,NGAMS_DB_CH_FILE_UPDATE, NGAMS_DB_CH_FILE_INSERT
 
 logger = logging.getLogger(__name__)
 
@@ -562,8 +558,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         try:
             int(fileVersion)
         except:
-            raise Exception, "Illegal value for File Version specified: " +\
-                  str(fileVersion)
+            raise Exception("Illegal value for File Version specified: " +\
+                  str(fileVersion))
         sql = []
         vals = []
         # Query for files being online.
@@ -731,7 +727,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         clusterHostList = self.getHostIdsFromClusterName(clusterName)
         if (clusterHostList == []):
             msg = "No hosts registered for cluster with name: %s" % clusterName
-            raise Exception, msg
+            raise Exception(msg)
         clusterHostList = str(clusterHostList).strip()[1:-1]
         if (clusterHostList[-1] == ","): clusterHostList = clusterHostList[:-1]
 
@@ -764,11 +760,11 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                     fileCount += 1
             fileInfoDbm.sync()
             del fileInfoDbm
-        except Exception, e:
+        except Exception as e:
             rmFile(fileInfoDbmName)
             msg = "dumpFileInfoCluster(): Failed in dumping file info. " +\
                   "Error: %s" % str(e)
-            raise Exception, msg
+            raise Exception(msg)
 
         return fileInfoDbmName
 

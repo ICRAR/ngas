@@ -35,7 +35,8 @@ import logging
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, genLog
-import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
+from . import ngamsLinuxSystemPlugInApi
+from .eso import ngamsEscaladeUtils
 
 
 logger = logging.getLogger(__name__)
@@ -72,7 +73,7 @@ def ngamsLinuxOnlinePlugIn(srvObj,
         # implementation of the generation of the Disk ID.
         if (not parDic.has_key("old_format")):
             oldFormat = 0
-            raise Warning, "Missing Online Plug-In Parameter: old_format=0|1"
+            raise Warning("Missing Online Plug-In Parameter: old_format=0|1")
         else:
             oldFormat = int(parDic["old_format"])
 

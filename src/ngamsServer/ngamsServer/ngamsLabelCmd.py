@@ -72,7 +72,7 @@ def printLabel(srvObj,
     label = srvObj.getDb().getLogicalNameFromDiskId(diskId)
     if (not label):
         errMsg = "Empty Logical Name returned for Disk ID: %s" % diskId
-        raise Exception, errMsg
+        raise Exception(errMsg)
     logger.debug("Generating label for disk with ID: %s - Label text (Logical Name): %s",
                 diskId, label)
     plugIn = srvObj.getCfg().getLabelPrinterPlugIn()
@@ -84,9 +84,9 @@ def printLabel(srvObj,
     try:
         pluginMethod = loadPlugInEntryPoint(plugIn)
         pluginMethod(srvObj, prStr, reqPropsObj)
-    except Exception, e:
+    except:
         _labelPrinterSem.release()
-        raise e
+        raise
     _labelPrinterSem.release()
 
     logger.info("Generated label for disk with ID: %s - Label text (Logical Name): %s",
@@ -143,12 +143,12 @@ def handleCmd(srvObj,
         errMsg = genLog("NGAMS_ER_REQ_HANDLING",
                         ["It is not allowed to specify Disk ID together " +\
                          "with Host Id and/or Slot ID"])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     if ((slotId and (not hostId)) or ((not slotId) and hostId)):
         errMsg = genLog("NGAMS_ER_REQ_HANDLING",
                         ["Must refer to physical disk location with " +\
                          "Host Id and Slot ID"])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # If Slot ID/Host ID specified, get the Disk ID from these parameters.
     if (slotId):
@@ -157,7 +157,7 @@ def handleCmd(srvObj,
             errMsg = genLog("NGAMS_ER_REQ_HANDLING",
                             ["Could not find Disk ID corresponding to " +\
                              "host/slot: " + hostId + "/" + slotId])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
     # Print the label.
     if (diskId):
@@ -171,12 +171,12 @@ def handleCmd(srvObj,
             errMsg = genLog("NGAMS_ER_REQ_HANDLING",
                             ["Could not find Disk ID corresponding to " +\
                              "host/slot: " + hostId + "/" + slotId])
-            raise Exception, errMsg
+            raise Exception(errMsg)
     else:
         errMsg = genLog("NGAMS_ER_MIS_PAR",
                         ["slot_id=<ID>[&host_id=<ID>]|" +\
                          "relabel=<Disk ID>&new_label=<Label>", "LABEL"])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     return "Successfully handled command LABEL"
 

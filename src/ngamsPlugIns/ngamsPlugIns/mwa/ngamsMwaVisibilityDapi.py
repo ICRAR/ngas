@@ -130,9 +130,9 @@ def handlePars(reqPropsObj,
         parDic[COMPRESSION_EXT] = reqPropsObj.getHttpPar(COMPRESSION_EXT)
     if ((parDic[COMPRESSION] and (parDic[COMPRESSION_EXT] == None)) or
         (not parDic[COMPRESSION] and (parDic[COMPRESSION_EXT] != None))):
-        raise Exception, genLog("NGAMS_ER_DAPI",
+        raise Exception(genLog("NGAMS_ER_DAPI",
                                 ["Parameters compression and compression_ext"
-                                 "must be given together."])
+                                 "must be given together."]))
 
 
 def compressFile(srvObj,

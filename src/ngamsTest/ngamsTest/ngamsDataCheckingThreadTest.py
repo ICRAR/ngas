@@ -36,7 +36,7 @@ import shutil
 import time
 
 from ngamsLib.ngamsCore import checkCreatePath
-from ngamsTestLib import ngamsTestSuite, sendPclCmd, getNoCleanUp, setNoCleanUp
+from .ngamsTestLib import ngamsTestSuite, sendPclCmd, getNoCleanUp, setNoCleanUp
 
 
 class ngamsDataCheckingThreadTest(ngamsTestSuite):

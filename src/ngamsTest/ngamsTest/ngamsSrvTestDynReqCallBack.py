@@ -33,7 +33,6 @@ are handled.
 """
 
 import os
-import sys
 import time
 
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, \
@@ -121,7 +120,7 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         else:
             # Sending back illegal HTTP response
             time.sleep(0.500)
-            resp = loadFile("tmp/ngamsServerTestIllegalResp_tmp")
+            resp = loadFile("tmp/ngamsServerTestIllegalResp_tmp", mode='b')
             req_handler.wfile.write(resp)
 
 
@@ -140,7 +139,6 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         else:
             time.sleep(0.250)
             self.killServer()
-            sys.exit(0)
 
 
     def reqCallBack_SrvCrash2(self, *args, **kwargs):
@@ -158,15 +156,6 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         else:
             time.sleep(0.250)
             self.killServer()
-            sys.exit(0)
-
-
 
 if __name__ == '__main__':
-    """
-    Main program executing the special test NG/AMS Server
-    """
-    ngamsTestSrv = ngamsServerTestDynReqCallBack()
-    ngamsTestSrv.init(sys.argv)
-
-# EOF
+    ngamsServer.main(server_class=ngamsServerTestDynReqCallBack)

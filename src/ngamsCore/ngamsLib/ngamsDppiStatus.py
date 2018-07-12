@@ -34,7 +34,7 @@ Contains class for handling the return result for the Data Processing Plug-Ins.
 """
 
 import os
-from ngamsCore import TRACE, NGAMS_PROC_DATA, NGAMS_PROC_FILE,\
+from .ngamsCore import TRACE, NGAMS_PROC_DATA, NGAMS_PROC_FILE,\
     getFileSize
 
 class ngamsDppiResult:

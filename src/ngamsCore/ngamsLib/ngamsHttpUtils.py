@@ -23,17 +23,17 @@
 Module containing HTTP utility code (mostly client-side)
 """
 
-import cStringIO
 import contextlib
 import errno
-import httplib
+import io
 import logging
 import os
 import socket
 import time
-import urllib
-import urlparse
+import sys
 
+from six.moves import http_client as httplib  # @UnresolvedImport
+from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 
 logger = logging.getLogger(__name__)
 
@@ -81,12 +81,36 @@ def _http_response(host, port, method, cmd,
     # Prepare all headers that need to be sent
     hdrs = dict(hdrs)
 
+    # In python 3.6 the http.client module changed how it uses the body of a
+    # request to automatically calculate the Content-Length header, if none has
+    # been previously specified.
+    # In particular, file objects before 3.6 were previously automatically
+    # handled by calling fstat(f).st_size on them. In 3.6 they now do not yield
+    # a Content-Length header, but instead are they are sent using chunked
+    # transfer encoding, which we do not support explicitly on the server side)
+    #
+    # In several places throughout the code we trusted on the pre-3.6 rules,
+    # so here we exercise them manually for 3.6+
+    if (data is not None and
+        sys.version_info >= (3, 6, 0) and
+        'content-length' not in hdrs and
+        'Content-Length' not in hdrs):
+        try:
+            thelen = len(data)
+        except (TypeError, AttributeError):
+            try:
+                thelen = os.fstat(data.fileno()).st_size
+            except (AttributeError, OSError):
+                thelen = None
+        if thelen is not None:
+            hdrs['Content-Length'] = thelen
+
     url = cmd
     if pars:
         # urlib.urlencode expects tuple elements (if pars is a list)
         if not hasattr(pars, 'items'):
             pars = [(p[0], p[1]) for p in pars]
-        pars = urllib.urlencode(pars)
+        pars = urlparse.urlencode(pars)
         url += '?' + pars
 
     # Go, go, go!
@@ -164,12 +188,12 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
 
         # How much do we need to read?
         size = 0
-        if "content-length" in hdrs:
-            size = int(hdrs["content-length"])
+        if "content-length" in resp.msg:
+            size = int(resp.msg["content-length"])
 
         # Accumulate the incoming stream and return it whole in `data`
         bs = 65536
-        with contextlib.closing(cStringIO.StringIO()) as out:
+        with contextlib.closing(io.BytesIO()) as out:
             readin = 0
             while readin < size:
                 left = size - readin

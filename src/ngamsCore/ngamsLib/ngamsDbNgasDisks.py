@@ -37,14 +37,11 @@ It should be used as part of the ngamsDbBase parent classes.
 
 import logging
 
-from ngamsCore import TRACE, getDiskSpaceAvail, rmFile, NGAMS_DB_CH_FILE_DELETE, fromiso8601
-import ngamsDbm, ngamsDbCore
+from . import ngamsDbm, ngamsDbCore, ngamsFileInfo, ngamsDiskInfo
+from .ngamsCore import TRACE, getDiskSpaceAvail, rmFile, NGAMS_DB_CH_FILE_DELETE, fromiso8601
 
 
 logger = logging.getLogger(__name__)
-
-# TODO: Avoid using these classes in this module (mutual dependency):
-import ngamsFileInfo, ngamsDiskInfo
 
 
 class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
@@ -72,7 +69,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             res = self.query2(sql, args = (diskId,))
             if not res:
                 errMsg = "Cannot find entry for disk with ID: %s." % diskId
-                raise Exception, errMsg
+                raise Exception(errMsg)
 
             numberOfFiles = res[0][0]
             bytesStored = res[0][2]
@@ -251,11 +248,13 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         if not res:
             return None
 
+        # TODO: change to simpler logic: run max() over a map() that extracts
+        # the integer from the disk logical name
         logNameDic = {}
         for subRes in res:
             tmpName = subRes[0]
             logNameDic[tmpName[(len(tmpName) - 6):]] = 1
-        logNames = logNameDic.keys()
+        logNames = list(logNameDic)
         logNames.sort()
         retVal = int(logNames[-1])
         return retVal

@@ -71,7 +71,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                             continue
                 re += thrObj.getName() + '\n'
                 n += 1
-        except Exception, e:
+        except Exception as e:
             re += str(e)
 
     httpRef.send_data('In total ' + str(n) + ' threads\n: ' + re + '\n', NGAMS_TEXT_MT)

@@ -33,13 +33,14 @@ various background activities as cleaning up after processing, waking up
 suspended NGAS hosts, suspending itself.
 """
 
-import Queue
 import logging
 import signal
 import time
 
-from ngamsDbSnapshotUtils import checkUpdateDbSnapShots, updateDbSnapShots
-from ngamsJanitorCommon import StopJanitorThreadException, checkStopJanitorThread, suspend
+from six.moves import queue as Queue  # @UnresolvedImport
+
+from .ngamsDbSnapshotUtils import checkUpdateDbSnapShots, updateDbSnapShots
+from .ngamsJanitorCommon import StopJanitorThreadException, checkStopJanitorThread, suspend
 from ngamsLib.ngamsCore import isoTime2Secs, loadPlugInEntryPoint
 
 

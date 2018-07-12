@@ -39,13 +39,15 @@ import re
 import sys
 import types
 
+import six
+
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL,\
     getHostName, genLog, genUniqueId, rmFile,\
     compressFile, NGAMS_GZIP_XML_MT, getNgamsVersion,\
     NGAMS_SUCCESS, NGAMS_XML_MT, fromiso8601, toiso8601
 from ngamsLib import ngamsDbm, ngamsStatus, ngamsDiskInfo, ngamsHttpUtils
 from ngamsLib import ngamsFileInfo, ngamsHighLevelLib
-import ngamsFileUtils
+from . import ngamsFileUtils
 
 
 logger = logging.getLogger(__name__)
@@ -260,7 +262,7 @@ def _handleFileList(srvObj,
             fileInfoDbm.add(key, f)
             fileCount += 1
 
-    except Exception, e:
+    except Exception as e:
         rmFile(fileInfoDbmName)
         msg = "Problem generating file list for STATUS Command. " +\
               "Parameters: from_ingestion_date=%s. Error: %s" %\
@@ -306,11 +308,11 @@ def _handleFileListReply(srvObj,
     if (len(dbmMatches) < 1):
         msg = "Referenced File List ID: %s in connection with " +\
               "STATUS/file_list request, is not (or no longer) known"
-        raise Exception, msg % fileListId
+        raise Exception(msg % fileListId)
     elif (len(dbmMatches) > 1):
         msg = "Inconsistencies encountered in locating result set for " +\
               "STATUS/file_list for referenced File List ID: %s"
-        raise Exception, msg % fileListId
+        raise Exception(msg % fileListId)
     fileInfoDbmName = dbmMatches[0]
 
     # Generate the NG/AMS Status Document, with a File List in it.
@@ -354,7 +356,7 @@ def _handleFileListReply(srvObj,
                 fileInfoXml = tmpFileInfoObj.genXml(storeDiskId = 1).\
                               toprettyxml("  ", "\n")[:-1]
                 fo.write("\n" + fileInfoXml)
-            except Exception, e:
+            except Exception as e:
                 msg = "Error creating STATUS/File List XML Document. " +\
                       "Error: %s" % str(e)
                 logger.error(msg)
@@ -366,10 +368,10 @@ def _handleFileListReply(srvObj,
         fo.close()
         # Assume this type of file can always be compressed.
         fileListXmlDoc = compressFile(fileListXmlDoc)
-    except Exception, e:
+    except:
         rmFile("%s*" % fileInfoDbmName)
         rmFile("%s*" % fileListXmlDoc)
-        raise e
+        raise
 
     # Send the XML document back to the requestor.
     try:
@@ -388,7 +390,7 @@ def _handleFileListReply(srvObj,
         if (dbmCount == 0):
             rmFile("%s*" % fileInfoDbmName)
 
-    except Exception, e:
+    except Exception as e:
         msg = "Error returning response to STATUS?file_list request. Error: %s"
         msg = msg % str(e)
         raise Exception(msg)
@@ -506,11 +508,11 @@ def handleCmd(srvObj,
         else:
             try:
                 httpRef.proxy_request(hostId, host, port)
-            except Exception, e:
+            except Exception as e:
                 ex = re.sub("<|>", "", str(e))
                 errMsg = genLog("NGAMS_ER_COM",
                                 [host, port,ex])
-                raise Exception, errMsg
+                raise Exception(errMsg)
             return
     elif (fileList):
         if (not fileListId):
@@ -534,7 +536,7 @@ def handleCmd(srvObj,
         except:
             errMsg = "Illegal Disk ID found: %s for file with ID: %s" %\
                      (fileObj.getDiskId(), fileId)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         diskObj.addFileObj(fileObj)
         status.addDiskStatus(diskObj)
         genDiskStatus = 1
@@ -544,7 +546,7 @@ def handleCmd(srvObj,
         reqPropsObjRef = srvObj.getRequest(requestId)
         if (not reqPropsObjRef):
             errMsg = genLog("NGAMS_ER_ILL_REQ_ID", [requestId])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         genRequestStatus = 1
     elif (configurationFile):
         msg = "configuration_file=" + srvObj.getCfg().getCfg()
@@ -575,7 +577,7 @@ def handleCmd(srvObj,
         xmlStat = status.genXmlDoc(genCfgStatus, genDiskStatus, genFileStatus,
                                    genStatesStatus)
         xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
-        httpRef.send_data(xmlStat, NGAMS_XML_MT)
+        httpRef.send_data(six.b(xmlStat), NGAMS_XML_MT)
     elif not httpRef.reply_sent:
         httpRef.send_status(msg)
 

@@ -86,7 +86,7 @@ def _delFile(srvObj,
     Returns:       Message with info about the execution (string).
     """
     if (hostId and (hostId != srvObj.getHostId())):
-        raise Exception, "DISCARD Command can only be executed locally!"
+        raise Exception("DISCARD Command can only be executed locally!")
 
     # Handle the discard request locally.
     ngasHostId = "%s:%d" % (getHostName(), srvObj.getCfg().getPortNo())
@@ -156,7 +156,7 @@ def _discardFile(srvObj,
         fileInfo = files[0]
         hostId = fileInfo[-2]
         if (hostId != srvObj.getHostId()):
-            raise Exception, "DISCARD Command can only be executed locally!"
+            raise Exception("DISCARD Command can only be executed locally!")
 
         mtPt = fileInfo[-1]
         filename = os.path.normpath(mtPt + "/" + fileInfo[1])
@@ -177,7 +177,7 @@ def _discardFile(srvObj,
     else:
         msg = "Correct syntax is: disk_id=ID&file_id=ID&file_version=VER or "+\
               "path=PATH[&host_id=ID]"
-        raise Exception, genLog("NGAMS_ER_CMD_SYNTAX",[NGAMS_DISCARD_CMD, msg])
+        raise Exception(genLog("NGAMS_ER_CMD_SYNTAX",[NGAMS_DISCARD_CMD, msg]))
 
     return msg
 
@@ -221,9 +221,9 @@ def handleCmd(srvObj,
     if (reqPropsObj.hasHttpPar("file_version")):
         try:
             fileVersion = int(reqPropsObj.getHttpPar("file_version"))
-        except Exception, e:
-            raise Exception, "Illegal value for File Version specified: " +\
-                  str(fileVersion)
+        except ValueError:
+            raise Exception("Illegal value for File Version specified: " +\
+                  str(fileVersion))
     if (reqPropsObj.hasHttpPar("host_id")):
         hostId = reqPropsObj.getHttpPar("host_id")
     if (reqPropsObj.hasHttpPar("path")):
@@ -234,7 +234,7 @@ def handleCmd(srvObj,
         except:
             errMsg = genLog("NGAMS_ER_REQ_HANDLING", ["Must provide proper " +\
                             "value for parameter: execute (0|1)"])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
     msg = _discardFile(srvObj, diskId, fileId, fileVersion, hostId, path, execute)
     if msg.startswith("NGAMS_INFO_"):

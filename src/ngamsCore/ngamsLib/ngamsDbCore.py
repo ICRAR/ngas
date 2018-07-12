@@ -38,8 +38,10 @@ import tempfile
 import threading
 import time
 
-from ngamsCore import TRACE, toiso8601, fromiso8601
 from DBUtils.PooledDB import PooledDB
+import six
+
+from .ngamsCore import TRACE, toiso8601, fromiso8601
 
 # Global DB Semaphore to protect critical, global DB interaction.
 _globalDbSem = threading.Semaphore(1)
@@ -435,9 +437,9 @@ def cleanSrvList(srvList):
         srvList = srvList.replace(" ", "").split(",")
         srvList.sort()
         srvList = str(srvList)[1:-1].replace("'", "").replace(" ", "")
-    except Exception, e:
+    except Exception as e:
         msg = "Error cleaning up server list. Error: %s" % str(e)
-        raise Exception, msg
+        raise Exception(msg)
 
     return srvList
 
@@ -795,11 +797,11 @@ class ngamsDbCore(object):
         # pyformat  Python extended format codes, e.g. ...WHERE name=%(name)s
         #
         s = self.__paramstyle
-        if s == 'qmark':    return ['?'                   for i in xrange(howMany)]
-        if s == 'numeric':  return [':%d'%(i)             for i in xrange(howMany)]
-        if s == 'named':    return [self._named_marker(i) for i in xrange(howMany)]
-        if s == 'format':   return ['%s'                  for i in xrange(howMany)]
-        if s == 'pyformat': return ['%%(n%d)s'%(i)        for i in xrange(howMany)]
+        if s == 'qmark':    return ['?'                   for i in range(howMany)]
+        if s == 'numeric':  return [':%d'%(i)             for i in range(howMany)]
+        if s == 'named':    return [self._named_marker(i) for i in range(howMany)]
+        if s == 'format':   return ['%s'                  for i in range(howMany)]
+        if s == 'pyformat': return ['%%(n%d)s'%(i)        for i in range(howMany)]
         raise Exception('Unknown paramstyle: %s' % (s))
 
     def _format_query(self, sql, args):
@@ -858,7 +860,7 @@ class ngamsDbCore(object):
         """
         Convert a timestamp given in one of the following formats:
         """
-        if isinstance(t, basestring):
+        if isinstance(t, six.string_types):
             return t
         else:
             return toiso8601(t, local=True)

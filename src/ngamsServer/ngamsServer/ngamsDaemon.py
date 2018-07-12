@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -53,8 +52,7 @@ def start(args, cfg, pidfile):
 
     # Go, go, go!
     with daemon.DaemonContext(pidfile=lockfile.pidlockfile.PIDLockFile(pidfile, timeout=1)):
-        ngamsSrv = ngamsServer.ngamsServer()
-        ngamsSrv.init(args)
+        ngamsServer.main(args=args[1:], prog='ngamsDaemon')
 
     return 0
 
@@ -66,7 +64,7 @@ def stop(pidfile):
     else:
         try:
             return kill_and_wait(pid, pidfile)
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ESRCH:
                 err('PID file points to non-existing process, removing it')
                 os.unlink(pidfile)
@@ -182,7 +180,7 @@ def main(args=sys.argv):
     elif 'status' == cmd:
         exitCode = status(cfg)
     else:
-        print "Unknown command: %s" % (cmd,)
+        err("Unknown command: %s" % (cmd,))
         print_usage(name)
         exitCode = 1
 

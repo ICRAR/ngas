@@ -41,27 +41,27 @@ src/ngamsTest/ngamsTestAsyncListRetrieve.py
 
 """
 
-import cPickle as pickle
-import httplib
 import logging
 import os
-from Queue import Queue, Empty
 import socket
-import thread
 import threading
 import time
 import traceback
-from urlparse import urlparse
+
+from six.moves import cPickle as pickle  # @UnresolvedImport
+from six.moves import http_client as httplib  # @UnresolvedImport
+from six.moves.queue import Queue, Empty  # @UnresolvedImport
+from six.moves.urllib import parse as urlparse # @UnresolvedImport
 
 from ngamsLib import ngamsDbCore, ngamsStatus, ngamsPlugInApi
 from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, \
     TRACE, NGAMS_HTTP_POST, getFileSize, getHostName, NGAMS_SUCCESS, \
     NGAMS_FAILURE
-import ngamsMWACortexTapeApi
 from ngamsPlugIns.mwa.ngamsMWAAsyncProtocol import AsyncListRetrieveResponse, \
     AsyncListRetrieveProtocolError, AsyncListRetrieveCancelResponse, \
     AsyncListRetrieveSuspendResponse, AsyncListRetrieveResumeResponse, \
     AsyncListRetrieveStatusResponse, FileInfo
+from . import ngamsMWACortexTapeApi
 
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ def createPushThread(srvObj, url, numPT = 1):
 
     url:    url to be pushed
     """
-    o = urlparse(url)
+    o = urlparse.urlparse(url)
     pushQSem.acquire()
     try:
         if (pushQDic.has_key(o.hostname)):
@@ -101,7 +101,7 @@ def createPushThread(srvObj, url, numPT = 1):
 
 def enPushQueue(srvObj, filename, asyncListReqObj, baseNameDic):
     logger.debug('Get signal to pushi file %s, url = %s', filename, str(asyncListReqObj.url))
-    o = urlparse(asyncListReqObj.url)
+    o = urlparse.urlparse(asyncListReqObj.url)
     hostname = o.hostname
     logger.debug('Pushing file %s in the queue for host %s', filename, hostname)
     if (not pushQDic.has_key(hostname)):
@@ -119,7 +119,7 @@ def _pushThread(srvObj, hostname):
     while (pushQDic.has_key(hostname)): # in case push is cancelled
         try:
             fileInfo = pushQueue.get(timeout = 60 * 15)
-        except Empty, e:
+        except Empty:
             if (pushQDic.has_key(hostname)):
                 del pushQDic[hostname]
             break
@@ -476,7 +476,7 @@ def _httpPostUrl(url,
 
     if (hdrs == None):
         errMsg = "Illegal/no response to HTTP request encountered!"
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     if (hdrs.has_key("content-length")):
         dataSize = int(hdrs["content-length"])
@@ -491,7 +491,7 @@ def _httpPostUrl(url,
             fd = open(dataTargFile, "w")
             fd.write(http.getfile().read(dataSize))
             fd.close()
-        except Exception, e:
+        except Exception as e:
             if (fd != None): fd.close()
             raise e
 
@@ -521,8 +521,9 @@ def _httpPost(srvObj, url, filename, sessionId = None):
     baseName = os.path.basename(filename)
     contDisp = "attachment; filename=\"" + baseName + "\""
     contDisp += "; no_versioning=1"
+    thread_id = threading.current_thread().ident
     logger.debug("Async Delivery Thread [%s] Delivering file: %s - to: %s ...",
-                 str(thread.get_ident()), baseName, url)
+                 str(thread_id), baseName, url)
     ex = ""
     try:
 
@@ -542,12 +543,12 @@ def _httpPost(srvObj, url, filename, sessionId = None):
             stat.clear().unpackXmlDoc(data)
         else:
             stat.clear().setStatus(NGAMS_SUCCESS)
-    except Exception, e:
+    except Exception as e:
             ex = str(e)
     if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
         (stat.getStatus() == NGAMS_FAILURE)):
         errMsg = "Error occurred while async delivering file: " + baseName +\
-                     " - to url: " + url + " by Data Delivery Thread [" + str(thread.get_ident()) + "]"
+                     " - to url: " + url + " by Data Delivery Thread [" + str(thread_id) + "]"
         if (ex != ""): errMsg += " Exception: " + ex + "."
         if (stat.getMessage() != ""):
             errMsg += " Message: " + stat.getMessage()
@@ -555,7 +556,7 @@ def _httpPost(srvObj, url, filename, sessionId = None):
         return 1
     else:
         logger.debug("File: %s delivered to url: %s by Async Delivery Thread [%s]",
-                     baseName, url, str(thread.get_ident()))
+                     baseName, url, str(thread_id))
         return 0
 
 def genInstantResponse(srvObj, asyncListReqObj):
@@ -714,7 +715,6 @@ def _deliveryThread(srvObj, asyncListReqObj):
             st = statusResDic.pop(sessionId)
             del st
     """
-    thread.exit()
 
 def startAsyncQService(srvObj, reqPropsObj):
     """
@@ -738,7 +738,7 @@ def startAsyncQService(srvObj, reqPropsObj):
         pkl_file = open(saveFile, 'rb')
         saveObj = pickle.load(pkl_file)
         pkl_file.close()
-    except Exception, e:
+    except Exception as e:
         ex = str(e)
         return ex
 
@@ -800,7 +800,7 @@ def stopAsyncQService(srvObj, reqPropsObj):
         output = open(saveFile, 'wb')
         pickle.dump(saveObj, output)
         output.close()
-    except Exception, e:
+    except Exception as e:
         ex = str(e)
         return ex
 

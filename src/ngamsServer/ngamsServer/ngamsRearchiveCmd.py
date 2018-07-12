@@ -42,8 +42,8 @@ import os
 import time
 import urllib
 
-import ngamsArchiveUtils
-import ngamsFileUtils, ngamsCacheControlThread
+from . import ngamsArchiveUtils
+from . import ngamsFileUtils, ngamsCacheControlThread
 from ngamsLib import ngamsLib
 from ngamsLib import ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
@@ -76,7 +76,7 @@ def receiveData(srvObj,
     if (not encFileInfo):
         msg = "Error. Must provide NGAS File Information " +\
               "(RFC 3548 encoded) in HTTP header NGAS-File-Info"
-        raise Exception, msg
+        raise Exception(msg)
     fileInfoXml = base64.b64decode(encFileInfo)
     fileInfoObj = ngamsFileInfo.ngamsFileInfo().unpackXmlDoc(fileInfoXml)
 
@@ -99,10 +99,10 @@ def receiveData(srvObj,
             else:
                 trgDiskInfoObj = tmpTrgDiskInfo
                 break
-        except Exception, e:
+        except Exception as e:
             msg = "Error locating target disk for REARCHIVE Command. Error: %s"
             msg = msg % str(e)
-            raise Exception, msg
+            raise Exception(msg)
 
     # Generate Staging Filename + save file into this.
     storageSetId = trgDiskInfoObj.getStorageSetId()

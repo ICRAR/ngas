@@ -35,8 +35,6 @@ Checksum Plug-In to generate the checksum stored in the ngas_files tables
 in connection with each file archived into NGAS.
 """
 
-import sys
-import time
 import binascii
 
 
@@ -67,20 +65,3 @@ def ngamsGenCrc32(srvObj,
             crc = binascii.crc32(buf, crc)
 
     return str(crc)
-
-
-if __name__ == '__main__':
-    """
-    Main routine to calculate checksum for a file given as input parameter.
-    """
-    if (len(sys.argv) != 2):
-        print "\nCorrect usage is:\n"
-        print "% ngamsGenCrc32.py <filename> [<priority [0..oo]>]\n"
-        sys.exit(1)
-    filename = sys.argv[1]
-    if (len(sys.argv) == 3):
-        priority = int(sys.argv[2])
-    else:
-        priority = 0
-    checksum = ngamsGenCrc32(None, filename, priority)
-    sys.stdout.write(checksum)

@@ -59,23 +59,24 @@ src/ngamsTest/ngamsTestAsyncListRetrieve.py
 
 """
 
-import httplib
 import logging
 import os
-import thread
 import threading
 import time
-import urllib2
 
-import cPickle as pickle
+from six.moves import cPickle as pickle  # @UnresolvedImport
+from six.moves import http_client as httplib  # @UnresolvedImport
+from six.moves.urllib import parse as urlparse # @UnresolvedImport
+from six.moves.urllib import request as urlrequest # @UnresolvedImport
+
 from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, TRACE, \
     NGAMS_HTTP_POST, getFileSize, getHostName, NGAMS_SUCCESS, NGAMS_FAILURE
 from ngamsLib import ngamsDbCore, ngamsStatus, ngamsPlugInApi
-import ngamsMWACortexTapeApi
 from ngamsPlugIns.mwa.ngamsMWAAsyncProtocol import AsyncListRetrieveResponse, \
     AsyncListRetrieveProtocolError, AsyncListRetrieveCancelResponse, \
     AsyncListRetrieveSuspendResponse, AsyncListRetrieveResumeResponse, \
     AsyncListRetrieveStatusResponse, FileInfo
+from . import ngamsMWACortexTapeApi
 
 
 logger = logging.getLogger(__name__)
@@ -334,7 +335,7 @@ def _httpPostUrl(url,
     idx = (url[7:].find("/") + 7)
     tmpUrl = url[7:idx]
     cmd    = url[(idx + 1):]
-    http = httplib.HTTP(tmpUrl)
+    http = httplib.HTTPConnection(tmpUrl)
     logger.debug("Sending HTTP header ...")
     logger.debug("HTTP Header: %s: %s", NGAMS_HTTP_POST, cmd)
     http.putrequest(NGAMS_HTTP_POST, cmd)
@@ -406,7 +407,7 @@ def _httpPostUrl(url,
 
     if (hdrs == None):
         errMsg = "Illegal/no response to HTTP request encountered!"
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     if (hdrs.has_key("content-length")):
         dataSize = int(hdrs["content-length"])
@@ -421,9 +422,9 @@ def _httpPostUrl(url,
             fd = open(dataTargFile, "w")
             fd.write(http.getfile().read(dataSize))
             fd.close()
-        except Exception, e:
+        except:
             if (fd != None): fd.close()
-            raise e
+            raise
 
     # Dump HTTP headers if Verbose Level >= 4.
     logger.debug("HTTP Header: HTTP/1.0 %s %s". str(reply), msg)
@@ -451,8 +452,9 @@ def _httpPost(srvObj, url, filename, sessionId):
     baseName = os.path.basename(filename)
     contDisp = "attachment; filename=\"" + baseName + "\""
     contDisp += "; no_versioning=1"
+    thread_id = threading.current_thread().ident
     logger.debug("Async Delivery Thread [%s] Delivering file: %s - to: %s",
-                 str(thread.get_ident()), baseName, url)
+                 str(thread_id), baseName, url)
     ex = ""
     try:
         reply, msg, hdrs, data = \
@@ -467,12 +469,12 @@ def _httpPost(srvObj, url, filename, sessionId):
             stat.clear().unpackXmlDoc(data)
         else:
             stat.clear().setStatus(NGAMS_SUCCESS)
-    except Exception, e:
+    except Exception as e:
             ex = str(e)
     if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
         (stat.getStatus() == NGAMS_FAILURE)):
         errMsg = "Error occurred while async delivering file: " + baseName +\
-                     " - to url: " + url + " by Data Delivery Thread [" + str(thread.get_ident()) + "]"
+                     " - to url: " + url + " by Data Delivery Thread [" + str(thread_id) + "]"
         if (ex != ""): errMsg += " Exception: " + ex + "."
         if (stat.getMessage() != ""):
             errMsg += " Message: " + stat.getMessage()
@@ -482,16 +484,16 @@ def _httpPost(srvObj, url, filename, sessionId):
             try:
                 if (not ex):
                     ex = ''
-                rereply = urllib2.urlopen('http://%s/failtodeliverfile?file_id=%s&to_url=%s&err_msg=%s' % (jobManHost, baseName, urllib2.quote(url), urllib2.quote(ex)), timeout = 15).read()
+                rereply = urlrequest.urlopen('http://%s/failtodeliverfile?file_id=%s&to_url=%s&err_msg=%s' % (jobManHost, baseName, urlparse.quote(url), urlparse.quote(ex)), timeout = 15).read()
                 logger.debug('Reply from sending file %s failtodeliver event to server %s - %s',
                              baseName, jobManHost, rereply)
-            except Exception, err:
+            except Exception as err:
                 logger.error('Fail to send fail-to-deliver event to server %s, Exception: %s', jobManHost, str(err))
 
         return 1
     else:
         logger.debug("File: %s - delivered to url: %s by Async Delivery Thread [%s]",
-                     baseName, url, str(thread.get_ident()))
+                     baseName, url, str(thread_id))
         return 0
 
 def genInstantResponse(srvObj, asyncListReqObj):
@@ -663,7 +665,7 @@ def startAsyncQService(srvObj, reqPropsObj):
         pkl_file = open(saveFile, 'rb')
         saveObj = pickle.load(pkl_file)
         pkl_file.close()
-    except Exception, e:
+    except Exception as e:
         ex = str(e)
         return ex
 
@@ -723,7 +725,7 @@ def stopAsyncQService(srvObj, reqPropsObj):
         output = open(saveFile, 'wb')
         pickle.dump(saveObj, output)
         output.close()
-    except Exception, e:
+    except Exception as e:
         ex = str(e)
         return ex
 

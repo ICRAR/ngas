@@ -30,8 +30,8 @@ function print_usage {
 	echo
 	echo "-h, -?: Show this help"
 	echo "-f: Force creation of NGAS root, even if directory exists"
-	echo "-D: Do *not* create a configuration file"
-	echo "-C: Do *not* create an SQLite3 database"
+	echo "-C: Do *not* create a configuration file"
+	echo "-D: Do *not* create an SQLite3 database"
 	echo
 }
 

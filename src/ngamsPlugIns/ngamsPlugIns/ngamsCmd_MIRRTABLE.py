@@ -54,7 +54,7 @@ EXAMPLES:
 
 import logging
 import re
-import thread
+import threading
 import time
 
 from ngamsLib import ngamsHttpUtils
@@ -175,7 +175,8 @@ def handleCmd(srvObj,
 
         logger.info("There are %d files are to be mirrored in iteration %d", totalFilesToMirror, iteration)
         if totalFilesToMirror > 0:
-            thread.start_new_thread(executeMirroring, (srvObj, iteration))
+            t = threading.Thread(target=executeMirroring, args=(srvObj, iteration))
+            t.start()
     return
 
 def executeMirroring(srvObj, iteration):

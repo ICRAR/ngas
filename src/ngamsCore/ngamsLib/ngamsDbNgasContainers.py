@@ -29,8 +29,7 @@ import logging
 import time
 import uuid
 
-import ngamsDbCore
-import ngamsFileInfo, ngamsContainer
+from . import ngamsDbCore, ngamsFileInfo, ngamsContainer
 
 
 logger = logging.getLogger(__name__)

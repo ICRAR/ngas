@@ -31,41 +31,12 @@
 Child class of ngamsServer killing itself immediately after moving the
 Staging File to the final destination (Main File).
 """
-
-import sys
-
 from ngamsServer import ngamsServer
 
 
 class ngamsSrvTestKillAfterMvStgFile(ngamsServer.ngamsServer):
-    """
-    Child class of ngamsServer killing itself immediately after moving the
-    Staging File to the final destination (Main File).
-    """
-
-    def __init__(self):
-        """
-        Constructor method.
-        """
-        ngamsServer.ngamsServer.__init__(self)
-
-
     def test_AfterMovingStagingFile(self):
-        """
-        Tets method killing server.
-
-        Returns:  Void.
-        """
         self.killServer()
-        raise Exception, "test_AfterMovingStagingFile: TEST METHOD KILLING " +\
-              "SERVER"
-
 
 if __name__ == '__main__':
-    """
-    Main program executing the test NG/AMS Server
-    """
-    ngamsTestSrv = ngamsSrvTestKillAfterMvStgFile()
-    ngamsTestSrv.init(sys.argv)
-
-# EOF
+    ngamsServer.main(server_class=ngamsSrvTestKillAfterMvStgFile)

@@ -36,8 +36,7 @@ import logging
 
 from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, NGAMS_PROC_DATA
-from ngamsPlugIns.ngamsAlmaMultipart import specificTreatment
-from ngamsPlugIns.printhead import head
+from .ngamsAlmaMultipart import specificTreatment
 
 
 logger = logging.getLogger(__name__)
@@ -53,9 +52,9 @@ def extractData(result, resourceId, verbose=0):
     T = TRACE(3)
 
     if (verbose >= 3):
-        print "Entering extractData with parameters " + \
+        print("Entering extractData with parameters " + \
               "type(result): %s, resourceId: %s" % (str(type(result)),
-                                                    resourceId)
+                                                    resourceId))
     eP = MultipartHandler.Parser()
     xData = []
     yData = []
@@ -88,14 +87,14 @@ def extractData(result, resourceId, verbose=0):
         # ...and parse it
         try:
             root = MultipartHandler.VOTable.parseString(xml)
-        except Exception, e:
+        except Exception as e:
     #        print xml
             errMsg = "MonitorDataCli.extractData: XML parsing failed: %s " % str(e)
             raise Exception(errMsg)
 
         try:
             (res, cidI, cids) = MultipartHandler.interpretVotable(root, selection=resourceId, verbose=verbose)
-        except Exception, e:
+        except Exception as e:
             errMsg = "ERROR interpreting VOTABLE: %s" % str(e)
             raise Exception(errMsg)
         if len(res) != 1:
@@ -223,12 +222,12 @@ def ngamsExtractAlmaMultipart(srvObj,
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
-        print "Usage: ngamsExtractAlmaMultipart.py <test_file> cid"
+        print("Usage: ngamsExtractAlmaMultipart.py <test_file> cid")
         sys.exit()
     try:
         fo = open(sys.argv[1],'r')
         (file_id,fileName, type) = specificTreatment(fo)
-        print file_id, fileName, type
+        print(file_id, fileName, type)
     except:
         raise
 

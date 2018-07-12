@@ -27,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/05/2001  Created
 #
-
 """
 The ngamsConfig class is used to handle the NG/AMS Configuration.
 """
@@ -36,11 +35,13 @@ import base64
 import collections
 import logging
 import os
-import types
 
-from   ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
-import ngamsConfigBase, ngamsSubscriber
-import ngamsStorageSet, ngamsStream, ngamsMirroringSource
+import six
+
+from . import ngamsConfigBase, ngamsSubscriber
+from . import ngamsStorageSet, ngamsStream, ngamsMirroringSource
+from . import utils
+from .ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
 
 
 logger = logging.getLogger(__name__)
@@ -82,9 +83,8 @@ def getInt(property,
     Returns:          Integer value (integer).
     """
     try:
-        valInt = int(str(val))
-        return valInt
-    except Exception, e:
+        return int(str(val))
+    except ValueError:
         return retValOnFailure
 
 
@@ -104,7 +104,7 @@ def checkIfSetStr(property,
                if the string was not properly formatted (integer/0|1).
     """
     logging.debug("Checking if property: %s is properly set ...", property)
-    if ((not isinstance(value, types.StringType))):
+    if ((not isinstance(value, six.string_types))):
         errMsg = "Must define a proper string value for property: " + property
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
         logger.error(errMsg)
@@ -112,7 +112,7 @@ def checkIfSetStr(property,
             checkRep.append(errMsg)
             return 0
         else:
-            raise Exception, errMsg
+            raise Exception(errMsg)
     elif value == "":
         logger.warning("Value of property %s is an empty string", property)
     else:
@@ -136,7 +136,7 @@ def checkIfSetInt(property,
     """
     logger.debug("Checking if property: %s is properly set ...", property)
     value = int(value)
-    if ((not isinstance(value, types.IntType)) or (value == -1)):
+    if ((not isinstance(value, six.integer_types)) or (value == -1)):
         errMsg = "Must define a proper integer value for property: " + property
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
         logger.error(errMsg)
@@ -144,7 +144,7 @@ def checkIfSetInt(property,
             checkRep.append(errMsg)
             return 0
         else:
-            raise Exception, errMsg
+            raise Exception(errMsg)
     else:
         return 1
 
@@ -165,7 +165,7 @@ def checkIfZeroOrOne(property,
                 if the value was not properly formatted (integer/0|1).
     """
     logger.debug("Checking if property: %s is properly set ...", property)
-    if ((not isinstance(value, types.IntType)) or
+    if ((not isinstance(value, six.integer_types)) or
         ((value != 0) and (value != 1))):
         errMsg = "Value must be 0 or 1 (integer) for property: " + property
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
@@ -174,7 +174,7 @@ def checkIfZeroOrOne(property,
             checkRep.append(errMsg)
             return 0
         else:
-            raise Exception, errMsg
+            raise Exception(errMsg)
     else:
         return 1
 
@@ -197,7 +197,7 @@ def checkDuplicateValue(checkDic,
 
     Returns:     Void.
     """
-    if (checkDic.has_key(value)):
+    if value in checkDic:
         errMsg = "Duplicate value for property: " + property + ". Value: " +\
                  str(value)
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
@@ -205,7 +205,7 @@ def checkDuplicateValue(checkDic,
         if (checkRep != None):
             checkRep.append(errMsg)
         else:
-            raise Exception, errMsg
+            raise Exception(errMsg)
     else:
         checkDic[value] = 1
 
@@ -399,9 +399,9 @@ class ngamsConfig:
         self.clear()
         try:
             self.__cfgMgr.load(filename)
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_LOAD_CFG", [filename, str(e)])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         self._unpackCfg()
         if (check): self._check()
 
@@ -655,10 +655,10 @@ class ngamsConfig:
                           setFilterPlugIn(self.getVal(nm % "FilterPlugIn")).\
                           setFilterPlugInPars(self.getVal(nm %\
                                                           "FilterPlugInPars"))
-                if (srcArchIdDic.has_key(mirSrcObj.getId())):
+                if mirSrcObj.getId() in srcArchIdDic:
                     msg = "Error parsing configuration file. Mirroring " +\
                           "Source Archive ID: %s specified multiple times"
-                    raise Exception, msg % mirSrcObj.getId()
+                    raise Exception(msg % mirSrcObj.getId())
                 self.addMirroringSrcObj(mirSrcObj)
 
         return self
@@ -730,7 +730,7 @@ class ngamsConfig:
         """
         rootDir = self.getVal("NgamsCfg.Server[1].RootDirectory")
         if not rootDir:
-            raise Exception, "Server[1].RootDirectory not properly defined"
+            raise Exception("Server[1].RootDirectory not properly defined")
         return rootDir
 
 
@@ -1248,7 +1248,7 @@ class ngamsConfig:
                 return set
         # Raise exception.
         errMsg = genLog("NGAMS_ER_NO_STORAGE_SET", [slotId, self.getCfg()])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
     def getAssocSlotId(self,
@@ -1911,7 +1911,7 @@ class ngamsConfig:
 
         Returns:   1 = user defined (integer/0|1).
         """
-        if (self.__authUserDic.has_key(user)):
+        if user in self.__authUserDic:
             return 1
         else:
             return 0
@@ -1926,7 +1926,7 @@ class ngamsConfig:
 
         Returns:   Password or None (string).
         """
-        if (not self.__authUserDic.has_key(user)):
+        if user not in self.__authUserDic:
             return None
         else:
             return self.__authUserDic[user]
@@ -1939,7 +1939,7 @@ class ngamsConfig:
 
         Returns:   Password or None (string).
         """
-        if (not self.__authUserCommandsDic.has_key(user)):
+        if user not in self.__authUserCommandsDic:
             return None
         else:
             return self.__authUserCommandsDic[user]
@@ -1956,10 +1956,10 @@ class ngamsConfig:
         Returns:     Authorization HTTP Header value (string).
         """
         if (not user): user = self.getAuthUsers()[0]
-        if (not self.__authUserDic.has_key(user)):
-            raise Exception, "Undefined user referenced: %s" % user
+        if user not in self.__authUserDic:
+            raise Exception("Undefined user referenced: %s" % user)
         pwd = base64.b64decode(self.getAuthUserInfo(user))
-        authHdrVal = "Basic " + base64.b64encode(user + ":" + pwd)
+        authHdrVal = "Basic " + utils.b2s(base64.b64encode(six.b(user) + b":" + pwd))
         return authHdrVal
 
 
@@ -2038,9 +2038,9 @@ class ngamsConfig:
         """
         T = TRACE()
 
-        if (not self.__mirSrcObjDic.has_key(id)):
+        if id not in self.__mirSrcObjDic:
             msg = "No Mirroring Source found in configuration with ID: %s"
-            raise Exception, msg % id
+            raise Exception(msg % id)
         else:
             return self.__mirSrcObjDic[id]
 
@@ -2060,9 +2060,9 @@ class ngamsConfig:
         """
         T = TRACE()
 
-        if (not self.__mirSrcObjDic.has_key(srvList)):
+        if srvList not in self.__mirSrcObjDic:
             msg = "No Mirroring Source Object found for Server List: %s"
-            raise Exception, msg % srvList
+            raise Exception(msg % srvList)
         else:
             return self.__mirSrcObjDic[srvList]
 
@@ -2225,7 +2225,7 @@ class ngamsConfig:
                     logger.error(errMsg)
                     self.getCheckRep().append(errMsg)
                 for setId in stream.getStorageSetIdList():
-                    if (not storageSetDic.has_key(setId)):
+                    if setId not in storageSetDic:
                         errMsg = "Undefined Storage Set Id: "+str(setId)+" " +\
                                  "referenced in definition of Target " +\
                                  "Storage Set for Stream with mime-type: " +\
@@ -2245,7 +2245,7 @@ class ngamsConfig:
                 if (not os.path.exists(procDir)):
                     try:
                         os.makedirs(procDir)
-                    except Exception, e:
+                    except:
                         errMsg = genLog("NGAMS_ER_ILL_PROC_DIR",
                                         [self.getCfg(),
                                          self.getProcessingDirectory()])
@@ -2345,14 +2345,14 @@ class ngamsConfig:
         if ((not self.getAllowRemoveReq()) and (self.getCachingActive())):
             msg = "Permission to execute Remove Requests must be switched " +\
                   "on in order to enable the Caching Service"
-            raise Exception, msg
+            raise Exception(msg)
         # TODO: More checks.
         logger.debug("Checked Caching Element")
 
         # Any errors found?
         if (len(self.getCheckRep()) > 0):
             testRep = self.genCheckRep()
-            raise Exception, testRep
+            raise Exception(testRep)
 
         return self
 

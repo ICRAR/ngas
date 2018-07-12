@@ -37,7 +37,9 @@ from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, \
     NGAMS_STAGING_DIR, genUniqueId, mvFile, getFileCreationTime, \
     NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, toiso8601, FMT_DATE_ONLY
 from ngamsLib import ngamsMIMEMultipart, ngamsHighLevelLib, ngamsFileInfo
+from ngamsLib import ngamsPlugInApi
 from ngamsServer import ngamsCacheControlThread, ngamsArchiveUtils
+from . import ngamsGenDapi
 
 
 logger = logging.getLogger(__name__)
@@ -69,7 +71,7 @@ def saveInStagingFile(ngamsCfgObj,
         blockSize = ngamsCfgObj.getBlockSize()
         return saveFromHttpToFile(ngamsCfgObj, reqPropsObj, httpRef, stagingFilename,
                                   blockSize, 1, diskInfoObj)
-    except Exception, e:
+    except Exception as e:
         errMsg = genLog("NGAMS_ER_PROB_STAGING_AREA", [stagingFilename,str(e)])
         logger.exception(errMsg)
         raise
@@ -187,7 +189,7 @@ def handleCmd(srvObj,
     logger.debug("Is this NG/AMS permitted to handle Archive Requests?")
     if (not srvObj.getCfg().getAllowArchiveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Archive"])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     srvObj.checkSetState("Archive Request", [NGAMS_ONLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
                          NGAMS_ONLINE_STATE, NGAMS_BUSY_SUBSTATE,
@@ -238,9 +240,6 @@ def handleCmd(srvObj,
 
     createContainers(rootContainer, None, srvObj)
 
-    from ngamsLib import ngamsPlugInApi
-    import ngamsGenDapi
-
     parDic = {}
     ngamsGenDapi.handlePars(reqPropsObj, parDic)
     diskInfo = reqPropsObj.getTargDiskInfo()
@@ -273,7 +272,7 @@ def handleCmd(srvObj,
 
         # Keep track of the total size of the container
         uncomprSize = ngamsPlugInApi.getFileSize(filepath)
-        if not containerSizes.has_key(containerId):
+        if containerId not in containerSizes:
             containerSizes[containerId] = 0
         containerSizes[containerId] += uncomprSize
 
@@ -329,7 +328,7 @@ def handleCmd(srvObj,
         srvObj.getDb().addFileToContainer(containerId, resDapi.getFileId(), True)
 
         # Update the container sizes
-        for contSizeInfo in containerSizes.iteritems():
+        for contSizeInfo in containerSizes.items():
             srvObj.getDb().setContainerSize(contSizeInfo[0], contSizeInfo[1])
 
         # Inform the caching service about the new file.
