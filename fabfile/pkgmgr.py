@@ -272,7 +272,7 @@ SLES_PACKAGES = [
 BREW_PACKAGES = [
     'autoconf',
     'automake',
-    'berkeley-db',
+    'berkeley-db@4',
     'libtool',
     'wget',
 ]

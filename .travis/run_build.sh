@@ -46,7 +46,7 @@ if [ "${TRAVIS_OS_NAME}" = "osx" ]
 then
 	brew unlink python || fail "Failed to brew unlink python"
 	brew install python@2 || fail "Failed to brew install python@2"
-	brew install berkeley-db@4 || fail "Failed to brew install packages"
+	brew install berkeley-db@4 || fail "Failed to brew install berkeley-db@4"
 
 	# Now create ourselves a virtualenv please and go in there
 	./create_venv.sh ./osx_venv || fail "Failed to create virtual environment"
@@ -110,7 +110,7 @@ fi
 if [ "${TRAVIS_OS_NAME}" = "osx" ]
 then
 	cellar_dir="`brew --cellar`"
-	db_dir="${cellar_dir}/berkeley-db/`ls -tr1 ${cellar_dir}/berkeley-db | tail -n 1`"
+	db_dir="${cellar_dir}/berkeley-db@4/`ls -tr1 ${cellar_dir}/berkeley-db@4 | tail -n 1`"
 
 	export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1
 	export BERKELEYDB_DIR="${db_dir}"
