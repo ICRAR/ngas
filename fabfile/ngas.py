@@ -445,6 +445,9 @@ def prepare_install_and_check():
 
     # Install the /etc/init.d script for automatic start
     install_sysv_init_script(nsd, nuser, cfgfile)
+    success("NGAS successfully installed.")
+    success("Please adjust NGAS config file on host(s) before starting the server(s).")
+
 
 @parallel
 def install_and_check():
