@@ -42,12 +42,12 @@ __all__ = ['create_aws_instances', 'list_instances', 'terminate']
 
 # Available known AMI IDs
 AMI_IDs = {
-           'Amazon':'ami-7c807d14',
+           'Amazon': 'ami-6178a31e',
            'Amazon-hvm': 'ami-60b6c60a',
            'CentOS': 'ami-8997afe0',
-           'Old_CentOS':'ami-aecd60c7', 
-           'SLES-SP2':'ami-e8084981',
-           'SLES-SP3':'ami-c08fcba8'
+           'Old_CentOS': 'ami-aecd60c7',
+           'SLES-SP2': 'ami-e8084981',
+           'SLES-SP3': 'ami-c08fcba8'
            }
 
 # Instance creation defaults
