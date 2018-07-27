@@ -5,6 +5,7 @@
 *.pyc
 *.pyo
 .cache
+.pytest_cache
 CVS
 bin
 downloads
