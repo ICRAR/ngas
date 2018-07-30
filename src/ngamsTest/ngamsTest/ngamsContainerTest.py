@@ -306,7 +306,7 @@ class ngamsContainerTest(ngamsTestSuite):
         # Containers are closed when they have an ingestion date
         self.assertEquals(isClosed, container.isClosed(), "Container's ingestion date is: '" + toiso8601(container.getIngestionDate()) + "'; expected isClosed=" + str(isClosed))
 
-    def test_archive_retrieve(self):
+    def _test_archive_receive(self, as_tar):
 
         # Server and client
         self.prepExtSrv()
@@ -314,14 +314,20 @@ class ngamsContainerTest(ngamsTestSuite):
         containerName = "toplevel"
 
         # Archive the top-level directory
-        self.assertEquals(client.carchive(containerName, 'application/octet-stream').getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client.carchive, containerName, 'application/octet-stream')
         self._checkFilesAndContainerSize(client, containerName, len(self.myfiles), self._filesSize(), 1)
 
         # Retrieve it
-        self.assertEquals(client.cretrieve(containerName, targetDir='tmp').getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client.cretrieve, containerName, targetDir='tmp', as_tar=as_tar)
         self._assertEqualsDir(containerName, os.path.join('tmp', containerName))
 
-    def test_archive_retrieve_in_cluster(self):
+    def test_archive_receive(self):
+        self._test_archive_receive(False)
+
+    def test_archive_receive_tar(self):
+        self._test_archive_receive(True)
+
+    def _test_archive_retrieve_in_cluster(self, as_tar):
 
         self.prepCluster((8888, 8889))
         client0, client1 = [sendPclCmd(p) for p in (8888, 8889)]
@@ -340,19 +346,25 @@ class ngamsContainerTest(ngamsTestSuite):
             self.assert_ngas_status(client.archive, fname, "application/octet-stream")
             self.assert_ngas_status(client.cappend, os.path.basename(fname), containerName=container_name)
 
-        self.assertEquals(client0.ccreate(container_name).getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client0.ccreate, container_name)
         archive_into_container(client0, self.myfiles[0])
         archive_into_container(client1, self.myfiles[1])
 
         # CRETRIEVE the container using both clients in turns,
         # both files should come back
         def retrieve_container(client):
-            self.assert_ngas_status(client.cretrieve, container_name, targetDir='tmp')
+            self.assert_ngas_status(client.cretrieve, container_name, targetDir='tmp', as_tar=as_tar)
             self._assertEqualsDir(src_root, tgt_root)
             rmFile(tgt_root)
 
         retrieve_container(client0)
         retrieve_container(client1)
+
+    def test_archive_retrieve_in_cluster(self):
+        self._test_archive_retrieve_in_cluster(False)
+
+    def test_archive_retrieve_in_cluster_tar(self):
+        self._test_archive_retrieve_in_cluster(True)
 
     def _assertEqualsDir(self, dir1, dir2):
 

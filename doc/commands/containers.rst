@@ -72,6 +72,10 @@ Retrieves all the contents of a container.
 
 See :ref:`commands.carchive` for a description of the format used by the
 response body to transmit the contents of the container.
+Alternatively,
+if a ``format`` parameter with the value ``application/x-tar`` is given,
+the contents of the container will be retrieved
+as an uncompressed tarfile instead.
 
 CLIST
 -----

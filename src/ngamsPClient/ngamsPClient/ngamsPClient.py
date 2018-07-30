@@ -45,6 +45,7 @@ import random
 import shutil
 import socket
 import sys
+import tarfile
 import time
 from xml.dom import minidom
 
@@ -385,7 +386,7 @@ class ngamsPClient:
             return self._post('CREMOVE', 'text/xml', fileListXml, pars=pars)
 
 
-    def cretrieve(self, containerName, containerId=None, targetDir='.'):
+    def cretrieve(self, containerName, containerId=None, targetDir='.', as_tar=False):
         """
         Sends a CRETRIEVE command to NG/AMS to retrieve the full contents of a
         container and dumps them into the file system.
@@ -402,6 +403,8 @@ class ngamsPClient:
             pars.append(("container_id", containerId))
         if containerName:
             pars.append(("container_name", containerName))
+        if as_tar:
+            pars.append(("format", 'application/x-tar'))
 
         resp, host, port = self._get('CRETRIEVE', pars=pars)
         host_id = "%s:%d" % (host, port)
@@ -410,9 +413,12 @@ class ngamsPClient:
                 return ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read(), 1)
 
             size = int(resp.getheader('Content-Length'))
-            handler = ngamsMIMEMultipart.FilesystemWriterHandler(1024, basePath=targetDir)
-            parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, resp, size, 65536)
-            parser.parse()
+            if as_tar:
+                tarfile.open(fileobj=resp, mode="r|").extractall(targetDir)
+            else:
+                handler = ngamsMIMEMultipart.FilesystemWriterHandler(1024, basePath=targetDir)
+                parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, resp, size, 65536)
+                parser.parse()
             return ngamsStatus.dummy_success_stat(host_id)
 
     def exit(self):

@@ -23,9 +23,11 @@
 Function + code to handle the CRETRIEVE Command.
 """
 
+import contextlib
 import functools
 import logging
 import os
+import tarfile
 
 from ngamsLib.ngamsCore import genLog, getFileSize
 from ngamsLib.ngamsCore import NGAMS_CONT_MT
@@ -74,6 +76,64 @@ def cinfo_from_database(cont, srvObj, reqPropsObj):
              [finfo_from_database(f, srvObj, reqPropsObj) for f in cont.getFilesInfo()]
     return ngamsMIMEMultipart.container_info(cont.getContainerName(), finfos)
 
+def round_up(size, mul):
+    return ((size + mul - 1) // mul) * mul
+
+def tarsize_cinfo(cinfo):
+    """Calculate the size of the resulting tarball"""
+    # The size of the tarball will be:
+    #  * The size of each individual file, rounded up to a multiple of 512, plus
+    #  * 512 bytes for each header (one per file or directory, plus one for the toplevel directory)
+    #  * 512 bytes x 2 (two empty blocks at the end)
+    return 512 + 1024 + _tarsize_cinfo(cinfo)
+
+def _tarsize_cinfo(cinfo):
+    size = 512 * len(cinfo.files)
+    for finfo in cinfo.files:
+        if isinstance(finfo, ngamsMIMEMultipart.container_info):
+            size += _tarsize_cinfo(finfo)
+        else:
+            size += round_up(finfo.size, 512)
+    return size
+
+def send_toplevel_cinfo(cinfo, http_ref):
+    tinfo = tarfile.TarInfo(name=cinfo.name)
+    tinfo.type = tarfile.DIRTYPE
+    tinfo.mode = 0o755
+    http_ref.write_data(tinfo.tobuf())
+    _send_cinfo(cinfo, http_ref, cinfo.name + '/')
+    http_ref.write_data(b'\x00' * 1024)
+
+def _send_finfo(finfo, http_ref):
+    """Send a file through for tarballing"""
+
+    if finfo.opener.func == ngamsHttpUtils.httpGet:
+        with contextlib.closing(finfo.opener()) as fobj:
+            http_ref.write_data(fobj)
+    else:
+        absfname = finfo.opener.args[0]
+        http_ref.write_file_data(absfname, finfo.size)
+
+    padding = b'\x00' * (round_up(finfo.size, 512) - finfo.size)
+    http_ref.write_data(padding)
+
+
+def _send_cinfo(cinfo, http_ref, dirname=''):
+    """recursively send containers' files through http connection"""
+    for finfo in cinfo.files:
+        arcname = dirname + finfo.name
+        tinfo = tarfile.TarInfo(name=arcname)
+        if isinstance(finfo, ngamsMIMEMultipart.container_info):
+            tinfo.type = tarfile.DIRTYPE
+            tinfo.mode = 0o755
+            http_ref.write_data(tinfo.tobuf())
+            _send_cinfo(finfo, http_ref, arcname + '/')
+        else:
+            tinfo.type = tarfile.REGTYPE
+            tinfo.mode = 0o644
+            tinfo.size = finfo.size
+            http_ref.write_data(tinfo.tobuf())
+            _send_finfo(finfo, http_ref)
 
 def _handleCmdCRetrieve(srvObj,
                        reqPropsObj,
@@ -117,15 +177,22 @@ def _handleCmdCRetrieve(srvObj,
     if not containerId:
         containerId = srvObj.getDb().getContainerIdForUniqueName(containerName)
 
+    # Users can request a tarball instead of the default MIME multipart message
+    return_tar = 'format' in reqPropsObj and reqPropsObj['format'] == 'application/x-tar'
+
     logger.debug("Handling request for file with containerId: %s", containerId)
 
-    # Build the container hierarchy, get all file references and send back the results
+    # Build the container hierarchy and get all file references
     container = srvObj.getDb().readHierarchy(containerId, True)
     cinfo = cinfo_from_database(container, srvObj, reqPropsObj)
-    reader = ngamsMIMEMultipart.ContainerReader(cinfo)
 
-    # Send all the data back
-    httpRef.send_data(reader, NGAMS_CONT_MT)
+    # Send all the data back, either as a multipart message or as a tarball
+    if return_tar:
+        httpRef.send_file_headers(cinfo.name, 'application/x-tar', tarsize_cinfo(cinfo))
+        send_toplevel_cinfo(cinfo, httpRef)
+    else:
+        reader = ngamsMIMEMultipart.ContainerReader(cinfo)
+        httpRef.send_data(reader, NGAMS_CONT_MT)
 
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
