@@ -186,6 +186,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # This is set by send_response below to prevent multiple replies being
         # send during the same HTTP request
         self.reply_sent = False
+        self.headers_sent = False
 
         path = self.path.strip("?/ ")
         try:
@@ -210,6 +211,11 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     do_GET  = reqHandle
     do_POST = reqHandle
     do_PUT  = reqHandle
+
+    # Richer end_headers method to keep track of call
+    def end_headers(self):
+        BaseHTTPServer.BaseHTTPRequestHandler.end_headers(self)
+        self.headers_sent = True
 
     # Richer send_response method to pass down headers
     def send_response(self, code, message=None, hdrs={}):
@@ -246,19 +252,28 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         fname = fname or os.path.basename(f)
         size = getFileSize(f)
 
-        # Headers we want to send
+        self.send_file_headers(fname, mime_type, size, start_byte)
+        self.write_file_data(f, size, start_byte)
+
+    def send_file_headers(self, fname, mime_type, size, start_byte=0):
+        """Sends the headers advertising file `fname`, but without its data"""
+
         hdrs = {'Content-Type': mime_type,
                 'Content-Disposition': 'attachment; filename="%s"' % fname,
                 'Content-Length': str(size - start_byte)}
         if start_byte:
             hdrs['Accept-Ranges'] = 'bytes'
             hdrs["Content-Range"] = "bytes %d-%d/%d" % (start_byte, size - 1, size)
-
         self.send_response(200, hdrs=hdrs)
         self.end_headers()
-        self.wfile.flush()
 
-        # Now send the file itself, hopefully using sendfile(2)
+    def write_file_data(self, f, size, start_byte=0):
+        """sends file `f`, hopefully using sendfile(2)"""
+
+        if not self.headers_sent:
+            raise RuntimeError('Trying to send file data but HTTP headers not sent')
+
+        self.wfile.flush()
         logger.info("Sending %s (%d bytes) to client, starting at byte %d", f, size, start_byte)
         with open(f, 'rb') as fin:
             st = time.time()
@@ -284,8 +299,15 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         self.send_response(code, message=message, hdrs=hdrs)
         self.end_headers()
+        self.write_data(data)
 
-        # Support for file-like objects (but files should be sent via send_file)
+    def write_data(self, data):
+        """Writes `data` into the HTTP response body"""
+
+        if not self.headers_sent:
+            raise RuntimeError('Trying to send data but HTTP headers not sent')
+
+        # Support for file-like objects (but files should be sent via write_file_data)
         if hasattr(data, 'read'):
             shutil.copyfileobj(data, self.wfile)
             return
