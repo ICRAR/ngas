@@ -64,7 +64,8 @@ def finfo_from_database(fileInfo, srvObj, reqPropsObj):
         size = getFileSize(absname)
         opener = fopener(absname)
     elif location == NGAMS_HOST_CLUSTER or location == NGAMS_HOST_REMOTE:
-        size = srvObj.getDb().getFileSize(fileId, fileVersion)
+        # TODO: int in python2 guarantees at least 32 bits, so we may overflow here
+        size = int(srvObj.getDb().getFileSize(fileId, fileVersion))
         opener = http_opener(ipAddress, port, fileId, fileVersion, srvObj)
     else:
         raise Exception("Unknown location type: %s" % (location,))
