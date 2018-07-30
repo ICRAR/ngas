@@ -108,13 +108,12 @@ def _handleCmdCRetrieve(srvObj,
 
     # At least container_id or container_name must be specified
     containerName = containerId = None
-    if reqPropsObj.hasHttpPar("container_id") and reqPropsObj.getHttpPar("container_id").strip():
-        containerId = reqPropsObj.getHttpPar("container_id").strip()
-    if not containerId and reqPropsObj.hasHttpPar("container_name") and reqPropsObj.getHttpPar("container_name").strip():
-        containerName = reqPropsObj.getHttpPar("container_name").strip()
+    if "container_id" in reqPropsObj:
+        containerId = reqPropsObj["container_id"].strip()
+    if not containerId and "container_name" in reqPropsObj:
+        containerName = reqPropsObj["container_name"].strip()
     if not containerId and not containerName:
-        errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
-        raise Exception(errMsg)
+        raise Exception('Neither container_name nor container_id given, cannot retrieve container')
 
     # If container_name is specified, and maps to more than one container,
     # an error is issued
