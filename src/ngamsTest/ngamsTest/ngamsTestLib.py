@@ -871,6 +871,10 @@ class ngamsTestSuite(unittest.TestCase):
         self.assertIsNotNone(status)
         self.assertEquals(expectedStatus, status.getStatus())
 
+    def assert_ngas_status(self, method, *args, **kwargs):
+        expectedStatus = kwargs.pop('expectedStatus', 'SUCCESS')
+        self.assertStatus(method(*args, **kwargs), expectedStatus=expectedStatus)
+
     def assertArchive(self, fname, mimeType=None, port=8888, timeout=5, pars=[], cmd='ARCHIVE'):
         stat = sendPclCmd(port, timeOut=timeout).archive(fname, mimeType=mimeType, pars=pars, cmd=cmd)
         self.assertStatus(stat)
