@@ -43,8 +43,8 @@ def fopener(fname):
 def http_opener(host, port, file_id, file_version, srvObj):
     pars = [('file_id', file_id), ('file_version', file_version)]
     authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
-    return ngamsHttpUtils.httpGet(host, port, NGAMS_RETRIEVE_CMD, pars=pars,
-                            timeout=30, auth=authHdr)
+    return functools.partial(ngamsHttpUtils.httpGet, host, port,
+                             NGAMS_RETRIEVE_CMD, pars=pars, timeout=30, auth=authHdr)
 
 def finfo_from_database(fileInfo, srvObj, reqPropsObj):
 
@@ -52,11 +52,8 @@ def finfo_from_database(fileInfo, srvObj, reqPropsObj):
     fileVer = fileInfo.getFileVersion()
 
     # Locate the file best suiting the query and send it back if possible.
-    location, _, ipAddress, port, mountPoint, filename, fileId,\
-              fileVersion, mimeType =\
-              ngamsFileUtils.locateArchiveFile(srvObj, fileId,
-                                               fileVersion=fileVer,
-                                               reqPropsObj=reqPropsObj)
+    location, _, ipAddress, port, mountPoint, filename, fileVersion, mimeType = \
+       ngamsFileUtils.quickFileLocate(srvObj, reqPropsObj, fileId, fileVersion=fileVer)
 
     basename = os.path.basename(filename)
 

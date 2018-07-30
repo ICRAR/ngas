@@ -24,7 +24,7 @@ import os
 import random
 import string
 
-from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE, toiso8601
+from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE, toiso8601, cpFile
 from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
 from .ngamsTestLib import sendPclCmd, ngamsTestSuite
 
@@ -306,7 +306,7 @@ class ngamsContainerTest(ngamsTestSuite):
         # Containers are closed when they have an ingestion date
         self.assertEquals(isClosed, container.isClosed(), "Container's ingestion date is: '" + toiso8601(container.getIngestionDate()) + "'; expected isClosed=" + str(isClosed))
 
-    def test_ArchiveReceive(self):
+    def test_archive_retrieve(self):
 
         # Server and client
         self.prepExtSrv()
@@ -320,6 +320,39 @@ class ngamsContainerTest(ngamsTestSuite):
         # Retrieve it
         self.assertEquals(client.cretrieve(containerName, targetDir='tmp').getStatus(), NGAMS_SUCCESS)
         self._assertEqualsDir(containerName, os.path.join('tmp', containerName))
+
+    def test_archive_retrieve_in_cluster(self):
+
+        self.prepCluster((8888, 8889))
+        client0, client1 = [sendPclCmd(p) for p in (8888, 8889)]
+        container_name = 'toplevel'
+        tgt_root = 'tmp/' + container_name
+
+        # Create our own new "root" to easily use self._assertEqualsDir later
+        src_root = 'tmp/src/' + container_name
+        checkCreatePath(src_root)
+        cp = lambda x: cpFile(x, os.path.join(src_root, os.path.basename(x)))
+        cp(self.myfiles[0])
+        cp(self.myfiles[1])
+
+        # Create a container and archive two files into it with our clients
+        def archive_into_container(client, fname):
+            self.assert_ngas_status(client.archive, fname, "application/octet-stream")
+            self.assert_ngas_status(client.cappend, os.path.basename(fname), containerName=container_name)
+
+        self.assertEquals(client0.ccreate(container_name).getStatus(), NGAMS_SUCCESS)
+        archive_into_container(client0, self.myfiles[0])
+        archive_into_container(client1, self.myfiles[1])
+
+        # CRETRIEVE the container using both clients in turns,
+        # both files should come back
+        def retrieve_container(client):
+            self.assert_ngas_status(client.cretrieve, container_name, targetDir='tmp')
+            self._assertEqualsDir(src_root, tgt_root)
+            rmFile(tgt_root)
+
+        retrieve_container(client0)
+        retrieve_container(client1)
 
     def _assertEqualsDir(self, dir1, dir2):
 
