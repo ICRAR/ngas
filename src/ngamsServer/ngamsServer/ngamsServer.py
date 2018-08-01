@@ -89,36 +89,39 @@ def get_all_ipaddrs():
     inet_addrs = [addrs[proto] for addrs in iface_addrs if proto in addrs]
     return [addr['addr'] for addrs in inet_addrs for addr in addrs if 'addr' in addr]
 
-class ngamsHttpServer(socketserver.ThreadingMixIn,
-                      BaseHTTPServer.HTTPServer):
-    """
-    Class that provides the multithreaded HTTP server functionality.
-    """
-    allow_reuse_address = 1
-    daemon_threads = False
+class thread_pool_mixin(socketserver.ThreadingMixIn):
+    """Uses a thread pool to process requests"""
 
-    def __init__(self, ngamsServer, server_address):
+    def __init__(self, ngamsServer):
+        import multiprocessing.pool
+
+        max_reqs = ngamsServer.cfg.getMaxSimReqs()
         self._ngamsServer = ngamsServer
+        self._pool = multiprocessing.pool.ThreadPool(processes=max_reqs)
 
         # The length of the backlog of connections that are being accepted
-        # but haven't been picked up yet.
-        self.request_queue_size = ngamsServer.cfg.getMaxSimReqs()
-        BaseHTTPServer.HTTPServer.__init__(self, server_address, ngamsHttpRequestHandler)
+        # but haven't been picked up yet, declared in TCPServer
+        self.request_queue_size = max_reqs
 
-    def process_request(self,
-                        request,
-                        client_address):
-        """
-        Start a new thread to process the request.
-        """
+    def process_request(self, request, client_address):
+        """process the request in a thread of the pool"""
 
-        if self._ngamsServer.serving_count >= self._ngamsServer.getCfg().getMaxSimReqs():
+        if self._ngamsServer.serving_count >= self.request_queue_size:
             logger.error("Maximum number of serving threads reached, rejecting request")
             wfile = request.makefile('wb')
             wfile.write(b'HTTP/1.0 503 Service Unavailable\r\n\r\n')
             return
 
-        socketserver.ThreadingMixIn.process_request(self, request, client_address)
+        self._pool.apply_async(self.process_request_thread, args=(request, client_address))
+
+class ngamsHttpServer(thread_pool_mixin, BaseHTTPServer.HTTPServer):
+    """Class providing pooled multithreaded HTTP server functionality"""
+
+    allow_reuse_address = 1
+
+    def __init__(self, ngamsServer, server_address):
+        thread_pool_mixin.__init__(self, ngamsServer)
+        BaseHTTPServer.HTTPServer.__init__(self, server_address, ngamsHttpRequestHandler)
 
 
 class _atomic_counter(object):
