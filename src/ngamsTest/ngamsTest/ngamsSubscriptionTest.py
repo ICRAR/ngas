@@ -386,7 +386,10 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         stat = sendPclCmd(port=8888).archive('src/SmallFile.fits', mimeType='application/octet-stream')
         self.assertEqual(NGAMS_SUCCESS, stat.getStatus())
         with contextlib.closing(listener):
-            self.assertIsNotNone(listener.wait_for_file(10))
+            # The built-in retry period is 10 seconds, so let's wait at maximum
+            # for twice that, in case the first attempt fails because the servers
+            # are not fully initialized
+            self.assertIsNotNone(listener.wait_for_file(20))
 
         # Double-check that the file is in B
         status = sendPclCmd(port = 8889).retrieve('SmallFile.fits', targetFile='tmp')
