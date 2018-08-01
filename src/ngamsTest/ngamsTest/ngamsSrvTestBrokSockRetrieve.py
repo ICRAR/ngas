@@ -81,6 +81,6 @@ if __name__ == '__main__':
     # Replace the function ngamsRetrieveCmd.genReplyRetrieve() used to
     # reply to the RETRIEVE Command with the test version provoking a
     # broken socket situation.
-    from ngamsServer import ngamsRetrieveCmd
-    ngamsRetrieveCmd.genReplyRetrieve = genReplyRetrieveFail
+    from ngamsServer.commands import retrieve
+    retrieve.genReplyRetrieve = genReplyRetrieveFail
     ngamsServer.main()

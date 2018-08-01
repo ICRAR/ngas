@@ -21,47 +21,46 @@
 #
 #******************************************************************************
 #
-# "@(#) $Id: ngamsInitCmd.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
+# "@(#) $Id: ngamsOnlineCmd.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
 #
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
-# jknudstr  13/05/2003  Created
+# jknudstr  13/05/2005  Created
 #
 """
-Function + code to handle the INIT command.
+Function + code to handle the ONLINE command.
 """
 
 import logging
 
-from . import ngamsSrvUtils
-from ngamsLib.ngamsCore import NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE
+from .. import ngamsSrvUtils
+from ngamsLib.ngamsCore import NGAMS_OFFLINE_STATE, NGAMS_IDLE_SUBSTATE
 
 
 logger = logging.getLogger(__name__)
 
 def handleCmd(srvObj,
-                  reqPropsObj,
-                  httpRef):
+                    reqPropsObj,
+                    httpRef):
     """
-    Handle an INIT command.
+    Handle an ONLINE command.
 
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
 
-    reqPropsObj:    Request Property object to keep track of actions done
-                    during the request handling (ngamsReqProps).
+    reqPropsObj:    Request Property object to keep track of
+                    actions done during the request handling
+                    (ngamsReqProps).
 
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
 
     Returns:        Void.
     """
-    srvObj.checkSetState("Command INIT", [NGAMS_ONLINE_STATE],
+    srvObj.checkSetState("Command ONLINE", [NGAMS_OFFLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE])
-    logger.info("Handling INIT command - re-initializing NG/AMS ...")
-    ngamsSrvUtils.handleOffline(srvObj, reqPropsObj)
     ngamsSrvUtils.handleOnline(srvObj, reqPropsObj)
-    logger.info("NG/AMS initialized!")
 
-    return "Successfully handled command INIT"
+    return "Successfully handled command ONLINE"
+
 
 # EOF

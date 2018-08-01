@@ -42,7 +42,7 @@ import logging
 import threading
 
 from ngamsLib.ngamsCore import NGAMS_TEXT_MT
-from ngamsServer import ngamsDiscardCmd
+from ngamsServer.commands import discard as ngamsDiscardCmd
 
 
 logger = logging.getLogger(__name__)

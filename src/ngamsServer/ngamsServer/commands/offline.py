@@ -21,46 +21,53 @@
 #
 #******************************************************************************
 #
-# "@(#) $Id: ngamsOnlineCmd.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
+# "@(#) $Id: ngamsOfflineCmd.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
 #
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
-# jknudstr  13/05/2005  Created
+# jknudstr  13/05/2003  Created
 #
 """
-Function + code to handle the ONLINE command.
+Function + code to handle the OFFLINE command.
 """
 
 import logging
 
-from . import ngamsSrvUtils
-from ngamsLib.ngamsCore import NGAMS_OFFLINE_STATE, NGAMS_IDLE_SUBSTATE
+from .. import ngamsSrvUtils
+from ngamsLib.ngamsCore import \
+    NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_OFFLINE_STATE, \
+    NGAMS_BUSY_SUBSTATE
 
 
 logger = logging.getLogger(__name__)
 
 def handleCmd(srvObj,
-                    reqPropsObj,
-                    httpRef):
+                     reqPropsObj,
+                     httpRef):
     """
-    Handle an ONLINE command.
+    Handle an OFFLINE command.
 
-    srvObj:         Reference to NG/AMS server class object (ngamsServer).
+    srvObj:       Reference to NG/AMS server class object (ngamsServer).
 
-    reqPropsObj:    Request Property object to keep track of
-                    actions done during the request handling
-                    (ngamsReqProps).
+    reqPropsObj:  Request Property object to keep track of
+                  actions done during the request handling
+                  (ngamsReqProps).
 
-    httpRef:        Reference to the HTTP request handler
-                    object (ngamsHttpRequestHandler).
+    httpRef:      Reference to the HTTP request handler
+                  object (ngamsHttpRequestHandler).
 
-    Returns:        Void.
+    Returns:      Void.
     """
-    srvObj.checkSetState("Command ONLINE", [NGAMS_OFFLINE_STATE],
-                         [NGAMS_IDLE_SUBSTATE])
-    ngamsSrvUtils.handleOnline(srvObj, reqPropsObj)
+    if (not reqPropsObj.hasHttpPar("force")):
+        srvObj.checkSetState("Command OFFLINE", [NGAMS_ONLINE_STATE],
+                             [NGAMS_IDLE_SUBSTATE], NGAMS_OFFLINE_STATE)
+    else:
+        srvObj.checkSetState("Command OFFLINE", [NGAMS_ONLINE_STATE],
+                             [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
+                             NGAMS_OFFLINE_STATE)
+    ngamsSrvUtils.handleOffline(srvObj, reqPropsObj)
 
-    return "Successfully handled command ONLINE"
+    return "Successfully handled command OFFLINE"
 
 
 # EOF

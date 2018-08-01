@@ -39,8 +39,8 @@ import time
 import six
 from six.moves.urllib import request as urlrequest  # @UnresolvedImport
 
-from . import ngamsArchiveUtils, ngamsSrvUtils, ngamsFileUtils
-from . import ngamsCacheControlThread
+from .. import ngamsArchiveUtils, ngamsSrvUtils, ngamsFileUtils
+from .. import ngamsCacheControlThread
 from ngamsLib import ngamsNotification, ngamsFileInfo, ngamsDiskInfo
 from ngamsLib import ngamsReqProps, ngamsHighLevelLib, ngamsDapiStatus
 from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE, \

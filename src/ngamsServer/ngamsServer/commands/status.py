@@ -47,13 +47,13 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL,\
     NGAMS_SUCCESS, NGAMS_XML_MT, fromiso8601, toiso8601
 from ngamsLib import ngamsDbm, ngamsStatus, ngamsDiskInfo, ngamsHttpUtils
 from ngamsLib import ngamsFileInfo, ngamsHighLevelLib
-from . import ngamsFileUtils
+from .. import ngamsFileUtils
 
 
 logger = logging.getLogger(__name__)
 
 # Man-page for the command.
-_help = pkg_resources.resource_string(__name__, 'ngamsStatusCmd.txt')
+_help = pkg_resources.resource_string(__name__, 'status_doc.txt')
 
 
 def _checkFileAccess(srvObj,

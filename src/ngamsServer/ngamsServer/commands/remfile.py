@@ -39,7 +39,7 @@ import six
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsHighLevelLib
 from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, \
     rmFile, NGAMS_SUCCESS, TRACE, NGAMS_XML_MT
-from . import ngamsRemUtils
+from .. import ngamsRemUtils
 
 
 logger = logging.getLogger(__name__)

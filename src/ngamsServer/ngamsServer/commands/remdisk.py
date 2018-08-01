@@ -40,7 +40,7 @@ from ngamsLib import ngamsDiskInfo, ngamsDbm, ngamsDiskUtils, ngamsHighLevelLib
 from ngamsLib.ngamsCore import getHostName, \
     getDiskSpaceAvail, genLog, NGAMS_XML_MT, NGAMS_SUCCESS, TRACE, rmFile, \
     NGAMS_REMDISK_CMD, NGAMS_HTTP_SUCCESS, NGAMS_HTTP_BAD_REQ
-from . import ngamsRemUtils
+from .. import ngamsRemUtils
 
 
 logger = logging.getLogger(__name__)

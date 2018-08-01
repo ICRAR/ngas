@@ -43,37 +43,16 @@ from ngamsLib.ngamsCore import \
     NGAMS_OFFLINE_CMD, NGAMS_ONLINE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_REGISTER_CMD, \
     NGAMS_REMDISK_CMD, NGAMS_REMFILE_CMD, NGAMS_STATUS_CMD, NGAMS_SUBSCRIBE_CMD, \
     NGAMS_UNSUBSCRIBE_CMD
-from . import ngamsArchiveCmd, ngamsCacheDelCmd, ngamsCheckFileCmd, ngamsDiscardCmd
-from . import ngamsConfigCmd, ngamsCloneCmd
-from . import ngamsExitCmd, ngamsHelpCmd, ngamsInitCmd, ngamsLabelCmd, ngamsOfflineCmd
-from . import ngamsOnlineCmd, ngamsRearchiveCmd, ngamsRegisterCmd, ngamsRemDiskCmd
-from . import ngamsRemFileCmd, ngamsRetrieveCmd, ngamsStatusCmd, ngamsSubscribeCmd
-from . import ngamsUnsubscribeCmd
 
 
 logger = logging.getLogger(__name__)
 
 _builtin_cmds = {
-    NGAMS_ARCHIVE_CMD: ngamsArchiveCmd,
-    NGAMS_CACHEDEL_CMD: ngamsCacheDelCmd,
-    NGAMS_CHECKFILE_CMD: ngamsCheckFileCmd,
-    NGAMS_CLONE_CMD: ngamsCloneCmd,
-    NGAMS_CONFIG_CMD: ngamsConfigCmd,
-    NGAMS_DISCARD_CMD: ngamsDiscardCmd,
-    NGAMS_EXIT_CMD: ngamsExitCmd,
-    NGAMS_HELP_CMD: ngamsHelpCmd,
-    NGAMS_INIT_CMD: ngamsInitCmd,
-    NGAMS_LABEL_CMD: ngamsLabelCmd,
-    NGAMS_OFFLINE_CMD: ngamsOfflineCmd,
-    NGAMS_ONLINE_CMD: ngamsOnlineCmd,
-    NGAMS_REARCHIVE_CMD: ngamsRearchiveCmd,
-    NGAMS_REGISTER_CMD: ngamsRegisterCmd,
-    NGAMS_REMDISK_CMD: ngamsRemDiskCmd,
-    NGAMS_REMFILE_CMD: ngamsRemFileCmd,
-    NGAMS_RETRIEVE_CMD: ngamsRetrieveCmd,
-    NGAMS_STATUS_CMD: ngamsStatusCmd,
-    NGAMS_SUBSCRIBE_CMD: ngamsSubscribeCmd,
-    NGAMS_UNSUBSCRIBE_CMD: ngamsUnsubscribeCmd,
+    NGAMS_ARCHIVE_CMD, NGAMS_CACHEDEL_CMD, NGAMS_CHECKFILE_CMD, NGAMS_CLONE_CMD,
+    NGAMS_CONFIG_CMD, NGAMS_DISCARD_CMD, NGAMS_EXIT_CMD, NGAMS_HELP_CMD,
+    NGAMS_INIT_CMD, NGAMS_LABEL_CMD, NGAMS_OFFLINE_CMD, NGAMS_ONLINE_CMD,
+    NGAMS_REARCHIVE_CMD, NGAMS_REGISTER_CMD, NGAMS_REMDISK_CMD, NGAMS_REMFILE_CMD,
+    NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD
 }
 
 # The reload function has moved around a bit
@@ -128,14 +107,11 @@ def _get_module(server, request):
         request.setCmd(NGAMS_RETRIEVE_CMD).addHttpPar("internal", cmd)
         cmd = 'RETRIEVE'
 
-    # Is it a built-in commands?
+    # Is it a built-in or a plug-in?
     if cmd in _builtin_cmds:
-        return _builtin_cmds[cmd]
-
-    # Is it a plug-in command?
-    cfg = server.getCfg()
-    if cmd in cfg.cmd_plugins:
-        modname = cfg.cmd_plugins[cmd]
+        modname = __package__ + '.commands.' + cmd.lower()
+    elif cmd in server.cfg.cmd_plugins:
+        modname = server.cfg.cmd_plugins[cmd]
     else:
         modname = 'ngamsPlugIns.ngamsCmd_%s' % cmd
 

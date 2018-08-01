@@ -48,7 +48,7 @@ from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
 from ngamsLib import ngamsDbm, ngamsReqProps, ngamsFileInfo, ngamsDbCore, \
     ngamsHighLevelLib, ngamsDiskUtils, ngamsLib, ngamsFileList, \
     ngamsNotification, ngamsDiskInfo, ngamsPlugInApi, ngamsCore
-from . import ngamsArchiveUtils, ngamsCacheControlThread
+from .. import ngamsArchiveUtils, ngamsCacheControlThread
 
 logger = logging.getLogger(__name__)
 

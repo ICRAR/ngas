@@ -37,7 +37,7 @@ import logging
 
 from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, TRACE
 
-from . import ngamsFileUtils, ngamsCacheControlThread
+from .. import ngamsFileUtils, ngamsCacheControlThread
 
 
 logger = logging.getLogger(__name__)

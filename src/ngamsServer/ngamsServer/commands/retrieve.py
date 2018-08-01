@@ -44,7 +44,7 @@ from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize, \
     NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
-from . import ngamsFileUtils
+from .. import ngamsFileUtils
 
 
 logger = logging.getLogger(__name__)

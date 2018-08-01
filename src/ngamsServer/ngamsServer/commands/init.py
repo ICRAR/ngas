@@ -21,53 +21,47 @@
 #
 #******************************************************************************
 #
-# "@(#) $Id: ngamsOfflineCmd.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
+# "@(#) $Id: ngamsInitCmd.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
 #
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # jknudstr  13/05/2003  Created
 #
 """
-Function + code to handle the OFFLINE command.
+Function + code to handle the INIT command.
 """
 
 import logging
 
-from . import ngamsSrvUtils
-from ngamsLib.ngamsCore import \
-    NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_OFFLINE_STATE, \
-    NGAMS_BUSY_SUBSTATE
+from .. import ngamsSrvUtils
+from ngamsLib.ngamsCore import NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE
 
 
 logger = logging.getLogger(__name__)
 
 def handleCmd(srvObj,
-                     reqPropsObj,
-                     httpRef):
+                  reqPropsObj,
+                  httpRef):
     """
-    Handle an OFFLINE command.
+    Handle an INIT command.
 
-    srvObj:       Reference to NG/AMS server class object (ngamsServer).
+    srvObj:         Reference to NG/AMS server class object (ngamsServer).
 
-    reqPropsObj:  Request Property object to keep track of
-                  actions done during the request handling
-                  (ngamsReqProps).
+    reqPropsObj:    Request Property object to keep track of actions done
+                    during the request handling (ngamsReqProps).
 
-    httpRef:      Reference to the HTTP request handler
-                  object (ngamsHttpRequestHandler).
+    httpRef:        Reference to the HTTP request handler
+                    object (ngamsHttpRequestHandler).
 
-    Returns:      Void.
+    Returns:        Void.
     """
-    if (not reqPropsObj.hasHttpPar("force")):
-        srvObj.checkSetState("Command OFFLINE", [NGAMS_ONLINE_STATE],
-                             [NGAMS_IDLE_SUBSTATE], NGAMS_OFFLINE_STATE)
-    else:
-        srvObj.checkSetState("Command OFFLINE", [NGAMS_ONLINE_STATE],
-                             [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
-                             NGAMS_OFFLINE_STATE)
+    srvObj.checkSetState("Command INIT", [NGAMS_ONLINE_STATE],
+                         [NGAMS_IDLE_SUBSTATE])
+    logger.info("Handling INIT command - re-initializing NG/AMS ...")
     ngamsSrvUtils.handleOffline(srvObj, reqPropsObj)
+    ngamsSrvUtils.handleOnline(srvObj, reqPropsObj)
+    logger.info("NG/AMS initialized!")
 
-    return "Successfully handled command OFFLINE"
-
+    return "Successfully handled command INIT"
 
 # EOF

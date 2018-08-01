@@ -38,7 +38,7 @@ import threading
 
 from ngamsLib.ngamsCore import TRACE, NGAMS_OFFLINE_STATE, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, genLog, \
-    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, loadPlugInEntryPoint
+    loadPlugInEntryPoint
 
 
 logger = logging.getLogger(__name__)

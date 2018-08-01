@@ -32,7 +32,7 @@
 Function to handle the ARCHIVE command.
 """
 
-from . import ngamsArchiveUtils
+from .. import ngamsArchiveUtils
 from ngamsLib.ngamsCore import NGAMS_IDLE_SUBSTATE
 
 
