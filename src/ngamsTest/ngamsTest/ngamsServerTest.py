@@ -115,6 +115,13 @@ class ngamsServerTest(ngamsTestSuite):
         with contextlib.closing(resp):
             self.assertEqual(NGAMS_HTTP_SERVICE_NA, resp.status)
 
+    def test_reload_command(self):
+        """Checks that commands can be reloaded successfully"""
+        self.prepExtSrv()
+        client = sendPclCmd()
+        self.assert_ngas_status(client.status)
+        self.assert_ngas_status(client.status, pars=[('reload', '1')])
+
     def test_user_command_plugin(self):
 
         # Let this module implement the TEST command
