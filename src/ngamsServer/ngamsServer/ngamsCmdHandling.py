@@ -76,6 +76,14 @@ _builtin_cmds = {
     NGAMS_UNSUBSCRIBE_CMD: ngamsUnsubscribeCmd,
 }
 
+# The reload function has moved around a bit
+if sys.version_info[0] < 3:
+    from __builtin__ import reload
+elif sys.version_info[0:2] < (3, 4):
+    reload = imp.reload
+else:
+    reload = importlib.reload
+
 class NoSuchCommand(Exception):
     """Error thrown when a command's implementation cannot be found"""
     pass
@@ -140,6 +148,10 @@ def _get_module(server, request):
     # *before* they are fully loaded (probably to detect circular dependencies)
     # For details on a similar issue found in the pickle module see
     # https://bugs.python.org/issue12680
+    #
+    # In python 3.3+ this shoudn't be necessary anymore, as the locking scheme
+    # has been changed to per-module locks. This function has been marked as
+    # deprecated, and therefore we probably don't need it anymore
     imp.acquire_lock()
     try:
         mod = sys.modules.get(modname, None)
