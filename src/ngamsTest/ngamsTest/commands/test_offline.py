@@ -21,60 +21,61 @@
 #
 #******************************************************************************
 #
-# "@(#) $Id: ngamsInitCmdTest.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
+# "@(#) $Id: ngamsOfflineCmdTest.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
 #
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # jknudstr  20/11/2003  Created
 #
 """
-This module contains the Test Suite for the INIT Command.
+This module contains the Test Suite for the OFFLINE Command.
 """
 
-from ngamsLib.ngamsCore import NGAMS_INIT_CMD
-from .ngamsTestLib import ngamsTestSuite, sendExtCmd
+from ngamsLib.ngamsCore import NGAMS_OFFLINE_CMD
+from ..ngamsTestLib import ngamsTestSuite, sendExtCmd
 
 
-class ngamsInitCmdTest(ngamsTestSuite):
+class ngamsOfflineCmdTest(ngamsTestSuite):
     """
     Synopsis:
-    Test Suite for the INIT Command.
+    Test Suite for the OFFLINE Command.
 
     Description:
-    The purpose of the Test Suite is to exercise the INIT Command.
+    The purpose of the Test Suite is to exercise the OFFLINE Command.
+    Both normal case and abnormal cases should be tested. Latter includes:
+
+      - Sending OFFLINE when server is busy.
+      - Sending OFFLINE when server is busy and force specified.
 
     Missing Test Cases:
-    - Missing Test Cases for abnormal conditions.
-    - Test normal case when loading cfg. from the DB.
+    - Should be reviewed and the missing Test Cases added.
     """
 
-    def test_handleCmdInit_1(self):
+    def test_StdOffline_1(self):
         """
         Synopsis:
-        Normal execution of INIT Command/cfg. in file.
+        test standard execution of OFFLINE Command.
 
         Description:
-        The purpose of the Test Case is to verify that the server
-        re-initializes and reloads the associated cfg. file when the INIT
-        Command is received.
+        The purpose of the Test Case is to specify the normal execution of the
+        OFFLINE Command when the server is Online/Idle and the command is
+        accepted as expected and the server brought to Offline State.
 
         Expected Result:
-        When the INIT Command is received by a server in Online State, the
-        server should reload the configuration and go into Online State.
+        The server in Online State should accept the OFFLINE Command and should
+        go Offline.
 
         Test Steps:
-        - Start server.
-        - Issue an INIT Command.
-        - Check that response from the server is as expected.
+        - Start server (Auto Online=1).
+        - Submit OFFLINE Command.
+        - Check the response from the server.
 
         Remarks:
-        TODO: Should change some parameters to verify that the cfg. file is
-              actually re-loaded.
+        TODO: Check that the server is in Offline State.
         """
         self.prepExtSrv()
-        # TODO: Change some cfg. parameter
-        tmpStatFile = sendExtCmd(8888, NGAMS_INIT_CMD)
-        refStatFile = "ref/ngamsInitCmdTest_test_handleCmdInit_1_1_ref"
+        tmpStatFile = sendExtCmd(8888, NGAMS_OFFLINE_CMD,
+                                 genStatFile = 1)
+        refStatFile = "ref/ngamsOfflineCmdTest_test_StdOffline_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status returned for INIT Command")
-        # TODO: Check that server has initialized with new parameter
+                          "Incorrect status returned for OFFLINE command")

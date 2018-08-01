@@ -32,7 +32,7 @@ This module contains the Test Suite for the LABEL Command.
 """
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_LABEL_CMD
-from .ngamsTestLib import ngamsTestSuite, sendExtCmd
+from ..ngamsTestLib import ngamsTestSuite, sendExtCmd
 
 
 class ngamsLabelCmdTest(ngamsTestSuite):

@@ -32,7 +32,7 @@ This module contains the Test Suite for the CONFIG Command.
 """
 
 from ngamsLib.ngamsCore import NGAMS_CONFIG_CMD
-from .ngamsTestLib import ngamsTestSuite, saveInFile, filterOutLines, \
+from ..ngamsTestLib import ngamsTestSuite, saveInFile, filterOutLines, \
     sendPclCmd
 
 

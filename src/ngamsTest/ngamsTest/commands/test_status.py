@@ -32,7 +32,7 @@ This module contains the Test Suite for the STATUS Command.
 """
 
 from ngamsLib.ngamsCore import toiso8601
-from .ngamsTestLib import ngamsTestSuite, getNcu11, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite, getNcu11, sendPclCmd
 
 
 class ngamsStatusCmdTest(ngamsTestSuite):

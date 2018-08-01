@@ -35,7 +35,7 @@ import os
 
 from ngamsLib import ngamsFileInfo
 from ngamsLib.ngamsCore import getHostName, NGAMS_REMFILE_CMD, NGAMS_CLONE_CMD
-from .ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
+from ..ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
     filterDbStatus1, sendPclCmd, sendExtCmd
 
 

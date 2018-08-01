@@ -32,7 +32,7 @@ This module contains the Test Suite for the ONLINE Command.
 """
 
 from ngamsLib.ngamsCore import NGAMS_ONLINE_CMD
-from .ngamsTestLib import ngamsTestSuite, sendExtCmd
+from ..ngamsTestLib import ngamsTestSuite, sendExtCmd
 
 
 class ngamsOnlineCmdTest(ngamsTestSuite):

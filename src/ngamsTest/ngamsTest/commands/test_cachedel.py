@@ -21,7 +21,7 @@
 #
 import contextlib
 
-from .ngamsTestLib import ngamsTestSuite, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
 from ngamsLib import ngamsHttpUtils
 
 def delete_ngas_file(host, port, file_id, file_version, disk_id, timeout = 10):

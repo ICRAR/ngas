@@ -51,4 +51,4 @@ pip install psutil pytest-cov coveralls
 # Prepare for sub-process coverage
 mkdir coverage.tmp
 echo -e "import coverage\ncoverage.process_startup()" > coverage.tmp/sitecustomize.py
-NGAS_TESTDB="${NGAS_TESTDB}" PYTHONPATH=$PWD/coverage.tmp py.test -o 'python_files=*Test.py' --cov
+NGAS_TESTDB="${NGAS_TESTDB}" PYTHONPATH=$PWD/coverage.tmp py.test -o 'python_files=*Test.py test_*.py' --cov

@@ -32,7 +32,7 @@ This module contains the Test Suite for the CHECKFILE Command.
 """
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_CHECKFILE_CMD
-from .ngamsTestLib import ngamsTestSuite, sendPclCmd, saveInFile, \
+from ..ngamsTestLib import ngamsTestSuite, sendPclCmd, saveInFile, \
     loadFile, sendExtCmd
 
 

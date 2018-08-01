@@ -32,7 +32,7 @@ This module contains the Test Suite for the REMDISK Command.
 """
 
 from ngamsLib.ngamsCore import NGAMS_REMDISK_CMD
-from .ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
+from ..ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
     filterDbStatus1, getThreadId, sendExtCmd, sendPclCmd
 
 

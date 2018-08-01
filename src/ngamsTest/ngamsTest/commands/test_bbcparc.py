@@ -35,8 +35,8 @@ import unittest
 import six
 
 from ngamsLib import ngamsHttpUtils
-from .ngamsTestLib import ngamsTestSuite
 from ngamsServer import ngamsFileUtils
+from ..ngamsTestLib import ngamsTestSuite
 
 # If there's any problem getting bbcp's version
 # e assume that the program is not there, and therefore skip all the tests

@@ -47,7 +47,7 @@ from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCrea
     NGAMS_SUCCESS, getDiskSpaceAvail, mvFile, NGAMS_FAILURE
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
     ngamsCore, ngamsHttpUtils
-from .ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
+from ..ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     saveInFile, filterDbStatus1, sendPclCmd, pollForFile, \
     sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
     copyFile, genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp
