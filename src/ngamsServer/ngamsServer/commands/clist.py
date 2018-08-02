@@ -21,6 +21,8 @@
 #
 
 from ngamsLib.ngamsCore import NGAMS_XML_MT, NGAMS_SUCCESS
+from .. import containers
+
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -31,32 +33,9 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     @param httpRef: ngamsLib.ngamsHttpRequestHandler
     """
 
-
-    # Check that we have been given either a containerId or a containerName
-    containerId = containerName = None
-    if reqPropsObj.hasHttpPar("container_id") and reqPropsObj.getHttpPar("container_id").strip():
-        containerId = reqPropsObj.getHttpPar("container_id").strip()
-    elif reqPropsObj.hasHttpPar("container_name") and reqPropsObj.getHttpPar("container_name").strip():
-        containerName = reqPropsObj.getHttpPar("container_name").strip()
-    if not containerId and not containerName:
-        errMsg = "Either container_id or container_name should be given to indicate a unique container"
-        raise Exception(errMsg)
-
-    # If container_name is specified, and maps to more than one container,
-    # (or to none) an error is issued
-    containerIdKnownToExist = False
-    if not containerId:
-        containerId = srvObj.getDb().getContainerIdForUniqueName(containerName)
-        containerIdKnownToExist = True
-
-    # If necessary, check that the container exists
-    if not containerIdKnownToExist:
-        if not srvObj.getDb().containerExists(containerId):
-            msg = "No container with containerId '" + containerId + "' found, cannot append files to it"
-            raise Exception(msg)
-
     # Do it!
-    rootCont = srvObj.getDb().readHierarchy(containerId, True)
+    container_id = containers.get_container_id(reqPropsObj, srvObj.db)
+    rootCont = srvObj.getDb().readHierarchy(container_id, True)
 
     statusObj = srvObj.genStatus(NGAMS_SUCCESS, "Successfully retrieved containers list")
     statusObj.addContainer(rootCont)

@@ -27,8 +27,10 @@ Created on 20 May 2015
 :author: rtobar
 '''
 
-from ngamsLib.ngamsCore import genLog, NGAMS_HTTP_GET
 from xml.dom import minidom
+
+from ngamsLib.ngamsCore import NGAMS_HTTP_GET
+from .. import containers
 
 def removeFileFromContainer(srvObj, fileId, containerId):
     """
@@ -90,28 +92,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     @param httpRef: ngamsLib.ngamsHttpRequestHandler
     """
 
-    # Check that we have been given either a containerId or a containerName
-    containerId = containerName = None
-    if reqPropsObj.hasHttpPar("container_id") and reqPropsObj.getHttpPar("container_id").strip():
-        containerId = reqPropsObj.getHttpPar("container_id").strip()
-    elif reqPropsObj.hasHttpPar("container_name") and reqPropsObj.getHttpPar("container_name").strip():
-        containerName = reqPropsObj.getHttpPar("container_name").strip()
-    if not containerId and not containerName:
-        errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
-        raise Exception(errMsg)
-
-    # If container_name is specified, and maps to more than one container,
-    # (or to none) an error is issued
-    containerIdKnownToExist = False
-    if not containerId:
-        containerId = srvObj.getDb().getContainerIdForUniqueName(containerName)
-        containerIdKnownToExist = True
-
-    # If necessary, check that the container exists
-    if not containerIdKnownToExist:
-        if not srvObj.getDb().containerExists(containerId):
-            msg = "No container with containerId '" + containerId + "' found, cannot append files to it"
-            raise Exception(msg)
+    containerId = containers.get_container_id(reqPropsObj, srvObj.db)
 
     # If a single fileId has been given via URL parameters
     # and the request is a GET we update that single file

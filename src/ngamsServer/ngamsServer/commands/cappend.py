@@ -27,8 +27,11 @@ Created on 20 May 2015
 :author: rtobar
 '''
 
-from ngamsLib.ngamsCore import genLog, NGAMS_HTTP_GET
 from xml.dom import minidom
+
+from ngamsLib.ngamsCore import NGAMS_HTTP_GET
+from .. import containers
+
 
 def addFileToContainer(srvObj, containerId, fileId, force):
     """
@@ -102,15 +105,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     @param httpRef: ngamsLib.ngamsHttpRequestHandler
     """
 
-    # Check that we have been given either a containerId or a containerName
-    containerId = containerName = None
-    if 'container_id' in reqPropsObj:
-        containerId = reqPropsObj["container_id"].strip()
-    elif 'container_name' in reqPropsObj:
-        containerName = reqPropsObj["container_name"].strip()
-    if not containerId and not containerName:
-        errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
-        raise Exception(errMsg)
+    containerId = containers.get_container_id(reqPropsObj, srvObj.db)
 
     # Check if we have been asked to force the operation
     force = False
@@ -121,19 +116,6 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     closeContainer = False
     if reqPropsObj.hasHttpPar('close_container') and reqPropsObj.getHttpPar('close_container') == '1':
         closeContainer = True
-
-    # If container_name is specified, and maps to more than one container,
-    # (or to none) an error is issued
-    containerIdKnownToExist = False
-    if not containerId:
-        containerId = srvObj.getDb().getContainerIdForUniqueName(containerName)
-        containerIdKnownToExist = True
-
-    # If necessary, check that the container exists
-    if not containerIdKnownToExist:
-        if not srvObj.getDb().containerExists(containerId):
-            msg = "No container with containerId '" + containerId + "' found, cannot append files to it"
-            raise Exception(msg)
 
     # If a single fileId has been given via URL parameters
     # and the request is a GET we update that single file

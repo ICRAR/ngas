@@ -39,7 +39,7 @@ from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, \
 from ngamsLib import ngamsMIMEMultipart, ngamsHighLevelLib, ngamsFileInfo,\
     ngamsLib
 from ngamsLib import ngamsPlugInApi
-from ngamsServer import ngamsCacheControlThread, ngamsArchiveUtils
+from .. import ngamsCacheControlThread, ngamsArchiveUtils
 
 
 logger = logging.getLogger(__name__)

@@ -23,7 +23,8 @@
 Module implementing the CDESTROY command
 """
 
-from ngamsLib.ngamsCore import genLog
+from .. import containers
+
 
 def destroyContainer(srvObj, containerId, recursive):
     """
@@ -57,26 +58,12 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     @param httpRef: ngamsLib.ngamsHttpRequestHandler
     """
 
-    # Check that we have been given either a containerId or a containerName
-    containerId = containerName = None
-    if reqPropsObj.hasHttpPar("container_id") and reqPropsObj.getHttpPar("container_id").strip():
-        containerId = reqPropsObj.getHttpPar("container_id").strip()
-    elif reqPropsObj.hasHttpPar("container_name") and reqPropsObj.getHttpPar("container_name").strip():
-        containerName = reqPropsObj.getHttpPar("container_name").strip()
-    if not containerId and not containerName:
-        errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
-        raise Exception(errMsg)
-
     # Check if we have been asked to be recursive
     recursive = False
     if reqPropsObj.hasHttpPar('recursive') and reqPropsObj.getHttpPar('recursive') == '1':
         recursive = True
 
-    # If container_name is specified, and maps to more than one container,
-    # (or to none) an error is issued
-    if not containerId:
-        containerId = srvObj.getDb().getContainerIdForUniqueName(containerName)
-
-    destroyContainer(srvObj, containerId, recursive)
+    container_id = containers.get_container_id(reqPropsObj, srvObj.db)
+    destroyContainer(srvObj, container_id, recursive)
 
 # EOF

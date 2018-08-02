@@ -34,7 +34,7 @@ from ngamsLib.ngamsCore import NGAMS_CONT_MT
 from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_REMOTE, NGAMS_HOST_CLUSTER
 from ngamsLib.ngamsCore import NGAMS_RETRIEVE_CMD, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE
 from ngamsLib import ngamsMIMEMultipart, ngamsHttpUtils
-from ngamsServer import ngamsSrvUtils, ngamsFileUtils
+from .. import ngamsSrvUtils, ngamsFileUtils, containers
 
 
 logger = logging.getLogger(__name__)
@@ -164,27 +164,14 @@ def _handleCmdCRetrieve(srvObj,
     if 'processing' in reqPropsObj:
         raise Exception('CRETRIEVE command does not allow processing (yet)')
 
-    # At least container_id or container_name must be specified
-    containerName = containerId = None
-    if "container_id" in reqPropsObj:
-        containerId = reqPropsObj["container_id"].strip()
-    if not containerId and "container_name" in reqPropsObj:
-        containerName = reqPropsObj["container_name"].strip()
-    if not containerId and not containerName:
-        raise Exception('Neither container_name nor container_id given, cannot retrieve container')
-
-    # If container_name is specified, and maps to more than one container,
-    # an error is issued
-    if not containerId:
-        containerId = srvObj.getDb().getContainerIdForUniqueName(containerName)
-
     # Users can request a tarball instead of the default MIME multipart message
     return_tar = 'format' in reqPropsObj and reqPropsObj['format'] == 'application/x-tar'
 
-    logger.debug("Handling request for file with containerId: %s", containerId)
+    container_id = containers.get_container_id(reqPropsObj, srvObj.db)
+    logger.debug("Handling request for file with containerId: %s", container_id)
 
     # Build the container hierarchy and get all file references
-    container = srvObj.getDb().readHierarchy(containerId, True)
+    container = srvObj.getDb().readHierarchy(container_id, True)
     cinfo = cinfo_from_database(container, srvObj, reqPropsObj)
 
     # Send all the data back, either as a multipart message or as a tarball
