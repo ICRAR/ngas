@@ -2406,22 +2406,6 @@ class ngamsServer(object):
         pid = os.getpid()
         os.kill(pid, signal.SIGKILL)
 
-    def _incCheckIdx(self,
-                     idx,
-                     argv):
-        """
-        Increment and check index for command line parameters.
-
-        idx:       Present index to increment (integer).
-
-        argv:      Tuple containing command line arguments (tuple).
-
-        Returns:   Increment index.
-        """
-        idx = idx + 1
-        if (idx == len(argv)): self.correctUsage()
-        return idx
-
     ########################################################################
     # The following methods are used for the NG/AMS Unit Tests.
     # The method do not contain any code, but in the Unit Test code it is
