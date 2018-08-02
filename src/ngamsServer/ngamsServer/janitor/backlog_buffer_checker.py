@@ -19,3 +19,31 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+"""Checks the backlog buffer for pending archive commands and runs them"""
+
+import logging
+
+from .common import StopJanitorThreadException
+from ngamsServer import ngamsArchiveUtils
+from ngamsServer.ngamsDbSnapshotUtils import updateDbSnapShots
+
+
+logger = logging.getLogger(__name__)
+
+def run(srvObj, stopEvt):
+
+    try:
+        updateDbSnapShots(srvObj, stopEvt)
+    except StopJanitorThreadException:
+        raise
+    except Exception:
+        logger.exception("Error encountered updating DB Snapshots")
+
+    # => Check Back-Log Buffer (if appropriate).
+    if (srvObj.getCfg().getAllowArchiveReq() and
+        srvObj.getCfg().getBackLogBuffering()):
+        logger.debug("Checking Back-Log Buffer ...")
+        try:
+            ngamsArchiveUtils.checkBackLogBuffer(srvObj)
+        except Exception:
+            logger.exception("Error while archiving from back-log buffer")

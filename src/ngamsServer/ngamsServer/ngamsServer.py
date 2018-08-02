@@ -68,8 +68,8 @@ from ngamsLib.ngamsCore import genLog, TRACE, getNgamsVersion, \
 from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils
 from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
+from . import janitor
 from . import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
-from . import ngamsJanitorThread
 from . import ngamsDataCheckThread
 from . import ngamsUserServiceThread
 from . import ngamsMirroringControlThread
@@ -1038,7 +1038,7 @@ class ngamsServer(object):
         self._serv_to_jan_queue = multiprocessing.Queue()
         self._jan_to_serv_queue = multiprocessing.Queue()
         self._janitorThread = multiprocessing.Process(
-                                target=ngamsJanitorThread.janitorThread,
+                                target=janitor.janitorThread,
                                 name="Janitor",
                                 args=(self, self._janitorProcStopEvt, self._serv_to_jan_queue, self._jan_to_serv_queue))
         self._janitorThread.start()

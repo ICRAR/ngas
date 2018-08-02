@@ -24,7 +24,7 @@
 import logging
 import time
 
-from ngamsServer.ngamsJanitorCommon import checkStopJanitorThread
+from .common import checkStopJanitorThread
 
 
 logger = logging.getLogger(__name__)

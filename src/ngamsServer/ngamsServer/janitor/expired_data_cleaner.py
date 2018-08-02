@@ -24,10 +24,10 @@
 import logging
 import os
 
+from .common import checkCleanDirs
 from ngamsLib import ngamsHighLevelLib
 from ngamsLib.ngamsCore import NGAMS_SUBSCR_BACK_LOG_DIR, NGAMS_PROC_DIR
 from ngamsLib.ngamsCore import isoTime2Secs
-from ngamsServer.ngamsJanitorCommon import checkCleanDirs
 
 
 logger = logging.getLogger(__name__)

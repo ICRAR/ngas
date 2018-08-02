@@ -33,14 +33,15 @@ various background activities as cleaning up after processing, waking up
 suspended NGAS hosts, suspending itself.
 """
 
+import importlib
 import logging
 import signal
 import time
 
 from six.moves import queue as Queue  # @UnresolvedImport
 
-from .ngamsDbSnapshotUtils import checkUpdateDbSnapShots, updateDbSnapShots
-from .ngamsJanitorCommon import StopJanitorThreadException, checkStopJanitorThread, suspend
+from ..ngamsDbSnapshotUtils import checkUpdateDbSnapShots, updateDbSnapShots
+from .common import StopJanitorThreadException, checkStopJanitorThread, suspend
 from ngamsLib.ngamsCore import isoTime2Secs, loadPlugInEntryPoint
 
 
@@ -70,19 +71,15 @@ def get_plugins(srvObj):
     Returns the list of plug-ins that need to be run in this janitor process
     """
 
-    hardcoded = [
-        'janitor.backlog_buffer_checker',
-        'janitor.old_requests_cleaner',
-        'janitor.expired_data_cleaner',
-        'janitor.notifications_sender',
-        'janitor.rotated_logfiles_handler',
-        'janitor.disk_space_checker',
-        'janitor.wake_up_request_processor',
-        'janitor.host_suspender'
+    built_in = [
+        'backlog_buffer_checker', 'old_requests_cleaner', 'expired_data_cleaner',
+        'notifications_sender', 'rotated_logfiles_handler', 'disk_space_checker',
+        'wake_up_request_processor', 'host_suspender'
     ]
-
+    built_in = [importlib.import_module('.' + bi, __package__).run for bi in built_in]
     user_plugins = srvObj.getCfg().getJanitorPlugins()
-    return [loadPlugInEntryPoint(n, entryPointMethodName='run') for n in hardcoded + user_plugins]
+    user_plugins = [loadPlugInEntryPoint(p, entryPointMethodName='run') for p in user_plugins]
+    return built_in + user_plugins
 
 
 class ForwarderHandler(logging.Handler):
