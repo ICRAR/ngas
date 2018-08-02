@@ -2333,33 +2333,14 @@ class ngamsServer(object):
         if self.__httpDaemon:
             self.__httpDaemon.shutdown()
 
-    def ngamsExitHandler(self,
-                         signalNo,
-                         killServer = 1,
-                         exitCode = 0,
-                         delPidFile = 1):
-        """
-        NG/AMS Exit Handler Function. Is invoked when the NG/AMS Server
-        is killed/terminated.
-
-        signalNo:     Number of signal received.
-
-        killServer:   1 = kill the server (integer).
-
-        exitCode:     Exit code with which the server should exit (integer).
-
-        delPidFile:   Flag indicating if NG/AMS PID file should be deleted or
-                      not (integer/0|1).
-
-        Returns:      Void.
-        """
+    def ngamsExitHandler(self, signal_no, stack_frame):
+        """NGAS exit Handler function, given to signal.signal"""
 
         if self.__handling_exit:
             logger.info('Already handling exit signal')
             return
-
         self.__handling_exit = True
-        logger.info("In NG/AMS Exit Handler - received signal: %d", signalNo)
+        logger.info("In NG/AMS Exit Handler - received signal: %d", signal_no)
         self.terminate()
 
     def terminate(self):
