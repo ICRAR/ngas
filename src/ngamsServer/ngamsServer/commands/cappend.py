@@ -104,10 +104,10 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     # Check that we have been given either a containerId or a containerName
     containerId = containerName = None
-    if reqPropsObj.hasHttpPar("container_id") and reqPropsObj.getHttpPar("container_id").strip():
-        containerId = reqPropsObj.getHttpPar("container_id").strip()
-    elif reqPropsObj.hasHttpPar("container_name") and reqPropsObj.getHttpPar("container_name").strip():
-        containerName = reqPropsObj.getHttpPar("container_name").strip()
+    if 'container_id' in reqPropsObj:
+        containerId = reqPropsObj["container_id"].strip()
+    elif 'container_name' in reqPropsObj:
+        containerName = reqPropsObj["container_name"].strip()
     if not containerId and not containerName:
         errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
         raise Exception(errMsg)

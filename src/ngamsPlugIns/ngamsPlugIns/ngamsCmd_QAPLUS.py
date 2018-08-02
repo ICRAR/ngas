@@ -36,7 +36,7 @@ import logging
 
 from six.moves.urllib import request as urlrequest  # @UnresolvedImport
 
-from . import ngamsCmd_QARCHIVE
+from ngamsServer.commands import qarchive as ngamsCmd_QARCHIVE
 
 
 logger = logging.getLogger(__name__)

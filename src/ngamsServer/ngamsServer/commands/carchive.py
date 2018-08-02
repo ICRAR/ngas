@@ -36,10 +36,10 @@ from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
     NGAMS_STAGING_DIR, genUniqueId, mvFile, getFileCreationTime, \
     NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, toiso8601, FMT_DATE_ONLY
-from ngamsLib import ngamsMIMEMultipart, ngamsHighLevelLib, ngamsFileInfo
+from ngamsLib import ngamsMIMEMultipart, ngamsHighLevelLib, ngamsFileInfo,\
+    ngamsLib
 from ngamsLib import ngamsPlugInApi
 from ngamsServer import ngamsCacheControlThread, ngamsArchiveUtils
-from . import ngamsGenDapi
 
 
 logger = logging.getLogger(__name__)
@@ -240,10 +240,8 @@ def handleCmd(srvObj,
 
     createContainers(rootContainer, None, srvObj)
 
-    parDic = {}
-    ngamsGenDapi.handlePars(reqPropsObj, parDic)
-    diskInfo = reqPropsObj.getTargDiskInfo()
     # Generate file information.
+    diskInfo = reqPropsObj.getTargDiskInfo()
     logger.debug("Generate file information")
     dateDir = toiso8601(fmt=FMT_DATE_ONLY)
     resDapiList = []
@@ -267,8 +265,8 @@ def handleCmd(srvObj,
                                                 filepath,
                                                 fileId,
                                                 basename, [dateDir])
-        complFilename, relFilename = ngamsGenDapi.checkForDblExt(complFilename,
-                                                    relFilename)
+        complFilename = ngamsLib.remove_duplicated_extension(complFilename)
+        relFilename = ngamsLib.remove_duplicated_extension(relFilename)
 
         # Keep track of the total size of the container
         uncomprSize = ngamsPlugInApi.getFileSize(filepath)
