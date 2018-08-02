@@ -1878,7 +1878,7 @@ class ngamsServer(object):
             httpRef.send_status(msg, status=NGAMS_FAILURE, code=403)
             return
 
-        ngamsCmdHandling.cmdHandler(self, reqPropsObj, httpRef)
+        ngamsCmdHandling.handle_cmd(self, reqPropsObj, httpRef)
 
         msg = "Total time for handling request: (%s, %s ,%s, %s): %.3f [s]"
         args = [reqPropsObj.getHttpMethod(), reqPropsObj.getCmd(),

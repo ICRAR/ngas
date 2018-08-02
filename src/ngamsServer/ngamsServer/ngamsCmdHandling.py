@@ -36,25 +36,17 @@ import importlib
 import logging
 import sys
 
-from ngamsLib.ngamsCore import \
-    NGAMS_RETRIEVE_CMD, NGAMS_ARCHIVE_CMD, NGAMS_CACHEDEL_CMD, \
-    NGAMS_CHECKFILE_CMD, NGAMS_CLONE_CMD, NGAMS_CONFIG_CMD, NGAMS_DISCARD_CMD, \
-    NGAMS_EXIT_CMD, NGAMS_HELP_CMD, NGAMS_INIT_CMD, NGAMS_LABEL_CMD, \
-    NGAMS_OFFLINE_CMD, NGAMS_ONLINE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_REGISTER_CMD, \
-    NGAMS_REMDISK_CMD, NGAMS_REMFILE_CMD, NGAMS_STATUS_CMD, NGAMS_SUBSCRIBE_CMD, \
-    NGAMS_UNSUBSCRIBE_CMD
 from . import NoSuchCommand
+
 
 logger = logging.getLogger(__name__)
 
 _builtin_cmds = {
-    NGAMS_ARCHIVE_CMD, NGAMS_CACHEDEL_CMD, NGAMS_CHECKFILE_CMD, NGAMS_CLONE_CMD,
-    NGAMS_CONFIG_CMD, NGAMS_DISCARD_CMD, NGAMS_EXIT_CMD, NGAMS_HELP_CMD,
-    NGAMS_INIT_CMD, NGAMS_LABEL_CMD, NGAMS_OFFLINE_CMD, NGAMS_ONLINE_CMD,
-    NGAMS_REARCHIVE_CMD, NGAMS_REGISTER_CMD, NGAMS_REMDISK_CMD, NGAMS_REMFILE_CMD,
-    NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD,
-    'CAPPEND', 'CARCHIVE', 'CCREATE', 'CDESTROY', 'CLIST', 'CREMOVE', 'CRETRIEVE',
-    'QARCHIVE', 'QUERY', 'BBCPARC'
+    'ARCHIVE', 'BBCPARC', 'CACHEDEL', 'CAPPEND', 'CARCHIVE', 'CCREATE',
+    'CDESTROY', 'CHECKFILE', 'CLIST', 'CLONE', 'CONFIG', 'CREMOVE', 'CRETRIEVE',
+    'DISCARD', 'EXIT', 'HELP', 'INIT', 'LABEL', 'OFFLINE', 'ONLINE', 'QARCHIVE',
+    'QUERY', 'REARCHIVE', 'REGISTER', 'REMDISK', 'REMFILE', 'RETRIEVE', 'STATUS',
+    'SUBSCRIBE', 'UNSUBSCRIBE'
 }
 
 # The reload function has moved around a bit
@@ -65,23 +57,9 @@ elif sys.version_info[0:2] < (3, 4):
 else:
     reload = importlib.reload
 
-def cmdHandler(srvObj,
-               reqPropsObj,
-               httpRef):
-    """
-    Handle a command.
+def handle_cmd(srvObj, reqPropsObj, httpRef):
+    """Passes down the request to the corresponding command handling module"""
 
-    srvObj:        Reference to NG/AMS server class object (ngamsServer).
-
-    reqPropsObj:   Request Property object to keep track of
-                   actions done during the request handling
-                   (ngamsReqProps).
-
-    httpRef:       Reference to the HTTP request handler
-                   object (ngamsHttpRequestHandler).
-
-    Returns:       Void.
-    """
     msg = _get_module(srvObj, reqPropsObj).handleCmd(srvObj, reqPropsObj, httpRef)
     if msg is not None:
         if httpRef.reply_sent:
@@ -102,7 +80,7 @@ def _get_module(server, request):
     if cmd == 'favicon.ico':
         cmd = 'favicon'
     if cmd == "ngamsInternal.dtd":
-        request.setCmd(NGAMS_RETRIEVE_CMD).addHttpPar("internal", cmd)
+        request.setCmd('RETRIEVE').addHttpPar("internal", cmd)
         cmd = 'RETRIEVE'
 
     # Is it a built-in or a plug-in?
