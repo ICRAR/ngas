@@ -512,7 +512,7 @@ class ngamsServer(object):
         """
         Constructor method.
         """
-        self.__ngamsCfg               = cfg_fname
+        self.cfg_fname                = cfg_fname
         self.cfg                      = ngamsConfig.ngamsConfig()
         self.__dbCfgId                = ""
         self.force_start              = False
@@ -1598,15 +1598,6 @@ class ngamsServer(object):
         return self.__diskDic
 
 
-    def getCfgFilename(self):
-        """
-        Return name of NG/AMS Configuration file.
-
-        Returns:   Name of NG/AMS Configuration file (string).
-        """
-        return self.__ngamsCfg
-
-
     def getMimeTypeDic(self):
         """
         Return reference to the Mime-Type Dictionary.
@@ -2007,9 +1998,9 @@ class ngamsServer(object):
         Returns:   Reference to object itself.
         """
 
-        cfg = self.getCfg()
-        logger.info("Loading NG/AMS Configuration: " + self.getCfgFilename()+" ...")
-        cfg.load(self.getCfgFilename())
+        logger.info("Loading NG/AMS Configuration from %s", self.cfg_fname)
+        cfg = self.cfg
+        cfg.load(self.cfg_fname)
 
         # Check if we should load a configuration from the DB.
         # To bootstrap this, the configuration we just loaded needs of course to
