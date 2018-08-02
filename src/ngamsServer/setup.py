@@ -63,9 +63,7 @@ setup(
     entry_points= {
         'console_scripts':[
             'ngamsServer=ngamsServer.ngamsServer:main',
-            'ngamsCacheServer=ngamsServer.ngamsCacheServer:main',
             'ngamsDaemon=ngamsServer.ngamsDaemon:main',
-            'ngamsCacheDaemon=ngamsServer.ngamsDaemon:main',
             'ngamsDumpDbSnapshot=ngamsServer.ngamsDumpDbSnapshot:main'
         ],
     }
