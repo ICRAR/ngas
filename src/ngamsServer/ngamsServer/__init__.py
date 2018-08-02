@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: __init__.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -27,46 +26,4 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # jknudstr  11/06/2001  Created
-
-# Dummy __init__.py file to build up the documentation for the module.
-
-__all__ = ["ngamsArchiveCmd",
-"ngamsArchiveUtils",
-"ngamsAuthUtils",
-"ngamsCacheControlThread",
-"ngamsCacheDelCmd",
-"ngamsCacheServer",
-"ngamsCheckFileCmd",
-"ngamsCloneCmd",
-"ngamsCmdHandling",
-"ngamsConfigCmd",
-"ngamsDataCheckThread",
-"ngamsDiscardCmd",
-"ngamsExitCmd",
-"ngamsFileUtils",
-"ngamsHelpCmd",
-"ngamsInitCmd",
-"ngamsJanitorThread",
-"ngamsLabelCmd",
-"ngamsMirroringControlThread",
-"ngamsOfflineCmd",
-"ngamsOnlineCmd",
-"ngamsRearchiveCmd",
-"ngamsRegisterCmd",
-"ngamsRemDiskCmd",
-"ngamsRemFileCmd",
-"ngamsRemUtils",
-"ngamsRetrieveCmd",
-"ngamsServer",
-"ngamsSrvUtils",
-"ngamsStatusCmd",
-"ngamsSubscribeCmd",
-"ngamsSubscriptionThread",
-"ngamsUnsubscribeCmd",
-"ngamsUserServiceThread",
-]
-
-import pkg_resources
-__doc__ = pkg_resources.resource_string(__name__, 'README')  # @UndefinedVariable
-
-# EOF:
+"""NGAS server classes"""
