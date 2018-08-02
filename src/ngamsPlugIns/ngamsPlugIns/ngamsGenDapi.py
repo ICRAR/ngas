@@ -64,7 +64,7 @@ import os
 import subprocess
 import time
 
-from ngamsLib import ngamsPlugInApi
+from ngamsLib import ngamsPlugInApi, ngamsLib
 from ngamsLib.ngamsCore import TRACE, genLog, toiso8601, FMT_DATE_ONLY
 
 
@@ -233,16 +233,9 @@ def checkForDblExt(complFilename,
     Returns:          Tuple with complete filename and relative filename
                       (tuple/string).
     """
-    T = TRACE()
-
-    filename2, ext1 = os.path.splitext(complFilename)
-    filename3, ext2 = os.path.splitext(filename2)
-    if ((ext1 != "") and (ext1 == ext2)):
-        # Remove one of the extensions.
-        complFilename = complFilename[0:-len(ext1)]
-        relFilename = relFilename[0:-len(ext1)]
-
-    return (complFilename, relFilename)
+    complFilename = ngamsLib.remove_duplicated_extension(complFilename)
+    relFilename = ngamsLib.remove_duplicated_extension(relFilename)
+    return complFilename, relFilename
 
 # Signals the server whether this plug-in modifies its incoming contents (or not)
 def modifies_content(srvObj, reqPropsObj):

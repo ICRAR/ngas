@@ -228,6 +228,15 @@ def detMimeType(mimeTypeMaps,
     return mimeType
 
 
+def remove_duplicated_extension(fname):
+    """Removes duplicated extensions ('file.txt.txt' -> 'file.txt')"""
+    fname_wout_ext, ext1 = os.path.splitext(fname)
+    _, ext2 = os.path.splitext(fname_wout_ext)
+    if ext1 == ext2:
+        return fname_wout_ext
+    return fname
+
+
 def getSubscriberId(subscrUrl):
     """
     Generate the Subscriber ID from the Subscriber URL.
