@@ -36,7 +36,6 @@ import glob
 import logging
 import os
 import re
-import string
 import threading
 
 from ngamsLib.ngamsCore import NGAMS_NOT_RUN_STATE,\
@@ -238,7 +237,7 @@ def getDiskInfo(srvObj,
                 checkPath = os.path.normpath(mtPt + "/" + NGAMS_DISK_INFO)
                 logger.debug("Checking if path exists: %s", checkPath)
                 if (os.path.exists(checkPath)):
-                    slotId = string.split(mtPt, "-")[-1]
+                    slotId = mtPt.split("-")[-1]
                     portNo = (int(slotId) - 1)
                     diskId = re.sub("/", "-", mtPt)
                     serialNo = "SERIAL-NUMBER-" + str(portNo)
