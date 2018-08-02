@@ -69,6 +69,7 @@ from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils
 from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 from . import janitor
+from . import InvalidParameter, NoSuchCommand
 from . import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
 from . import ngamsDataCheckThread
 from . import ngamsUserServiceThread
@@ -1787,10 +1788,10 @@ class ngamsServer(object):
 
             if not httpRef.reply_sent:
                 httpRef.send_status("Successfully handled request")
-
-        except ngamsCmdHandling.NoSuchCommand as e:
+        except NoSuchCommand as e:
             httpRef.send_status("Command not found", status=NGAMS_FAILURE, code=404)
-
+        except InvalidParameter as e:
+            httpRef.send_status("Invalid parameter: %s" % e.args[0], status=NGAMS_FAILURE, code=400)
         except Exception as e:
 
             # Quickly respond with a 400 status code for unexpected exceptions

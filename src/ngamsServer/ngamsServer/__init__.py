@@ -27,3 +27,11 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  11/06/2001  Created
 """NGAS server classes"""
+
+class InvalidParameter(Exception):
+    """Error indicating a valid or missing parameter"""
+    pass
+
+class NoSuchCommand(Exception):
+    """Error indicating a command's implementation cannot be found"""
+    pass

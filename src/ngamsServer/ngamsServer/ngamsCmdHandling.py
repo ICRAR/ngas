@@ -43,7 +43,7 @@ from ngamsLib.ngamsCore import \
     NGAMS_OFFLINE_CMD, NGAMS_ONLINE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_REGISTER_CMD, \
     NGAMS_REMDISK_CMD, NGAMS_REMFILE_CMD, NGAMS_STATUS_CMD, NGAMS_SUBSCRIBE_CMD, \
     NGAMS_UNSUBSCRIBE_CMD
-
+from . import NoSuchCommand
 
 logger = logging.getLogger(__name__)
 
@@ -64,10 +64,6 @@ elif sys.version_info[0:2] < (3, 4):
     reload = imp.reload
 else:
     reload = importlib.reload
-
-class NoSuchCommand(Exception):
-    """Error thrown when a command's implementation cannot be found"""
-    pass
 
 def cmdHandler(srvObj,
                reqPropsObj,
