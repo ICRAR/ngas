@@ -59,7 +59,7 @@ class ngamsAuthorizationTest(ngamsTestSuite):
     """
 
     def _assert_code(self, code, bauth=None, raw_auth=None, cmd='STATUS'):
-        auth = raw_auth or b'Basic ' + base64.b64encode(bauth) if bauth else None
+        auth = raw_auth or (b'Basic ' + base64.b64encode(bauth) if bauth else None)
         resp = ngamsHttpUtils.httpGet('127.0.0.1', 8888, cmd, auth=auth)
         with contextlib.closing(resp):
             self.assertEqual(code, resp.status)
@@ -69,46 +69,50 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         self.prepExtSrv()
         self._assert_code(200)
 
+    def _authorization_cfg(self, user_specs):
+        uspecs = [(('Name', u[0]), ('Password', utils.b2s(base64.b64encode(u[1]))), ('Commands', u[2]))
+                  for u in user_specs]
+        cfg = [('Enable', '1')]
+        for i, u in enumerate(uspecs):
+            cfg += [('User[%d].%s' % (i, name), str(val)) for name, val in u]
+        cfg = [("NgamsCfg.Authorization[1].%s" % name, val) for name, val in cfg]
+        return cfg
 
     def test_UnAuthReq_1(self):
         """Authorization/authentication is enabled"""
-
-        self.prepExtSrv(cfgProps=[["NgamsCfg.Authorization[1].Enable","1"]])
+        passwd = os.urandom(16)
+        self.prepExtSrv(cfgProps=self._authorization_cfg([('test', passwd, '*')]))
         self._assert_code(401)
         self._assert_code(401, raw_auth="Not basic at all")
         self._assert_code(401, raw_auth="Basic")
         self._assert_code(401, raw_auth="Basic ")
         self._assert_code(401, raw_auth="Basic user")
 
+        # Produce a clean shutdown of the server so coverage information
+        # is not lost due to the test killing the server with SIGINT
+        self.termExtSrv(self.extSrvInfo.pop(), auth=b'test:' + passwd)
 
     def test_UnAuthReq_2(self):
         """Authorization/authentication is enabled, commands are restricted"""
 
         # Start the server with a set of configured users
-        pass1 = os.urandom(16)
-        pass2 = os.urandom(16)
-        pass3 = os.urandom(16)
-        u1 = (('Name', 'test1'), ('Password', utils.b2s(base64.b64encode(pass1))), ('Commands', '*'))
-        u2 = (('Name', 'test2'), ('Password', utils.b2s(base64.b64encode(pass2))), ('Commands', 'STATUS'))
-        u3 = (('Name', 'test3'), ('Password', utils.b2s(base64.b64encode(pass3))), ('Commands', 'DOESNT_EXIST'))
-
-        cfg = [('Enable', '1')]
-        for i, u in enumerate((u1, u2, u3)):
-            cfg += [('User[%d].%s' % (i, name), str(val)) for name, val in u]
-        cfg = [("NgamsCfg.Authorization[1].%s" % name, val) for name, val in cfg]
-        self.prepExtSrv(cfgProps=cfg)
+        pass1, pass2, pass3, pass4 = [os.urandom(16) for _ in range(4)]
+        uspecs = ('test1', pass1, '*'), ('test2', pass2, 'STATUS'), ('test3', pass3, 'DOESNT_EXIST'), ('test4', pass4, '')
+        self.prepExtSrv(cfgProps=self._authorization_cfg(uspecs))
 
         auth1 = b'test1:' + pass1
         auth2 = b'test2:' + pass2
         auth3 = b'test3:' + pass3
+        auth4 = b'test4:' + pass4
 
         # No authentication
         self._assert_code(401)
 
-        # Users 1 and 2 are allowed to STATUS, user 3 isn't
+        # Users 1 and 2 are allowed to STATUS, users 3 and 4 aren't
         self._assert_code(200, bauth=auth1)
         self._assert_code(200, bauth=auth2)
         self._assert_code(403, bauth=auth3)
+        self._assert_code(403, bauth=auth4)
 
         # Users 1 and 3 are allowed to send the DOESNT_EXIST command, user 3 isn't
         # We get 404s here because the command actually doesn't exist, which yields
@@ -122,3 +126,19 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         # This is merely so the tearDown() method doesn't kill it wih -9, which
         # in turn means we get no coverage measurement of what we actually tested
         self.termExtSrv(self.extSrvInfo.pop(), auth=auth1)
+
+    def test_unknown_user_password(self):
+        """Authorization/authentication is enabled, unknown user/passed is given"""
+
+        # Use a known password value so we can reliably change it afterwards
+        suffix = os.urandom(15)
+        passwd = b'\x00' + suffix
+        passwd_wrong = b'\x01' + suffix
+        correct_auth = b'test:' + passwd
+
+        # Test normal usage, wrong user and wrong password
+        self.prepExtSrv(cfgProps=self._authorization_cfg([('test', passwd, '*')]))
+        self._assert_code(200, bauth=correct_auth)
+        self._assert_code(401, bauth=(b'test1:' + passwd))
+        self._assert_code(401, bauth=(b'test:' + passwd_wrong))
+        self.termExtSrv(self.extSrvInfo.pop(), auth=correct_auth)
