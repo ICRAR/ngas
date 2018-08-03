@@ -37,12 +37,11 @@ import threading
 import time
 
 from ngamsLib.ngamsCore import cpFile
-from .ngamsTestLib import incArcfile, sendPclCmd, ngamsTestSuite, AUTH
+from .ngamsTestLib import incArcfile, sendPclCmd, ngamsTestSuite
 
 
 TST_STR1 = "Successfully handled Archive Push Request for data file " +\
            "with URI: %s"
-
 RUN_TEST    = 1
 THREADS     = {}
 THREAD_STAT = {}
@@ -77,7 +76,7 @@ def archiveThread(testObj,
             THREAD_STAT[no] = "STOPPED"
             break
         if (inc): incArcfile(filename)
-        statObj = sendPclCmd(auth=AUTH).archive(filename)
+        statObj = sendPclCmd().archive(filename)
         if (statObj.getMessage() != testStr):
             THREAD_STAT[no] = "FAILURE: Archive Request failed"
     THREAD_STAT[no] = "SUCCESS"
@@ -124,7 +123,7 @@ class ngamsArchiveStressTest(ngamsTestSuite):
         testStr = TST_STR1 % "TinyTestFile.fits"
         self.prepExtSrv()
         for n in range(20):
-            statObj = sendPclCmd(auth=AUTH).archive("src/TinyTestFile.fits")
+            statObj = sendPclCmd().archive("src/TinyTestFile.fits")
             self.checkEqual(statObj.getMessage(), testStr,
                             "Archive Request failed")
 

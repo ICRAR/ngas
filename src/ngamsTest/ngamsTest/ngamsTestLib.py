@@ -83,8 +83,6 @@ srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
 STD_DISK_STAT_FILT = ["AccessDate", "AvailableMb", "CreationDate", "Date",
                       "HostId", "IngestionDate", "InstallationDate",
                       "ModificationDate", "TotalDiskWriteTime", "Version"]
-AUTH               = "bmdhczpuZ2Fz"
-
 
 # this_dir, which we use in a few places to refer to files, etc
 this_dir = os.path.normpath(os.path.abspath(pkg_resources.resource_filename(__name__, '.')))  # @UndefinedVariable
