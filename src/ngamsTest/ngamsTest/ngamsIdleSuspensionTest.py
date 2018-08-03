@@ -31,6 +31,8 @@
 This module contains the Test Suite for the handling of Idle Suspension.
 """
 
+import collections
+import itertools
 import time
 
 from six.moves.urllib import parse as urlparse  # @UnresolvedImport
@@ -73,32 +75,28 @@ def prepSimCluster(testObj,
 
     Returns:      Void.
     """
-    subNodeList = []
-    for n in range(noOfSubNodes): subNodeList.append("800%d" % (n + 1))
-    hostList = ["8000"] + subNodeList
-    locCfgParDic = {}
-    for portNo in hostList: locCfgParDic[portNo] = []
-    # Ensure that the sub-nodes suspend themselves after 10s idling and
-    # that they request to be woken up by the master node.
-    srvs = [(8000, locCfgParDic["8000"])]
-    for portNo in subNodeList:
-        par = "NgamsCfg.HostSuspension[1].IdleSuspension"
-        locCfgParDic[portNo].append([par, "1"])
-        par = "NgamsCfg.HostSuspension[1].IdleSuspensionTime"
-        locCfgParDic[portNo].append([par, "10"])
-        par = "NgamsCfg.HostSuspension[1].WakeUpServerHost"
-        locCfgParDic[portNo].append([par, masterNode])
-    for portNo in hostList:
-        par = "NgamsCfg.JanitorThread[1].SuspensionTime"
-        locCfgParDic[portNo].append([par, "0T00:00:02"])
-        # Some tests use inspect the log file, sigh...
-        locCfgParDic[portNo].append(["NgamsCfg.Log[1].LocalLogLevel","5"])
+
+    subnode_ports = [n + 8001 for n in range(noOfSubNodes)]
+    subnode_pars = (("NgamsCfg.HostSuspension[1].IdleSuspension", '1'),
+                    ("NgamsCfg.HostSuspension[1].IdleSuspensionTime", '5'),
+                    ("NgamsCfg.HostSuspension[1].WakeUpServerHost", masterNode))
+
+    all_ports = [8000] + subnode_ports
+    all_pars = (('NgamsCfg.JanitorThread[1].SuspensionTime', '0T00:00:01'),
+                ('NgamsCfg.Log[1].LocalLogLevel', '5'))
+
+    cfg = collections.defaultdict(list)
+    for port, par in itertools.product(subnode_ports, subnode_pars):
+        cfg[port].append(par)
+    for port, par in itertools.product(all_ports, all_pars):
+        cfg[port].append(par)
 
     # If special configuration parameters are specified by the Test Case these
     # are stored last in the locCfgParDic to ensure that these are taken.
-    for node in cfgParDic.keys(): locCfgParDic[node] += cfgParDic[node]
-    for portNo in subNodeList:
-        srvs.append((int(portNo), locCfgParDic[portNo]))
+    for port, pars in cfgParDic.items():
+        cfg[port] += pars
+
+    srvs = [(port, pars) for port, pars in cfg.items()]
     return testObj.prepCluster(srvs)
 
 
@@ -191,8 +189,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgParDic = {"8001": [["%s.IdleSuspensionTime" % SUSP_EL, "5"]]}
-        dbConObj = prepSimCluster(self, cfgParDic = cfgParDic)[masterNode][1]
+        dbConObj = prepSimCluster(self)[masterNode][1]
         self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
 
         # 1. Send STATUS Command to sub-node using master as proxy.
@@ -244,8 +241,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgParDic = {"8001": [["%s.IdleSuspensionTime" % SUSP_EL, "5"]]}
-        dbConObj = prepSimCluster(self, cfgParDic=cfgParDic)[masterNode][1]
+        dbConObj = prepSimCluster(self)[masterNode][1]
 
         # Archive some files on the two nodes and wait till sub-node
         # has suspended itself.
@@ -297,8 +293,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Remarks:
         TODO!: Check that the file has arrived on disk as expected.
         """
-        cfgParDic = {"8001": [["%s.IdleSuspensionTime" % SUSP_EL, "5"]]}
-        dbConObj = prepSimCluster(self, cfgParDic=cfgParDic)[masterNode][1]
+        dbConObj = prepSimCluster(self)[masterNode][1]
         for n in range(3):
             sendPclCmd(port=8001).archive("src/SmallFile.fits")
         # Retrieve the file as file_id, file_id/file_version.
@@ -499,8 +494,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgParDic = {"8001": [["%s.IdleSuspensionTime" % SUSP_EL, "5"]]}
-        dbConObj = prepSimCluster(self, cfgParDic=cfgParDic)[masterNode][1]
+        dbConObj = prepSimCluster(self)[masterNode][1]
         sendPclCmd(port=8001).archive("src/TinyTestFile.fits")
         sendPclCmd(port=8001).archive("src/SmallFile.fits")
         sendPclCmd(port=8000).archive("src/TinyTestFile.fits")
@@ -582,18 +576,23 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        # Enable DCC + define a minimum check cycle of 15s.
-        cfgParDic = {"8001": [["%s.IdleSuspensionTime" % SUSP_EL, "5"],
-                              ["NgamsCfg.DataCheckThread[1].Active", "1"],
-                              ["NgamsCfg.DataCheckThread[1].MinCycle",
-                               "00T00:00:15"]]}
+
         # Always delete sub-node log file (to run test with a fresh log file).
         rmFile(subNode1Log)
+
+        # Enable DCC in 8001 + define a minimum check cycle of 15s.
+        datacheck_period = 15
+        cfgParDic = {8001: (("NgamsCfg.DataCheckThread[1].Active", "1"),
+                            ("NgamsCfg.DataCheckThread[1].MinCycle", "00T00:00:%d" % datacheck_period))}
         dbConObj = prepSimCluster(self, cfgParDic=cfgParDic)[masterNode][1]
-        sendPclCmd(port=8001).archive("src/TinyTestFile.fits")
-        sendPclCmd(port=8001).archive("src/SmallFile.fits")
+        cli8001 = sendPclCmd(port=8001)
+
+        # Archive two files into subnode 8001 and wait for it to go to suspended state
+        self.assert_ngas_status(cli8001.archive, "src/TinyTestFile.fits")
+        self.assert_ngas_status(cli8001.archive, "src/SmallFile.fits")
         self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
-        # Get timestamp for the log indicating that the node suspends itself.
+
+        # Get timestamp for the log indicating that the node suspended itself.
         suspLog = "NG/AMS Server %s suspending itself" % subNode1
         subNodeLog = loadFile(subNode1Log).split("\n")
         suspLogEntry = ""
@@ -605,8 +604,10 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
             self.fail("Did not find expected log entry in sub-node " +\
                       "log file: " + suspLog)
         suspLogTime = suspLogEntry.split(" ")[0]
+
         # Now we have to wait until the sub-node is woken up for DCC.
         self.waitTillWokenUp(dbConObj, subNode1, 60, susp_nodes)
+
         # Check log output in Master Log File.
         tagFormat = "Waking up server %s"
         testTags = [tagFormat % (subNode1,)]
@@ -616,22 +617,28 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         time.sleep(2) # and wait a bit
         testTags = ["NGAS Node: %s woken up after" % subNode1]
         self.checkTags(loadFile(subNode1Log), testTags, showBuf=0)
+
         # Wait until the DCC has been executed.
         startTime = time.time()
-        dccStatLog = ""
-        while ((time.time() - startTime) < 60):
-            subNodeLogBuf = loadFile(subNode1Log)
-            subNodeLogBufList = subNodeLogBuf.split("\n")
-            subNodeLogBufList.reverse()
-            for line in subNodeLogBufList:
-                if (line.find("NGAMS_INFO_DATA_CHK_STAT") != -1):
+        datacheck_executed = False
+        dccStatLog = None
+        while (time.time() - startTime) < (datacheck_period * 1.5):
+
+            lines = loadFile(subNode1Log).splitlines()
+            lines.reverse()
+
+            datacheck_time = None
+            for line in lines:
+                if "NGAMS_INFO_DATA_CHK_STAT" in line:
                     dccStatLog = line
+                    datacheck_time = dccStatLog.split(" ")[0]
                     break
-            time.sleep(0.100)
-        dccStatLogTime = dccStatLog.split(" ")[0]
-        if ((not dccStatLog) or (dccStatLogTime < suspLogTime)):
+            if datacheck_time and datacheck_time < suspLogTime:
+                datacheck_executed = True
+                break
+
+            time.sleep(2)
+
+        if not datacheck_executed:
             self.fail("Data Consistency Checking not executed AFTER host " +\
                       "wake-up as expected")
-        testTags = ["NGAMS_INFO_DATA_CHK_STAT:3020:INFO: Number of files " +\
-                    "checked: 4"]
-        self.checkTags(subNodeLogBuf, testTags, showBuf=0)
