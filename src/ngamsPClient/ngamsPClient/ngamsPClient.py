@@ -102,6 +102,11 @@ class ngamsPClient:
         self.auth = auth
         self.reload_mod = reload_mod
 
+    @property
+    def basic_auth(self):
+        if self.auth is not None:
+            return b'Basic ' + base64.b64encode(self.auth)
+        return None
 
     def archive(self,
                 fileUri,
@@ -730,28 +735,18 @@ class ngamsPClient:
 
 
     def _do_get(self, host, port, cmd, pars, hdrs):
-
-        auth = None
-        if self.auth is not None:
-            auth = "Basic %s" % self.auth
-
         start = time.time()
         res = ngamsHttpUtils.httpGet(host, port, cmd, pars=pars, hdrs=hdrs,
-                               timeout=self.timeout, auth=auth)
+                               timeout=self.timeout, auth=self.basic_auth)
         delta = time.time() - start
         logger.debug("Command: %s to %s:%d handled in %.3f [s]", cmd, host, port, delta)
         return res
 
 
     def _do_post(self, host, port, cmd, mimeType, data, pars):
-
-        auth = None
-        if self.auth is not None:
-            auth = "Basic %s" % self.auth
-
         start = time.time()
         res = ngamsHttpUtils.httpPost(host, port, cmd, data, mimeType,
-                                pars=pars, timeout=self.timeout, auth=auth)
+                                pars=pars, timeout=self.timeout, auth=self.basic_auth)
         delta = time.time() - start
         logger.info("Successfully completed command %s in %.3f [s]", cmd, delta)
         return res
@@ -828,7 +823,7 @@ def main():
     parser.add_argument('-o', '--output',       help='File/directory where to store the retrieved data')
 
     parser.add_argument('-a', '--async',         help='Run command asynchronously', action='store_true')
-    parser.add_argument('-A', '--auth',          help='BASIC authorization string')
+    parser.add_argument('-A', '--auth',          help='BASIC authorization string (user:password)')
     parser.add_argument('-F', '--force',         help='Force the action', action='store_true')
     parser.add_argument('-f', '--file-id',       help='Indicates a File ID')
     parser.add_argument(      '--file-version',  help='A file version', type=int, default=-1)
