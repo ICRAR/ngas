@@ -43,7 +43,7 @@ from six.moves.urllib import error as urlerror # @UnresolvedImport
 from six.moves.urllib import parse as urlparse # @UnresolvedImport
 from six.moves.urllib import request as urlrequest # @UnresolvedImport
 
-from ngamsLib.ngamsCore import TRACE, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT
 from ngamsPClient import ngamsPClient
 from ngamsPlugIns.mwa.job.ngamsJobProtocol import MRLocalTaskResult, ERROR_LT_UNEXPECTED
 
@@ -172,7 +172,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
     global queScanThread
     httpMethod = reqPropsObj.getHttpMethod()
     if (httpMethod != 'POST'):

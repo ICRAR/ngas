@@ -36,7 +36,7 @@ Functions to handle the LABEL Command.
 import logging
 import threading
 
-from ngamsLib.ngamsCore import TRACE, NGAMS_OFFLINE_STATE, \
+from ngamsLib.ngamsCore import NGAMS_OFFLINE_STATE, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, genLog, \
     loadPlugInEntryPoint
 
@@ -67,8 +67,6 @@ def printLabel(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     label = srvObj.getDb().getLogicalNameFromDiskId(diskId)
     if (not label):
         errMsg = "Empty Logical Name returned for Disk ID: %s" % diskId
@@ -109,8 +107,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     srvObj.checkSetState("Command LABEL",
                          [NGAMS_OFFLINE_STATE, NGAMS_ONLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE])

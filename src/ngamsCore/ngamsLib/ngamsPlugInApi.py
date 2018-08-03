@@ -37,7 +37,7 @@ import logging
 import os
 import shutil
 
-from .ngamsCore import NGAMS_SUCCESS, TRACE, checkCreatePath, execCmd as ngamsCoreExecCmd
+from .ngamsCore import NGAMS_SUCCESS, checkCreatePath, execCmd as ngamsCoreExecCmd
 from . import ngamsDapiStatus
 from . import ngamsHighLevelLib, ngamsNotification
 from . import ngamsLib
@@ -313,8 +313,6 @@ def genFileInfo(dbConObj,
 
     Returns:           Tuple with information about file (tuple).
     """
-    T = TRACE()
-
     if (reqPropsObj.hasHttpPar("file_version")):
         paraFV = int(reqPropsObj.getHttpPar("file_version"))
     else:
@@ -391,8 +389,6 @@ def genFileInfoReg(dbConObj,
 
     Returns:           Tuple with information about file (tuple).
     """
-    T = TRACE()
-
     if (reqPropsObj.hasHttpPar("no_versioning")):
         noVersioning = int(reqPropsObj.getHttpPar("no_versioning"))
     else:

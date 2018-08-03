@@ -35,7 +35,7 @@ message file.
 import logging
 
 from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, NGAMS_PROC_DATA
+from ngamsLib.ngamsCore import NGAMS_PROC_DATA
 from .ngamsAlmaMultipart import specificTreatment
 
 
@@ -49,8 +49,6 @@ def extractData(result, resourceId, verbose=0):
     RETURNS:
         xyData:    dictionary,
     """
-    T = TRACE(3)
-
     if (verbose >= 3):
         print("Entering extractData with parameters " + \
               "type(result): %s, resourceId: %s" % (str(type(result)),

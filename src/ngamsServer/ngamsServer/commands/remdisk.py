@@ -38,7 +38,7 @@ import six
 
 from ngamsLib import ngamsDiskInfo, ngamsDbm, ngamsDiskUtils, ngamsHighLevelLib
 from ngamsLib.ngamsCore import getHostName, \
-    getDiskSpaceAvail, genLog, NGAMS_XML_MT, NGAMS_SUCCESS, TRACE, rmFile, \
+    getDiskSpaceAvail, genLog, NGAMS_XML_MT, NGAMS_SUCCESS, rmFile, \
     NGAMS_REMDISK_CMD, NGAMS_HTTP_SUCCESS, NGAMS_HTTP_BAD_REQ
 from .. import ngamsRemUtils
 
@@ -175,8 +175,6 @@ def remDisk(srvObj,
     Returns:        Status object contained information about disk
                     selected for deletion/deleted (ngamsStatus).
     """
-    T = TRACE()
-
     tmpFilePat = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
                                                   "REMDISK_CMD")
     try:

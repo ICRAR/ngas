@@ -34,7 +34,7 @@ Contains the ngamsConfigBase class to handle the NG/AMS Configuration.
 """
 
 from . import ngamsXmlMgr
-from .ngamsCore import TRACE, genLog
+from .ngamsCore import genLog
 
 
 class ngamsConfigBase:
@@ -142,8 +142,6 @@ class ngamsConfigBase:
 
         Returns:  Reference to object itself.
         """
-        T = TRACE()
-
         try:
             self.__xmlMgr.load(xmlDoc)
             self.setXmlDoc(xmlDoc)
@@ -168,8 +166,6 @@ class ngamsConfigBase:
 
         Returns:  Reference to object itself.
         """
-        T = TRACE()
-
         if (hideCritInfo):
             self.__xmlMgr.save("NgamsCfg", "ngamsCfg.dtd", xmlDoc,["Password"])
         else:
@@ -184,8 +180,6 @@ class ngamsConfigBase:
 
         Returns:    XML DOM Node (Node).
         """
-        T = TRACE()
-
         if (hideCritInfo):
             critInfoNameList = ["Password"]
         else:
@@ -204,8 +198,6 @@ class ngamsConfigBase:
 
         Returns:        XML document (string).
         """
-        T = TRACE()
-
         xmlDoc = self.__xmlMgr.genXmlDoc("NgamsCfg", "ngamsCfg.dtd",
                                          hideCritInfo)
         return xmlDoc
@@ -266,8 +258,6 @@ class ngamsConfigBase:
 
         Returns:    Reference to object itself.
         """
-        T = TRACE()
-
         if (not self.__dbObj):
             raise Exception("No DB connection object associated to " +\
                   "ngamsConfigBase object. Cannot access DB!")
@@ -301,8 +291,6 @@ class ngamsConfigBase:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE()
-
         if (not self.__dbObj):
             raise Exception("No DB connection object associated to " +\
                   "ngamsConfigBase object. Cannot access DB!")

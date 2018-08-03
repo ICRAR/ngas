@@ -82,7 +82,7 @@ import logging
 import random
 import time
 
-from ngamsLib.ngamsCore import TRACE, NGAMS_CHECKFILE_CMD, NGAMS_FAILURE
+from ngamsLib.ngamsCore import NGAMS_CHECKFILE_CMD, NGAMS_FAILURE
 from ngamsLib import ngamsStatus, ngamsHttpUtils
 
 
@@ -150,8 +150,6 @@ def _sendCheckFileCmd(node,
 
     Returns:     See above (NGAMS_INFO_FILE_OK | NGAMS_ER_FILE_NOK | FAILURE).
     """
-    T = TRACE(5)
-
     cmdPars = [["file_id", fileId],
                ["file_version", fileVersion]]
     data = None
@@ -191,8 +189,6 @@ def _fileAvailableInSet(set,
     Returns:        Returns True if the file is found in one valid copy in
                     one of the name space (server lists) specified (boolean).
     """
-    T = TRACE(5)
-
     # Shuffle the set list to obtain a simple load balancing.
     random.shuffle(set)
     foundValidCopy = False
@@ -234,8 +230,6 @@ def ngamsCheckfileCacheCtrlPI(srvObj,
     Returns:        Returns True if the file can be deleted from the cache,
                     otherwise False (boolean).
     """
-    T = TRACE()
-
     try:
         _unpackCheckPlugInPars(srvObj)
 

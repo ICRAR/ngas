@@ -32,7 +32,7 @@ import logging
 import os
 import time
 
-from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, \
+from ngamsLib.ngamsCore import genLog, checkCreatePath, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
     NGAMS_STAGING_DIR, genUniqueId, mvFile, getFileCreationTime, \
     NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, toiso8601, FMT_DATE_ONLY
@@ -65,8 +65,6 @@ def saveInStagingFile(ngamsCfgObj,
 
     Returns:         Void.
     """
-    T = TRACE()
-
     try:
         blockSize = ngamsCfgObj.getBlockSize()
         return saveFromHttpToFile(ngamsCfgObj, reqPropsObj, httpRef, stagingFilename,
@@ -105,8 +103,6 @@ def saveFromHttpToFile(ngamsCfgObj,
     Returns:         Tuple. Element 0: Time in took to write
                      file (s) (tuple).
     """
-    T = TRACE()
-
     checkCreatePath(os.path.dirname(trgFilename))
 
     start = time.time()
@@ -183,8 +179,6 @@ def handleCmd(srvObj,
 
     Returns:        (fileId, filePath) tuple.
     """
-    T = TRACE()
-
     # Is this NG/AMS permitted to handle Archive Requests?
     logger.debug("Is this NG/AMS permitted to handle Archive Requests?")
     if (not srvObj.getCfg().getAllowArchiveReq()):

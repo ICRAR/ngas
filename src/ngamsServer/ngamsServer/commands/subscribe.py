@@ -35,7 +35,7 @@ import logging
 import time
 
 from ngamsLib.ngamsCore import \
-    genLog, NGAMS_SUBSCRIBE_CMD, TRACE, fromiso8601, toiso8601
+    genLog, NGAMS_SUBSCRIBE_CMD, fromiso8601, toiso8601
 from ngamsLib import ngamsSubscriber, ngamsLib
 
 
@@ -52,8 +52,6 @@ def addSubscriber(srvObj, subscrObj):
 
     Returns:     Void.
     """
-    T = TRACE()
-
     srvObj.getDb().insertSubscriberEntry(subscrObj)
     #subscrObj.write(srvObj.getDb())
 
@@ -76,8 +74,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     """
     if (srvObj.getDataMoverOnlyActive() and len(srvObj.getSubscriberDic()) > 0):
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,

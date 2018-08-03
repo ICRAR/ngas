@@ -30,7 +30,7 @@ including priority, url, start_date, and num_concurrent_threads
 import logging
 import threading
 
-from ngamsLib.ngamsCore import NGAMS_DELIVERY_THR, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,\
+from ngamsLib.ngamsCore import NGAMS_DELIVERY_THR, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,\
     fromiso8601
 from ngamsLib import ngamsSubscriber
 from ngamsServer import ngamsSubscriptionThread
@@ -84,7 +84,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
     errMsg = ''
     err = 0
     if (not reqPropsObj.hasHttpPar("subscr_id")):

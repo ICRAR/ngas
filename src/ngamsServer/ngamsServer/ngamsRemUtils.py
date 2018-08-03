@@ -38,7 +38,7 @@ import os
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsLib, utils
 from ngamsLib import ngamsDiskInfo, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsNotification
-from ngamsLib.ngamsCore import TRACE, NGAMS_NOTIF_INFO, NGAMS_TEXT_MT, \
+from ngamsLib.ngamsCore import NGAMS_NOTIF_INFO, NGAMS_TEXT_MT, \
     genLog, NGAMS_FAILURE, NGAMS_DISK_INFO, \
     NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE, NGAMS_MAX_SQL_QUERY_SZ,\
     toiso8601
@@ -73,8 +73,6 @@ def checkSpuriousFiles(srvObj,
     Returns:         Returns name of DBM DB with references to spurious
                      files found (string).
     """
-    T = TRACE()
-
     if (hostId == ""): hostId = None
     if (diskId == ""): diskId = None
     if (fileId == ""): fileId = None
@@ -118,8 +116,6 @@ def checkFilesRemovable(srvObj,
     Returns:         Name of DBM DB with information about files that
                      cannot be removed (string).
     """
-    T = TRACE()
-
     # DBM DB containing information about non-removable files.
     filename = "_NON_REMOVABLE_FILES"
     nonRemFilesDbmName = os.path.normpath(tmpFilePat + "_NON_REMOVABLE_FILES")
@@ -496,8 +492,6 @@ def checkFileCopiesAndReg(srvObj,
 
                      (tuple/string).
     """
-    T = TRACE()
-
     if ((not fileListDbmName) and (not diskId)):
         errMsg = "ngamsSrvUtils.checkFileCopiesAndReg(): Must specify " +\
                  "either a DBM with files to be checked or a Disk ID"

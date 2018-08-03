@@ -38,7 +38,7 @@ import re
 import threading
 import time
 
-from .ngamsCore import TRACE, getNgamsVersion, genLog, \
+from .ngamsCore import getNgamsVersion, genLog, \
     NGAMS_DB_DIR, checkCreatePath, NGAMS_DB_CH_CACHE, NGAMS_NOTIF_ERROR,\
     NGAMS_SUCCESS, NGAMS_NOTIF_NO_DISKS, NGAMS_FAILURE,\
     NGAMS_DISK_INFO, getDiskSpaceAvail, toiso8601
@@ -160,8 +160,6 @@ def checkDisks(hostId,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     diskList = getDiskInfoForMountedDisks(dbConObj, hostId,
                                           ngamsCfgObj.getRootDirectory())
     # The "mtDiskDic" dictionary contains information (ngasDiskInfo objects)
@@ -591,8 +589,6 @@ def getNgasDiskInfoFile(diskDic,
     Returns:     A Disk Info Object (ngamsDiskInfo) or None if no
                  NGAS Disk Info found for the disk.
     """
-    T = TRACE()
-
     # Check if there is an NgasDiskInfo file for the disk. In case yes,
     # load this and use these values for adding the entry in the DB.
     diskInfoFile = os.path.normpath(diskDic[slotId].getMountPoint() + "/" +\
@@ -627,8 +623,6 @@ def addDiskInDb(hostId,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     diskId = diskDic[slotId].getDiskId()
 
     logger.info("Adding disk with ID: %s - Slot ID: %s, not registered in the NGAS DB",
@@ -700,8 +694,6 @@ def updateDiskInDb(hostId,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     diskId = diskDic[slotId].getDiskId()
     logger.debug("Updating information for disk with ID: %s in the NGAS DB", diskId)
     archive            = ngamsCfgObj.getArchiveName()
@@ -853,8 +845,6 @@ def getDiskInfoForMountedDisks(dbConObj,
     Returns:      List containing the ngamsDiskInfo elements for the
                   disks registered as mounted in this system (list).
     """
-    T = TRACE()
-
     diskIds = dbConObj.getDiskIdsMountedDisks(hostId, mtRootDir)
     diskList = []
     for diskId in diskIds:
@@ -884,8 +874,6 @@ def getDiskInfoObjsFromMimeType(hostId,
 
     Returns:            List of Disk Info Objects (list/ngamsDiskInfo).
     """
-    T = TRACE()
-
     stream = ngamsCfgObj.getStreamFromMimeType(mimeType)
     if (stream == None):
         errMsg = genLog("NGAMS_AL_NO_STO_SETS", [mimeType])
@@ -1029,8 +1017,6 @@ def findTargetDisk(hostId,
     Returns:           ngamsDiskInfo object containing the necessary
                        information (ngamsDiskInfo).
     """
-    T = TRACE()
-
     startTime = time.time()
 
     # Get Disk IDs matching the mime-type.

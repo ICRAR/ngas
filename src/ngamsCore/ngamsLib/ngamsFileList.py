@@ -36,7 +36,7 @@ Contains definition of a class to handle a list of ngamsFileInfo objects.
 import xml.dom.minidom
 
 from . import ngamsFileInfo
-from .ngamsCore import prFormat1, ngamsGetChildNodes, getAttribValue, TRACE
+from .ngamsCore import prFormat1, ngamsGetChildNodes, getAttribValue
 
 
 class ngamsFileList:
@@ -202,8 +202,6 @@ class ngamsFileList:
 
         Returns:     XML DOM Node object (Node).
         """
-        T = TRACE(5)
-
         fileListEl = xml.dom.minidom.Document().createElement("FileList")
         fileListEl.setAttribute("Id", self.getId())
         if (self.getComment() != ""):

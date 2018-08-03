@@ -38,7 +38,6 @@ from six.moves import cPickle as pickle  # @UnresolvedImport
 
 from ngamsPlugIns.ngamsGenericPlugInLib import notifyRegistrationService
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE
 from ngamsServer import ngamsSubscriptionThread
 
 
@@ -100,7 +99,6 @@ def ngamsMWAOfflinePlugIn(srvObj,
 
     Returns:       Void.
     """
-    T = TRACE()
     notifyRegistrationService(srvObj, 'offline')
 
     #cmdMod = "ngamsCmd_ngamsCmd_ASYNCLISTRETRIEVE"

@@ -58,7 +58,7 @@ import pkg_resources
 import psutil
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, ngamsStatus, utils
-from ngamsLib.ngamsCore import getHostName, TRACE, rmFile, \
+from ngamsLib.ngamsCore import getHostName, rmFile, \
     cpFile, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
     execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601
 from ngamsPClient import ngamsPClient
@@ -931,8 +931,6 @@ class ngamsTestSuite(unittest.TestCase):
         Returns:       Tuple with configuration object and DB object
                        (tuple/(ngamsConfig, ngamsDb)).
         """
-        T = TRACE(3)
-
         if srvModule and daemon:
             raise ValueError("srvModule cannot be used in daemon mode")
 
@@ -1191,8 +1189,6 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:   Void.
         """
-        T = TRACE(3)
-
         if (not getNoCleanUp()):
             for d in self.__mountedDirs:
                 execCmd("sudo /bin/umount %s" % (d,), 0)

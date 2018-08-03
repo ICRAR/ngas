@@ -38,7 +38,7 @@ It should be used as part of the ngamsDbBase parent classes.
 import logging
 
 from . import ngamsDbm, ngamsDbCore, ngamsFileInfo, ngamsDiskInfo
-from .ngamsCore import TRACE, getDiskSpaceAvail, rmFile, NGAMS_DB_CH_FILE_DELETE, fromiso8601
+from .ngamsCore import getDiskSpaceAvail, rmFile, NGAMS_DB_CH_FILE_DELETE, fromiso8601
 
 
 logger = logging.getLogger(__name__)
@@ -59,8 +59,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:      Reference to object itself.
         """
-        T = TRACE()
-
         try:
             self.takeGlobalDbSem()
             sql = ("SELECT number_of_files, available_mb, "
@@ -95,8 +93,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:   1 = Disk ID was found, 0 = Disk ID not found (integer).
         """
-        T = TRACE()
-
         sql = "SELECT disk_id FROM ngas_disks WHERE disk_id={}"
         res = self.query2(sql, args = (diskId,))
         if not res:
@@ -114,8 +110,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:       Void.
         """
-        T = TRACE()
-
         sql = "UPDATE ngas_disks SET logical_name={} WHERE disk_id={}"
         self.query2(sql, args = (logicalName, diskId))
 
@@ -129,8 +123,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:     Logical Name or None if not found (string | None).
         """
-        T = TRACE()
-
         sql = "SELECT logical_name FROM ngas_disks WHERE disk_id={}"
         res = self.query2(sql, args = (diskId,))
         if not res:
@@ -147,8 +139,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:   1 = completed, 0 = not completed. If the disk
                    is not registered None is returned (integer).
         """
-        T = TRACE()
-
         sql = "SELECT completed FROM ngas_disks WHERE disk_id={}"
         res = self.query2(sql, args = (diskId,))
         if not res:
@@ -165,8 +155,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:   Slot ID of disk. If disk is not found None is
                    returned (string | None).
         """
-        T = TRACE()
-
         sql = "SELECT slot_id FROM ngas_disks WHERE disk_id={}"
         res = self.query2(sql, args = (diskId,))
         if not res:
@@ -188,8 +176,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:  Disk information for the disk or [] if disk was
                   not found (list).
         """
-        T = TRACE()
-
         sql = "SELECT %s FROM ngas_disks nd WHERE disk_id={}" % \
                 ngamsDbCore.getNgasDisksCols()
         res = self.query2(sql, args = (diskId,))
@@ -208,8 +194,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:      List with disk information (list/list).
         """
-        T = TRACE()
-
         params = []
         sql = "SELECT %s FROM ngas_disks nd WHERE disk_id IN (%s)"
         for di in diskIdList:
@@ -231,8 +215,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:   The maximum disk number or None if this could not
                    be generated (integer).
         """
-        T = TRACE()
-
         sql = []
         vals = []
         sql.append("SELECT logical_name FROM ngas_disks")
@@ -294,8 +276,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:         Returns 1 if a new entry was created in the DB
                          and 0 if an existing entry was updated (integer/0|1).
         """
-        T = TRACE()
-
         sql = []
         vals = []
 
@@ -361,8 +341,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:   List with Logical Names (list).
         """
-        T = TRACE()
-
         sql = "SELECT logical_name FROM ngas_disks WHERE host_id={} AND mounted=1"
         res = self.query2(sql, args = (host,))
         if not res:
@@ -382,8 +360,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:     Mount point of disk or None if not mounted or
                      not found (string|None)
         """
-        T = TRACE()
-
         sql = "SELECT mount_point FROM ngas_disks WHERE disk_id={}"
         res = self.query2(sql, args = (diskId,))
         if not res:
@@ -402,8 +378,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:   List with tuples containing Disk IDs and Mount
                    Points (list/tuple).
         """
-        T = TRACE(5)
-
         sql = ("SELECT disk_id, mount_point FROM ngas_disks "
                 "WHERE host_id={} AND mounted=1")
         res = self.query2(sql, args = (host,))
@@ -422,8 +396,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:   List with Slot IDs (list).
         """
-        T = TRACE()
-
         sql = "SELECT slot_id FROM ngas_disks WHERE host_id={} AND mounted=1"
         res = self.query2(sql, args = (host,))
         if not res:
@@ -445,8 +417,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:     List with Disk IDs (list).
         """
-        T = TRACE()
-
         if not mtRootDir.endswith('/'):
             mtRootDir += "/"
         mtRootDir += "%"
@@ -471,8 +441,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:  Disk ID or None if no match found (string).
         """
-        T = TRACE()
-
         sql = "SELECT disk_id FROM ngas_disks WHERE slot_id={} AND host_id={}"
         res = self.query2(sql, args = (slotId, host))
         if not res:
@@ -486,8 +454,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:    List with Disk IDs (list).
         """
-        T = TRACE()
-
         sql = "SELECT disk_id FROM ngas_disks"
         res = self.query2(sql)
         if not res:
@@ -511,7 +477,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:      List with Disk Info objects  or [] if no matches
                       were found (list/ngamsDiskInfo).
         """
-        T = TRACE()
         vals = []
         params = []
         sql = []
@@ -546,8 +511,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:     Disk ID or None if no matches were found (string)
         """
-        T = TRACE()
-
         params = []
         vals = []
         for di in diskIds:
@@ -585,8 +548,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:       Reference to object itself.
         """
-        T = TRACE()
-
         fileInfoDbmName = None
         fileInfoDbm = None
         try:
@@ -696,8 +657,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:  Time since the 'oldest', last check (seconds since epoch)
                   (integer).
         """
-        T = TRACE()
-
         sql = "SELECT min(last_check) FROM ngas_disks WHERE host_id={}"
         res = self.query2(sql, args = (hostId,))
         if not res:

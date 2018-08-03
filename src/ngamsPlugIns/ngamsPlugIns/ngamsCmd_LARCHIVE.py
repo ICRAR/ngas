@@ -34,7 +34,7 @@ import os
 import time
 
 from ngamsLib import ngamsHighLevelLib, ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_GET, \
+from ngamsLib.ngamsCore import NGAMS_HTTP_GET, \
     NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile, NGAMS_NOTIF_NO_DISKS, \
     mvFile, NGAMS_FAILURE, NGAMS_PICKLE_FILE_EXT, \
     rmFile, genLog, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
@@ -63,8 +63,6 @@ def archiveFromFile(srvObj,
 
     Returns:         Execution result object of DAPI
     """
-    T = TRACE()
-
     logger.debug("Archiving file: %s", filename)
     logger.debug("Mimetype used is %s", mimeType)
     if (reqPropsObj):
@@ -175,8 +173,6 @@ def handleCmd(srvObj,
 
     Returns:        (fileId, filePath) tuple.
     """
-    T = TRACE()
-
     # Check if the URI is correctly set.
     logger.debug("Check if the URI is correctly set.")
     logger.debug("ReqPropsObj status: %s", reqPropsObj.getObjStatus())

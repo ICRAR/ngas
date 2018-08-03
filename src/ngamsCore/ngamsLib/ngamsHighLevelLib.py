@@ -43,7 +43,7 @@ import random
 import tempfile
 import time
 
-from .ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
+from .ngamsCore import genLog, NGAMS_HOST_LOCAL,\
     NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE,\
     NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
     checkCreatePath, checkAvailDiskSpace,\
@@ -71,8 +71,6 @@ def getHostInfoFromHostIds(dbConObj,
                   host names. If for a host name no information was
                   found, None will be the value (dictionary).
     """
-    T = TRACE()
-
     resHostList = dbConObj.getHostInfoFromHostIds(hostList)
     hostDic = {}
     for host in resHostList:
@@ -100,8 +98,6 @@ def updateSrvHostInfo(dbConObj, hostInfoObj):
 
     Returns:         Void.
     """
-    T = TRACE(5)
-
     dbConObj.updateSrvHostInfo(hostInfoObj.getHostId(),
                                [hostInfoObj.getSrvVersion(),
                                 hostInfoObj.getSrvPort(),
@@ -158,8 +154,6 @@ def resolveHostAddress(localHostId,
     Returns:     Dictionary with hostnames as keys containing
                  ngamsHostInfo objects (dictionary).
     """
-    T = TRACE()
-
     try:
         hostInfoDic = getHostInfoFromHostIds(dbConObj, hostList)
     except:
@@ -270,8 +264,6 @@ def acquireDiskResource(ngamsCfgObj,
 
     Returns:       Void.
     """
-    T = TRACE()
-
     storageSet = ngamsCfgObj.getStorageSetFromSlotId(slotId)
     if (not storageSet.getMutex()): return
 
@@ -297,8 +289,6 @@ def releaseDiskResource(ngamsCfgObj,
 
     Returns:       Void.
     """
-    T = TRACE()
-
     storageSet = ngamsCfgObj.getStorageSetFromSlotId(slotId)
     if (not storageSet.getMutex()): return
 
@@ -337,8 +327,6 @@ def checkAddExt(ngamsCfgObj,
 
     Returns:        Filename possibly with proper extension added (string).
     """
-    T = TRACE()
-
     expExt = ngamsCfgObj.getExtFromMimeType(mimeType)
     if (expExt == NGAMS_UNKNOWN_MT):
         msg = "Mime-type specified: %s is not defined in the mime-type " +\
@@ -745,8 +733,6 @@ def sendEmail(ngamsCfgObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     hdr = "Subject: " + subject + "\n"
     if (contentType):
         hdr += "Content-Type: " + contentType + "\n"

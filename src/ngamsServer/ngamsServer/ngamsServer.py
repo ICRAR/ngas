@@ -57,7 +57,7 @@ from six.moves import queue as Queue  # @UnresolvedImport
 
 import netifaces
 
-from ngamsLib.ngamsCore import genLog, TRACE, getNgamsVersion, \
+from ngamsLib.ngamsCore import genLog, getNgamsVersion, \
     getFileSize, getDiskSpaceAvail, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, \
@@ -819,8 +819,6 @@ class ngamsServer(object):
 
         Returns:  State of Caching Active Flag (boolean).
         """
-        T = TRACE()
-
         return self.getCfg().getCachingEnabled()
 
     def getDataMoverOnlyActive(self):
@@ -829,7 +827,6 @@ class ngamsServer(object):
 
         Returns:  State of the Data Mover Only Flag (boolean).
         """
-        T = TRACE()
         return self._dataMoverOnly
 
 
@@ -989,8 +986,6 @@ class ngamsServer(object):
 
         Returns:           Void.
         """
-        T = TRACE()
-
         self.takeStateSem()
         if ( self.getState() not in allowedStates or
              self.getSubState() not in allowedSubStates):
@@ -1367,8 +1362,6 @@ class ngamsServer(object):
 
         Returns:      Reference to object itself.
         """
-        T = TRACE()
-
         try:
             self._subscriptionSem.acquire()
             if (fileRefs != []):
@@ -1655,8 +1648,6 @@ class ngamsServer(object):
 
         Returns:             Reference to object itself.
         """
-        T = TRACE(5)
-
         if (self.getDb() == None): return self
 
         if (version != None): self.getHostInfoObj().setSrvVersion(version)

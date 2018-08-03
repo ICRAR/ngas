@@ -42,7 +42,7 @@ import time
 from six.moves import cPickle # @UnresolvedImport
 import sqlite3 as sqlite
 
-from ngamsLib.ngamsCore import TRACE, rmFile, genLog, loadPlugInEntryPoint
+from ngamsLib.ngamsCore import rmFile, genLog, loadPlugInEntryPoint
 from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib,\
     utils
 
@@ -119,8 +119,6 @@ def createCacheDbms(srvObj, ready_evt):
 
     Returns:    Void.
     """
-    T = TRACE()
-
     hostId = srvObj.getHostId()
 
     # Create local Cache Contents DBMS.
@@ -219,8 +217,6 @@ def addEntryNewFilesDbm(srvObj,
 
     Returns:      Void.
     """
-    T = TRACE()
-
     try:
         srvObj._cacheNewFilesDbmSem.acquire()
         fileInfo = (diskId, fileId, fileVersion, filename)
@@ -243,8 +239,6 @@ def getEntryNewFilesDbm(srvObj):
                   <Filename>) or None if there are no entried in the DBM
                   (tuple | None).
     """
-    T = TRACE()
-
     try:
         srvObj._cacheNewFilesDbmSem.acquire()
         srvObj._cacheNewFilesDbm.initKeyPtr()
@@ -272,8 +266,6 @@ def queryCacheDbms(srvObj,
 
     Returns:      Result set (tuple with tuples).
     """
-    T = TRACE(5)
-
     try:
         srvObj._cacheContDbmsSem.acquire()
         sqlQuery += ";"
@@ -311,8 +303,6 @@ def entryInCacheDbms(srvObj,
     Returns:      Flag indicating if the given entry is found in the
                   cache DBMS (boolean).
     """
-    T = TRACE()
-
     sqlQuery = _ENTRY_IN_CACHE_DBMS_QUERY % (diskId, fileId, fileVersion)
     res = queryCacheDbms(srvObj, sqlQuery)
     try:
@@ -345,8 +335,6 @@ def getFilenameFromCacheDbms(srvObj,
 
     Returns:      Value of filename column or None if not set (string | None).
     """
-    T = TRACE()
-
     sqlQuery = _GET_FILENAME_FROM_CACHE_DBMS_QUERY %\
                (diskId, fileId, fileVersion)
     res = queryCacheDbms(srvObj, sqlQuery)
@@ -404,8 +392,6 @@ def addEntryInCacheDbms(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     # Insert entry in the local DBMS (if not already there).
     timeNow = time.time()
     if (not entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
@@ -454,8 +440,6 @@ def setFilenameCacheDbms(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     sqlQuery = _SET_FILENAME_CACHE_DBMS %\
                (filename, diskId, fileId, fileVersion)
     queryCacheDbms(srvObj, sqlQuery)
@@ -485,8 +469,6 @@ def setFileSizeCacheDbms(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     sqlQuery = _SET_FILE_SIZE_CACHE_DBMS % (fileSize, diskId, fileId,
                                             fileVersion)
     queryCacheDbms(srvObj, sqlQuery)
@@ -509,8 +491,6 @@ def setCacheEntryObjectCacheDbms(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     cacheEntryObjPickle = cPickle.dumps(cacheEntryObj)
     cacheEntryObjPickleEnc = utils.b2s(base64.b32encode(cacheEntryObjPickle))
     sqlQuery = _SET_CACHE_ENTRY_OBJECT_CACHE_DBMS_QUERY %\
@@ -540,8 +520,6 @@ def delEntryFromCacheDbms(srvObj,
 
     Returns:      Void.
     """
-    T = TRACE()
-
     # Remove from the Local Cache Contents DBMS.
     sqlQuery = _DEL_ENTRY_FROM_CACHE_DBMS_QUERY %\
                (diskId, fileId, int(fileVersion))
@@ -561,8 +539,6 @@ def initCacheArchive(srvObj, stopEvt, ready_evt):
 
     Returns:    Void.
     """
-    T = TRACE()
-
     # Create/open the Cache Contents DBM.
     # Note: This DBMS is kept between sessions for efficiency reasons.
     createCacheDbms(srvObj, ready_evt)
@@ -649,8 +625,6 @@ def checkNewFilesDbm(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE()
-
     while (True):
         fileInfo = getEntryNewFilesDbm(srvObj)
         if (not fileInfo): break
@@ -708,8 +682,6 @@ def markFileChecked(srvObj,
 
     Returns:      Void.
     """
-    T = TRACE()
-
     sqlQuery = _LAST_CHECK_QUERY_TPL % (time.time(),
                                         sqlFileInfo[NGAMS_CACHE_DISK_ID],
                                         sqlFileInfo[NGAMS_CACHE_FILE_ID],
@@ -758,8 +730,6 @@ def scheduleFileForDeletion(srvObj,
 
     Returns:      Void.
     """
-    T = TRACE()
-
     diskId      = sqlFileInfo[NGAMS_CACHE_DISK_ID]
     fileId      = sqlFileInfo[NGAMS_CACHE_FILE_ID]
     fileVersion = int(sqlFileInfo[NGAMS_CACHE_FILE_VER])
@@ -786,8 +756,6 @@ def createTmpDbm(srvObj,
 
     Returns:      DBM object (ngamsDbm2).
     """
-    T = TRACE()
-
     dbmName = os.path.normpath(ngamsHighLevelLib.\
                                getNgasTmpDir(srvObj.getCfg()) +\
                                "/CACHE_%s_DBM" % id)
@@ -808,8 +776,6 @@ def _addEntryCacheCtrlPlugInDbm(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE(5)
-
     try:
         srvObj._cacheCtrlPiThreadGr.takeGenMux()
         writeIdx = srvObj._cacheCtrlPiDbm.get(NGAMS_CACHE_CTRL_PI_DBM_WR)
@@ -831,8 +797,6 @@ def _getEntryCacheCtrlPlugInDbm(srvObj):
     Returns:      Next Sync. Request Object or None if there are no requests
                   in the DBM (ngamsCacheEntry | None).
     """
-    T = TRACE(5)
-
     try:
         srvObj._cacheCtrlPiThreadGr.takeGenMux()
         readIdx = srvObj._cacheCtrlPiDbm.get(NGAMS_CACHE_CTRL_PI_DBM_RD)
@@ -858,8 +822,6 @@ def _getCountCacheCtrlPlugInDbm(srvObj):
     Returns:      Next Sync. Request Object or None if there are no requests
                   in the DBM (ngamsCacheEntry | None).
     """
-    T = TRACE(5)
-
     try:
         srvObj._cacheCtrlPiThreadGr.takeGenMux()
         noOfEls = srvObj._cacheCtrlPiDbm.getCount()
@@ -881,8 +843,6 @@ def _cacheCtrlPlugInThread(threadGrObj):
 
     Returns:      Void.
     """
-    T = TRACE()
-
     srvObj, stopEvt = threadGrObj.getParameters()
 
     # Load the plug-in module.
@@ -945,8 +905,6 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
 
     Returns:    Void.
     """
-    T = TRACE()
-
     # If several methods for checking the cache contents is activated
     # these are applied sequentially. The first rule that matches on the
     # file tested, means that the checking stops and the file is scheduled
@@ -1230,8 +1188,6 @@ def removeFile(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     # Remove the entry from the DB. This includes updating the NGAS Disks
     # Table.
     try:
@@ -1267,8 +1223,6 @@ def cleanUpCache(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE()
-
     # We dump info for all files at once, into a temporary DBM, since during
     # the cleaning up queries will be done in the associated SQLite DBMS.
     sqlQuery = "SELECT disk_id, file_id, file_version, filename " +\

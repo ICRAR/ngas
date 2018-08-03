@@ -37,7 +37,7 @@ import os
 import re
 
 from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, NGAMS_PROC_DATA, execCmd
+from ngamsLib.ngamsCore import NGAMS_PROC_DATA, execCmd
 
 
 logger = logging.getLogger(__name__)
@@ -105,8 +105,6 @@ def ngasExtractFitsHdrDppi(srvObj,
     direct ingest into the header repository.
     """
     logger.debug("Entering ngasExtractFitsHdrDppi() ...")
-
-    T = TRACE()
 
     statusObj = ngamsDppiStatus.ngamsDppiStatus()
 

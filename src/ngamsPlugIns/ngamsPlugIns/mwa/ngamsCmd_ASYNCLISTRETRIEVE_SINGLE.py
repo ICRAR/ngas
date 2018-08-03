@@ -55,7 +55,7 @@ from six.moves.urllib import parse as urlparse # @UnresolvedImport
 
 from ngamsLib import ngamsDbCore, ngamsStatus, ngamsPlugInApi
 from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, \
-    TRACE, NGAMS_HTTP_POST, getFileSize, getHostName, NGAMS_SUCCESS, \
+    NGAMS_HTTP_POST, getFileSize, getHostName, NGAMS_SUCCESS, \
     NGAMS_FAILURE
 from ngamsPlugIns.mwa.ngamsMWAAsyncProtocol import AsyncListRetrieveResponse, \
     AsyncListRetrieveProtocolError, AsyncListRetrieveCancelResponse, \
@@ -396,8 +396,6 @@ def _httpPostUrl(url,
     Returns:      List with information from reply from contacted
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
-    T = TRACE()
-
     # Separate the URL from the command.
     idx = (url[7:].find("/") + 7)
     tmpUrl = url[7:idx]

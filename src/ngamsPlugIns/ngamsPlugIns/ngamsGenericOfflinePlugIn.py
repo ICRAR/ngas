@@ -31,8 +31,6 @@
 Module that contains a generic Offline Plug-In for NGAS.
 """
 
-from ngamsLib.ngamsCore import TRACE
-
 
 def ngamsGenericOfflinePlugIn(srvObj,
                               reqPropsObj = None):
@@ -46,7 +44,6 @@ def ngamsGenericOfflinePlugIn(srvObj,
 
     Returns:       Void.
     """
-    T = TRACE()
 
 
 if __name__ == '__main__':

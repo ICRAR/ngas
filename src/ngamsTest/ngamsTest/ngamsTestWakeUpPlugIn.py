@@ -33,8 +33,6 @@ Test WakeUp Plug-In to simulate the NGAS host suspension.
 This must be used together with the ngamsTestSuspensionPlugIn.
 """
 
-from ngamsLib.ngamsCore import TRACE
-
 
 def ngamsTestWakeUpPlugIn(srvObj,
                           hostId):
@@ -47,7 +45,6 @@ def ngamsTestWakeUpPlugIn(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE(2)
     srvObj.getDb().resetWakeUpCall(hostId, 1)
 
 

@@ -44,7 +44,7 @@ from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 from six.moves.queue import Queue, Empty, PriorityQueue  # @UnresolvedImport
 
 from . import ngamsCacheControlThread
-from ngamsLib.ngamsCore import TRACE, NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
+from ngamsLib.ngamsCore import NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
     NGAMS_SUBSCR_BACK_LOG, NGAMS_DELIVERY_THR,\
     NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, NGAMS_FAILURE,\
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile, loadPlugInEntryPoint,\
@@ -318,8 +318,6 @@ def _checkIfDeliverFile(srvObj,
 
     Returns:          Void.
     """
-    T = TRACE()
-
     lastDelivery        = deliveredStatus[subscrObj.getId()]
     if (subscrObj.getId() in scheduledStatus):
         lastSchedule = scheduledStatus[subscrObj.getId()]

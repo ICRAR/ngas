@@ -33,7 +33,6 @@
 Class to handle the information in connection with one entry in the NGAS Cache.
 """
 
-from .ngamsCore import TRACE
 from . import ngamsFileSummary1
 
 
@@ -140,8 +139,6 @@ class ngamsCacheEntry(ngamsFileSummary1.ngamsFileSummary1):
 
         Returns: Reference to object itself.
         """
-        T = TRACE(5)
-
         self.__cacheEntryPars[par] = value
         return self
 
@@ -155,8 +152,6 @@ class ngamsCacheEntry(ngamsFileSummary1.ngamsFileSummary1):
 
         Returns:  Value associated to the parameter name (<Object> | None).
         """
-        T = TRACE(5)
-
         if (self.__cacheEntryPars.has_key(par)):
             return self.__cacheEntryPars[par]
         else:

@@ -55,7 +55,6 @@ import os
 from six.moves import cPickle as pickle  # @UnresolvedImport
 
 from ngamsLib import ngamsPhysDiskInfo, ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE
 from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \
     loadVolInfoFile, NGAS_VOL_INFO_ID, NGAS_VOL_INFO_IGNORE, NGAS_VOL_INFO_TYPE, \
     NGAS_VOL_INFO_MANUFACT, notifyRegistrationService
@@ -77,8 +76,6 @@ def ngamsMWAOnlinePlugIn(srvObj,
     Returns:       Disk info dictionary (dictionary).
 
     """
-    T = TRACE()
-
     rootDir = srvObj.getCfg().getRootDirectory()
     volumeDir = srvObj.getCfg().getVolumeDirectory()
 

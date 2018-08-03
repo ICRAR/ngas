@@ -35,7 +35,6 @@ It simply deletes files from the cache after a given expiration time.
 """
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE
 
 
 def ngamsAlmaCacheCtrlPI(srvObj,cacheEntryObj):
@@ -48,8 +47,6 @@ def ngamsAlmaCacheCtrlPI(srvObj,cacheEntryObj):
     Returns:        Returns True if the file can be deleted from the cache,
                     otherwise False (boolean).
     """
-    T = TRACE()
-
     plugInPars = srvObj.getCfg().getVal("Caching[1].CacheControlPlugInPars")
     plugInParDic = ngamsPlugInApi.parseRawPlugInPars(plugInPars)
     dblinks = plugInParDic["db_links_list"]

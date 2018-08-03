@@ -41,7 +41,7 @@ import types
 
 import six
 
-from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL,\
+from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL,\
     getHostName, genLog, genUniqueId, rmFile,\
     compressFile, NGAMS_GZIP_XML_MT, getNgamsVersion,\
     NGAMS_SUCCESS, NGAMS_XML_MT, fromiso8601, toiso8601
@@ -83,8 +83,6 @@ def _checkFileAccess(srvObj,
     Returns:        Returns message indicating if the file is available
                     (string).
     """
-    T = TRACE()
-
     logger.debug("Checking for access to file with ID: %s", fileId)
 
     # Check if the file is located on this host, or if the request should be
@@ -123,8 +121,6 @@ def _getRefCounts():
 
     Returns:
     """
-    T = TRACE()
-
     d = {}
     sys.modules
     # Collect all classes
@@ -149,8 +145,6 @@ def _genRefCountRep():
 
     Returns:   Report (list).
     """
-    T = TRACE()
-
     refDic = {}
     for count, obj in _getRefCounts():
         if (not refDic.has_key(obj)): refDic[obj] = 0
@@ -171,8 +165,6 @@ def _genObjectStatus():
 
     Returns:  Object report (string).
     """
-    T = TRACE()
-
     rep = "NG/AMS SERVER OBJECT STATUS REPORT\n\n"
     import gc
     gc.set_debug(gc.DEBUG_COLLECTABLE | gc.DEBUG_UNCOLLECTABLE |
@@ -226,8 +218,6 @@ def _handleFileList(srvObj,
 
     Returns:        The File List ID allocated for this request (string).
     """
-    T = TRACE()
-
     # Should a lower limit for the ingestion date be taken into account.
     fromIngDate = None
     if (reqPropsObj.hasHttpPar("from_ingestion_date")):
@@ -296,8 +286,6 @@ def _handleFileListReply(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     # Get the name of the DBM in which the information is stored.
     dbmBaseName = STATUS_FILE_LIST_DBM_TAG % fileListId
     dbmPat = os.path.normpath("%s/*%s*" %\
@@ -414,8 +402,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     status = ngamsStatus.ngamsStatus()
     status.\
              setDate(toiso8601()).\

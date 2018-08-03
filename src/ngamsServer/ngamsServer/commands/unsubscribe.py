@@ -39,7 +39,7 @@ import logging
 from six.moves import queue as Queue  # @UnresolvedImport
 
 from .. import ngamsSubscriptionThread
-from ngamsLib.ngamsCore import TRACE, NGAMS_DELIVERY_THR, \
+from ngamsLib.ngamsCore import NGAMS_DELIVERY_THR, \
     genLog, NGAMS_SUBSCRIBE_CMD, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
 from ngamsLib import ngamsLib
 
@@ -57,8 +57,6 @@ def delSubscriber(srvObj,
 
     Returns:     Void.
     """
-    T = TRACE()
-
     err = 0
     errMsg = ''
     try:
@@ -220,8 +218,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     # added by chen.wu@icrar.org
     if (reqPropsObj.hasHttpPar("subscr_id")):
         id = reqPropsObj.getHttpPar("subscr_id")

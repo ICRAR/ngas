@@ -40,7 +40,7 @@ import threading
 
 from ngamsLib.ngamsCore import NGAMS_NOT_RUN_STATE,\
     NGAMS_ONLINE_STATE, NGAMS_SUBSCRIBE_CMD,\
-    NGAMS_SUCCESS, TRACE, genLog, NGAMS_DISK_INFO, checkCreatePath,\
+    NGAMS_SUCCESS, genLog, NGAMS_DISK_INFO, checkCreatePath,\
     NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
     loadPlugInEntryPoint, toiso8601, fromiso8601
 from ngamsLib import ngamsStatus, ngamsLib, ngamsHttpUtils
@@ -174,8 +174,6 @@ def getDiskInfo(srvObj,
     Returns:       Dictionary containing information about the
                    disks (dictionary).
     """
-    T = TRACE()
-
     diskInfoDic = {}
 
     plugIn = srvObj.getCfg().getOnlinePlugIn()
@@ -474,8 +472,6 @@ def wakeUpHost(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     wakeUpPi = srvObj.getCfg().getWakeUpPlugIn()
     portNo = srvObj.getDb().getPortNoFromHostId(suspHost)
     try:
@@ -499,8 +495,6 @@ def checkStagingAreas(srvObj):
 
     Returns:   Void.
     """
-    T = TRACE()
-
     diskList = ngamsDiskUtils.\
                getDiskInfoForMountedDisks(srvObj.getDb(), srvObj.getHostId(),
                                           srvObj.getCfg().\

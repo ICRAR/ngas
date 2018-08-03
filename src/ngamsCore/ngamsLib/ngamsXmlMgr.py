@@ -73,7 +73,7 @@ import logging
 import re
 import xml.dom.minidom
 
-from .ngamsCore import TRACE, genLog, rmFile
+from .ngamsCore import genLog, rmFile
 
 
 logger = logging.getLogger(__name__)
@@ -338,8 +338,6 @@ class ngamsXmlMgr:
 
         Returns:  Reference to object itself.
         """
-        T = TRACE()
-
         try:
             fd = open(self.setXmlDoc(xmlDoc).getXmlDoc())
             doc = fd.read()
@@ -370,8 +368,6 @@ class ngamsXmlMgr:
 
         Returns:  Reference to object itself.
         """
-        T = TRACE()
-
         if (xmlDoc):
             targetFile = xmlDoc
             rmFile(targetFile)
@@ -397,8 +393,6 @@ class ngamsXmlMgr:
 
         Returns:            XML DOM node (Node).
         """
-        T = TRACE()
-
         elDomObj = xml.dom.minidom.Document().createElement(elObj.getName())
 
         # Go through attributes and add them in the DOM.
@@ -431,8 +425,6 @@ class ngamsXmlMgr:
 
         Returns:    XML DOM Node (Node).
         """
-        T = TRACE()
-
         xmlDomObj = self._genXml(self.__rootElObj, critInfoNameList)
         return xmlDomObj
 
@@ -685,8 +677,6 @@ class ngamsXmlMgr:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE()
-
         if (clear): self.clear()
         xmlDicKeys = list(xmlDic)
         xmlDicKeys.sort()

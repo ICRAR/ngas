@@ -41,7 +41,7 @@ import six
 from . import ngamsConfigBase, ngamsSubscriber
 from . import ngamsStorageSet, ngamsStream, ngamsMirroringSource
 from . import utils
-from .ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
+from .ngamsCore import genLog, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
 
 
 logger = logging.getLogger(__name__)
@@ -394,8 +394,6 @@ class ngamsConfig:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE()
-
         self.clear()
         try:
             self.__cfgMgr.load(filename)
@@ -414,8 +412,6 @@ class ngamsConfig:
 
         Returns:     Reference to object itself.
         """
-        T = TRACE()
-
         self.clear()
 
         # Create log file directory if defined.
@@ -1219,8 +1215,6 @@ class ngamsConfig:
         Returns:          Instance of ngamsStorageSet or
                           None (ngamsStorageSet | None).
         """
-        T = TRACE()
-
         logger.debug("Finding storage set for ID: %s ...", storageSetId)
         reqSet = None
         for set in self.__storageSetList:
@@ -1240,8 +1234,6 @@ class ngamsConfig:
         Returns:      Instance of ngamsStorageSet or
                       None (ngamsStorageSet | None).
         """
-        T = TRACE()
-
         for set in self.getStorageSetList():
             if ((set.getMainDiskSlotId() == slotId) or \
                 (set.getRepDiskSlotId() == slotId)):
@@ -1410,8 +1402,6 @@ class ngamsConfig:
 
         Returns:    Stream object or None (ngamsStream|None).
         """
-        T = TRACE()
-
         logger.debug("Finding stream for  mime-type: %s ...", mimeType)
         for stream in self.getStreamList():
             if (stream.getMimeType() == mimeType):
@@ -2036,8 +2026,6 @@ class ngamsConfig:
         Returns:   Reference to Mirroring Source Object in question
                    (ngamsMirroringSource).
         """
-        T = TRACE()
-
         if id not in self.__mirSrcObjDic:
             msg = "No Mirroring Source found in configuration with ID: %s"
             raise Exception(msg % id)
@@ -2058,8 +2046,6 @@ class ngamsConfig:
         Returns:     Reference to Mirroring Source Object associated to the
                      given server list (ngamsMirroringSource).
         """
-        T = TRACE()
-
         if srvList not in self.__mirSrcObjDic:
             msg = "No Mirroring Source Object found for Server List: %s"
             raise Exception(msg % srvList)
@@ -2106,8 +2092,6 @@ class ngamsConfig:
 
         Returns:  Void.
         """
-        T = TRACE()
-
         logger.debug("Check Server Element ...")
         checkIfSetStr("Server.ArchiveName", self.getArchiveName(),
                       self.getCheckRep())
@@ -2372,8 +2356,6 @@ class ngamsConfig:
 
         Returns:           Reference to object itself.
         """
-        T = TRACE()
-
         self.__cfgMgr.save(targetFilename, hideCritInfo)
         return self
 
@@ -2386,8 +2368,6 @@ class ngamsConfig:
 
         Returns:    XML DOM Node (Node).
         """
-        T = TRACE()
-
         xmlDomObj = self.__cfgMgr.genXml(hideCritInfo)
         return xmlDomObj
 

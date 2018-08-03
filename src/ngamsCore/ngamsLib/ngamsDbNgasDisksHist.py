@@ -39,7 +39,7 @@ import logging
 import re
 import time
 
-from .ngamsCore import TRACE, NGAMS_XML_MT, toiso8601
+from .ngamsCore import NGAMS_XML_MT, toiso8601
 from . import ngamsDbCore
 
 
@@ -87,8 +87,6 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
 
         Returns:        Void.
         """
-        T = TRACE()
-
         try:
             if (origin == None):
                 origin = "NG/AMS@" + hostId

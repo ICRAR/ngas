@@ -41,7 +41,7 @@ import time
 from DBUtils.PooledDB import PooledDB
 import six
 
-from .ngamsCore import TRACE, toiso8601, fromiso8601
+from .ngamsCore import toiso8601, fromiso8601
 
 # Global DB Semaphore to protect critical, global DB interaction.
 _globalDbSem = threading.Semaphore(1)
@@ -429,8 +429,6 @@ def cleanSrvList(srvList):
 
     Returns:   Return the cleaned up list (string).
     """
-    T = TRACE()
-
     # Clean up the list, we ensure the servers are always listed in
     # alphabetical order.
     try:
@@ -608,8 +606,6 @@ class ngamsDbCore(object):
         backwards-compatibility. If true, the code will use "file_ignore" for
         the column name as opposed to "ignore".
         """
-        T = TRACE()
-
         self.__dbSem = threading.Lock()
 
         # Controls if the snapshot of the DB should be created.
@@ -731,7 +727,6 @@ class ngamsDbCore(object):
 
         Returns:    Void.
         """
-        T = TRACE()
         self.__pool.close()
 
 
@@ -898,8 +893,6 @@ class ngamsDbCore(object):
 
         Returns:   New server list ID (integer).
         """
-        T = TRACE()
-
         # Find a free ID.
         srvListId = -1
         while True:
@@ -926,8 +919,6 @@ class ngamsDbCore(object):
 
         Returns:     Server list associated with the given ID (string|None).
         """
-        T = TRACE()
-
         sql = "SELECT srv_list FROM ngas_srv_list WHERE srv_list_id={0}"
         res = self.query2(sql, args=(srvListId,))
         if res:
@@ -944,8 +935,6 @@ class ngamsDbCore(object):
 
         Returns:     Server list ID (integer).
         """
-        T = TRACE()
-
         srvList = cleanSrvList(srvList)
         sql = "SELECT srv_list_id FROM ngas_srv_list WHERE srv_list={0}"
         res = self.query2(sql, args=(srvList,))

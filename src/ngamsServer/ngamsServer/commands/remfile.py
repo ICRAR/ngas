@@ -38,7 +38,7 @@ import six
 
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsHighLevelLib
 from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, \
-    rmFile, NGAMS_SUCCESS, TRACE, NGAMS_XML_MT
+    rmFile, NGAMS_SUCCESS, NGAMS_XML_MT
 from .. import ngamsRemUtils
 
 
@@ -241,8 +241,6 @@ def remFile(srvObj,
     Returns:         Status object with a list of disks and corresponding
                      files deleted (ngamsStatus).
     """
-    T = TRACE()
-
     tmpFilePat = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
                                                   "REMFILE_CMD")
     try:
@@ -269,8 +267,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     if (not srvObj.getCfg().getAllowRemoveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Remove"])
         raise Exception(errMsg)

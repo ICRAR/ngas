@@ -42,7 +42,7 @@ import threading
 from six.moves import cPickle # @UnresolvedImport
 
 from . import ngamsFileUtils
-from ngamsLib.ngamsCore import TRACE, NGAMS_DATA_CHECK_THR, \
+from ngamsLib.ngamsCore import NGAMS_DATA_CHECK_THR, \
     NGAMS_CACHE_DIR, checkCreatePath, isoTime2Secs, \
     rmFile, genLog, mvFile, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
     NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, NGAMS_NOTIF_DATA_CHECK, toiso8601
@@ -235,8 +235,6 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
 
     Returns:      Void.
     """
-    T = TRACE()
-
     cacheDir = os.path.join(srvObj.getCfg().getRootDirectory(), NGAMS_CACHE_DIR)
     checkCreatePath(os.path.normpath(cacheDir))
 

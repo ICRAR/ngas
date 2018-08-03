@@ -42,7 +42,7 @@ from six.moves import cPickle  # @UnresolvedImport
 from six.moves import reduce  # @UnresolvedImport
 
 from ngamsLib import ngamsDbm, ngamsDbCore
-from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, TRACE, NGAMS_TEXT_MT, rmFile
+from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, NGAMS_TEXT_MT, rmFile
 
 
 logger = logging.getLogger(__name__)
@@ -187,8 +187,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     # Get command parameters.
     if not 'query' in reqPropsObj:
         raise Exception("No query specified. Valid queries are: %s" % (queries.keys(),))

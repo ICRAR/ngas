@@ -37,7 +37,7 @@ import xml.dom.minidom
 
 from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 
-from .ngamsCore import fromiso8601, toiso8601, TRACE, prFormat1
+from .ngamsCore import fromiso8601, toiso8601, prFormat1
 
 
 def validate_url(url):
@@ -340,8 +340,6 @@ class ngamsSubscriber:
 
         Returns:     Reference to object itself.
         """
-        T = TRACE()
-
         self.setHostId(sqlResult[0]).\
                setPortNo(sqlResult[1]).\
                setPriority(sqlResult[2]).\
@@ -379,8 +377,6 @@ class ngamsSubscriber:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE()
-
         res = dbConObj.getSubscriberInfo(subscrId, hostId, portNo)
         if not res:
             raise Exception('%s %s %s not found in DB' % (subscrId, hostId, portNo))

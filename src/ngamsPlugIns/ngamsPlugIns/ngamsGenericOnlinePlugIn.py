@@ -53,7 +53,6 @@ import logging
 import os
 
 from ngamsLib import ngamsPhysDiskInfo
-from ngamsLib.ngamsCore import TRACE
 from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \
     loadVolInfoFile, NGAS_VOL_INFO_ID, NGAS_VOL_INFO_IGNORE, NGAS_VOL_INFO_TYPE, \
     NGAS_VOL_INFO_MANUFACT
@@ -74,8 +73,6 @@ def ngamsGenericOnlinePlugIn(srvObj,
 
     Returns:       Disk info dictionary (dictionary).
     """
-    T = TRACE()
-
     rootDir = srvObj.getCfg().getRootDirectory()
     volumeDir = srvObj.getCfg().getVolumeDirectory()
 

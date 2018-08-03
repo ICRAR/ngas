@@ -34,7 +34,7 @@ This module contains tools for interacting with the Escalade 6800 controller.
 import logging
 import urllib
 
-from ngamsLib.ngamsCore import TRACE, execCmd
+from ngamsLib.ngamsCore import execCmd
 from ngamsLib import ngamsPhysDiskInfo
 
 
@@ -58,8 +58,6 @@ def parseHtmlInfo(url,
     Returns:     Dictionary containing objects which are instances of
                  the class ngamsPhysDiskInfo (dictionary).
     """
-    T = TRACE()
-
     # Check if the 3ware WEB server can be accessed.
     cmd = "wget -T 2 -t 1 %s" % url
     stat, _, _ = execCmd(cmd)
@@ -157,8 +155,6 @@ def getControllers():
 
     Returns:   List with available 3ware controllers (list).
     """
-    T = TRACE()
-
     cmd = "sudo /usr/local/sbin/tw_cli info"
     stat, out, _ = execCmd(cmd)
     if (stat):
@@ -228,8 +224,6 @@ def parseGen1Controller(rootMtPt,
 
     Returns:    Dictionary with info about the disks (dictionary).
     """
-    T = TRACE()
-
     # Parse the output from the 3ware Command Line Tool.
     diskInfoDic = {}
     slotCount   = 0   # Not used for the moment.
@@ -338,8 +332,6 @@ def parseGen2Controller(rootMtPt,
 
     Returns:      Dictionary with info about the disks (dictionary).
     """
-    T = TRACE()
-
     # Parse the output from the 3ware Command Line Tool.
     diskInfoDic = {}
     slotCount   = 0   # Not used for the moment.
@@ -455,8 +447,6 @@ def getContInfo(contList):
 
     Returns:      Accumulated ASCII output of info about controllers (string).
     """
-    T = TRACE()
-
     out = ""
     for contId in contList:
         cmd = "sudo /usr/local/sbin/tw_cli info c%s" % str(contId)
@@ -482,8 +472,6 @@ def exportCont(contId):
     Returns:   Void.
     """
     return # We don't want this to be executed ...
-
-    T = TRACE()
 
     # Unit  UnitType  Status         %Cmpl  Stripe  Size(GB)  Cache  AVerify  IgnECC
     # ------------------------------------------------------------------------------
@@ -523,8 +511,6 @@ def rescanCont(contId):
     """
     return # Don't want to execute this
 
-    T = TRACE()
-
     cmd = "sudo /usr/local/sbin/tw_cli /c%d rescan" % (int(contId))
     logger.debug("Invoking command to rescan 3ware unit: %s ...", cmd)
     stat, out, _ = execCmd(cmd)
@@ -562,8 +548,6 @@ def parseCmdLineInfo(rootMtPt,
     Returns:      Dictionary containing objects which are instances of
                   the class ngamsPhysDiskInfo (dictionary).
     """
-    T = TRACE()
-
     out = ""
     if (controllers):
         contList = controllers.split("/")

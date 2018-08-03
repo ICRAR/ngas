@@ -47,7 +47,7 @@ import six
 from ngamsLib import ngamsDbCore, ngamsDiskInfo, ngamsStatus, \
     ngamsHttpUtils, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib
-from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
+from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
     NGAMS_STATUS_CMD, NGAMS_CACHE_DIR, \
     NGAMS_DATA_CHECK_THR, getFileSize, loadPlugInEntryPoint
@@ -83,8 +83,6 @@ def _locateArchiveFile(srvObj,
     See description of ngamsFileUtils.locateArchiveFile(). This function is
     used simply to encapsulate the complete processing to be able to clean up.
     """
-    T = TRACE()
-
     msg = "_locateArchiveFile() - Disk ID: %s - File ID: " +\
           "%s - File Version: %d ..."
     logger.debug(msg, str(diskId), fileId, int(fileVersion))
@@ -345,8 +343,6 @@ def locateArchiveFile(srvObj,
 
     Returns:      List with information about file location (list).
     """
-    T = TRACE()
-
     # Get a list with the candidate files matching the query conditions.
     res = srvObj.getDb().getFileInfoFromFileId(fileId, fileVersion, diskId,
                                                  ignore=0, dbCursor=False)

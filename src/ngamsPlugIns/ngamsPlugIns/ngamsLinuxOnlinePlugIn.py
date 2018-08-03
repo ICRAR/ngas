@@ -34,7 +34,7 @@ Module containing a System Online Plug-In used by the ESO NGAS installations.
 import logging
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, genLog
+from ngamsLib.ngamsCore import genLog
 from . import ngamsLinuxSystemPlugInApi
 from .eso import ngamsEscaladeUtils
 
@@ -54,8 +54,6 @@ def ngamsLinuxOnlinePlugIn(srvObj,
 
     Returns:       Disk info dictionary (dictionary).
     """
-    T = TRACE()
-
     rootMtPt = srvObj.getCfg().getRootDirectory()
     parDic = ngamsPlugInApi.\
              parseRawPlugInPars(srvObj.getCfg().getOnlinePlugInPars())

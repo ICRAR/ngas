@@ -39,7 +39,7 @@ It should be used as part of the ngamsDbBase parent classes.
 import logging
 
 from . import ngamsDbm, ngamsDbCore, ngamsLib, ngamsFileInfo
-from .ngamsCore import TRACE, rmFile
+from .ngamsCore import rmFile
 from .ngamsCore import NGAMS_FILE_STATUS_OK, NGAMS_FILE_CHK_ACTIVE,NGAMS_DB_CH_FILE_UPDATE, NGAMS_DB_CH_FILE_INSERT
 
 logger = logging.getLogger(__name__)
@@ -91,8 +91,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         Returns:           Cursor object (<NG/AMS DB Cursor Object API>).
         """
-        T = TRACE(5)
-
         sql, vals = self.buildFileSummary1Query(ngamsDbCore.getNgasSummary1Cols(self._file_ignore_columnname),
                                                 hostId, diskIds, fileIds,
                                                 ignore, fileStatus,
@@ -112,8 +110,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         Returns:   List with information from query (list).
         """
-        T = TRACE()
-
         sql = ("SELECT %s FROM ngas_disks nd, ngas_files nf "
                 "WHERE nd.disk_id=nf.disk_id AND "
                 "nd.disk_id={} AND nf.file_id={} AND "
@@ -163,8 +159,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         Returns:           Cursor object (<NG/AMS DB Cursor Object API>).
         """
-        T = TRACE()
-
         sql = []
         vals = []
         sql.append(("SELECT %s FROM ngas_disks nd, ngas_files nf "
@@ -248,8 +242,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         Returns:           Cursor object (<NG/AMS DB Cursor Object API>).
         """
-        T = TRACE(5)
-
         sql = []
         vals = []
         sql.append(("SELECT nh.host_id, nh.ip_address, nh.srv_port, "
@@ -303,8 +295,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         Returns:           Cursor object (<NG/AMS DB Cursor Object API>).
         """
-        T = TRACE(5)
-
         fileStatusList = [NGAMS_FILE_STATUS_OK, NGAMS_FILE_CHK_ACTIVE]
         sql = []
         vals = []
@@ -356,8 +346,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         Returns:         Reference to object itself.
         """
-        T = TRACE()
-
         sql = ("UPDATE ngas_files SET checksum={}, checksum_plugin={}"
                " WHERE file_id={} AND file_version={} AND disk_id={}")
         vals = (checksum, checksumPlugIn, fileId, fileVersion, diskId)
@@ -397,8 +385,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         Returns:    SQL query for a File Summary 1 Query (string).
         """
-        T = TRACE(5)
-
         sql = []
         vals = []
         sql.append(("SELECT %s FROM ngas_disks nd, ngas_files nf "
@@ -475,8 +461,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Returns           List with information about file, or [] if
                           no file(s) was found (list).
         """
-        T = TRACE()
-
         sql = []
         sql.append(("SELECT %s FROM ngas_files nf, ngas_disks nd WHERE "
                    "nf.file_id={} AND nf.disk_id=nd.disk_id AND "
@@ -553,8 +537,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Returns:         Cursor object or list with results
                          (<NG/AMS DB Cursor Object API>|list).
         """
-        T = TRACE()
-
         try:
             int(fileVersion)
         except:
@@ -643,8 +625,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         Return:          Number of files stored on the disk (integer).
         """
-        T = TRACE()
-
         sql = []
         vals = []
 
@@ -716,8 +696,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Returns:           Final name of the DBM DB containing the info about
                            the files (string).
         """
-        T = TRACE()
-
         # Create a temporay File Info DBM.
         if (not fileInfoDbmName):
             fileInfoDbmName = self.genTmpFile("CLUSTER-FILE-INFO")
@@ -805,8 +783,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         Returns:         Void.
         """
-        T = TRACE(5)
-
         # Check if the entry already exists. If yes update it, otherwise
         # insert a new element.
         if ignore == -1:
@@ -893,8 +869,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         Returns:       List with ready NAU nodes in the cluster (list/string).
         """
-        T = TRACE()
-
         sql = ("SELECT host_id, srv_port FROM ngas_hosts "
                "WHERE cluster_name={} AND host_id in "
                "(SELECT host_id FROM ngas_disks WHERE completed=0 "
@@ -918,8 +892,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         Returns:    Amount of free disk space in MB bytes (float)
         """
-        T = TRACE()
-
         sql = "SELECT sum(available_mb) FROM ngas_disks WHERE host_id={}"
         res = self.query2(sql, args = (hostId,))
         return float(res[0][0])
@@ -935,8 +907,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Returns:   Cursor object with which the contents can be retrieved
                    Cursor object (<NG/AMS DB Cursor Object API>).
         """
-        T = TRACE()
-
         sql = ("SELECT disk_id, file_id, file_version, "
                "cache_time, cache_delete FROM ngas_cache "
                "WHERE disk_id IN (SELECT disk_id FROM ngas_disks WHERE "

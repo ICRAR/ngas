@@ -44,7 +44,7 @@ import six
 from six.moves import cPickle  # @UnresolvedImport
 
 from . import ngamsDbCore, ngamsFileInfo, ngamsStatus, ngamsFileList
-from .ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE
+from .ngamsCore import NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE
 from .ngamsCore import rmFile, getNgamsVersion, toiso8601, fromiso8601, mvFile
 
 
@@ -96,8 +96,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         Returns:       1 = file found, 0 = file no found (integer).
         """
-        T = TRACE()
-
         sql = ["SELECT file_id FROM ngas_files WHERE file_id={0} AND disk_id={1}"]
         args = [fileId, diskId]
         if fileVersion != -1:
@@ -126,8 +124,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                      file if found or None if the file was not found
                      (ngamsFileInfo|None).
         """
-        T = TRACE()
-
         # Query for the file.
         sql = "SELECT %s FROM ngas_files nf WHERE nf.disk_id={0} AND nf.file_name={1}"
         sql = sql % (ngamsDbCore.getNgasFilesCols(self._file_ignore_columnname),)
@@ -164,8 +160,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         Returns:       Cursor object (<NG/AMS DB Cursor Object API>).
         """
-        T = TRACE()
-
         cond_sql = collections.OrderedDict()
         if fileId:
             fileId = re.sub("\*", "%", fileId)
@@ -203,8 +197,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         Returns:   Latest File Version (integer).
         """
-        T = TRACE()
-
         sql = "SELECT max(file_version) FROM ngas_files WHERE file_id={0}"
         res = self.query2(sql, args=(fileId,))
         if res:
@@ -229,7 +221,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         Returns:       File Status (8 bits) (string).
 
         """
-        T = TRACE()
         sql = "SELECT file_status FROM ngas_files WHERE file_id = {0} AND disk_id = {1} AND file_version = {2}"
         res = self.query2(sql, args=(fileId, diskId, fileVersion))
         if (len(res)):
@@ -263,8 +254,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         Returns:        Reference to object itself.
         """
-        T = TRACE()
-
         # We have to update some fields of the disk hosting the file
         # when we delete a file (number_of_files, available_mb,
         # bytes_stored, also maybe later: checksum.
@@ -319,8 +308,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         Return:    Total sum of bytes stored on the disk (integer).
         """
-        T = TRACE()
-
         sql = "SELECT sum(file_size) from ngas_files WHERE disk_id={0}"
         res = self.query2(sql, args=(diskId,))
         if res[0][0] is not None:
@@ -350,8 +337,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         Returns:          Void.
         """
-        T = TRACE()
-
         # TODO: Implementation concern: This class is suppose to be
         # at a lower level in the hierarchie than the ngamsFileInfo,
         # ngamsFileList, ngamsDiskInfo and ngamsStatus classes and as
@@ -440,7 +425,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         Returns:        checksum (string | None).
         """
-        T = TRACE()
         sql = "SELECT checksum FROM ngas_files WHERE file_id={0} AND file_version={1} AND disk_id={2}"
         res = self.query2(sql, args=(fileId, fileVersion, diskId)) # throw exception if an empty record
         if res:
@@ -465,8 +449,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         Returns:        Ingestion date for file or None if file not found
                         (string/ISO 8601 | None).
         """
-        T = TRACE()
-
         sql = "SELECT ingestion_date FROM ngas_files WHERE disk_id={0} AND file_id={1} AND file_version={2}"
         res = self.query2(sql, args=(diskId, fileId, fileVersion))
         if res:
@@ -491,8 +473,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         Returns:        Ingestion date for file or None if file not found
                         (string/ISO 8601 | None).
         """
-        T = TRACE()
-
         sql = "SELECT file_size FROM ngas_files WHERE file_id={0} AND file_version={1}"
         res = self.query2(sql, args=(fileId, fileVersion))
         if res:

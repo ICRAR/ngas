@@ -35,7 +35,7 @@ Class to handle the information in connection with one Mirroring Request.
 import time
 
 from . import ngamsLib
-from .ngamsCore import TRACE, toiso8601
+from .ngamsCore import toiso8601
 
 
 # TODO: Add writeMirroringReq() in ngamsDbJoin.py
@@ -401,8 +401,6 @@ class ngamsMirroringRequest:
 
         Returns:   String buffer containing the ASCII dump (string).
         """
-        T = TRACE()
-
         buf = "Contents of ngamsMirroringRequest:%s:\n" % str(self)
         buf += "Instance ID:         %s\n" % self.getInstanceId()
         buf += "File ID:             %s\n" % self.getFileId()
@@ -423,8 +421,6 @@ class ngamsMirroringRequest:
 
         Returns:   Reference to string buffer with the object summary (string).
         """
-        T = TRACE(5)
-
         buf = "Summary of Mirroring Request Object: "
         buf += "Instance ID: %s" % self.getInstanceId()
         buf += ". File ID: %s" % self.getFileId()

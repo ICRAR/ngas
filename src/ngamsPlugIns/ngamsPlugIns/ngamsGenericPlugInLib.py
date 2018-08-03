@@ -38,7 +38,7 @@ import os
 import urllib
 
 from ngamsLib import ngamsPlugInApi, ngamsHttpUtils, utils
-from ngamsLib.ngamsCore import TRACE, getHostName, genLog
+from ngamsLib.ngamsCore import getHostName, genLog
 
 
 logger = logging.getLogger(__name__)
@@ -68,8 +68,6 @@ def writeVolInfoFile(volInfoFile,
 
     Returns:       Void.
     """
-    T = TRACE()
-
     if (os.path.exists(volInfoFile)):
         newDic = loadVolInfoFile(volInfoFile)
     else:
@@ -106,8 +104,6 @@ def loadVolInfoFile(volInfoFile):
     Returns:       Dictionary with the parameters of the Volume Info File
                    (dictionary).
     """
-    T = TRACE()
-
     with open(volInfoFile, "rb") as fo:
         volInfoBuf = utils.b2s(base64.decodestring(fo.read()))
     dic = {}

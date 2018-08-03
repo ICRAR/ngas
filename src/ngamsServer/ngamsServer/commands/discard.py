@@ -52,7 +52,7 @@ file in the archive it is not taken into account.
 
 import os
 
-from ngamsLib.ngamsCore import getHostName, genLog, rmFile, TRACE, \
+from ngamsLib.ngamsCore import getHostName, genLog, rmFile, \
     NGAMS_DISCARD_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, NGAMS_FAILURE
 from ngamsLib import ngamsLib
 
@@ -139,8 +139,6 @@ def _discardFile(srvObj,
 
     Returns:       Message indicating status of the execute (string).
     """
-    T = TRACE()
-
     # Check the given paramereters.
     if (diskId and fileId and fileVersion):
         ngasHostId = "%s:%d" % (getHostName(), srvObj.getCfg().getPortNo())
@@ -198,8 +196,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     if (reqPropsObj.hasHttpPar("help")):
         global _help
         return _help

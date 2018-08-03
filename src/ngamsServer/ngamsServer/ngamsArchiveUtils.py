@@ -44,7 +44,7 @@ from six.moves.urllib import request as urlrequest # @UnresolvedImport
 from six.moves import cPickle # @UnresolvedImport
 
 from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
-    NGAMS_FILE_STATUS_OK, TRACE, NGAMS_NOTIF_DISK_SPACE,\
+    NGAMS_FILE_STATUS_OK, NGAMS_NOTIF_DISK_SPACE,\
     getDiskSpaceAvail, NGAMS_XML_MT, NGAMS_NOTIF_DISK_CHANGE, genLog,\
     NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile,\
     NGAMS_NOTIF_NO_DISKS, mvFile, NGAMS_PICKLE_FILE_EXT,\
@@ -348,8 +348,6 @@ def replicateFile(dbConObj,
                       or None if no Replication Disk is configured for the
                       Main Disk (ngamsDapiStatus).
     """
-    T = TRACE()
-
     if (ngamsCfgObj.getAssocSlotId(piStat.getSlotId()) == ""):
         logger.debug("No Replication Disk is configured for the Main Disk in Slot "+\
              "with ID: %s - no replication performed", piStat.getSlotId())
@@ -428,8 +426,6 @@ def issueDiskSpaceWarning(srvObj,
 
     Returns:       Void.
     """
-    T = TRACE()
-
     global _diskSpaceWarningDic
     if diskId not in _diskSpaceWarningDic:
         _diskSpaceWarningDic[diskId] = 0
@@ -812,8 +808,6 @@ def backLogBufferFiles(srvObj,
 
     Returns:          Void.
     """
-    T = TRACE()
-
     try:
         # We can back-log buffer the two files.
         tmpMsg = "Back-Log Buffering Staging File: %s. " +\

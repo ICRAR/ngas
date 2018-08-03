@@ -42,7 +42,7 @@ import time
 from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 
 from . import ngamsLib
-from .ngamsCore import TRACE, NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
+from .ngamsCore import NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
     NGAMS_HTTP_POST, NGAMS_ARCHIVE_CMD, NGAMS_ARCH_REQ_MT, genLog,\
     NGAMS_UNKNOWN_MT, createSortDicDump, ignoreValue, prFormat1
 
@@ -143,8 +143,6 @@ class ngamsReqProps:
 
         Returns:      Reference to object itself.
         """
-        T = TRACE()
-
         self.setHttpMethod(httpMethod)
 
         # Handle the HTTP headers.
@@ -525,7 +523,6 @@ class ngamsReqProps:
 
         Returns:     Reference to object itself.
         """
-        T = TRACE()
         self.__ioTime += float(incrValue)
         return self
 

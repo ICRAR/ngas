@@ -298,26 +298,6 @@ def genLog(logId, parList = []):
     return _logDef.generate_log(logId, *parList)
 
 
-def TRACE(logLevel = 4):
-    """
-    Convenience function to use the tracing in the code.
-
-    The function returns an instance of the Trace Class when the log level is
-    above 4.
-
-    A reference to that instance should be kept whilst in the name space, e.g.:
-
-    def method():
-        T = TRACE()
-        ... execute code of method ...
-
-    logLevel:    Logging level for this log statement (integer (0..5)).
-
-    Returns:     Temporary trace object (Trace).
-    """
-    return None
-
-
 def getAttribValue(node,
                    attributeName,
                    ignoreFailure = 0):
@@ -616,8 +596,6 @@ def compressFile(srcFilename,
 
     Returns:       Name of resulting file (string).
     """
-    T = TRACE()
-
     subprocess.check_call(['gzip', '-f', srcFilename])
     trgFilename = '%s.gz' % srcFilename
     if os.path.exists(trgFilename):
@@ -638,8 +616,6 @@ def decompressFile(srcFilename,
 
     Returns:       Name of resulting file (string).
     """
-    T = TRACE()
-
     subprocess.check_call(['gunzip', '-f', srcFilename])
     trgFilename = srcFilename[:-3]
     if os.path.exists(trgFilename):

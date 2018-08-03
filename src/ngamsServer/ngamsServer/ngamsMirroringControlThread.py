@@ -49,7 +49,7 @@ import random
 import threading
 import time
 
-from ngamsLib.ngamsCore import TRACE, NGAMS_MIR_CONTROL_THR, rmFile, \
+from ngamsLib.ngamsCore import NGAMS_MIR_CONTROL_THR, rmFile, \
     NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, \
     NGAMS_HTTP_HDR_CONTENT_TYPE, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_SUCCESS, \
     NGAMS_STATUS_CMD, decompressFile, \
@@ -89,8 +89,6 @@ def checkStopMirControlThread(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE(5)
-
     if (not srvObj.getThreadRunPermission()):
         logger.info("Stopping the Mirroring Service")
         raise Exception(NGAMS_MIR_CONTROL_THR_STOP)
@@ -111,8 +109,6 @@ def addEntryMirQueue(srvObj,
 
     Returns:    Void.
     """
-    T = TRACE()
-
     try:
         srvObj._mirQueueDbmSem.acquire()
         logger.debug("Adding entry in Mirroring Queue: %s/%d",
@@ -146,8 +142,6 @@ def addEntryErrQueue(srvObj,
 
     Returns:    Void.
     """
-    T = TRACE()
-
     try:
         srvObj._errQueueDbmSem.acquire()
         logger.debug("Adding entry in Mirroring Error Queue: %s/%d",
@@ -184,8 +178,6 @@ def popEntryQueue(srvObj,
     Return:     Reference to the Mirroring Request Object removed from the
                 Error Queue DBM (ngamsMirroringRequest).
     """
-    T = TRACE()
-
     try:
         dbmSem.acquire()
 
@@ -222,8 +214,6 @@ def dumpKeysQueue(srvObj,
 
     Returns:   The final name of the resulting DBM (string).
     """
-    T = TRACE()
-
     rmFile("%s*" % targetDbmName)
     keyDbm = ngamsDbm.ngamsDbm(targetDbmName, cleanUpOnDestr = False,
                                writePerm = True)
@@ -259,8 +249,6 @@ def addEntryComplQueue(srvObj,
 
     Returns:    Void.
     """
-    T = TRACE()
-
     try:
         srvObj._complQueueDbmSem.acquire()
         logger.debug("Adding entry in Mirroring Completed Queue: %s/%d",
@@ -303,8 +291,6 @@ def scheduleMirReq(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     mirReqObj = ngamsMirroringRequest.ngamsMirroringRequest().\
                 setInstanceId(instanceId).\
                 setFileId(fileId).\
@@ -331,8 +317,6 @@ def getMirRequestFromQueue(srvObj):
     Returns:    Next Mirroring Request Object or None
                 (ngamsMirroringRequest | None).
     """
-    T = TRACE()
-
     try:
         srvObj._mirQueueDbmSem.acquire()
         nextKey = ((srvObj._mirQueueDbm.get(NGAMS_MIR_DBM_POINTER) + 1) %\
@@ -362,8 +346,6 @@ def startMirroringThreads(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE()
-
     for thrNo in range(1, (srvObj.getCfg().getMirroringThreads() + 1)):
         threadId = NGAMS_MIR_CONTROL_THR + "-" + str(thrNo)
         args = (srvObj, None)
@@ -382,8 +364,6 @@ def pauseMirThreads(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE()
-
     srvObj._pauseMirThreads = True
     # Wait for all threads to enter pause mode.
     noOfMirThreads = srvObj.getCfg().getMirroringThreads()
@@ -405,8 +385,6 @@ def resumeMirThreads(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE()
-
     srvObj._pauseMirThreads = False
     # Wait for all threads to resume service.
     noOfMirThreads = srvObj.getCfg().getMirroringThreads()
@@ -426,8 +404,6 @@ def pauseMirThread(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE(5)
-
     if (srvObj._pauseMirThreads):
         logger.debug("Mirroring Thread suspending itself ...")
         srvObj._mirThreadsPauseCount += 1
@@ -450,8 +426,6 @@ def getMirRequest(srvObj,
     Returns:    Return Mirroring Request Object or None if no became available
                 in the specified period of time (ngamsMirroringRequest|None).
     """
-    T = TRACE()
-
     srvObj.waitMirTrigger(timeout)
     mirReqObj = getMirRequestFromQueue(srvObj)
     return mirReqObj
@@ -480,8 +454,6 @@ def getLocalNauList(srvObj,
 
     Returns:            List of servers that can be contacted (list).
     """
-    T = TRACE()
-
     if (localSrvListCfg == NGAMS_MIR_ALL_LOCAL_SRVS):
         # All local servers should be considered.
         # Read only the list of local servers ~every minute.
@@ -515,8 +487,6 @@ def handleMirRequest(srvObj,
 
     Returns:    Void.
     """
-    T = TRACE()
-
     mirReqObj.setStatus(ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE)
     srvObj.getDb().updateStatusMirReq(mirReqObj.getFileId(),
                                       mirReqObj.getFileVersion(),
@@ -610,8 +580,6 @@ def mirroringThread(srvObj,
 
     Returns:     Void.
     """
-    T = TRACE()
-
     # Main loop.
     while (True):
         # Incapsulate this whole block to avoid that the thread dies in
@@ -682,8 +650,6 @@ def initMirroring(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE()
-
     hostId = srvObj.getHostId()
     # Build up the server list in the DB and the local repository kept
     # in memory.
@@ -795,8 +761,6 @@ def retrieveFileList(srvObj,
 
     Returns:              Void
     """
-    T = TRACE()
-
     hostId = srvObj.getHostId()
 
     # Send the STATUS?file_list query. Receive the data into a temporary file.
@@ -926,8 +890,6 @@ def checkSourceArchives(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE()
-
     # Dump the information for all files managed by this cluster.
     clusterName = srvObj.getDb().getClusterNameFromHostId(srvObj.getHostId())
     clusterFilesDbmName = "%s/%s_%s" %\
@@ -1061,8 +1023,6 @@ def checkErrorQueue(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE()
-
     # Go through the list of entries in the Error Queue. Handle as follows:
     #
     # - For entries marked as Error/Reschedule:
@@ -1134,8 +1094,6 @@ def generateReport(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE()
-
     reportHdr = "Date:         %s\n" +\
                 "Control Node: %s\n\n"
     reportHdr = reportHdr % (toiso8601(), srvObj.getHostId())
@@ -1274,8 +1232,6 @@ def mirControlThread(srvObj, stopEvt):
 
     Returns:     Void.
     """
-    T = TRACE()
-
     # Alma Mirroring Service
     if (srvObj.getCfg().getVal("Mirroring[1].AlmaMirroring")):
 

@@ -37,7 +37,7 @@ import xml.dom.minidom
 
 from . import ngamsFileInfo
 from .ngamsCore import genLog, getAttribValue, prFormat1, ignoreValue, toiso8601, fromiso8601
-from .ngamsCore import TRACE, NGAMS_STAGING_DIR
+from .ngamsCore import NGAMS_STAGING_DIR
 
 def getStorageSetIdFromDiskId(dbConObj,
                               ngamsCfgObj,
@@ -582,8 +582,6 @@ class ngamsDiskInfo:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE()
-
         res = dbConObj.getDiskInfoFromDiskId(diskId)
         if (res == []):
             errMsg = genLog("NGAMS_ER_UNKNOWN_DISK", [diskId])
@@ -604,8 +602,6 @@ class ngamsDiskInfo:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE(5)
-
         self.\
                setDiskId(sqlResult[0]).\
                setArchive(sqlResult[1]).\
@@ -704,8 +700,6 @@ class ngamsDiskInfo:
 
         Returns:            XML Dom Node (Node).
         """
-        T = TRACE(5)
-
         ign = ignoreUndefFields
         diskStatusEl = xml.dom.minidom.Document().createElement("DiskStatus")
         objStat = self.getObjStatus()
@@ -742,8 +736,6 @@ class ngamsDiskInfo:
 
         Returns:            Reference to object itself.
         """
-        T = TRACE()
-
         self.setDiskId(getAttribValue(diskNode, "DiskId"))
         self.setArchive(getAttribValue(diskNode, "Archive"))
 
@@ -802,8 +794,6 @@ class ngamsDiskInfo:
 
         Returns:            Reference to object itself.
         """
-        T = TRACE()
-
         statusNode = xml.dom.minidom.parseString(xmlDoc).\
                      getElementsByTagName("DiskStatus")[0]
         self.unpackFromDomNode(statusNode, ignoreVarDiskPars)

@@ -61,7 +61,7 @@ import threading
 
 from ngamsLib import ngamsLib, ngamsHttpUtils, ngamsReqProps, ngamsDiskInfo,\
     ngamsDbCore
-from ngamsLib.ngamsCore import TRACE, toiso8601, NGAMS_STAGING_DIR, genUniqueId,\
+from ngamsLib.ngamsCore import toiso8601, NGAMS_STAGING_DIR, genUniqueId,\
     NGAMS_FAILURE, NGAMS_HTTP_SUCCESS, FMT_DATETIME_NOMSEC
 from . import ngamsFailedDownloadException
 from . import ngamsCmd_MIRRARCHIVE
@@ -86,8 +86,6 @@ def handleCmd(srvObj,
 
     RETURNS:        Void.
     """
-    TRACE()
-
     # Get command parameters.
     mirror_cluster = 0
     n_threads = 2

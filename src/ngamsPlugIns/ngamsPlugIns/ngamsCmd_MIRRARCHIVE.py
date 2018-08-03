@@ -51,8 +51,8 @@ import os
 import time
 
 from ngamsLib import ngamsDiskInfo, ngamsDbCore
-from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE, \
-    mvFile, getFileCreationTime, NGAMS_FILE_STATUS_OK, toiso8601
+from ngamsLib.ngamsCore import genLog, NGAMS_ONLINE_STATE, \
+    mvFile, getFileCreationTime, NGAMS_FILE_STATUS_OK
 from . import ngamsFailedDownloadException
 from . import ngamsDAPIMirroring
 from . import ngamsCmd_RSYNCFETCH
@@ -92,8 +92,6 @@ def updateDiskInfo(srvObj,
 
     Returns:   Void.
     """
-    TRACE()
-
     sqlQuery = "UPDATE ngas_disks SET " +\
                "number_of_files=(number_of_files + 1), " +\
                "available_mb = {0}, " +\
@@ -123,8 +121,6 @@ def saveInStagingFile(srvObj,
 
     Returns:         Void.
     """
-    TRACE()
-
     blockSize = ngamsCfgObj.getBlockSize()
     fetchMethod = 'HTTP'
     if ngamsCfgObj.getVal("Mirroring[1].fetch_method"):
@@ -167,8 +163,6 @@ def __handleCmd(srvObj, reqPropsObj):
 
     Returns:        Void.
     """
-    TRACE()
-
     # Is this NG/AMS permitted to handle Archive Requests?
     logger.debug("Checking if this NG/AMS permitted to handle Archive Requests?")
     if (not srvObj.getCfg().getAllowArchiveReq()):

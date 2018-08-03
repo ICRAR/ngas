@@ -38,7 +38,7 @@ import threading
 import time
 
 from . import ngamsHighLevelLib, ngamsLib
-from .ngamsCore import NGAMS_PICKLE_FILE_EXT, TRACE, NGAMS_NOTIF_ALERT,\
+from .ngamsCore import NGAMS_PICKLE_FILE_EXT, NGAMS_NOTIF_ALERT,\
     NGAMS_NOTIF_ERROR, NGAMS_NOTIF_DISK_SPACE, NGAMS_NOTIF_DISK_CHANGE,\
     NGAMS_NOTIF_NO_DISKS, NGAMS_NOTIF_DATA_CHECK, NGAMS_DEFINE,\
     isoTime2Secs, toiso8601
@@ -90,8 +90,6 @@ def _sendNotifMsg(hostId,
 
     Returns:       Void.
     """
-    T = TRACE()
-
     lst = []
     if (recList):
         lst = recList
@@ -156,8 +154,6 @@ def _checkSendNotifMsg(hostId,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     # Check if the time past since retaining the first message in the
     # Retention Buffer with this Message ID is larger than the Max.
     # Retention Time. If this is the case, all the messages retained
@@ -250,8 +246,6 @@ def notify(hostId,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     if ((not force) or (ngamsCfgObj.getNotifActive() != 1)):
         logger.debug("Leaving notify() with no action (disabled/force=0)")
         return
@@ -340,8 +334,6 @@ def checkNotifRetBuf(hostId,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     global notifSem_
     try:
         pickleObjFile = _getNotifRetBufPickleFile(ngamsCfgObj, hostId)

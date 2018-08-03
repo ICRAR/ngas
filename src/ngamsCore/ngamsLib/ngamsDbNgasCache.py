@@ -37,7 +37,6 @@ It should be used as part of the ngamsDbBase parent classes.
 """
 
 from . import ngamsDbCore
-from .ngamsCore import TRACE
 
 
 class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
@@ -68,8 +67,6 @@ class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
 
         Returns:       Reference to object itself.
         """
-        T = TRACE()
-
         # The entry must be inserted.
         sqlQuery = "INSERT INTO ngas_cache (disk_id, file_id, " +\
                    "file_version, cache_time, cache_delete) VALUES " +\
@@ -98,8 +95,6 @@ class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
 
         Returns:       Reference to object itself.
         """
-        T = TRACE()
-
         sqlQuery = "UPDATE ngas_cache SET cache_delete = {0} WHERE " +\
                    "disk_id = {1} AND file_id = {2} AND file_version = {3}"
         delete = 1 if delete else 0
@@ -123,8 +118,6 @@ class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
 
         Returns:       Reference to object itself.
         """
-        T = TRACE()
-
         sqlQuery = "DELETE FROM ngas_cache WHERE disk_id = {0} AND " +\
                    "file_id = {1} AND file_version = {2}"
         self.query2(sqlQuery, args=(diskId, fileId, int(fileVersion)))

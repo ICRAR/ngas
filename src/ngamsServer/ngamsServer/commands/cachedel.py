@@ -35,7 +35,7 @@ Contains code for handling the CACHEDEL Command.
 
 import logging
 
-from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, TRACE
+from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER
 
 from .. import ngamsFileUtils, ngamsCacheControlThread
 
@@ -115,8 +115,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     diskId = None
     fileId = None
     fileVersion = None

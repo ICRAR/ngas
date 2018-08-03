@@ -43,7 +43,7 @@ from .. import ngamsArchiveUtils, ngamsSrvUtils, ngamsFileUtils
 from .. import ngamsCacheControlThread
 from ngamsLib import ngamsNotification, ngamsFileInfo, ngamsDiskInfo
 from ngamsLib import ngamsReqProps, ngamsHighLevelLib, ngamsDapiStatus
-from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE, \
+from ngamsLib.ngamsCore import genLog, NGAMS_ONLINE_STATE, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, getDiskSpaceAvail, \
     rmFile, getFileSize, NGAMS_XML_MT, NGAMS_FAILURE, checkCreatePath, \
     mvFile, getFileCreationTime, NGAMS_SUCCESS, NGAMS_TEXT_MT, \
@@ -69,8 +69,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     # Is this NG/AMS permitted to handle Archive Requests?
     if (not srvObj.getCfg().getAllowArchiveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Clone"])
@@ -129,8 +127,6 @@ def cloneCheckDiskSpace(srvObj,
 
     Returns:          Void.
     """
-    T = TRACE()
-
     # Make a dictionary with the available amount of space per disk.
     logger.debug("Generating dictionary with available space per disk")
     availDiskSpaceDic = {}
@@ -335,8 +331,6 @@ def _cloneExec(srvObj,
     merely implemented in order to encapsulate the whole process to be able
     to clean up properly when the processing is terminated.
     """
-    T = TRACE(1)
-
     cloneListDbm = cloneStatusDbm = None
 
     emailNotif = 0
@@ -734,8 +728,6 @@ def _cloneExplicit(srvObj,
 
     Returns:          Void.
     """
-    T = TRACE(1)
-
     # Resolve the location of the file to clone.
     location, hostId, ipAddress, portNo, mountPoint, filename,\
               fileVersion, mimeType =\
@@ -1124,8 +1116,6 @@ def clone(srvObj,
 
     Returns:       Void.
     """
-    T = TRACE()
-
     tmpFilePat = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(), "CLONE_CMD")
     try:
         _clone(srvObj, diskId, fileId, fileVersion, targetDiskId,

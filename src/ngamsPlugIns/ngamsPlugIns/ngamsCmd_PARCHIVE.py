@@ -44,7 +44,7 @@ from six.moves.urllib import request as urlrequest  # @UnresolvedImport
 
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
     NGAMS_FAILURE, NGAMS_HTTP_POST, getHostName, \
-    NGAMS_HTTP_HDR_CHECKSUM, TRACE, genLog, NGAMS_IDLE_SUBSTATE
+    NGAMS_HTTP_HDR_CHECKSUM, genLog, NGAMS_IDLE_SUBSTATE
 from ngamsLib import ngamsStatus, ngamsHighLevelLib,  ngamsLib
 
 
@@ -154,8 +154,6 @@ def saveFromHttpToHttp(reqPropsObj,
     Returns:         Tuple. Element 0: Time in took to write
                      file (s) (tuple).
     """
-    T = TRACE()
-
     mimeType = reqPropsObj.getMimeType()
     nexturl = reqPropsObj.getHttpPar('nexturl')
     if (reqPropsObj.hasHttpPar('reporturl')):
@@ -325,7 +323,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
     # Check if the URI is correctly set.
     logger.debug("Check if the URI is correctly set.")
     if (reqPropsObj.getFileUri() == ""):

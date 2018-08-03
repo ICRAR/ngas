@@ -35,7 +35,7 @@ an archived file.
 
 import xml.dom.minidom
 
-from .ngamsCore import ignoreValue, getAttribValue, prFormat1, TRACE, genLog, fromiso8601, toiso8601
+from .ngamsCore import ignoreValue, getAttribValue, prFormat1, genLog, fromiso8601, toiso8601
 
 
 # TODO:
@@ -665,8 +665,6 @@ class ngamsFileInfo:
 
         Return:        Reference to object itself.
         """
-        T = TRACE(5)
-
         self.setDiskId(sqlQueryRes[0])
         self.setFilename(sqlQueryRes[1])
         self.setFileId(sqlQueryRes[2])
@@ -764,8 +762,6 @@ class ngamsFileInfo:
 
         Returns:         Reference to object itself.
         """
-        T = TRACE(5)
-
         dbConObj.writeFileEntry(hostId,
                                 self.getDiskId(), self.getFilename(),
                                 self.getFileId(), self.getFileVersion(),
@@ -791,8 +787,6 @@ class ngamsFileInfo:
 
         Returns:            Reference to object itself.
         """
-        T = TRACE()
-
         statusNode = xml.dom.minidom.parseString(xmlDoc).\
                      getElementsByTagName("FileStatus")[0]
         self.unpackFromDomNode(statusNode)
@@ -869,8 +863,6 @@ class ngamsFileInfo:
 
         Returns:            XML DOM Node object (Node).
         """
-        T = TRACE(5)
-
         ign = ignoreUndefFields
         fileStatusEl = xml.dom.minidom.Document().createElement("FileStatus")
         objStat = self.getObjStatus()

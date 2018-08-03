@@ -45,7 +45,7 @@ import time
 import six
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, genLog, fromiso8601, tomjd, frommjd,\
+from ngamsLib.ngamsCore import genLog, fromiso8601, tomjd, frommjd,\
     toiso8601, FMT_DATE_ONLY, rmFile
 from ngamsLib import ngamsLib
 
@@ -70,8 +70,6 @@ def getFitsKeys(fitsFile,
 
                 (dictionary).
     """
-    T = TRACE()
-
     import astropy.io.fits as pyfits
     keyDic = defaultdict(list)
     try:
@@ -193,8 +191,6 @@ def prepFile(reqPropsObj,
 
                     (<DP ID>, <Date Obs. Night>, <Compr. Ext.>)   (tuple).
     """
-    T = TRACE()
-
     # If the file is already compressed, we have to decompress it.
     comprExt = ''
     compression = parDic["compression"]

@@ -33,7 +33,7 @@
 Class to handle the information in connection with one entry in the NGAS Cache.
 """
 
-from .ngamsCore import TRACE, getBoolean
+from .ngamsCore import getBoolean
 from . import ngamsDbCore
 
 
@@ -339,8 +339,6 @@ class ngamsFileSummary1:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE()
-
         self.\
                setSlotId(sqlInfo[ngamsDbCore.SUM1_SLOT_ID]).\
                setMountPoint(sqlInfo[ngamsDbCore.SUM1_MT_PT]).\

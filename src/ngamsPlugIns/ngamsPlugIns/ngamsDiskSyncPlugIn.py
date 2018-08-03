@@ -35,8 +35,6 @@ import logging
 import subprocess
 import threading
 
-from ngamsLib.ngamsCore import TRACE
-
 logger = logging.getLogger(__name__)
 
 # Used to serialize the startup of server processes
@@ -52,8 +50,6 @@ def ngamsDiskSyncPlugIn(srvObj):
 
     Returns:       Void.
     """
-    T = TRACE()
-
     # Sync filesystem to ensure file received on disk.
     logger.debug("Performing OS sync command ...")
     with _proc_startup_lock:

@@ -39,8 +39,7 @@ import time
 
 from ngamsLib import ngamsDppiStatus
 from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize, \
-    TRACE, genLog, NGAMS_PROC_FILE, \
-    NGAMS_HOST_LOCAL, \
+    genLog, NGAMS_PROC_FILE, NGAMS_HOST_LOCAL, \
     NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
@@ -117,8 +116,6 @@ def performProcessing(srvObj,
     Returns:      List with ngamsDppiStatus object
                   (list/ngamsDppiStatus objects).
     """
-    T = TRACE()
-
     statusObjList = []
 
     # Carry out the processing specified. If no processing is
@@ -155,8 +152,6 @@ def cleanUpAfterProc(statusObjList):
 
     Returns:         Void.
     """
-    T = TRACE()
-
     for statObj in statusObjList:
         for resObj in statObj.getResultList():
             if (resObj.getProcDir() != ""):
@@ -229,7 +224,6 @@ def _handleCmdRetrieve(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
     # For data files, retrieval must be enabled otherwise the request is
     # rejected.
     if (not srvObj.getCfg().getAllowRetrieveReq()):
@@ -339,8 +333,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     srvObj.checkSetState("Command RETRIEVE", [NGAMS_ONLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
                          "", NGAMS_BUSY_SUBSTATE)

@@ -82,8 +82,6 @@ When the
 import threading
 import time
 
-from .ngamsCore import TRACE
-
 
 # Constants.
 # - Used to signal that the thread has terminated execution. This will be
@@ -136,8 +134,6 @@ class ngamsThreadGroup:
                          time it takes to execute the business logical of the
                          thread (float).
         """
-        T = TRACE()
-
         self.__id             = id
         self.__function       = function
         self.__instances      = int(instances)
@@ -176,8 +172,6 @@ class ngamsThreadGroup:
 
         Returns:  Reference to object itself.
         """
-        T = TRACE(5)
-
         self.__generalMux.acquire()
         return self
 
@@ -188,8 +182,6 @@ class ngamsThreadGroup:
 
         Returns:  Reference to object itself.
         """
-        T = TRACE(5)
-
         self.__generalMux.release()
         return self
 
@@ -200,8 +192,6 @@ class ngamsThreadGroup:
 
         Returns:   Number of active threads (integer).
         """
-        T = TRACE(5)
-
         activeThreads = 0
         for threadHandle in self.__threadHandles:
             if (threadHandle.isAlive()): activeThreads += 1
@@ -247,8 +237,6 @@ class ngamsThreadGroup:
 
         Returns:     Void.
         """
-        T = TRACE()
-
         self.checkPauseStop()
         try:
             self.__threadTiming[self.getThreadId()] = time.time()
@@ -278,8 +266,6 @@ class ngamsThreadGroup:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE()
-
         self.__pauseEvent.set()
         if (wait): self.wait(timeout)
         return self
@@ -291,8 +277,6 @@ class ngamsThreadGroup:
 
         Returns:    Reference to object itself.
         """
-        T = TRACE()
-
         self.__execute = False
         self.__pauseEvent.set()
         return self
@@ -313,8 +297,6 @@ class ngamsThreadGroup:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE(5)
-
         if (not self.__execute): self.terminateNormal()
         self.__pauseEvent.wait()
         if (not self.__execute): self.terminateNormal()
@@ -330,8 +312,6 @@ class ngamsThreadGroup:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE()
-
         # Make a constant suspension if requested.
         if (self.__loopSuspension): time.sleep(self.__loopSuspension)
 
@@ -356,8 +336,6 @@ class ngamsThreadGroup:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE()
-
         startTime = time.time()
         thrWaitingList = []
         for thrHandle in self.__threadHandles:
@@ -383,8 +361,6 @@ class ngamsThreadGroup:
 
         Returns:   Void.
         """
-        T = TRACE()
-
         self.__pauseEvent.set()
         raise Exception(NGAMS_THR_GROUP_STOP_NORMAL)
 
@@ -397,8 +373,6 @@ class ngamsThreadGroup:
 
         Returns:   Void.
         """
-        T = TRACE()
-
         self.__pauseEvent.set()
         raise Exception("%s: %s" % (NGAMS_THR_GROUP_STOP_ERROR, str(error)))
 

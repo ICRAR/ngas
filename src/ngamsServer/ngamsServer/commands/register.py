@@ -38,7 +38,7 @@ import time
 
 import six
 
-from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
+from ngamsLib.ngamsCore import rmFile, NGAMS_HTTP_GET, \
     NGAMS_REGISTER_CMD, mvFile, getFileCreationTime, \
     NGAMS_FILE_STATUS_OK, genLog, NGAMS_SUCCESS, NGAMS_XML_MT, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
@@ -123,8 +123,6 @@ def _registerExec(srvObj,
 
     Returns:         Void.
     """
-    T = TRACE()
-
     emailNotif = 0
     if (reqPropsObj):
         if (reqPropsObj.hasHttpPar("notif_email")):
@@ -491,8 +489,6 @@ def register(srvObj,
 
     Returns:      Void.
     """
-    T = TRACE()
-
     # Check if the given path or file exists.
     if (not os.path.exists(path)):
         errMsg = genLog("NGAMS_ER_FILE_REG_FAILED",
@@ -692,8 +688,6 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-
     # Is this NG/AMS permitted to handle Archive Requests?
     if (not srvObj.getCfg().getAllowArchiveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Register"])

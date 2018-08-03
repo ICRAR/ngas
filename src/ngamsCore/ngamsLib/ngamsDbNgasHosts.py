@@ -39,7 +39,6 @@ import collections
 import six
 
 from. import ngamsDbCore
-from .ngamsCore import TRACE
 
 
 class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
@@ -59,8 +58,6 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         Returns:     List with sub-lists containing the information about the
                      hosts from the NGAS Hosts Table (list).
         """
-        T = TRACE()
-
         sqlQuery = ["SELECT %s FROM ngas_hosts nh WHERE host_id IN (" % ngamsDbCore.getNgasHostsCols()]
         sqlQuery.append(', '.join(["{}"] * len(hostList)))
         sqlQuery.append(")")
@@ -163,8 +160,6 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
         Returns:       Reference to object itself.
         """
-        T = TRACE()
-
         # Key: column index; value: value to be INSERTed
         # It's ordered so we can iterate over it in the correct order later
         args = collections.OrderedDict()
@@ -212,8 +207,6 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
         Returns:    Void.
         """
-        T = TRACE(5)
-
         sql = "UPDATE ngas_hosts SET " +\
               "srv_version={0}, srv_port={1}, srv_archive={2}, " +\
               "srv_retrieve={3}, srv_process={4}, srv_remove={5}, " +\
@@ -240,8 +233,6 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
         Returns:       Reference to object itself.
         """
-        T = TRACE()
-
         wakeUpTimeLoc = self.asTimestamp(wakeUpTime)
         sqlQuery = "UPDATE ngas_hosts SET srv_suspended=1, " +\
                    "srv_req_wake_up_srv={0}, srv_req_wake_up_time={1} " +\
@@ -260,8 +251,6 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
         Returns:   Reference to object itself.
         """
-        T = TRACE()
-
         sql = "UPDATE ngas_hosts SET srv_suspended=1 WHERE host_id={0}"
         self.query2(sql, args=(hostId,))
         self.triggerEvents()
@@ -279,8 +268,6 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
         Returns:       Reference to object itself.
         """
-        T = TRACE()
-
         sql = ["UPDATE ngas_hosts SET srv_req_wake_up_srv=''"]
         if (resetSrvSusp):
             sql.append(", srv_suspended=0")
@@ -300,8 +287,6 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
         Returns:       List with nodes in the cluster (list/string).
         """
-        T = TRACE()
-
         sql = "SELECT host_id FROM ngas_hosts WHERE cluster_name={0}"
         res = self.query2(sql, args=(clusterName,))
         return [x[0] for x in res]
@@ -319,8 +304,6 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
                                                                 (list/tuple)
         """
-        T = TRACE(5)
-
         sql = "SELECT host_id, srv_req_wake_up_time from ngas_hosts WHERE " +\
               "srv_req_wake_up_srv={0} AND srv_suspended=1"
         res = self.query2(sql, args=(hostId,))
@@ -379,8 +362,6 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
         Returns:         Reference to object itself.
         """
-        T = TRACE()
-
         startDbTime = self.asTimestamp(start)
         endDbTime = self.asTimestamp(start + estimTime)
         sql = "UPDATE ngas_hosts SET " +\
