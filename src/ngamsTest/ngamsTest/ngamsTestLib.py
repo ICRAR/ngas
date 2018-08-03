@@ -1079,7 +1079,7 @@ class ngamsTestSuite(unittest.TestCase):
         return (cfgObj, dbObj)
 
 
-    def termExtSrv(self, srvInfo):
+    def termExtSrv(self, srvInfo, auth=None):
         """
         Terminate an externally running server.
         """
@@ -1113,7 +1113,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         logger.debug("Killing externally running NG/AMS Server. PID: %d, Port: %d ", srvProcess.pid, port)
         try:
-            pCl = sendPclCmd(port=port, timeOut=10)
+            pCl = sendPclCmd(port=port, auth=auth, timeOut=10)
             stat = pCl.status()
             if stat.getState() != "OFFLINE":
                 logger.info("Sending OFFLINE command to external server ...")

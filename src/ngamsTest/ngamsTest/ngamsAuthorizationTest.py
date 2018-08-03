@@ -117,3 +117,8 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         self._assert_code(404, bauth=auth1, cmd='DOESNT_EXIST')
         self._assert_code(403, bauth=auth2, cmd='DOESNT_EXIST')
         self._assert_code(404, bauth=auth3, cmd='DOESNT_EXIST')
+
+        # Manually shut down the server
+        # This is merely so the tearDown() method doesn't kill it wih -9, which
+        # in turn means we get no coverage measurement of what we actually tested
+        self.termExtSrv(self.extSrvInfo.pop(), auth=auth1)
