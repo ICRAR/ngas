@@ -59,7 +59,7 @@ class ngamsAuthorizationTest(ngamsTestSuite):
     """
 
     def _assert_code(self, code, bauth=None, raw_auth=None, cmd='STATUS'):
-        auth = raw_auth or 'Basic ' + utils.b2s(base64.b64encode(bauth)) if bauth else None
+        auth = raw_auth or b'Basic ' + base64.b64encode(bauth) if bauth else None
         resp = ngamsHttpUtils.httpGet('127.0.0.1', 8888, cmd, auth=auth)
         with contextlib.closing(resp):
             self.assertEqual(code, resp.status)
