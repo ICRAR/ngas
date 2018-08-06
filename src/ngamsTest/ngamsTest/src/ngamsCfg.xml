@@ -287,10 +287,10 @@
   <HostSuspension Id="HostSuspension-Test" 
                   IdleSuspension="0" 
                   IdleSuspensionTime="10" 
-                  SuspensionPlugIn="ngamsTest.ngamsTestSuspensionPlugIn"
+                  SuspensionPlugIn="ngamsTest.support.ngamsTestSuspensionPlugIn"
                   SuspensionPlugInPars="SUSPENSION,PI,PARS" 
                   WakeUpCallTimeOut="10" 
-                  WakeUpPlugIn="ngamsTest.ngamsTestWakeUpPlugIn"
+                  WakeUpPlugIn="ngamsTest.support.ngamsTestWakeUpPlugIn"
                   WakeUpPlugInPars="WAKE-UP,PI,PARS" 
                   WakeUpServerHost="DEFINE"/>
 

@@ -99,7 +99,7 @@ class ngamsServerTest(ngamsTestSuite):
     def test_too_many_requests(self):
 
         saveInFile("tmp/handleHttpRequest_tmp", "handleHttpRequest_Block5secs")
-        self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack",
+        self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack",
                         cfgProps=(('NgamsCfg.Server[1].MaxSimReqs', '2'),))
 
         # Fire off two clients, each takes 5 seconds to finish

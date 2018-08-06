@@ -348,7 +348,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         """
         tmpCfgFile = genTmpFilename("ngamsRetrieveCmdTest")
         cfg = ngamsConfig.ngamsConfig().load("src/ngamsCfg.xml")
-        cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].Name", "ngamsTest.ngamsTestDppi1")
+        cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].Name", "ngamsTest.support.ngamsTestDppi1")
         cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
                      "TAG=test_DppiProc_01,TARGET=FILE")
         cfg.save(tmpCfgFile, 0)
@@ -363,7 +363,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                 ["test_case", "test_DppiProc_01"]]
         stat = client.retrieve("TEST.2001-05-08T15:25:00.123",
                                targetFile=outFile,
-                               processing="ngamsTest.ngamsTestDppi1",
+                               processing="ngamsTest.support.ngamsTestDppi1",
                                pars=pars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_01_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
@@ -399,7 +399,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         """
         tmpCfgFile = genTmpFilename("ngamsRetrieveCmdTest")
         cfg = ngamsConfig.ngamsConfig().load("src/ngamsCfg.xml")
-        cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].Name", "ngamsTest.ngamsTestDppi1")
+        cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].Name", "ngamsTest.support.ngamsTestDppi1")
         cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
                      "TAG=test_DppiProc_02,TARGET=BUFFER")
         cfg.save(tmpCfgFile, 0)
@@ -413,7 +413,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                 ["test_case", "test_DppiProc_02"]]
         stat = client.retrieve("TEST.2001-05-08T15:25:00.123",
                                targetFile=outFile,
-                               processing="ngamsTest.ngamsTestDppi1",
+                               processing="ngamsTest.support.ngamsTestDppi1",
                                pars=pars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_02_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
@@ -449,7 +449,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         ...
         """
         ncuCfgPars = [["NgamsCfg.Processing[1].PlugIn[1].Name",
-                       "ngamsTest.ngamsTestDppi1"],
+                       "ngamsTest.support.ngamsTestDppi1"],
                       ["NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
                        "TAG=test_DppiProc_02,TARGET=FILE"]]
         self.prepCluster((8000, (8011, ncuCfgPars)))
@@ -461,7 +461,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                 ["test_case", "test_DppiProc_03"]]
         stat = sendPclCmd(port=8000).retrieve("TEST.2001-05-08T15:25:00.123",
                                               targetFile=outFile,
-                                              processing="ngamsTest.ngamsTestDppi1",
+                                              processing="ngamsTest.support.ngamsTestDppi1",
                                               pars=pars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_03_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\

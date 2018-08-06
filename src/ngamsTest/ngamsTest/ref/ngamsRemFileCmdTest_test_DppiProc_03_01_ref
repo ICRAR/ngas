@@ -30,7 +30,7 @@ TARGET=FILE
 
 Parameters Transferred:
 file_id=TEST.2001-05-08T15:25:00.123
-processing=ngamsTest.ngamsTestDppi1
+processing=ngamsTest.support.ngamsTestDppi1
 test_case=test_DppiProc_03
 test_suite=ngamsRetrieveCmdTest
 time_out=60.0
