@@ -652,12 +652,10 @@ def postFileRecepHandling(srvObj,
     # Now handle the Replication Disk - if there is a corresponding Replication
     # Disk for the Main Disk and if not replication was disabled by the DAPI.
     if do_replication and srvObj.getCfg().getReplication():
-        srvObj.test_BeforeRepFile()
         assocSlotId = srvObj.getCfg().getAssocSlotId(resultPlugIn.getSlotId())
         if ((not reqPropsObj.getNoReplication()) and (assocSlotId != "")):
             resRep = replicateFile(srvObj.getDb(), srvObj.getCfg(),
                                    srvObj.getDiskDic(), resultPlugIn)
-            srvObj.test_BeforeDbUpdateRepFile()
             updateFileInfoDb(srvObj, resRep, checksum, checksumPlugIn,
                              sync_disk=sync_disk)
             ngamsDiskUtils.updateDiskStatusDb(srvObj.getDb(), resRep)
@@ -1095,11 +1093,9 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
 
         # Pickle the request object if necessary
         if pickle_request:
-            srvObj.test_AfterSaveInStagingFile()
             logger.debug("Create Temporary Request Properties File: %s", tmpReqPropsFilename)
             tmpReqPropsObj = reqPropsObj.clone().setTargDiskInfo(None)
             ngamsLib.createObjPickleFile(tmpReqPropsFilename, tmpReqPropsObj)
-            srvObj.test_AfterCreateTmpPropFile()
             logger.debug("Move Temporary Request Properties File to Request " + \
                          "Properties File: %s -> %s",
                          tmpReqPropsFilename, reqPropsFilename)
@@ -1126,20 +1122,17 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
 
         logger.info("Invoking DAPI: %s to handle data for file with URI: %s",
                     plugIn, os.path.basename(reqPropsObj.getFileUri()))
-        srvObj.test_BeforeDapiInvocation()
 
         timeBeforeDapi = time.time()
         reqPropsObj.addHttpPar('crc_name', archive_result.crcname)
         plugin_result = plugInMethod(srvObj, reqPropsObj)
         del reqPropsObj.getHttpParsDic()['crc_name']
-        srvObj.test_AfterDapiInvocation()
         logger.debug("Invoked DAPI: %s. Time: %.3fs.", plugIn, (time.time() - timeBeforeDapi))
 
         # Move the file to final destination.
         ioTime = mvFile(reqPropsObj.getStagingFilename(),
                         plugin_result.getCompleteFilename())
         reqPropsObj.incIoTime(ioTime)
-        srvObj.test_AfterMovingStagingFile()
 
         # Remember to set the final IO time in the plug-in status object.
         plugin_result.setIoTime(reqPropsObj.getIoTime())
