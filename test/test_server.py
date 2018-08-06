@@ -126,7 +126,7 @@ class ngamsServerTest(ngamsTestSuite):
 
         # Let this module implement the TEST command
         cfg = (('NgamsCfg.Commands[1].Command[1].Name', 'TEST'),
-               ('NgamsCfg.Commands[1].Command[1].Module', 'ngamsTest.ngamsServerTest'))
+               ('NgamsCfg.Commands[1].Command[1].Module', 'test.test_server'))
         self.prepExtSrv(cfgProps=cfg)
         client = sendPclCmd()
 

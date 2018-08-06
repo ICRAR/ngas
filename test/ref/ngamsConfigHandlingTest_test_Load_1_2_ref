@@ -8,7 +8,7 @@
   <Header Context="NG/AMS" Name="ngamsCfg.xml" Release="1.0" Revision="TEST-REVISION" Source="jknudstr@eso.org" Type="NGAMS-TEST-BASE-CONFIGURATION">
     <Description/>
   </Header>
-  <HostSuspension Id="HostSuspension-Test" IdleSuspension="0" IdleSuspensionTime="10" SuspensionPlugIn="ngamsTest.support.ngamsTestSuspensionPlugIn" SuspensionPlugInPars="SUSPENSION,PI,PARS" WakeUpCallTimeOut="10" WakeUpPlugIn="ngamsTest.support.ngamsTestWakeUpPlugIn" WakeUpPlugInPars="WAKE-UP,PI,PARS" WakeUpServerHost="DEFINE"/>
+  <HostSuspension Id="HostSuspension-Test" IdleSuspension="0" IdleSuspensionTime="10" SuspensionPlugIn="test.support.ngamsTestSuspensionPlugIn" SuspensionPlugInPars="SUSPENSION,PI,PARS" WakeUpCallTimeOut="10" WakeUpPlugIn="test.support.ngamsTestWakeUpPlugIn" WakeUpPlugInPars="WAKE-UP,PI,PARS" WakeUpServerHost="DEFINE"/>
   <JanitorThread Id="JanitorThread-Std" MinSpaceSysDirMb="1000" SuspensionTime="0T00:03:00"/>
   <Log Id="Log-Test" LocalLogFile="/tmp/ngamsTest/NGAS/log/LogFile.nglog" LocalLogLevel="1" LogBufferSize="10" LogRotateCache="30" LogRotateInt="01T00:00:00" SysLog="0" SysLogPrefix="NGASLog"/>
   <MimeTypes Id="MimeTypes-Std">

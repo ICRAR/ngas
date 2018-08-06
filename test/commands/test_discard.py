@@ -31,17 +31,11 @@
 This module contains the Test Suite for the SUBSCRIBE Command.
 """
 
-import os
-
 from ngamsLib.ngamsCore import NGAMS_DISCARD_CMD, cpFile
 from ..ngamsTestLib import ngamsTestSuite, sendExtCmd, sendPclCmd
 
 
-try:
-    illStatDoc  = "Incorrect info in DISCARD Command XML Status Document/%s."
-    srcFitsFile = os.path.abspath("src/SmallFile.fits")
-except:
-    pass
+illStatDoc  = "Incorrect info in DISCARD Command XML Status Document/%s."
 
 class ngamsDiscardCmdTest(ngamsTestSuite):
     """
@@ -170,7 +164,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
-        sendPclCmd().archive(srcFitsFile)
+        sendPclCmd().archive('src/SmallFile.fits')
         mDiskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         pars = [["disk_id", mDiskId],
                 ["file_id", "TEST.2001-05-08T15:25:00.123"],
@@ -226,7 +220,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         trgFile = "/tmp/ngamsTest/NGAS/FitsStorage3-Main-5/saf/SmallFile.fits"
-        cpFile(srcFitsFile, trgFile)
+        cpFile('src/SmallFile.fits', trgFile)
         tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
                                  [["path", trgFile], ["execute", "0"]])
         refStatFile = "ref/ngamsDiscardCmdTest_test_NormalExec_2_1_ref"

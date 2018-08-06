@@ -29,8 +29,6 @@
 # TRAVIS_OS_NAME    the OS under which we are running (linux, osx)
 #
 
-cd ${TRAVIS_BUILD_DIR}/src/ngamsTest/ngamsTest
-
 # In OSX we create our own virtualenv, see run_build.sh
 if [ "${TRAVIS_OS_NAME}" = "osx" ]
 then
@@ -45,10 +43,8 @@ if [[ "$DB" == "mysql" ]]; then
 elif [[ "$DB" == "postgresql" ]]; then
 	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="psycopg2" host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>'
 fi
+export NGAS_TESTDB
 
 pip install psutil pytest-cov coveralls
-
-# Prepare for sub-process coverage
-mkdir coverage.tmp
-echo -e "import coverage\ncoverage.process_startup()" > coverage.tmp/sitecustomize.py
-NGAS_TESTDB="${NGAS_TESTDB}" PYTHONPATH=$PWD/coverage.tmp py.test -o 'python_files=*Test.py test_*.py' --cov
+cd ${TRAVIS_BUILD_DIR}/test
+py.test --cov

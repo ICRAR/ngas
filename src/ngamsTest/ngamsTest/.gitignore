@@ -1,7 +1,0 @@
-# Coverage results
-.coverage
-.coverage.*
-
-# The directory with the HTML report
-# generated with "coverage html"
-htmlcov/
