@@ -37,7 +37,7 @@ import threading
 import time
 
 from ngamsLib.ngamsCore import cpFile
-from .ngamsTestLib import incArcfile, sendPclCmd, ngamsTestSuite
+from ..ngamsTestLib import incArcfile, sendPclCmd, ngamsTestSuite
 
 
 TST_STR1 = "Successfully handled Archive Push Request for data file " +\
