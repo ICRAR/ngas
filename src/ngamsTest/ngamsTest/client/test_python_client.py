@@ -38,7 +38,7 @@ import sys
 
 from ngamsLib.ngamsCore import getHostName
 from ngamsPClient import ngamsPClient
-from .ngamsTestLib import ngamsTestSuite, waitReqCompl, unzip
+from ..ngamsTestLib import ngamsTestSuite, waitReqCompl, unzip
 
 
 class ngamsPClientTest(ngamsTestSuite):

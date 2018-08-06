@@ -38,7 +38,7 @@ import unittest
 
 from ngamsLib import ngamsStatus, utils
 from ngamsLib.ngamsCore import getHostName, rmFile, cpFile, execCmd
-from .ngamsTestLib import ngamsTestSuite, saveInFile, loadFile, \
+from ..ngamsTestLib import ngamsTestSuite, saveInFile, loadFile, \
     filterOutLines, sendPclCmd, STD_DISK_STAT_FILT, has_program
 
 
