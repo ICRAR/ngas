@@ -15,6 +15,7 @@ setup(name='ngasUtils',
       url='',
       license='',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
+      scripts=['src/diskTest.py'],
       include_package_data=True,
       zip_safe=True,
       install_requires=[
