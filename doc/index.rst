@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 2
 
    introduction
+   changelog
    install
    post_installation
    server
