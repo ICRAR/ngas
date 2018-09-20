@@ -93,7 +93,7 @@ then
 	if [ -n "$VIRTUAL_ENV" ]
 	then
 		prefix="--prefix=$VIRTUAL_ENV"
-		echo "Will install NGAS under $VIRTUAL_ENV"
+		echo "Will install NGAS C client under $VIRTUAL_ENV"
 	fi
 
 	cd ngamsCClient
@@ -109,6 +109,21 @@ fi
 # The gleam plug-ins require numpy, but we leave that
 # out of the core dependencies of NGAS
 pip install 'astropy' || warning "Failed to install astropy via pip"
+
+# It would be ideal to install the NGAS modules via pip,
+# but their setup.py currently references the VERSION File
+# at the root of this repository. pip on the other hand makes
+# a copy of the sources onto some temporary directory to build
+# the modules, and therefore they fail to build due to the missing
+# file.
+#
+# We have two solutions for this:
+# * Stop organizing the code as separate modules
+# * Have each module maintain its own version
+#
+# I haven't decided on either yet, but I think the first one
+# makes more sense given that nobody is really using the client only,
+# and most of the dependencies are on the ngamsCore package anyway
 for pyModule in ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)
