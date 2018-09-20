@@ -759,7 +759,7 @@ def data_check_cycle(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt):
     finally:
         srvObj.updateHostInfo(None, None, None, None, None, None, 0, None)
 
-def dataCheckThread(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt):
+def dataCheckThread(srvObj, checksum_allow_evt, checksum_stop_evt, stopEvt):
     """
     The Data Check Thread is executed to run a periodic check of the
     consistency of the data files contained in an NG/AMS system. The periodic

@@ -377,7 +377,7 @@ def _cloneExec(srvObj,
         key += 1
 
         # Check if we have permission to run. Otherwise, stop.
-        if (not srvObj.getThreadRunPermission()): break
+        if (not srvObj.run_async_commands): break
 
         fio = fileInfo[0]
         mtPt = fileInfo[2]

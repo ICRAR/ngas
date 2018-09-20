@@ -40,9 +40,7 @@ from ngamsLib.ngamsCore import isoTime2Secs
 
 logger = logging.getLogger(__name__)
 
-NGAMS_USER_SERVICE_THR = "USER-SERVICE-THREAD"
-
-def userServiceThread(srvObj, stopEvt, userServicePlugin):
+def userServiceThread(srvObj, userServicePlugin, stopEvt):
     """
     The User Service Thread runs periodically a user provided plug-in
     (User Service Plug-In) which carries out tasks needed in a specific

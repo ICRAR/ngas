@@ -65,7 +65,8 @@ from ngamsLib.ngamsCore import genLog, getNgamsVersion, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR,\
     NGAMS_NOT_SET, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
     toiso8601
-from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils
+from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils,\
+    utils
 from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 from . import janitor
@@ -536,6 +537,11 @@ class ngamsServer(object):
         self.serving_count = 0
         self.serving_count_lock = threading.Lock()
 
+        # Whether background threads *started by commands* are allowed to run
+        # or not. Background tasks like the janitor, data check or subscription
+        # threads use their own synchronization mechanism
+        self.run_async_commands = False
+
         # Coalesces whether requests are being served at all or not.
         # When the value changes, listeners are notified
         # The value is get and set via a property that encapsulates
@@ -559,20 +565,14 @@ class ngamsServer(object):
         self._threadRunPermission     = 0
 
         # Handling of the Janitor Thread.
-        self._janitorThread         = None
-        self._janitorThreadStopEvt  = threading.Event()
+        self._janitorThread = utils.Task("Janitor", janitor.janitorThread, mode=utils.Task.PROCESS)
+        self._janitorQueThread = utils.Task("JanitorQueReaderThread", self.janitorQueThread, stop_evt=self._janitorThread.stop_evt)
         self._janitorThreadRunCount = 0
         self._janitordbChangeSync = ngamsEvent.ngamsEvent()
 
-        # Handling of the Janitor Queue reader Thread.
-        self._janitorQueThread         = None
-
-        # Handling of the Janitor // Processs
-        self._janitorProcStopEvt     = multiprocessing.Event()
-
         # Handling of the Data Check Thread.
-        self._dataCheckThread        = None
-        self._dataCheckThreadStopEvt = threading.Event()
+        self._data_check_thread = utils.Task(ngamsDataCheckThread.NGAMS_DATA_CHECK_THR,
+                                             ngamsDataCheckThread.dataCheckThread)
 
         # The events that control the execution of the checksum calculation
         # The allowed event is initially set because initially the server
@@ -609,8 +609,8 @@ class ngamsServer(object):
         self._subscriptionStatusList  = []
 
         # Handling of the Mirroring Control Thread.
-        self._mirControlThreadStopEvt = threading.Event()
-        self._mirControlThread        = None
+        self._mir_control_thread = utils.Task(ngamsMirroringControlThread.NGAMS_MIR_CONTROL_THR,
+                                              ngamsMirroringControlThread.mirControlThread)
         self.__mirControlTrigger      = threading.Event()
         self._pauseMirThreads         = False
         self._mirThreadsPauseCount    = 0
@@ -630,8 +630,7 @@ class ngamsServer(object):
         self._srcArchInfoDbmSem = threading.Semaphore(1)
 
         # Handling of User Service Plug-In.
-        self._userServiceThread  = None
-        self._userServiceStopEvt = threading.Event()
+        self._user_service_thread = utils.Task('USER-SERVICE-THREAD', ngamsUserServiceThread.userServiceThread)
 
         # Handling of host info in ngas_hosts.
         self.__hostInfo               = ngamsHostInfo.ngamsHostInfo()
@@ -650,8 +649,8 @@ class ngamsServer(object):
         self.request_db = None
 
         # Handling of a Cache Archive.
-        self._cacheControlThread        = None
-        self._cacheControlThreadStopEvt = threading.Event()
+        self._cache_control_thread = utils.Task(ngamsCacheControlThread.NGAMS_CACHE_CONTROL_THR,
+                                                ngamsCacheControlThread.cacheControlThread)
 
         # - Cache Contents SQLite DBMS.
         self._cacheContDbms             = None
@@ -1001,29 +1000,6 @@ class ngamsServer(object):
         self.relStateSem()
 
 
-    def setThreadRunPermission(self,
-                               permission):
-        """
-        Set the Thread Run Permission Flag. A value of 1 means that
-        the threads are allowed to run.
-
-        permission:    Thread Run Permission flag (integer/0|1).
-
-        Returns:       Reference to object itself.
-        """
-        self._threadRunPermission = permission
-        return self
-
-
-    def getThreadRunPermission(self):
-        """
-        Return the Thread Run Permission Flag.
-
-        Returns:       Thread Run Permission flag (integer/0|1).
-        """
-        return self._threadRunPermission
-
-
     def startJanitorThread(self):
         """
         Starts the Janitor Thread.
@@ -1033,60 +1009,28 @@ class ngamsServer(object):
         # Create the child process and kick it off
         self._serv_to_jan_queue = multiprocessing.Queue()
         self._jan_to_serv_queue = multiprocessing.Queue()
-        self._janitorThread = multiprocessing.Process(
-                                target=janitor.janitorThread,
-                                name="Janitor",
-                                args=(self, self._janitorProcStopEvt, self._serv_to_jan_queue, self._jan_to_serv_queue))
-        self._janitorThread.start()
+        self._janitorThread.start(self, self._serv_to_jan_queue, self._jan_to_serv_queue)
 
         # Re-create the DB connections
         self.reconnect_to_db()
 
         # Subscribe to db-change events (which we pass down to the janitor proc)
         self.getDb().addDbChangeEvt(self._janitordbChangeSync)
-        logger.info("Janitor Thread started")
 
         # Kick off the thread that takes care of communicating back and forth
-        self._janitorQueThread = threading.Thread(target=self.janitorQueThread,
-                                              name="JanitorQueReaderThread")
         self._janitorQueThread.start()
-        logger.info("Janitor Queue Reader Thread started")
 
 
     def stopJanitorThread(self):
         """
         Stops the Janitor Thread.
         """
-
-        if self._janitorThread is None:
-            logger.debug("No janitor process to stop")
-            return
-
-        code = self._janitorThread.exitcode
-        if code is not None:
-            logger.warning("Janitor process already exited with code %d"  % (code,))
-
-        # Set the event regardless, because our own thread also uses it
-        self._janitorProcStopEvt.set()
-        if not code:
-            logger.debug("Stopping Janitor Thread ...")
-            self._janitorThread.join(10)
-            code = self._janitorThread.exitcode
-            if code is None:
-                logger.warning("Janitor process didn't exit cleanly, killing it")
-                os.kill(self._janitorThread.pid, signal.SIGKILL)
-        self._janitorThread = None
+        self._janitorThread.stop(10)
+        self._janitorQueThread.stop(10)
         self._janitorThreadRunCount = 0
-        logger.info("Janitor Thread stopped")
-
-        self._janitorQueThread.join(10)
-        if self._janitorQueThread.is_alive():
-            logger.error("Janitor queue thread is still alive")
-        self._janitorQueThread = None
-        logger.info("Janitor Queue thread stopped")
 
 
-    def janitorQueThread(self):
+    def janitorQueThread(self, stop_evt):
         """
         This method runs in a separate thread, and implements the protocol
         which this parent process uses to communicate with the janitor process
@@ -1101,7 +1045,7 @@ class ngamsServer(object):
         """
 
         UNSET = object()
-        while not self._janitorProcStopEvt.is_set():
+        while not stop_evt.is_set():
 
             # Reading on our end
             try:
@@ -1173,66 +1117,25 @@ class ngamsServer(object):
         """
         if not self.getCfg().getDataCheckActive():
             return
-
-        logger.debug("Starting Data Check Thread ...")
-        self._dataCheckThread = threading.Thread(target=ngamsDataCheckThread.dataCheckThread,
-                                                 name=ngamsDataCheckThread.NGAMS_DATA_CHECK_THR,
-                                                 args=(self, self._dataCheckThreadStopEvt,
-                                                       self.checksum_allow_evt,
-                                                       self.checksum_stop_evt))
-        self._dataCheckThread.start()
-        logger.info("Data Check Thread started")
+        self._data_check_thread.start(self, self.checksum_allow_evt, self.checksum_stop_evt)
 
 
     def stopDataCheckThread(self):
-        """
-        Stop the Data Check Thread.
-
-        srvObj:     Reference to server object (ngamsServer).
-
-        Returns:    Void.
-        """
-        if not self.getCfg().getDataCheckActive():
-            return
-        if self._dataCheckThread is None:
-            return
-
-        logger.debug("Stopping Data Check Thread ...")
-        self._dataCheckThreadStopEvt.set()
-        self._dataCheckThread.join(10)
-        self._dataCheckThread = None
-        logger.info("Data Check Thread stopped")
+        """Stop the Data Check Thread"""
+        self._data_check_thread.stop(10)
 
 
     def startMirControlThread(self):
-        """
-        Starts the Mirroring Control Thread.
-        """
-
+        """Starts the Mirroring Control Thread"""
         if (not self.getCfg().getMirroringActive()):
             logger.info("NGAS Mirroring not active - Mirroring Control Thread not started")
             return
-
-        logger.debug("Starting the Mirroring Control Thread ...")
-        self._mirControlThread = threading.Thread(target=ngamsMirroringControlThread.mirControlThread,
-                                                  name=ngamsMirroringControlThread.NGAMS_MIR_CONTROL_THR,
-                                                  args=(self, self._mirControlThreadStopEvt))
-        self._mirControlThread.start()
-        logger.info("Mirroring Control Thread started")
+        self._mir_control_thread.start(self)
 
 
     def stopMirControlThread(self):
-        """
-        Stops the Mirroring Control Thread.
-        """
-        if self._mirControlThread is None:
-            return
-
-        logger.debug("Stopping the Mirroring Service ...")
-        self._mirControlThreadStopEvt.set()
-        self._mirControlThread.join(10)
-        self._mirControlThread = None
-        logger.info("Mirroring Control Thread stopped")
+        """Stops the Mirroring Control Thread"""
+        self._mir_control_thread.stop()
 
 
     def startUserServiceThread(self):
@@ -1249,27 +1152,11 @@ class ngamsServer(object):
         logger.info("Loading User Service Plug-In module: %s" % userServicePlugIn)
         userServicePlugIn = loadPlugInEntryPoint(userServicePlugIn)
 
-        logger.debug("Starting User Service Thread ...")
-        self._userServiceThread = threading.Thread(target=ngamsUserServiceThread.userServiceThread,
-                                                   name=ngamsUserServiceThread.NGAMS_USER_SERVICE_THR,
-                                                   args=(self, self._userServiceStopEvt, userServicePlugIn))
-        self._userServiceThread.start()
-        logger.info("User Service Thread started")
-
+        self._user_service_thread.start(self, userServicePlugIn)
 
     def stopUserServiceThread(self):
-        """
-        Stops the User Service Thread.
-        """
-        if not self._userServiceThread:
-            return
-
-        logger.debug("Stopping User Service Thread ...")
-        self._userServiceStopEvt.set()
-        self._userServiceThread.join(10)
-        self._userServiceThread = None
-        logger.info("User Service Thread stopped")
-
+        """Stops the User Service Thread"""
+        self._user_service_thread.stop(10)
 
     def startCacheControlThread(self):
         """
@@ -1280,7 +1167,6 @@ class ngamsServer(object):
             logger.info("NGAS Cache Service not active - will not start Cache Control Thread")
             return
 
-        logger.debug("Starting the Cache Control Thread ...")
         try:
             check_can_be_deleted = int(self.getCfg().getVal("Caching[1].CheckCanBeDeleted"))
         except:
@@ -1289,30 +1175,16 @@ class ngamsServer(object):
         logger.debug("Cache Control - CHECK_CAN_BE_DELETED = %d" % check_can_be_deleted)
 
         ready_evt = threading.Event()
-        self._cacheControlThread = threading.Thread(target=ngamsCacheControlThread.cacheControlThread,
-                                                      name=ngamsCacheControlThread.NGAMS_CACHE_CONTROL_THR,
-                                                      args=(self, self._cacheControlThreadStopEvt, ready_evt,
-                                                            check_can_be_deleted))
-        self._cacheControlThread.start()
+        self._cache_control_thread.start(self, ready_evt, check_can_be_deleted)
         if not ready_evt.wait(10):
             msg = ('Cache Control Thread took longer than expected to start. '
                    'This *might* cause issues during archiving, but not necessarily. Beware!')
             logger.warning(msg)
 
-        logger.info("Cache Control Thread started")
-
 
     def stopCacheControlThread(self):
-        """
-        Stop the Cache Control Thread.
-        """
-        if self._cacheControlThread is None:
-            return
-        logger.debug("Stopping the Cache Control Thread ...")
-        self._cacheControlThreadStopEvt.set()
-        self._cacheControlThread.join(10)
-        self._cacheControlThread = None
-        logger.info("Cache Control Thread stopped")
+        """Stop the Cache Control Thread"""
+        self._cache_control_thread.stop(10)
 
 
     def triggerSubscriptionThread(self):
@@ -2379,9 +2251,9 @@ class ngamsServer(object):
         logger.warning("About to commit suicide... good-by cruel world")
 
         #First kill the janitor process created by this ngamsServer
-        if self._janitorThread is not None:
+        if self._janitorThread._bg_task is not None:
             try:
-                os.kill(self._janitorThread.pid, signal.SIGKILL)
+                os.kill(self._janitorThread._bg_task.pid, signal.SIGKILL)
             except:
                 logger.warning("No Janitor process was found: %s. ")
 

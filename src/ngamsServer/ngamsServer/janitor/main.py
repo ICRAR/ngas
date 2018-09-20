@@ -108,7 +108,7 @@ class ForwarderHandler(logging.Handler):
         except:
             self.handleError(record)
 
-def janitorThread(srvObj, stopEvt, srv_to_jan_queue, jan_to_srv_queue):
+def janitorThread(srvObj, srv_to_jan_queue, jan_to_srv_queue, stopEvt):
     """
     Entry point for the janitor process. It checks which plug-ins should be run,
     how frequently, and runs them in an infinite loop.

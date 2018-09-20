@@ -36,14 +36,13 @@ import glob
 import logging
 import os
 import re
-import threading
 
 from ngamsLib.ngamsCore import NGAMS_NOT_RUN_STATE,\
     NGAMS_ONLINE_STATE, NGAMS_SUBSCRIBE_CMD,\
     NGAMS_SUCCESS, genLog, NGAMS_DISK_INFO, checkCreatePath,\
     NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
     loadPlugInEntryPoint, toiso8601, fromiso8601
-from ngamsLib import ngamsStatus, ngamsLib, ngamsHttpUtils
+from ngamsLib import ngamsStatus, ngamsLib, ngamsHttpUtils, utils
 from ngamsLib import ngamsPhysDiskInfo
 from ngamsLib import ngamsSubscriber
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
@@ -100,7 +99,7 @@ def _create_remote_subscriptions(srvObj, stop_evt):
         # Iterate over copy, since we modify the original inside the loop
         for subscrObj in list(subscriptions):
 
-            if (not srvObj.getThreadRunPermission()):
+            if stop_evt.is_set():
                 logger.info("Terminating Subscriber thread ...")
                 return
 
@@ -110,7 +109,7 @@ def _create_remote_subscriptions(srvObj, stop_evt):
             # Not subscribing to ourselves
             if srvObj.is_it_us(subs_host, subs_port):
                 logger.warning("Skipping subscription to %s:%d because that's us", subs_host, subs_port)
-                return
+                continue
 
             # Create the URL that needs to be set on the remote end so we
             # get subscribed to it.
@@ -358,13 +357,13 @@ def handleOnline(srvObj,
     checkStagingAreas(srvObj)
 
     # Start threads + inform threads that they are allowed to execute.
-    srvObj.setThreadRunPermission(1)
     srvObj.startJanitorThread()
     srvObj.startDataCheckThread()
     ngamsSubscriptionThread.startSubscriptionThread(srvObj)
     srvObj.startUserServiceThread()
     srvObj.startMirControlThread()
     srvObj.startCacheControlThread()
+    srvObj.run_async_commands = True
 
     # Change state to Online.
     srvObj.setState(NGAMS_ONLINE_STATE)
@@ -373,13 +372,10 @@ def handleOnline(srvObj,
     # Subscriber, then subscribe to the Data Providers specified. We do this
     # in a thread so that the server can continuously try to subscribe,
     # even after errors occur.
+    t = utils.Task(NGAMS_SUBSCRIBER_THR, _create_remote_subscriptions)
+    srvObj.remote_subscription_creation_task = t
     if (srvObj.getCfg().getSubscrEnable()):
-        srvObj.remote_subscription_creation_evt = threading.Event()
-        thrObj = threading.Thread(target=_create_remote_subscriptions,
-                                  name=NGAMS_SUBSCRIBER_THR,
-                                  args=(srvObj, srvObj.remote_subscription_creation_evt))
-        thrObj.setDaemon(0)
-        thrObj.start()
+        t.start(srvObj)
 
     logger.info("NG/AMS prepared for Online State")
 
@@ -402,15 +398,14 @@ def handleOffline(srvObj,
     """
     # Stop/delete Janitor Thread + Data Check Thread + inform other
     # possible threads to stop execution (if running).
+    srvObj.run_async_commands = False
     srvObj.stopJanitorThread()
     srvObj.stopDataCheckThread()
     ngamsSubscriptionThread.stopSubscriptionThread(srvObj)
     srvObj.stopUserServiceThread()
     srvObj.stopMirControlThread()
     srvObj.stopCacheControlThread()
-    srvObj.setThreadRunPermission(0)
-    if srvObj.getCfg().getSubscrEnable():
-        srvObj.remote_subscription_creation_evt.set()
+    srvObj.remote_subscription_creation_task.stop()
 
     logger.debug("Prepare NG/AMS for Offline State ...")
 

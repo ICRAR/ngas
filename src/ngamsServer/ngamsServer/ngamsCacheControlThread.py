@@ -1294,7 +1294,7 @@ def cleanUpCache(srvObj):
         # be marked as uncompleted.
 
 
-def cacheControlThread(srvObj, stopEvt, ready_evt, check_can_be_deleted):
+def cacheControlThread(srvObj, ready_evt, check_can_be_deleted, stopEvt):
     """
     The Cache Control Thread runs periodically when the NG/AMS Server is
     Online (if enabled) to synchronize the data holding of the local NGAS
