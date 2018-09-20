@@ -63,3 +63,9 @@ class ngamsQueryCmdTest(ngamsTestSuite):
         # Check that the archived file is listed
         data = stat.getData()
         self.assertTrue(b"TEST.2001-05-08T15:25:00.123" in data)
+
+        # Try again getting with format=list. There was a bug previously with
+        # python 3 that prevents results from showing up
+        stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
+        self.assertStatus(stat)
+        self.assertTrue(b"TEST.2001-05-08T15:25:00.123" in stat.getData())

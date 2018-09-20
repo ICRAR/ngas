@@ -53,10 +53,10 @@ NGAMS_PYTHON_PICKLE_MT = "application/python-pickle"
 NGAMS_JSON_MT = "application/json"
 
 # Dirty trick to get the simple columnnames from these tables
-NGAMS_FILES_COLS = map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasFilesDef)
-NGAMS_DISKS_COLS = map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasDisksDef)
-NGAMS_SUBSCR_COLS = map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasSubscribersDef)
-NGAMS_HOST_COLS = map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasHostsDef)
+NGAMS_FILES_COLS = list(map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasFilesDef))
+NGAMS_DISKS_COLS = list(map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasDisksDef))
+NGAMS_SUBSCR_COLS = list(map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasSubscribersDef))
+NGAMS_HOST_COLS = list(map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasHostsDef))
 
 #creation_date could be different from ingestion_date if it is a mirrored archive
 # ingestion_date is when the original copy was ingested in the system,
@@ -133,24 +133,25 @@ def formatAsList(resultSet, colnames):
 
     # Go through the results, find the longest result per column and use
     # that as basis for the column.
-    rows = list(resultSet)
+    rows = resultSet
 
     max_col_lens = [reduce(max, map(len, map(str, r))) for r in zip(colnames, *rows)]
     lines = [b'-' * l for l in max_col_lens]
+    lines = b' '.join(lines)
     col_fmts = ['{:%d}' % l for l in max_col_lens]
 
     # Write upper set of lines, column names, and bottom lines
     buf = io.BytesIO()
-    buf.write(b' '.join(lines))
+    buf.write(lines)
     buf.write(b'\n')
     buf.write(b' '.join((six.b(fmt.format(c)) for fmt, c in zip(col_fmts, colnames))))
     buf.write(b'\n')
-    buf.write(b' '.join(lines))
+    buf.write(lines)
 
     # Write row values using the corresponding format string
     for r in rows:
         buf.write(b'\n')
-        buf.write(b' '.join(fmt.format(val) for fmt, val in zip(col_fmts, r)))
+        buf.write(b' '.join(six.b(fmt.format(str(val))) for fmt, val in zip(col_fmts, r)))
 
     return buf.getvalue()
 
@@ -246,20 +247,20 @@ def handleCmd(srvObj,
         #                   the query below to use a cursor and work as a
         #                   generator instead of returning the full list of
         #                   results in one go.
-        res = srvObj.getDb().query2(sql, args=args)
-
+        res = list(srvObj.db.query2(sql, args=args))
+        logger.info("Retrieved %d results for query: '%s' with args: %r", len(res), sql, args)
         if out_format in ("list", 'text'):
             finalRes = formatAsList(res, colnames)
             mimeType = NGAMS_TEXT_MT
         elif out_format == "pickle":
-            finalRes = cPickle.dumps([res])
+            finalRes = cPickle.dumps(res)
             mimeType = NGAMS_PYTHON_PICKLE_MT
         elif out_format == "json":
             results = [{colname: val for colname, val in zip(colnames, row)} for row in res]
             finalRes = six.b(json.dumps(results, default=encode_decimal))
             mimeType = NGAMS_JSON_MT
         else:
-            finalRes = six.b(str(list(res)))
+            finalRes = six.b(str(res))
             mimeType = NGAMS_PYTHON_LIST_MT
 
         # Return the data and good bye.
