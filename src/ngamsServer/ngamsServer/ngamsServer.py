@@ -1136,6 +1136,9 @@ class ngamsServer(object):
     def stopMirControlThread(self):
         """Stops the Mirroring Control Thread"""
         self._mir_control_thread.stop()
+        # This should bring the sub-threads to an end too, although we should
+        # probably make this part of the main mirroring control thread itself
+        self.triggerMirThreads()
 
 
     def startUserServiceThread(self):

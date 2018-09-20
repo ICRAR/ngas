@@ -79,8 +79,11 @@ NGAMS_MIR_ALL_LOCAL_SRVS     = "ALL"
 # (deliberately).
 NGAMS_MIR_CONTROL_THR_STOP = "_STOP_MIR_CONTROL_THREAD_"
 
+def _finish_thread():
+    logger.info("Stopping the Mirroring Service")
+    raise Exception(NGAMS_MIR_CONTROL_THR_STOP)
 
-def checkStopMirControlThread(srvObj):
+def checkStopMirControlThread(stop_evt):
     """
     Used to check if the Mirroring Control Thread should be stopped and in case
     yes, to stop it.
@@ -89,10 +92,12 @@ def checkStopMirControlThread(srvObj):
 
     Returns:    Void.
     """
-    if (not srvObj.getThreadRunPermission()):
-        logger.info("Stopping the Mirroring Service")
-        raise Exception(NGAMS_MIR_CONTROL_THR_STOP)
+    if stop_evt.is_set():
+        _finish_thread()
 
+def suspend(stop_evt, t):
+    if stop_evt.wait(t):
+        _finish_thread()
 
 def addEntryMirQueue(srvObj,
                      mirReqObj,
@@ -338,7 +343,7 @@ def getMirRequestFromQueue(srvObj):
         raise Exception(msg)
 
 
-def startMirroringThreads(srvObj):
+def startMirroringThreads(srvObj, stop_evt):
     """
     Start the Mirroring Threads according to the configuration.
 
@@ -348,14 +353,14 @@ def startMirroringThreads(srvObj):
     """
     for thrNo in range(1, (srvObj.getCfg().getMirroringThreads() + 1)):
         threadId = NGAMS_MIR_CONTROL_THR + "-" + str(thrNo)
-        args = (srvObj, None)
+        args = (srvObj, stop_evt)
         logger.debug("Starting Mirroring Thread: %s", threadId)
         thrHandle = threading.Thread(None, mirroringThread, threadId, args)
         thrHandle.setDaemon(0)
         thrHandle.start()
 
 
-def pauseMirThreads(srvObj):
+def pauseMirThreads(srvObj, stop_evt):
     """
     Called by the Mirroring Control Thread to request the Mirroring Threads
     to pause themselves until asked to resume.
@@ -368,15 +373,13 @@ def pauseMirThreads(srvObj):
     # Wait for all threads to enter pause mode.
     noOfMirThreads = srvObj.getCfg().getMirroringThreads()
     while (True):
-        checkStopMirControlThread(srvObj)
         if (srvObj._mirThreadsPauseCount == noOfMirThreads):
             logger.debug("All Mirroring Threads entered paused mode")
             return
-        else:
-            time.sleep(1.0)
+        suspend(stop_evt, 1)
 
 
-def resumeMirThreads(srvObj):
+def resumeMirThreads(srvObj, stop_evt):
     """
     Called by the Mirroring Control Thread to request the Mirroring Threads
     to resume service after they have been paused.
@@ -389,12 +392,11 @@ def resumeMirThreads(srvObj):
     # Wait for all threads to resume service.
     noOfMirThreads = srvObj.getCfg().getMirroringThreads()
     while (srvObj._mirThreadsPauseCount > 0):
-        checkStopMirControlThread(srvObj)
-        time.sleep(1.0)
+        suspend(stop_evt, 1)
     logger.debug("All Mirroring Threads resumed service")
 
 
-def pauseMirThread(srvObj):
+def pauseMirThread(srvObj, stop_evt):
     """
     Called by the Mirroring Threads to check if they should pause on request
     from the Mirroring Control Thread. If yes, they pause themselves until
@@ -408,8 +410,7 @@ def pauseMirThread(srvObj):
         logger.debug("Mirroring Thread suspending itself ...")
         srvObj._mirThreadsPauseCount += 1
         while (srvObj._pauseMirThreads):
-            checkStopMirControlThread(srvObj)
-            time.sleep(1.0)
+            suspend(stop_evt, 1)
         logger.debug("Mirroring Thread resuming service ...")
         srvObj._mirThreadsPauseCount -= 1
 
@@ -567,8 +568,7 @@ def handleMirRequest(srvObj,
         logger.debug(msg, mirReqObj.genSummary())
 
 
-def mirroringThread(srvObj,
-                    dummy):
+def mirroringThread(srvObj, stop_evt):
     """
     A number of Mirroring Threads are executing when the NGAS Mirroring Service
     is enabled to handle the requesting of data and ingestion into the local
@@ -585,8 +585,8 @@ def mirroringThread(srvObj,
         # Incapsulate this whole block to avoid that the thread dies in
         # case a problem occurs, like e.g. a problem with the DB connection.
         try:
-            checkStopMirControlThread(srvObj)
-            pauseMirThread(srvObj)
+            checkStopMirControlThread(stop_evt)
+            pauseMirThread(srvObj, stop_evt)
 
             logger.debug("Mirroring Thread starting next iteration ...")
 
@@ -637,7 +637,8 @@ def mirroringThread(srvObj,
             logger.exception(errMsg)
             # We make a small wait here to avoid that the process tries
             # too often to carry out the tasks that failed.
-            time.sleep(5.0)
+            if stop_evt.wait(5.0):
+                return
 
 
 def initMirroring(srvObj):
@@ -1246,7 +1247,7 @@ def mirControlThread(srvObj, stopEvt):
 
             # Incapsulate this whole block to avoid that the thread dies in
             try:
-                checkStopMirControlThread(srvObj)
+                checkStopMirControlThread(stopEvt)
                 logger.debug("ALMA Mirroring Control Thread starting next iteration ...")
 
                 # Update mirroring book keeping table
@@ -1260,9 +1261,7 @@ def mirControlThread(srvObj, stopEvt):
                 # always reload from DB to allow for updates without restarting the server
                 sleepTime = getMirroringSleepTime(srvObj)
                 logger.info("ALMA Mirroring Control Thread sleeping for %.3f [s]", sleepTime)
-                if stopEvt.wait(sleepTime):
-                    return
-
+                suspend(stopEvt, sleepTime)
 
             except Exception as e:
                 if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1):
@@ -1272,7 +1271,8 @@ def mirControlThread(srvObj, stopEvt):
                 logger.exception(errMsg)
                 # We make a small wait here to avoid that the process tries
                 # too often to carry out the tasks that failed.
-                time.sleep(5.0)
+                if stopEvt.wait(5.0):
+                    return
 
     # Generic Mirroring service
     else:
@@ -1280,7 +1280,7 @@ def mirControlThread(srvObj, stopEvt):
         initMirroring(srvObj)
 
         # Start the Mirroring Threads.
-        startMirroringThreads(srvObj)
+        startMirroringThreads(srvObj, stopEvt)
 
         # Render the suspension time as the minimum time for checking a remote
         # archive.
@@ -1296,7 +1296,7 @@ def mirControlThread(srvObj, stopEvt):
             # Incapsulate this whole block to avoid that the thread dies in
             # case a problem occurs, like e.g. a problem with the DB connection.
             try:
-                checkStopMirControlThread(srvObj)
+                checkStopMirControlThread(stopEvt)
                 logger.debug("Mirroring Control Thread starting next iteration ...")
 
                 ###################################################################
@@ -1308,11 +1308,11 @@ def mirControlThread(srvObj, stopEvt):
                 # should be paused, since otherwise, inconsistencies may occurr
                 # (e.g. a file scheduled several times).
                 try:
-                    pauseMirThreads(srvObj)
+                    pauseMirThreads(srvObj, stopEvt)
                     checkSourceArchives(srvObj)
                 except Exception as e:
                     if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): raise
-                resumeMirThreads(srvObj)
+                resumeMirThreads(srvObj, stopEvt)
 
                 # Check if there are entries in Error State, which should be
                 # resumed.
@@ -1331,10 +1331,9 @@ def mirControlThread(srvObj, stopEvt):
                 logger.debug("Mirroring Control Thread executed - suspending for %s [s]",
                       str(suspTime))
 
-                if stopEvt.wait(suspTime):
-                    return
+                suspend(stopEvt, suspTime)
 
-            except Exception:
+            except Exception as e:
                 if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1):
                     return
                 errMsg = "Error occurred during execution of the Mirroring " +\
@@ -1342,7 +1341,8 @@ def mirControlThread(srvObj, stopEvt):
                 logger.exception(errMsg)
                 # We make a small wait here to avoid that the process tries
                 # too often to carry out the tasks that failed.
-                time.sleep(5.0)
+                if stopEvt.wait(5.0):
+                    return
 
 
 def getMirroringSleepTime(srvObj):
