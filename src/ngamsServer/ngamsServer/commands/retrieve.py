@@ -116,7 +116,6 @@ def performProcessing(srvObj,
     Returns:      List with ngamsDppiStatus object
                   (list/ngamsDppiStatus objects).
     """
-    statusObjList = []
 
     # Carry out the processing specified. If no processing is
     # specified, we simply set the source file as the file to be send.
@@ -136,35 +135,33 @@ def performProcessing(srvObj,
         resultObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE, mimeType,
                                                     filename, filename)
         statusObj = ngamsDppiStatus.ngamsDppiStatus().addResult(resultObj)
-    statusObjList.append(statusObj)
 
-    return statusObjList
+    return statusObj
 
 
-def cleanUpAfterProc(statusObjList):
+def cleanUpAfterProc(statusObj):
     """
     Clean up after processing. I.e., remove the directories created for
     holding the files being processed.
 
-    statusObjList:   List of status objects as returned by
+    statusObj:       List of status objects as returned by
                      ngamsCmdHandling.performProcessing()
                      (list/ngamsDppiStatus objects).
 
     Returns:         Void.
     """
-    for statObj in statusObjList:
-        for resObj in statObj.getResultList():
-            if (resObj.getProcDir() != ""):
-                msg = ("Cleaning up processing directory: %s"
-                      " after completed processing")
-                logger.debug(msg, resObj.getProcDir())
-                shutil.rmtree(resObj.getProcDir())
+    for resObj in statusObj.getResultList():
+        if (resObj.getProcDir() != ""):
+            msg = ("Cleaning up processing directory: %s"
+                  " after completed processing")
+            logger.debug(msg, resObj.getProcDir())
+            shutil.rmtree(resObj.getProcDir())
 
 
 def genReplyRetrieve(srvObj,
                      reqPropsObj,
                      httpRef,
-                     statusObjList):
+                     statusObj):
     """
     Function to send back a reply with the result queried with the
     RETRIEVE command. After having send back the result, the
@@ -179,7 +176,7 @@ def genReplyRetrieve(srvObj,
     httpRef:         Reference to the HTTP request handler
                      object (ngamsHttpRequestHandler).
 
-    statusObjList:   List of status objects as returned by
+    statusObj:       List of status objects as returned by
                      ngamsCmdHandling.performProcessing()
                      (list/ngamsDppiStatus objects).
 
@@ -189,7 +186,7 @@ def genReplyRetrieve(srvObj,
     # Send back reply with the result queried.
     try:
 
-        resObj = statusObjList[0].getResultObject(0)
+        resObj = statusObj.getResultObject(0)
 
         if resObj.getObjDataType() == NGAMS_PROC_FILE:
             # See if client requested partial content
@@ -204,7 +201,7 @@ def genReplyRetrieve(srvObj,
             httpRef.send_data(resObj.getDataRef(), resObj.getMimeType(), fname=resObj.getRefFilename())
 
     finally:
-        cleanUpAfterProc(statusObjList)
+        cleanUpAfterProc(statusObj)
 
 
 def _handleCmdRetrieve(srvObj,
