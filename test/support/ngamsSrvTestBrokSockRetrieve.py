@@ -40,7 +40,7 @@ def cleanUpAfterProc(dummy):
 def genReplyRetrieveFail(srvObj,
                          reqPropsObj,
                          httpRef,
-                         statusObjList):
+                         statusObj, compression):
     """
     Used to override ngamsRetrieveCmd.genReplyRetrieve(). This implementation
     simluates a broken socket connection while data is being sent back to the
@@ -53,7 +53,7 @@ def genReplyRetrieveFail(srvObj,
 
     # Send back reply with the result queried.
     try:
-        resObj = statusObjList[0].getResultObject(0)
+        resObj = statusObj.getResultObject(0)
 
         mimeType = resObj.getMimeType()
         dataSize = resObj.getDataSize()
@@ -74,7 +74,7 @@ def genReplyRetrieveFail(srvObj,
         #############################################################
 
     except Exception as e:
-        cleanUpAfterProc(statusObjList)
+        cleanUpAfterProc(statusObj)
         raise e
 
 if __name__ == '__main__':

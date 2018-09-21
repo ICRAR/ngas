@@ -100,7 +100,7 @@ def performStaging(srvObj, reqPropsObj, httpRef, filename):
 def performProcessing(srvObj,
                       reqPropsObj,
                       filename,
-                      mimeType):
+                      mimeType, compression):
     """
     Carry out the processing requested.
 
@@ -130,13 +130,14 @@ def performProcessing(srvObj,
         logger.info("Invoking DPPI: %s to process file: %s", dppi, filename)
         plugInMethod = loadPlugInEntryPoint(dppi)
         statusObj = plugInMethod(srvObj, reqPropsObj, filename)
+        compression = 'UNKNOWN'
     else:
         logger.info("No processing requested - sending back file as is")
         resultObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE, mimeType,
                                                     filename, filename)
         statusObj = ngamsDppiStatus.ngamsDppiStatus().addResult(resultObj)
 
-    return statusObj
+    return statusObj, compression
 
 
 def cleanUpAfterProc(statusObj):
@@ -158,10 +159,26 @@ def cleanUpAfterProc(statusObj):
             shutil.rmtree(resObj.getProcDir())
 
 
+
+def inform_compression(httpRef, result, compression):
+    """Adds necessary information to HTTP response to inform client that the
+    file's contents are compressed (if they are)"""
+
+    fname = result.getRefFilename()
+    hdrs = {}
+    if compression == 'gzip':
+        if 'gzip' in httpRef.headers.get('Accept-Encoding', ''):
+            hdrs['Content-Encoding'] = 'gzip'
+            while fname.endswith('.gz'):
+                fname = fname[:-3]
+        elif not fname.endswith('.gz'):
+            fname += '.gz'
+    return fname, hdrs
+
 def genReplyRetrieve(srvObj,
                      reqPropsObj,
                      httpRef,
-                     statusObj):
+                     statusObj, compression):
     """
     Function to send back a reply with the result queried with the
     RETRIEVE command. After having send back the result, the
@@ -195,8 +212,9 @@ def genReplyRetrieve(srvObj,
             if reqPropsObj.retrieve_offset > 0:
                 start_byte = reqPropsObj.retrieve_offset
 
+            fname, hdrs = inform_compression(httpRef, resObj, compression)
             httpRef.send_file(resObj.getDataRef(), resObj.getMimeType(),
-                              start_byte=start_byte, fname=resObj.getRefFilename())
+                              start_byte=start_byte, fname=fname, hdrs=hdrs)
         else:
             httpRef.send_data(resObj.getDataRef(), resObj.getMimeType(), fname=resObj.getRefFilename())
 
@@ -262,18 +280,19 @@ def _handleCmdRetrieve(srvObj,
     ipAddress = None
     if (quickLocation):
         location, host, ipAddress, port, mountPoint, filename,\
-                  fileVersion, mimeType =\
+                  fileVersion, mimeType, compression =\
                   ngamsFileUtils.quickFileLocate(srvObj, reqPropsObj, fileId,
                                                  hostId, domain, diskId,
-                                                 fileVer)
+                                                 fileVer, include_compression=True)
 
     # If not located the quick way try the normal way.
     if (not ipAddress):
         # Locate the file best suiting the query and send it back if possible.
         location, host, ipAddress, port, mountPoint, filename, fileId,\
-                  fileVersion, mimeType =\
+                  fileVersion, mimeType, compression =\
                   ngamsFileUtils.locateArchiveFile(srvObj, fileId, fileVer,
-                                                   diskId, hostId, reqPropsObj)
+                                                   diskId, hostId, reqPropsObj,
+                                                   include_compression=True)
 
     # If still not located, try to contact associated NGAS sites to query
     # if the file is available there.
@@ -289,7 +308,8 @@ def _handleCmdRetrieve(srvObj,
         performStaging(srvObj, reqPropsObj, httpRef, srcFilename)
 
         # Perform the possible processing requested.
-        procResult = performProcessing(srvObj,reqPropsObj,srcFilename,mimeType)
+        procResult, compression = performProcessing(srvObj, reqPropsObj, srcFilename,
+                                                    mimeType, compression)
     elif location in (NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE) and \
          srvObj.getCfg().getProxyMode():
 
@@ -310,7 +330,7 @@ def _handleCmdRetrieve(srvObj,
         return
 
     # Send back reply with the result(s) queried and possibly processed.
-    genReplyRetrieve(srvObj, reqPropsObj, httpRef, procResult)
+    genReplyRetrieve(srvObj, reqPropsObj, httpRef, procResult, compression)
 
 
 def handleCmd(srvObj,
