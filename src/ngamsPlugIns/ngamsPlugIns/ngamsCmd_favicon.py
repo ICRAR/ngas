@@ -41,4 +41,4 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     Returns:        Void.
     """
-    httpRef.send_data('<link rel="shortcut icon" href="#" />', "text/html")
+    httpRef.send_data(b'<link rel="shortcut icon" href="#" />', "text/html")
