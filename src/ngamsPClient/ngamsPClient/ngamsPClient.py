@@ -111,7 +111,7 @@ class ngamsPClient:
     def archive(self,
                 fileUri,
                 mimeType = "",
-                async = False,
+                asynchronous = False,
                 noVersioning = 0,
                 pars = [],
                 cmd = NGAMS_ARCHIVE_CMD):
@@ -143,7 +143,7 @@ class ngamsPClient:
         logger.info("Archiving file with URI: %s", fileUri)
 
         pars = list(pars)
-        pars.append(('async', '1' if async else '0'))
+        pars.append(('async', '1' if asynchronous else '0'))
         pars.append(("no_versioning", '1' if noVersioning else '0'))
 
         # Archive pulls (fileUri is a URL) are GETs
@@ -214,7 +214,7 @@ class ngamsPClient:
               diskId,
               fileVersion,
               targetDiskId = "",
-              async = False):
+              asynchronous = False):
         """
         Send an CLONE command to the NG/AMS Server associated to the object.
 
@@ -233,7 +233,7 @@ class ngamsPClient:
 
         Returns:       NG/AMS Status object (ngamsStatus).
         """
-        pars = [('async', '1' if async else '0')]
+        pars = [('async', '1' if asynchronous else '0')]
         if (fileId): pars.append(["file_id", fileId])
         if (diskId): pars.append(["disk_id", diskId])
         if (fileVersion > 0): pars.append(["file_version", fileVersion])
@@ -530,7 +530,7 @@ class ngamsPClient:
         return self.get_status(NGAMS_REMFILE_CMD, pars=pars)
 
 
-    def register(self, path, async=False):
+    def register(self, path, asynchronous=False):
         """
         Send an REGISTER command to the NG/AMS Server associated to the object.
 
@@ -542,7 +542,7 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        pars = [("path", path), ('async', '1' if async else '0')]
+        pars = [("path", path), ('async', '1' if asynchronous else '0')]
         return self.get_status(NGAMS_REGISTER_CMD, pars=pars)
 
 
@@ -822,7 +822,7 @@ def main():
     parser.add_argument('-s', '--show-status',  help='Display the status of the command', action='store_true')
     parser.add_argument('-o', '--output',       help='File/directory where to store the retrieved data')
 
-    parser.add_argument('-a', '--async',         help='Run command asynchronously', action='store_true')
+    parser.add_argument('-a', '--async',         help='Run command asynchronously', action='store_true', dest='asynchronous')
     parser.add_argument('-A', '--auth',          help='BASIC authorization string (user:password)')
     parser.add_argument('-F', '--force',         help='Force the action', action='store_true')
     parser.add_argument('-f', '--file-id',       help='Indicates a File ID')
@@ -882,7 +882,7 @@ def main():
             msg = "Must specify parameter --file-uri for a ARCHIVE/QARCHIVE commands"
             raise Exception(msg)
         pars += [('file_version', opts.file_version)] if opts.file_version is not None else []
-        stat = client.archive(opts.file_uri, mtype, opts.async, opts.no_versioning, cmd=cmd, pars=pars)
+        stat = client.archive(opts.file_uri, mtype, opts.asynchronous, opts.no_versioning, cmd=cmd, pars=pars)
     elif cmd == "CARCHIVE":
         stat = client.carchive(opts.file_uri, mtype)
     elif cmd == "CAPPEND":
@@ -903,7 +903,7 @@ def main():
         pars.append(("file_version", str(opts.file_version)))
         stat = client.get_status(cmd, pars=pars)
     elif (cmd == NGAMS_CLONE_CMD):
-        stat = client.clone(opts.file_id, opts.disk_id, opts.file_version, opts.async)
+        stat = client.clone(opts.file_id, opts.disk_id, opts.file_version, opts.asynchronous)
     elif (cmd == NGAMS_EXIT_CMD):
         stat = client.exit()
     elif (cmd == NGAMS_INIT_CMD):
@@ -920,7 +920,7 @@ def main():
             raise Exception(msg)
         stat = client.rearchive(opts.file_uri, opts.file_info_xml, pars)
     elif (cmd == NGAMS_REGISTER_CMD):
-        stat = client.register(opts.path, opts.async)
+        stat = client.register(opts.path, opts.asynchronous)
     elif (cmd == NGAMS_REMDISK_CMD):
         stat = client.remDisk(opts.disk_id, opts.execute)
     elif (cmd == NGAMS_REMFILE_CMD):

@@ -1021,8 +1021,8 @@ def _clone(srvObj,
         srvObj.updateRequestDb(reqPropsObj)
 
     # Wait until CLONE Command has finished, or send a reply before cloning?
-    async = 'async' in reqPropsObj and int(reqPropsObj['async'])
-    if async:
+    is_async = 'async' in reqPropsObj and int(reqPropsObj['async'])
+    if is_async:
         # Send intermediate reply if the HTTP Reference object is given
         # whenever send an auto reply now.
         logger.debug("CLONE command accepted - generating immediate " +
