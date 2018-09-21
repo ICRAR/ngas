@@ -215,7 +215,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                         domain = None,
                         diskId = None,
                         fileVersion = -1,
-                        cursor = True):
+                        cursor = True,
+                        include_compression = False):
         """
         Return information about files matching the conditions which are not
         in ignore and which are not marked as bad.
@@ -244,12 +245,13 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         sql = []
         vals = []
+        compression_column = ', nf.compression' if include_compression else ''
         sql.append(("SELECT nh.host_id, nh.ip_address, nh.srv_port, "
                    "nd.mount_point, nf.file_name, nf.file_version, "
-                   "nf.format FROM ngas_files nf, ngas_disks nd, ngas_hosts nh "
+                   "nf.format %s FROM ngas_files nf, ngas_disks nd, ngas_hosts nh "
                    "WHERE nf.file_id={} AND nf.disk_id=nd.disk_id AND "
                    "nd.host_id=nh.host_id AND nf.%s=0 AND "
-                   "nf.file_status='00000000'") % (self._file_ignore_columnname,))
+                   "nf.file_status='00000000'") % (compression_column, self._file_ignore_columnname,))
         vals.append(fileId)
         if hostId:
             sql.append(" AND nh.host_id={}")

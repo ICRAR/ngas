@@ -78,7 +78,8 @@ def _locateArchiveFile(srvObj,
                        diskId,
                        hostId,
                        reqPropsObj,
-                       files):
+                       files,
+                       include_compression):
     """
     See description of ngamsFileUtils.locateArchiveFile(). This function is
     used simply to encapsulate the complete processing to be able to clean up.
@@ -289,6 +290,8 @@ def _locateArchiveFile(srvObj,
                    diskInfoObj.getMountPoint(),
                    fileInfoObj.getFilename(), fileInfoObj.getFileId(),
                    fileInfoObj.getFileVersion(), fileInfoObj.getFormat()]
+    if include_compression:
+        srcFileInfo.append(fileInfoObj.getCompression())
     msg = "Located suitable file for request - File ID: %s. " +\
           "Info for file found - Location: %s - Host ID/IP: %s/%s - " +\
           "Port Number: %s - File Version: %d - Filename: %s - " +\
@@ -304,7 +307,8 @@ def locateArchiveFile(srvObj,
                       fileVersion = -1,
                       diskId = "",
                       hostId = "",
-                      reqPropsObj = None):
+                      reqPropsObj = None,
+                      include_compression=False):
     """
     Locate the file indicated by the File ID. Returns a list containing
     the necessary information for retrieving the file:
@@ -354,7 +358,7 @@ def locateArchiveFile(srvObj,
         all_info.append((file_info, r[-2], r[-1]))
 
     return _locateArchiveFile(srvObj, fileId, fileVersion, diskId, hostId,
-                              reqPropsObj, all_info)
+                              reqPropsObj, all_info, include_compression)
 
 
 def quickFileLocate(srvObj,
@@ -363,7 +367,8 @@ def quickFileLocate(srvObj,
                     hostId = None,
                     domain = None,
                     diskId = None,
-                    fileVersion = -1):
+                    fileVersion = -1,
+                    include_compression=False):
     """
     Return one file matching the given criteria. A quick version of
     locateArchiveFile().
@@ -385,7 +390,8 @@ def quickFileLocate(srvObj,
                           <format>) (tuple).
     """
     res = srvObj.getDb().getFileSummary3(fileId, hostId, domain, diskId,
-                                         fileVersion, cursor=False)
+                                         fileVersion, cursor=False,
+                                         include_compression=include_compression)
     if res:
         host_id = res[0][0]
         if host_id == srvObj.getHostId():
@@ -394,7 +400,7 @@ def quickFileLocate(srvObj,
             location = NGAMS_HOST_REMOTE
         return [location] + list(res[0])
 
-    return 8 * (None,)
+    return (8 if not include_compression else 9) * (None,)
 
 
 def checkFile(srvObj,
