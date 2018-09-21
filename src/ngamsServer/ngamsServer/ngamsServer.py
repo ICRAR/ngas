@@ -247,7 +247,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_response(NGAMS_HTTP_REDIRECT, hdrs={'Location': location})
         self.end_headers()
 
-    def send_file(self, f, mime_type, start_byte=0, fname=None):
+    def send_file(self, f, mime_type, start_byte=0, fname=None, hdrs={}):
         """
         Sends file `f` of type `mime_type` to the client. Optionally a different
         starting byte to start the transmission from, and a different name for
@@ -257,18 +257,22 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         fname = fname or os.path.basename(f)
         size = getFileSize(f)
 
-        self.send_file_headers(fname, mime_type, size, start_byte)
+        self.send_file_headers(fname, mime_type, size, start_byte, hdrs=hdrs)
         self.write_file_data(f, size, start_byte)
 
-    def send_file_headers(self, fname, mime_type, size, start_byte=0):
-        """Sends the headers advertising file `fname`, but without its data"""
+    def send_file_headers(self, fname, mime_type, size, start_byte=0, hdrs={}):
+        """Sends the headers advertising file `fname`, but without its data.
+        Headers set by this method take precedence over values given by the
+        caller via the `hdrs` optional argument"""
 
-        hdrs = {'Content-Type': mime_type,
+        _hdrs = {'Content-Type': mime_type,
                 'Content-Disposition': 'attachment; filename="%s"' % fname,
                 'Content-Length': str(size - start_byte)}
         if start_byte:
-            hdrs['Accept-Ranges'] = 'bytes'
-            hdrs["Content-Range"] = "bytes %d-%d/%d" % (start_byte, size - 1, size)
+            _hdrs['Accept-Ranges'] = 'bytes'
+            _hdrs["Content-Range"] = "bytes %d-%d/%d" % (start_byte, size - 1, size)
+
+        hdrs.update(_hdrs)
         self.send_response(200, hdrs=hdrs)
         self.end_headers()
 
