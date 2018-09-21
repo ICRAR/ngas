@@ -65,6 +65,19 @@ Retrieve archived data files from an NGAS server or cluster.
 
 If multiple files of the same ID exist and ``file_version`` is not specified then the file with the highest version number will be retrieved by default.
 
+If the file was compressed internally by NGAS at archiving time,
+at ``RETRIEVE`` time the contents are still returned compressed.
+Different clients will handle this differently:
+if the client supports ``Content-Encoding: XYZ`` responses
+(with ``XYZ`` being the compression used internally in NGAS)
+then a filename without the corresponding compression extension will be presented,
+as the client automatically decompresses the incoming content
+before presenting it to the user.
+In the case the client doesn't support this,
+a filename with the corresponding extension will be presented
+to ensure clients associate the filename and its contents
+with the corresponding utilities.
+
 Note that only one file can be retrieved per RETRIEVE request.
 
 **Example**

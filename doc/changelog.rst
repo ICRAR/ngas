@@ -26,6 +26,8 @@ Changelog
   when checking files' checksums.
 * Changed the server to use a thread pool to serve requests
   instead of creating a brand new thread every time a request comes in.
+* Improving how the :ref:`RETRIEVE <commands.retrieve>` command works
+  when returning compressed files.
 * Adding support to the ``CRETRIEVE`` command
   to retrieve all files as a tarball.
   It internally uses ``sendfile(2)`` when possible.
