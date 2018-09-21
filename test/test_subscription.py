@@ -149,13 +149,12 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         params = {'filename': 'src/SmallFile.fits',
                   'mime_type': 'application/octet-stream'}
         with contextlib.closing(qarchive(pars=params)) as resp:
-            self.checkEqual(resp.status, 200, None)
+            self.assertEqual(resp.status, 200)
 
         # Version 2 of the file should only exist after
         # subscription transfer is successful.
         client = sendPclCmd(port = 8889)
-        status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
-        self.assertEquals(status.getStatus(), 'FAILURE', None)
+        self.assert_ngas_status(client.retrieve, 'SmallFile.fits', fileVersion=2, targetFile='tmp', expectedStatus='FAILURE')
 
         # Create listener that should get information when files get archives
         # in the second server (i.e., the one on the receiving end of the subscription)
@@ -168,7 +167,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                   'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
                   'concurrent_threads': 1}
         with contextlib.closing(subscribe(pars=params)) as resp:
-            self.checkEqual(resp.status, 200, None)
+            self.assertEqual(resp.status, 200)
 
         # Do not like sleeps but xfer should happen immediately.
         try:
@@ -177,11 +176,10 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             subscription_listener.close()
         self.assertIsNotNone(archive_evt)
 
-        self.assertEquals(2, archive_evt.file_version)
-        self.assertEquals('SmallFile.fits', archive_evt.file_id)
+        self.assertEqual(2, archive_evt.file_version)
+        self.assertEqual('SmallFile.fits', archive_evt.file_id)
 
-        status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
-        self.assertEquals(status.getStatus(), 'SUCCESS', None)
+        self.assert_ngas_status(client.retrieve, 'SmallFile.fits', fileVersion=2, targetFile='tmp')
 
 
     def test_basic_subscription_fail(self):
@@ -196,19 +194,18 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         unsubscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'UNSUBSCRIBE', timeout=5)
         def assert_subscription_status(pars, status):
             with contextlib.closing(subscribe(pars=pars)) as resp:
-                self.assertEqual(resp.status, status, None)
+                self.assertEqual(resp.status, status)
 
         # Archive these two
         for test_file in ('src/SmallFile.fits', 'src/TinyTestFile.fits'):
             params = {'filename': test_file,
                       'mime_type': 'application/octet-stream'}
             with contextlib.closing(qarchive(pars=params)) as resp:
-                self.checkEqual(resp.status, 200, None)
+                self.assertEqual(resp.status, 200)
 
         # Things haven't gone through tyet
         retrieve = functools.partial(sendPclCmd(port = 8889).retrieve, targetFile='tmp')
-        status = retrieve('SmallFile.fits', fileVersion=2)
-        self.assertEquals(status.getStatus(), 'FAILURE', None)
+        self.assert_ngas_status(retrieve, 'SmallFile.fits', fileVersion=2, expectedStatus='FAILURE')
 
         # Invalid number of concurrent threads
         params = {'url': 'http://localhost:8889/QARCHIVE',
@@ -267,8 +264,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         time.sleep(7)
 
         # Check after all the failed subscriptions we don't have the file
-        status = retrieve('SmallFile.fits', fileVersion=2)
-        self.assertEquals(status.getStatus(), 'FAILURE')
+        self.assert_ngas_status(retrieve, 'SmallFile.fits', fileVersion=2, expectedStatus='FAILURE')
 
         # USUBSCRIBE updates the subscription to valid values
         # After this update the two files should go through
@@ -291,8 +287,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         self.assertSetEqual({'SmallFile.fits', 'TinyTestFile.fits'}, set([x.file_id for x in archive_evts]))
 
         for f in ('SmallFile.fits', 'TinyTestFile.fits'):
-            status = retrieve(f, fileVersion=2)
-            self.assertEqual(status.getStatus(), 'SUCCESS')
+            self.assert_ngas_status(retrieve, f, fileVersion=2)
 
         # UNSUBSCRIBE and check the newly archived file is not transfered
         subscription_listener = notification_listener()
@@ -310,18 +305,14 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             self.assertIsNone(subscription_listener.wait_for_file(5))
 
         # Check after all the failed subscriptions we don't have the file
-        status = retrieve('SmallBadFile.fits', fileVersion=1)
-        self.assertEqual(status.getStatus(), 'SUCCESS')
-
-        status = retrieve('SmallBadFile.fits', fileVersion=2)
-        self.assertEqual(status.getStatus(), 'FAILURE')
+        self.assert_ngas_status(retrieve, 'SmallBadFile.fits', fileVersion=1)
+        self.assert_ngas_status(retrieve, 'SmallBadFile.fits', fileVersion=2, expectedStatus='FAILURE')
 
     def test_server_starts_after_subscription_added(self):
 
         self.prepExtSrv()
         client = sendPclCmd()
-        status = client.subscribe('http://somewhere/SOMETHING')
-        self.assertEqual('SUCCESS', status.getStatus())
+        self.assert_ngas_status(client.subscribe, 'http://somewhere/SOMETHING')
 
         # Cleanly shut down the server, and wait until it's completely down
         old_cleanup = getNoCleanUp()
@@ -392,5 +383,4 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             self.assertIsNotNone(listener.wait_for_file(20))
 
         # Double-check that the file is in B
-        status = sendPclCmd(port = 8889).retrieve('SmallFile.fits', targetFile='tmp')
-        self.assertEquals(status.getStatus(), 'SUCCESS', None)
+        self.assert_ngas_status(sendPclCmd(port = 8889).retrieve, 'SmallFile.fits', targetFile='tmp')

@@ -126,7 +126,7 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
         # since each will result in a MIME message inside one of the multiparts
         if not onlyDirs:
             nFilenames = self._findOccurences(contents, b'filename="')
-            self.assertEquals(nFilenames, len(self.myfiles), "Didn't find all filename definitions that were expected")
+            self.assertEqual(nFilenames, len(self.myfiles), "Didn't find all filename definitions that were expected")
 
     def _test_MultipartParser(self, onlyDirs):
 
@@ -139,14 +139,14 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
         root = handler.getRoot()
 
         self.assertTrue(root, "No container found")
-        self.assertEquals("toplevel", root.getContainerName())
+        self.assertEqual("toplevel", root.getContainerName())
 
         nContainers = self._countContainers(root)
-        self.assertEquals(nContainers, len(self.mydirs), "Not all containers found in the MIME message")
+        self.assertEqual(nContainers, len(self.mydirs), "Not all containers found in the MIME message")
 
         if not onlyDirs:
             nFiles = self._countFiles(root)
-            self.assertEquals(nFiles, len(self.myfiles), "Not all files found in the MIME message")
+            self.assertEqual(nFiles, len(self.myfiles), "Not all files found in the MIME message")
 
     def test_MultipartWriterOnlyDirs(self):
         self._test_MultipartWriter(True)

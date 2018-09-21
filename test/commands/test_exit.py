@@ -73,8 +73,7 @@ class ngamsExitCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv(autoOnline=0)
         client = sendPclCmd(timeOut=10)
-        stat = client.exit()
-        self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
+        self.assert_ngas_status(client.exit)
         # TODO: Check that NG/AMS Server has terminated
 
 
@@ -103,9 +102,8 @@ class ngamsExitCmdTest(ngamsTestSuite):
         self.prepExtSrv(autoOnline=1)
         client = sendPclCmd(timeOut=10)
         stat = client.exit()
-        self.assertEquals(ngamsCore.NGAMS_FAILURE, stat.getStatus())
-        self.assertEquals(4015, int(stat.getMessage().split(":")[1])) # NGAMS_ER_IMPROPER_STATE
+        self.assertStatus(stat, ngamsCore.NGAMS_FAILURE)
+        self.assertEqual(4015, int(stat.getMessage().split(":")[1])) # NGAMS_ER_IMPROPER_STATE
 
         # The server is still running
-        stat = client.status()
-        self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
+        self.assert_ngas_status(client.status)

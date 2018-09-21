@@ -88,13 +88,12 @@ class ngamsContainerTest(ngamsTestSuite):
 
         # Create a container, shouldn't be a problem
         status = client.ccreate(containerName)
-        self.assertEquals(status.getStatus(), NGAMS_SUCCESS)
-        self.assertEquals(1, len(status.getContainerList()))
-        self.assertEquals(containerName, status.getContainerList()[0].getContainerName())
+        self.assertStatus(status)
+        self.assertEqual(1, len(status.getContainerList()))
+        self.assertEqual(containerName, status.getContainerList()[0].getContainerName())
 
         # Destroy it, shouldn't be a problem
-        status = client.cdestroy(containerName)
-        self.assertEquals(status.getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client.cdestroy, containerName)
 
         #------------------------------------------------------------------
         # We now do a container hierarchy creation/deletion.
@@ -102,9 +101,9 @@ class ngamsContainerTest(ngamsTestSuite):
 
         # Create a simple container first
         status = client.ccreate(containerName)
-        self.assertEquals(status.getStatus(), NGAMS_SUCCESS)
-        self.assertEquals(1, len(status.getContainerList()))
-        self.assertEquals(containerName, status.getContainerList()[0].getContainerName())
+        self.assertStatus(status)
+        self.assertEqual(1, len(status.getContainerList()))
+        self.assertEqual(containerName, status.getContainerList()[0].getContainerName())
 
         # Now create a hierarchy. When we succeed, let's collect the IDs
         # of the root containers. The parentId is an attribute of the main
@@ -123,25 +122,25 @@ class ngamsContainerTest(ngamsTestSuite):
             containerHierarchy = containerHierarchyTpl % (parentId)
 
             status = client.ccreate(None, containerHierarchy=containerHierarchy)
-            self.assertEquals(status.getStatus(), expectedStatus, "Received " + status.getStatus() + " when creating a container hierarchy with parentId=" + parentId)
+            self.assertEqual(status.getStatus(), expectedStatus, "Received " + status.getStatus() + " when creating a container hierarchy with parentId=" + parentId)
             if expectedStatus == NGAMS_SUCCESS:
                 rootContainer = status.getContainerList()[0]
                 rootContainerIds.append(rootContainer.getContainerId())
-                self.assertEquals("1", rootContainer.getContainerName())
-                self.assertEquals(2, len(rootContainer.getContainers()))
-                self.assertEquals(0, len(rootContainer.getFilesInfo()))
+                self.assertEqual("1", rootContainer.getContainerName())
+                self.assertEqual(2, len(rootContainer.getContainers()))
+                self.assertEqual(0, len(rootContainer.getFilesInfo()))
 
         # Let's try to delete one of the "1" root containers, it should fail
         # because there is more than one container with that name, and therefore
         # they are not uniquely addressable by their name
-        self.assertEquals(client.cdestroy("1").getStatus(), NGAMS_FAILURE)
+        self.assert_ngas_status(client.cdestroy, "1", expectedStatus=NGAMS_FAILURE)
 
         # Let's try by ID, but without recursion, it should fail also
-        self.assertEquals(client.cdestroy(None, containerId=rootContainerIds[0]).getStatus(), NGAMS_FAILURE)
+        self.assert_ngas_status(client.cdestroy, None, containerId=rootContainerIds[0], expectedStatus=NGAMS_FAILURE)
 
         # Now it should really work
         for containerId in rootContainerIds:
-            self.assertEquals(client.cdestroy(None, containerId=containerId, recursive=True).getStatus(), NGAMS_SUCCESS)
+            self.assert_ngas_status(client.cdestroy, None, containerId=containerId, recursive=True)
 
     def test_AppendRemove(self):
 
@@ -151,8 +150,7 @@ class ngamsContainerTest(ngamsTestSuite):
 
         # Create a container, shouldn't be a problem
         containerName = "testing"
-        status = client.ccreate(containerName)
-        self.assertEquals(status.getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client.ccreate, containerName)
         self._checkContainerClosed(client, containerName, False)
 
         #------------------------------------------------------------------
@@ -165,14 +163,14 @@ class ngamsContainerTest(ngamsTestSuite):
         myfile = self.myfiles[0]
         myfileId = os.path.basename(myfile)
         myfileSize = getFileSize(myfile)
-        self.assertEquals(client.archive(myfile, "application/octet-stream", cmd="QARCHIVE").getStatus(), NGAMS_SUCCESS)
-        self.assertEquals(client.cappend(myfileId, containerName=containerName).getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client.archive, myfile, "application/octet-stream", cmd="QARCHIVE")
+        self.assert_ngas_status(client.cappend, myfileId, containerName=containerName)
         self._checkFilesAndContainerSize(client, containerName, 1, myfileSize)
         self._checkContainerClosed(client, containerName, False)
 
         # Remove the file now and check that the file is not there anymore,
         # decreasing the container size
-        self.assertEquals(client.cremove(myfileId, containerName=containerName).getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client.cremove, myfileId, containerName=containerName)
         self._checkFilesAndContainerSize(client, containerName, 0, 0)
         self._checkContainerClosed(client, containerName, False)
 
@@ -187,14 +185,14 @@ class ngamsContainerTest(ngamsTestSuite):
         fileIds = ':'.join([os.path.basename(f) for f in self.myfiles])
         allFilesSize = self._filesSize()
         for myfile in self.myfiles[1:]:
-            self.assertEquals(client.archive(myfile, "application/octet-stream", cmd="QARCHIVE").getStatus(), NGAMS_SUCCESS)
-        self.assertEquals(client.cappend(None, fileIdList=fileIds, containerName=containerName).getStatus(), NGAMS_SUCCESS)
+            self.assert_ngas_status(client.archive, myfile, "application/octet-stream", cmd="QARCHIVE")
+        self.assert_ngas_status(client.cappend, None, fileIdList=fileIds, containerName=containerName)
         self._checkFilesAndContainerSize(client, containerName, len(self.myfiles), allFilesSize)
         self._checkContainerClosed(client, containerName, False)
 
         # Remove the files now and check that the files are not part of the container anymore,
         # decreasing the container size
-        self.assertEquals(client.cremove(None, fileIdList=fileIds, containerName=containerName).getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client.cremove, None, fileIdList=fileIds, containerName=containerName)
         self._checkFilesAndContainerSize(client, containerName, 0, 0)
         self._checkContainerClosed(client, containerName, False)
 
@@ -214,14 +212,14 @@ class ngamsContainerTest(ngamsTestSuite):
         # should correspond to the new files' sizes
         self._createFiles()
         allFilesSize = self._filesSize()
-        self.assertEquals(client.cappend(None, fileIdList=fileIds, containerName=containerName).getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client.cappend, None, fileIdList=fileIds, containerName=containerName)
         for myfile in self.myfiles:
-            self.assertEquals(client.archive(myfile, "application/octet-stream", cmd="QARCHIVE").getStatus(), NGAMS_SUCCESS)
+            self.assert_ngas_status(client.archive, myfile, "application/octet-stream", cmd="QARCHIVE")
         self._checkFilesAndContainerSize(client, containerName, len(self.myfiles), allFilesSize, fileVersion=2)
         self._checkContainerClosed(client, containerName, False)
 
         # Remove all files and check that the container is empty
-        self.assertEquals(client.cremove(None, fileIdList=fileIds, containerName=containerName).getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client.cremove, None, fileIdList=fileIds, containerName=containerName)
         self._checkFilesAndContainerSize(client, containerName, 0, 0)
         self._checkContainerClosed(client, containerName, False)
 
@@ -231,13 +229,13 @@ class ngamsContainerTest(ngamsTestSuite):
         self._createFiles()
         allFilesSize = self._filesSize()
         for myfile in self.myfiles:
-            self.assertEquals(client.archive(myfile, "application/octet-stream", cmd="QARCHIVE").getStatus(), NGAMS_SUCCESS)
-        self.assertEquals(client.cappend(None, fileIdList=fileIds, containerName=containerName).getStatus(), NGAMS_SUCCESS)
+            self.assert_ngas_status(client.archive, myfile, "application/octet-stream", cmd="QARCHIVE")
+        self.assert_ngas_status(client.cappend, None, fileIdList=fileIds, containerName=containerName)
         self._checkFilesAndContainerSize(client, containerName, len(self.myfiles), allFilesSize, fileVersion=3)
         self._checkContainerClosed(client, containerName, False)
 
         # Remove all files and check that the container is empty
-        self.assertEquals(client.cremove(None, fileIdList=fileIds, containerName=containerName).getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client.cremove, None, fileIdList=fileIds, containerName=containerName)
         self._checkFilesAndContainerSize(client, containerName, 0, 0)
         self._checkContainerClosed(client, containerName, False)
 
@@ -254,21 +252,21 @@ class ngamsContainerTest(ngamsTestSuite):
 
         # Append a file, check that the container is still opened
         myfileId = os.path.basename(self.myfiles[0])
-        self.assertEquals(client.cappend(myfileId, containerName=containerName).getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client.cappend, myfileId, containerName=containerName)
         self._checkContainerClosed(client, containerName, False)
 
         # Append a second file and mark the container as closed
         myfileId = os.path.basename(self.myfiles[1])
-        self.assertEquals(client.cappend(myfileId, containerName=containerName, closeContainer=True).getStatus(), NGAMS_SUCCESS)
+        self.assert_ngas_status(client.cappend, myfileId, containerName=containerName, closeContainer=True)
         self._checkContainerClosed(client, containerName, True)
 
 
     def _checkFilesAndContainerSize(self, client, containerName, nFiles, filesSizeInDisk, fileVersion=1):
         status = client.clist(containerName)
-        self.assertEquals(status.getStatus(), NGAMS_SUCCESS)
-        self.assertEquals(1, len(status.getContainerList()))
+        self.assertStatus(status)
+        self.assertEqual(1, len(status.getContainerList()))
         container = status.getContainerList()[0]
-        self.assertEquals(containerName, container.getContainerName())
+        self.assertEqual(containerName, container.getContainerName())
 
         # Flatten all containers into a nice list
         def collConts(c, l):
@@ -284,27 +282,27 @@ class ngamsContainerTest(ngamsTestSuite):
         totalContSize = 0
         for cont in containers:
             filesSize = sum([int(f.getUncompressedFileSize())  for f in cont.getFilesInfo()])
-            self.assertEquals(filesSize, cont.getContainerSize())
+            self.assertEqual(filesSize, cont.getContainerSize())
             totalContSize += filesSize
 
             files = cont.getFilesInfo()
             totalContFiles += len(files)
             for f in files:
-                self.assertEquals(fileVersion, f.getFileVersion())
+                self.assertEqual(fileVersion, f.getFileVersion())
 
         # Totals
-        self.assertEquals(nFiles, totalContFiles)
-        self.assertEquals(filesSizeInDisk, totalContSize)
+        self.assertEqual(nFiles, totalContFiles)
+        self.assertEqual(filesSizeInDisk, totalContSize)
 
     def _checkContainerClosed(self, client, containerName, isClosed):
         status = client.clist(containerName)
-        self.assertEquals(status.getStatus(), NGAMS_SUCCESS)
-        self.assertEquals(1, len(status.getContainerList()))
+        self.assertStatus(status)
+        self.assertEqual(1, len(status.getContainerList()))
         container = status.getContainerList()[0]
-        self.assertEquals(containerName, container.getContainerName())
+        self.assertEqual(containerName, container.getContainerName())
 
         # Containers are closed when they have an ingestion date
-        self.assertEquals(isClosed, container.isClosed(), "Container's ingestion date is: '" + toiso8601(container.getIngestionDate()) + "'; expected isClosed=" + str(isClosed))
+        self.assertEqual(isClosed, container.isClosed(), "Container's ingestion date is: '" + toiso8601(container.getIngestionDate()) + "'; expected isClosed=" + str(isClosed))
 
     def _test_archive_receive(self, as_tar):
 
@@ -383,6 +381,6 @@ class ngamsContainerTest(ngamsTestSuite):
         # Files actually have the same size, we recurse on dirs
         for idx, f in [(idx, f) for idx, f in enumerate(files1)]:
             if os.path.isfile(f):
-                self.assertEquals(getFileSize(f), getFileSize(files2[idx]))
+                self.assertEqual(getFileSize(f), getFileSize(files2[idx]))
             elif os.path.isdir(f):
                 self._assertEqualsDir(f, files2[idx])

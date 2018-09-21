@@ -84,9 +84,9 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
                     nfiles_unregistered = int(parts[11][:-1])
                     nfiles_bad = int(parts[17][:-1])
 
-                    self.assertEquals(checked, nfiles_checked)
-                    self.assertEquals(unregistered, nfiles_unregistered)
-                    self.assertEquals(bad, nfiles_bad)
+                    self.assertEqual(checked, nfiles_checked)
+                    self.assertEqual(unregistered, nfiles_unregistered)
+                    self.assertEqual(bad, nfiles_bad)
                     found = True
             time.sleep(0.5)
         if not found:

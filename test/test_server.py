@@ -42,7 +42,7 @@ import unittest
 import uuid
 
 from ngamsLib import ngamsHttpUtils
-from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SERVICE_NA
+from ngamsLib.ngamsCore import NGAMS_HTTP_SERVICE_NA
 from .ngamsTestLib import ngamsTestSuite, saveInFile, sendPclCmd, this_dir
 
 
@@ -67,11 +67,10 @@ class ngamsServerTest(ngamsTestSuite):
         self.prepExtSrv(cfgProps=[["NgamsCfg.Server[1].TimeOut",str(timeout)]])
 
         client = sendPclCmd()
-        status = client.archive_data(spaces, 'some-file.data', 'application/octet-stream')
-        self.assertEquals(NGAMS_SUCCESS, status.getStatus())
+        self.assert_ngas_status(client.archive_data, spaces, 'some-file.data', 'application/octet-stream')
 
         # Normal retrieval works fine
-        self.assertEquals(NGAMS_SUCCESS, client.retrieve(fileId='some-file.data').getStatus())
+        self.assert_ngas_status(client.retrieve, fileId='some-file.data')
         os.unlink('some-file.data')
 
         # Now retrieve the data, but sloooooooooooowly and check that the server
@@ -93,7 +92,7 @@ class ngamsServerTest(ngamsTestSuite):
 
         data = s.recv(amount_of_data, socket.MSG_WAITALL)
         self.assertLess(len(data), amount_of_data, "Should have read less data")
-        self.assertEquals(b'', s.recv(amount_of_data - len(data)))
+        self.assertEqual(b'', s.recv(amount_of_data - len(data)))
         s.close()
 
     def test_too_many_requests(self):
@@ -134,14 +133,13 @@ class ngamsServerTest(ngamsTestSuite):
         # There is no need to manually remove here, as ./tmp gets removed anyway
         # later during tearDown()
         fname = os.path.join(this_dir, 'tmp', str(uuid.uuid4()))
-        status = client.get_status('TEST', pars=[('fname', fname)])
-        self.assertEquals(NGAMS_SUCCESS, status.getStatus())
+        self.assert_ngas_status(client.get_status, 'TEST', pars=[('fname', fname)])
         self.assertTrue(os.path.isfile(os.path.join(this_dir, fname)))
 
     def test_no_such_command(self):
         self.prepExtSrv()
         resp, _, _ = sendPclCmd()._get('UNKNOWN_CMD')
-        self.assertEquals(404, resp.status)
+        self.assertEqual(404, resp.status)
 
     @unittest.skipUnless('NGAS_MANY_STARTS_TEST' in os.environ, 'skipped by default')
     def test_many_starts(self):
@@ -169,10 +167,10 @@ class ngamsDaemonTest(ngamsTestSuite):
 
     def test_daemon_status(self):
         self.prepExtSrv(daemon=True)
-        self.assertEquals(0, self._run_daemon_status(self.extSrvInfo[-1].cfg_file))
+        self.assertEqual(0, self._run_daemon_status(self.extSrvInfo[-1].cfg_file))
 
     def test_daemon_status_no_server_running(self):
-        self.assertEquals(1, self._run_daemon_status(os.path.join(this_dir, 'src/ngamsCfg.xml')))
+        self.assertEqual(1, self._run_daemon_status(os.path.join(this_dir, 'src/ngamsCfg.xml')))
 
     def test_daemon_double_start(self):
         # Try to start the daemon twice, it should fail

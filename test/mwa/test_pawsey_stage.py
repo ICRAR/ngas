@@ -39,8 +39,8 @@ class ngamsPawseyStageTest(ngamsTestLib.ngamsTestSuite):
         except Exception as e:
             pass
 
-        self.assertEquals(readDMFStatus('REG'), 'REG')
-        self.assertEquals(readDMFStatus('DUL'), 'DUL')
+        self.assertEqual(readDMFStatus('REG'), 'REG')
+        self.assertEqual(readDMFStatus('DUL'), 'DUL')
 
         try:
             status = readDMFStatus('Error')
@@ -48,31 +48,31 @@ class ngamsPawseyStageTest(ngamsTestLib.ngamsTestSuite):
         except Exception as e:
             pass
 
-        self.assertEquals(isFileOffline('NMG'), 1)
-        self.assertEquals(isFileOffline('OFL'), 1)
-        self.assertEquals(isFileOffline('PAR'), 1)
+        self.assertEqual(isFileOffline('NMG'), 1)
+        self.assertEqual(isFileOffline('OFL'), 1)
+        self.assertEqual(isFileOffline('PAR'), 1)
 
-        self.assertEquals(isFileOffline('N/A'), 0)
-        self.assertEquals(isFileOffline('REG'), 0)
-        self.assertEquals(isFileOffline('DUL'), 0)
+        self.assertEqual(isFileOffline('N/A'), 0)
+        self.assertEqual(isFileOffline('REG'), 0)
+        self.assertEqual(isFileOffline('DUL'), 0)
 
         try:
-            self.assertEquals(isFileOffline('INV'), 1)
+            self.assertEqual(isFileOffline('INV'), 1)
             self.assertTrue(False)
         except Exception as e:
             pass
 
         try:
-            self.assertEquals(isFileOffline('Error'), 1)
+            self.assertEqual(isFileOffline('Error'), 1)
             self.assertTrue(False)
         except Exception as e:
             pass
 
     def test_release(self):
         released = releaseFiles(['DUL', 'DUL', 'NMG', 'OFL'])
-        self.assertEquals(len(released), 2)
-        self.assertEquals(released[0], 'DUL')
-        self.assertEquals(released[1], 'DUL')
+        self.assertEqual(len(released), 2)
+        self.assertEqual(released[0], 'DUL')
+        self.assertEqual(released[1], 'DUL')
 
         try:
             released = releaseFiles(['DUL', 'DUL', 'NMG', 'OFL', 'Error'])

@@ -21,7 +21,7 @@
 #
 import contextlib
 
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite
 from ngamsLib import ngamsHttpUtils
 
 def delete_ngas_file(host, port, file_id, file_version, disk_id, timeout = 10):
@@ -40,8 +40,7 @@ class ngamsCacheDelTest(ngamsTestSuite):
     def test_cache_delete(self):
         self.prepExtSrv(cache=True)
 
-        r = sendPclCmd().archive('src/SmallFile.fits')
-        self.assertEquals(r.getStatus(), 'SUCCESS', None)
+        status = self.assertArchive('src/SmallFile.fits')
         status = delete_ngas_file('localhost', 8888, 'TEST.2001-05-08T15:25:00.123', 1,
-                                        r.getDiskStatusList()[0].getDiskId())
-        self.assertEquals(status, 200, None)
+                                  status.getDiskStatusList()[0].getDiskId())
+        self.assertEqual(status, 200)

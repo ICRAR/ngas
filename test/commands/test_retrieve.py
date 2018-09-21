@@ -355,8 +355,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         self.prepExtSrv(cfgFile=tmpCfgFile)
         client = sendPclCmd()
 
-        stat = client.archive("src/SmallFile.fits")
-        self.assertEquals(stat.getStatus(), 'SUCCESS', None)
+        self.assertArchive("src/SmallFile.fits")
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_01")
         pars = [["test_suite", "ngamsRetrieveCmdTest"],
@@ -453,8 +452,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                       ["NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
                        "TAG=test_DppiProc_02,TARGET=FILE"]]
         self.prepCluster((8000, (8011, ncuCfgPars)))
-        stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
-        self.assertEquals('SUCCESS', stat.getStatus())
+        self.assertArchive("src/SmallFile.fits", port=8011)
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_03")
         pars = [["test_suite", "ngamsRetrieveCmdTest"],
@@ -509,7 +507,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         client = sendPclCmd()
 
         # Archive a file.
-        stat = client.archive("src/SmallFile.fits")
+        self.assert_ngas_status(client.archive, "src/SmallFile.fits")
 
         # dpallot: this will always fail on the mac as the tar sizes are different
         # to the hard coded test results in the old file:
@@ -519,8 +517,6 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         #refStatFile = "ref/ngamsRetrieveCmdTest_test_VolumeDir_01_01_ref"
         #self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
         #                  "message from NG/AMS Server")
-
-        self.assertEquals(stat.getStatus(), 'SUCCESS')
 
         # Check that the target files have been archived in their
         # appropriate locations.

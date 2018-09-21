@@ -517,16 +517,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        srcFile = "src/SmallFile.fits"
         self.prepExtSrv()
-        srcFileUrl = "file:" + os.path.abspath(srcFile)
-        stat = sendPclCmd().archive(srcFileUrl)
-        self.assertEquals(stat.getStatus(), 'SUCCESS', None)
-
         srcFile = "src/SmallFile.fits"
         srcFileUrl = "file:" + os.path.abspath(srcFile)
-        stat = sendPclCmd().archive(srcFileUrl)
-        self.assertEquals(stat.getStatus(), 'SUCCESS', None)
+        self.assertArchive(srcFileUrl)
 
 
     def test_ArchivePullReq_2(self):
@@ -724,9 +718,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # We should fail now
         statObj = sendPclCmd().archive("src/SmallFile.fits")
         subprocess.call(['chmod', '-R', 'a+rwx', repDiskPath], shell=False)
-        self.assertEquals(ngamsCore.NGAMS_FAILURE, statObj.getStatus())
+        self.assertEqual(ngamsCore.NGAMS_FAILURE, statObj.getStatus())
         msg = "Incorrect status returned for Archive Push Request/Replication Disk read-only"
-        self.assertEquals(3025, int(statObj.getMessage().split(":")[1]), msg) # NGAMS_AL_CP_FILE:3025
+        self.assertEqual(3025, int(statObj.getMessage().split(":")[1]), msg) # NGAMS_AL_CP_FILE:3025
 
 
     def test_ErrHandling_3(self):
@@ -1216,7 +1210,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         for _ in range(100):
             stat = sendPclCmd(port=8000).\
                    archive("src/TinyTestFile.fits")
-            self.assertEquals(stat.getStatus(), 'SUCCESS', "Didn't successfully archive file: %s / %s" % (stat.getStatus(), stat.getMessage()))
+            self.assertStatus(stat)
             port = int(stat.getHostId().split(':')[1])
             if (counts[port] == 0):
                 counts[port] = 1
@@ -1550,37 +1544,31 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         expected_checksum_crc32c = ngamsFileUtils.get_checksum(4096, "src/SmallFile.fits", 'crc32c')
 
         # By default the server is configured to do CRC32
-        stat = client.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream')
-        self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
+        self.assert_ngas_status(client.archive, filename, cmd="QARCHIVE", mimeType='application/octet-stream')
 
         # Try the different user overrides
-        stat = client.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', 'crc32c']])
-        self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
-        stat = client.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', 1]])
-        self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
-        stat = client.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', 0]])
-        self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
-        stat = client.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', -1]])
-        self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
+        self.assert_ngas_status(client.archive, filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', 'crc32c']])
+        self.assert_ngas_status(client.archive, filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', 1]])
+        self.assert_ngas_status(client.archive, filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', 0]])
+        self.assert_ngas_status(client.archive, filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', -1]])
 
         # And an old one, which uses the old CRC plugin infrastructure still
-        stat = client.archive(filename, mimeType='application/octet-stream')
-        self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
+        self.assert_ngas_status(client.archive, filename, mimeType='application/octet-stream')
 
         res = db.query2("SELECT checksum, checksum_plugin FROM ngas_files WHERE file_id = {} ORDER BY file_version ASC", (file_id,))
-        self.assertEquals(7, len(res))
+        self.assertEqual(7, len(res))
         for idx in (0, 3):
-            self.assertEquals(str(expected_checksum_crc32), str(res[idx][0]))
-            self.assertEquals('crc32', str(res[idx][1]))
+            self.assertEqual(str(expected_checksum_crc32), str(res[idx][0]))
+            self.assertEqual('crc32', str(res[idx][1]))
         for idx in (1, 2):
-            self.assertEquals(str(expected_checksum_crc32c), str(res[idx][0]))
-            self.assertEquals('crc32c', str(res[idx][1]))
+            self.assertEqual(str(expected_checksum_crc32c), str(res[idx][0]))
+            self.assertEqual('crc32c', str(res[idx][1]))
         for idx in (4,):
-            self.assertEquals(None, res[idx][0])
-            self.assertEquals(None, res[idx][1])
+            self.assertEqual(None, res[idx][0])
+            self.assertEqual(None, res[idx][1])
         for idx in (5, 6):
-            self.assertEquals(str(expected_checksum_crc32), str(res[idx][0]))
-            self.assertEquals('ngamsGenCrc32', str(res[idx][1]))
+            self.assertEqual(str(expected_checksum_crc32), str(res[idx][0]))
+            self.assertEqual('ngamsGenCrc32', str(res[idx][1]))
 
         # Check that the CHECKFILE command works correctly
         # (i.e., the checksums are correctly checked, both new and old ones)
@@ -1588,7 +1576,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # we check that the checksum is now calculated
         for version in range(1, 7):
             stat = client.get_status('CHECKFILE', pars=[("file_id", file_id), ("file_version", version)])
-            self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
+            self.assertStatus(stat)
             if version == 5:
                 self.assertIn('NGAMS_ER_FILE_NOK', stat.getMessage())
             else:
