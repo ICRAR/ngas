@@ -21,14 +21,29 @@
 # MA 02111-1307  USA
 
 #
-# NGAS supports python 2.7 only
+# Most tests run on ubuntu trusty with python 2.7
 #
+os: linux
+dist: trusty
 language: python
+python: 2.7
 
 #
 # We required sudo to use the hostname addon (see below)
 #
 sudo: required
+
+#
+# The Docker-ized build environment creates a very long hostname
+# (~100 chars long), but the NGAS database schema's host_id column
+# has a maximum width of 32, which is why we set a specific hostname.
+# Also, we need the bsddb development headers almost always
+#
+addons:
+ hostname: my-ngas-host
+ apt:
+  packages:
+  - libdb-dev
 
 #
 # We build and test NGAS against three different DB engines
@@ -44,63 +59,32 @@ sudo: required
 # Setting the DB environment variable allows us to keep track later on which
 # database engine this particular run is based on
 #
-# The Docker-ized build environment creates a very long hostname
-# (~100 chars long), but the NGAS database schema's host_id column
-# has a maximum width of 32, which is why we set a specific hostname.
-#
 matrix:
  include:
   - env: DB=sqlite3
-    os: linux
-    python: "2.7"
-    addons:
-     hostname: my-ngas-host
-     apt:
-      packages:
-      - libdb-dev
   - env: DB=mysql
-    os: linux
-    python: "2.7"
     addons:
      hostname: my-ngas-host
      apt:
       packages:
-      - libdb-dev
       - libmysqlclient-dev
+      - libdb-dev
     services: mysql
   - env: DB=postgresql
-    os: linux
-    python: "2.7"
     addons:
      hostname: my-ngas-host
      apt:
       packages:
-      - libdb-dev
       - libpq-dev
+      - libdb-dev
     services: postgresql
+  # The rest use all sqlite3, but in more diverse environments
   - os: osx
     language: generic
-  - os: linux
-    python: "3.5"
-    addons:
-     hostname: my-ngas-host
-     apt:
-      packages:
-      - libdb-dev
-  - os: linux
-    python: "3.6"
-    addons:
-     hostname: my-ngas-host
-     apt:
-      packages:
-      - libdb-dev
-  - os: linux
-    python: "3.7"
-    addons:
-     hostname: my-ngas-host
-     apt:
-      packages:
-      - libdb-dev
+  - python: "3.5"
+  - python: "3.6"
+  - python: "3.7"
+    dist: xenial
 
 #
 # To install we should simply run the build script
