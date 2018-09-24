@@ -21,7 +21,8 @@
 #
 
 import unittest
-from ngamsLib import ngamsLib
+
+from ngamsLib import ngamsCore, ngamsLib
 
 class NgamsLibTests(unittest.TestCase):
 
@@ -38,3 +39,9 @@ class NgamsLibTests(unittest.TestCase):
             self.assertEqual(fname, ngamsLib.remove_duplicated_extension(fname))
             self.assertEqual(fname + '.txt', ngamsLib.remove_duplicated_extension(fname + '.txt'))
             self.assertEqual(fname + '.bin', ngamsLib.remove_duplicated_extension(fname + '.bin'))
+
+    def test_gen_staging_filename(self):
+        """Double-checks that filenames are properly escaped"""
+
+        self.assertEqual('_', ngamsCore.to_valid_filename('?'))
+        self.assertEqual('__', ngamsCore.to_valid_filename('??'))

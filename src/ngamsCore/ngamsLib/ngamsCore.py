@@ -66,6 +66,7 @@ import importlib
 import logging
 import math
 import os
+import re
 import shutil
 import socket
 import threading
@@ -578,6 +579,11 @@ def cpFile(srcFilename,
         raise Exception(errMsg)
     logger.debug("File: %s copied to filename: %s", srcFilename, trgFilename)
     return deltaTime
+
+
+def to_valid_filename(fname):
+    """Replaces invalid filename characters by underscores"""
+    return re.sub(r"[\?=&]", "_", os.path.basename(fname))
 
 
 def compressFile(srcFilename,

@@ -35,7 +35,6 @@ import contextlib
 import errno
 import logging
 import os
-import re
 import shutil
 import socket
 import threading
@@ -48,7 +47,7 @@ from .ngamsCore import genLog, NGAMS_HOST_LOCAL,\
     NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
     checkCreatePath, checkAvailDiskSpace,\
     getFileSize, NGAMS_BAD_FILES_DIR, NGAMS_BAD_FILE_PREFIX, NGAMS_STATUS_CMD,\
-    mvFile, rmFile, NGAMS_HTTP_UNAUTH, NGAMS_HTTP_SUCCESS
+    mvFile, rmFile, NGAMS_HTTP_UNAUTH, NGAMS_HTTP_SUCCESS, to_valid_filename
 from . import ngamsSmtpLib, ngamsLib, ngamsHostInfo, ngamsHttpUtils
 
 
@@ -383,7 +382,7 @@ def genStagingFilename(ngamsCfgObj,
     logger.debug("Generating staging filename - Disk ID: %s - URI: %s",
                  trgDiskInfo.getDiskId(), filename)
     try:
-        tmpFilename = re.sub("\?|=|&", "_", os.path.basename(filename))
+        tmpFilename = to_valid_filename(filename)
 
         # Check proper extension and ensure to obtain a unique name.
         tmpFilename = checkAddExt(ngamsCfgObj, reqPropsObj.getMimeType(),
