@@ -162,7 +162,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         """
         cond_sql = collections.OrderedDict()
         if fileId:
-            fileId = re.sub("\*", "%", fileId)
+            fileId = re.sub(r"\*", "%", fileId)
             st = "nf.file_id LIKE {}" if '%' in fileId else "nf.file_id = {}"
             cond_sql[st] = fileId
 
