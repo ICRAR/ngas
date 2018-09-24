@@ -138,12 +138,18 @@ which in the future might expand:
   can be negative
   (while in python 3 the value is strictly an unsigned integer).
 * ``crc32c``: A hardware-based implementation available as part of Intel's
-  SSE 4.2 instruction set. A C module exposes this functionality to NGAS
-  via a ``crc32c.crc32c`` method.
+  SSE 4.2 instruction set. This variant will only be available
+  if the `crc32c <https://github.com/ICRAR/crc32c>`_ package is installed.
+
 * ``crc32z``: Like ``crc32``, but generates the same integer values
   even across different python versions.
   Users should prefer this variant over ``crc32``,
   which is still maintained for backwards-compatibility reasons.
+
+.. note::
+ The ``crc32c`` package is automatically installed
+ by the :ref:`NGAS installation script <inst.manual>`,
+ unless the ``NGAS_NO_CRC32C`` environment variable is defined.
 
 .. note::
  Care has been put in ensuring

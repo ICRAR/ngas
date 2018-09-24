@@ -28,39 +28,17 @@
 
 import time, pickle
 import commands
-import sys, re, os, socket, traceback, datetime, mmap, threading
+import sys, os, socket, traceback, datetime, mmap, threading
 import base64, glob
 from multiprocessing import Pool, cpu_count
 
-Test = 'read'           # default test is readTest
-skip = 0        # default skip [GB]
-testcount = 1        # default number of consecutive tests
-iosize = 1073741824l    # default size of one test: 1 GB
-blocksize = 1024    # default size of IO blocks
-tcpsndbuf = None    # default tcp send buffer size
-dev = None              # no default for the actual device
-method = 'myDD'           # default method for performing the tests
-pattern = 'abcd'        # default pattern to be used for writeTest
-bspeed = None
-old = 0
-crcfl = ''              # default is no crc
-llflag = 0              # default use normal I/O
-asyncflag = 0
-syncflag = 0
-dioflag = 0
-session_id = None       # For write to HTTP only, default is None
-data_rate = None        # default there is no data rate limit for HTTP write
-NGAMS_HTTP_SUCCESS = 200
-NGAMS_HTTP_POST = 'POST'
-one_mb = 1024. ** 2
-DEFAULT_FNM = 'bspeed.pkl'
-parallel_stream = False
-writeStat = False
 
 #    "d:s:t:i:b:z:c:e:r:f:l:womph",\
 #           ["device","skip","testcount","iosize","blocksize", "sndbufsize",\
 #            "crc", "lowio", "session", "datarate", "file",\
 #            "write","old","method","parallel","help"])
+
+DEFAULT_FNM = 'bspeed.pkl'
 
 
 def usage():
@@ -148,370 +126,422 @@ def usage():
     sys.exit()
 
 
-def readTest(dev, skip, testcount, iosize, blocksize):
-    """
-    This is actually running the read test.
+class diskTest():
+    def __init__(self):
 
-    Input:
-         dev:            String, device name
-         skip:           integer, number of GB to be skipped
-         testcount:      integer, number of tests
-         iosize:         integer, number of bytes/test
-         blocksize:      integer, number of bytes/write
-    """
+        self.Test = 'read'           # default test is readTest
+        self.skip = 0        # default skip [GB]
+        self.testcount = 1        # default number of consecutive tests
+        self.iosize = 1073741824l    # default size of one test: 1 GB
+        self.blocksize = 1024    # default size of IO blocks
+        self.tcpsndbuf = None    # default tcp send buffer size
+        self.dev = None              # no default for the actual device
+        self.method = 'myDD'          # default method for performing the tests
+        self.pattern = 'abcd'        # default pattern to be used for writeTest
+        self.bspeed = None
+        self.old = 0
+        self.crcfl = ''              # default is no crc
+        self.llflag = 0              # default use normal I/O
+        self.asyncflag = 0
+        self.syncflag = 0
+        self.dioflag = 0
+        self.session_id = None       # For write to HTTP only, default is None
+        self.data_rate = None  # default there is no data rate limit for HTTP
+        self.parallel_stream = False
+        self.writeStat = False
 
-    blocksize = long(blocksize)/4 * 4   # blocksize multiple of 4
-    iosize = long(iosize)/4 * 4   # iosize multiple of 4
-    if os.path.isfile(dev) and iosize > os.path.getsize(dev):
-        iosize = os.path.getsize(dev)/4 * 4
-    iocount = iosize/blocksize
+        self.NGAMS_HTTP_SUCCESS = 200
+        self.NGAMS_HTTP_POST = 'POST'
+        self.one_mb = 1024. ** 2
+        self.DEFAULT_FNM = 'bspeed.pkl'
 
-    for ii in range(testcount):
-        st = time.time()
-        if method == 'dd':
-            command = 'dd if=%s of=/dev/null skip=%d bs=%d count=%d' \
-                  % (dev, skip, blocksize, iocount)
-            print command
+    def readTest(self):
+        """
+        This is actually running the read test.
+
+        Input:
+             dev:            String, device name
+             skip:           integer, number of GB to be skipped
+             testcount:      integer, number of tests
+             iosize:         integer, number of bytes/test
+             blocksize:      integer, number of bytes/write
+        """
+
+        self.blocksize = long(self.blocksize)/4 * 4   # blocksize multiple of 4
+        self.iosize = long(self.iosize)/4 * 4   # iosize multiple of 4
+        if os.path.isfile(self.dev) and self.iosize > os.path.getsize(self.dev):
+            self.iosize = os.path.getsize(self.dev)/4 * 4
+        self.iocount = self.iosize/self.blocksize
+
+        for ii in range(self.testcount):
             st = time.time()
-            (status, output) = commands.getstatusoutput(command)
-        else:
-            st = time.time()
-            print "myDD("+dev+", None, '/dev/null',"+str(skip)+"," + \
-                  str(blocksize)+","+str(iocount)+")"
-            status = myDD(dev, None, '/dev/null',
-                          long(skip)*blocksize, blocksize,
-                          iocount)
-
-        if status == 256:
-            print "Permission denied"
-            print "Probably you don't have read access to "\
-                  "device "+dev
-            print "Bailing out!"
-            sys.exit()
-        else:
-            elapsed = time.time()-st
-            print 'Throughput (read): %3.2f MB/s (%5.2f s)' % \
-                  (iosize/elapsed/1024./1024., elapsed)
-
-        skip = skip + iocount
-        return status
-
-
-def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId=None,
-                  sndbufsize=None, parallel=False):
-    """
-    This is actually running the HTTP-based remote write test.
-    It will read blocks of zeroes from /dev/zero and
-    and send these blocks to the server as a single file
-
-    Input:
-         dev:            String, url to which data is sent
-         sessionId:      String, this will be used to form the prefix of the file name:
-                         sessionId_nodeId_count.dat
-         testcount:      integer, number of tests
-         iosize:         integer, number of bytes/test
-         blocksize:      integer, number of bytes/write
-
-    """
-    blocksize = long(blocksize)/4 * 4   # blocksize multiple of 4
-    iosize = long(iosize)/4 * 4   # blocksize multiple of 4
-    iocount = iosize/blocksize
-    bspeed = []
-    cspeed = []
-    tspeed = []
-    nodeId = socket.gethostname()
-
-    locTimeout = 3600
-    mimeType = 'application/octet-stream'
-    user = 'ngasmgr'
-    pwd = 'ngas$dba'  # this should be passed in
-    authHdrVal = "Basic " + base64.encodestring(user + ":" + pwd)
-    if (authHdrVal[-1] == "\n"):
-        authHdrVal = authHdrVal[:-1]
-
-    if (not sessionId):     # if no sessionId, file names from different nodes
-                            # will have different prefix
-        dt = datetime.datetime.now()
-        sessionId = dt.strftime('%Y%m%dT%H%M%S')
-
-    import httplib
-
-    if (parallel):
-        tst = time.time()
-        myDDThreads = []
-
-    myblock = str(bytearray(os.urandom(blocksize)))
-    for ii in range(testcount):
-        st = time.time()
-        fname = '%s_%s_%s.dat' % (sessionId, nodeId, str(ii))
-        contDisp = "attachment; filename=\"%s\"; no_versioning=1" % fname
-        # make HTTP headers
-        url = dev
-        idx = (url[7:].find("/") + 7)  # Separate the URL from the command.
-        tmpUrl = url[7:idx]
-        cmd = url[(idx + 1):]
-
-        http = httplib.HTTP(tmpUrl)
-        try:
-            # print "Sending HTTP header ..."
-            http.putrequest(NGAMS_HTTP_POST, cmd)
-            http.putheader("Content-Type", mimeType)
-            http.putheader("Content-Disposition", contDisp)
-            http.putheader("Content-Length", str(iosize))
-            http.putheader("x-ddn-policy", "replica-store")
-            print "Content-Length = %s" % str(iosize)
-            http.putheader("Authorization", authHdrVal)
-            http.putheader("Host", nodeId)
-            http.putheader("NGAS-File-CRC", "1533330096")
-            http.endheaders()
-            # send payload
-            http._conn.sock.settimeout(locTimeout)
-            if (sndbufsize):
-                try:
-                    http._conn.sock.setsockopt(socket.SOL_SOCKET,
-                                               socket.SO_SNDBUF, sndbufsize)
-                    print("Set TCP SNDBUF to %d" % sndbufsize)
-                except Exception, eer:
-                    print('Fail to set TCP SNDBUF to %d: %s' %
-                          (sndbufsize, str(eer)))
-
-            if (not parallel):
+            if self.method == 'dd':
+                command = 'dd if=%s of=/dev/null skip=%d bs=%d count=%d' \
+                      % (self.dev, self.skip, self.blocksize, self.iocount)
+                print command
                 st = time.time()
-                status = myDD('/dev/zero', myblock, dev,
-                              long(skip)*blocksize, blocksize,
-                              iocount, httpobj=http)
+                (status, output) = commands.getstatusoutput(command)
             else:
-                args = ('/dev/zero', myblock, dev,
-                        long(skip)*blocksize, blocksize,
-                        iocount, 0, http)
-                thrdName = 'myDDThrd_%d' % ii
-                ddThrRef = threading.Thread(None, myDD, thrdName, args)
-                ddThrRef.setDaemon(0)
-                ddThrRef.start()
-                myDDThreads.append(ddThrRef)
+                st = time.time()
+                flags = (self.syncflag, self.asyncflag, self.dioflag,
+                         self.llflag, self.crcfl)
+                print "myDD("+self.dev+", None, '/dev/null',"+str(self.skip) +\
+                      "," + str(self.blocksize)+","+str(self.iocount) + \
+                      "," + str(flags) + ")"
+                status = myDD(self.dev, None, '/dev/null',
+                              long(self.skip)*self.blocksize,
+                              self.blocksize, self.iocount, flags=flags)
 
-        except Exception, e:
-            ex = str(e) + traceback.format_exc()
-            print ex
-            raise e
-        finally:
-            if (not parallel):
-                if (http):
-                    try:
-                        http.close()  # this may fail?
-                    finally:
-                        del http
-        if (not parallel):
-            elapsed = time.time()-st
-            print 'Throughput (elapsed time during test): %3.2f MB/s ' + \
-                  '(%5.2f s)\n' % (iosize/elapsed/1024./1024., elapsed)
-            bspeed += status[0]
-            cspeed += status[1]
-            tspeed += status[2]
+            if status == 256:
+                print "Permission denied"
+                print "Probably you don't have read access to "\
+                      "device "+self.dev
+                print "Bailing out!"
+                sys.exit()
+            else:
+                elapsed = time.time()-st
+                print 'Throughput (read): %3.2f MB/s (%5.2f s)' % \
+                      (self.iosize/elapsed/1024./1024., elapsed)
 
-    if (parallel):
-        for dtr in myDDThreads:
-            dtr.join()
-        telapsed = time.time() - tst
-        print 'Test throughput (elapsed time during test): %3.2f MB/s ' +\
-              '(%5.2f s)\n' % (iosize * testcount/telapsed/1024./1024.,
-                               telapsed)
+            self.skip = self.skip + self.iocount
+            return status
 
-    return (bspeed, cspeed, tspeed)
+    def writeTestHTTP(self, dev, skip, testcount, iosize, blocksize,
+                      sessionId=None, sndbufsize=None, parallel=False):
+        """
+        This is actually running the HTTP-based remote write test.
+        It will read blocks of zeroes from /dev/zero and
+        and send these blocks to the server as a single file
 
+        Input:
+             dev:            String, url to which data is sent
+             sessionId:      String, this will be used to form the prefix of
+                             the file name: sessionId_nodeId_count.dat
+             testcount:      integer, number of tests
+             iosize:         integer, number of bytes/test
+             blocksize:      integer, number of bytes/write
 
-def parallelWriteTestDD(dev, skip, testcount, iosize, blocksize):
-    """
-    This is actually running the parallel write test on multiple processes
+        """
+        self.blocksize = long(self.blocksize)/4 * 4   # blocksize multiple of 4
+        self.iosize = long(self.iosize)/4 * 4   # blocksize multiple of 4
+        self.iocount = self.iosize/self.blocksize
+        bspeed = []
+        cspeed = []
+        tspeed = []
+        nodeId = socket.gethostname()
 
-    Input:
-         dev:            String, device name
-         skip:           integer, number of GB to be skipped
-         testcount:      integer, number of tests
-         iosize:         integer, number of bytes/test
-         blocksize:      integer, number of bytes/write
-    """
-    blocksize = long(blocksize)/4 * 4   # blocksize multiple of 4
-    iosize = long(iosize)/4 * 4   # blocksize multiple of 4
-    iocount = iosize/blocksize
-    bspeed = []
-    cspeed = []
-    tspeed = []
-    myblock = str(bytearray(os.urandom(blocksize)))
-    tst = time.time()
-    # limit numer of parallel processes to number of CPUs
-    if testcount > cpu_count():
-        testcount = cpu_count()
-    pool = Pool(processes=testcount)
-    tres = []
-    tstart = []
-    print "Executing parallel write test with %d processes.\n" % testcount
-    for ii in range(testcount):
-        args = ('/dev/zero', myblock, dev+str(ii),
-                long(skip)*blocksize, blocksize,
-                iocount, 0, None, Test, False)
-        # thrdName = 'myDDThrd_%d' % ii
-        tstart.append(time.time())
-        res = pool.apply_async(myDD, args)
-        tres.append(res)
-    telapsed = time.time() - tst
-    tbytes = 0
-    tmin = time.time() + 10000
-    tmax = 0
-    for ii in range(testcount):
-        res = tres[ii].get(timeout=100)
-        bspeed += res[0]
-        cspeed += res[1]
-        tspeed += res[2]
-        tbytes += res[3]
-        tmin = min([tmin, res[4]])
-        tmax = max([tmax, res[5]])
+        locTimeout = 3600
+        mimeType = 'application/octet-stream'
+        user = 'ngasmgr'
+        pwd = 'ngas$dba'  # this should be passed in
+        authHdrVal = "Basic " + base64.encodestring(user + ":" + pwd)
+        if (authHdrVal[-1] == "\n"):
+            authHdrVal = authHdrVal[:-1]
 
-    tthrough = tbytes/(tmax-tmin)
+        if (not sessionId):     # if no sessionId, file names from different
+                                # nodes will have different prefix
+            dt = datetime.datetime.now()
+            sessionId = dt.strftime('%Y%m%dT%H%M%S')
 
-    print
-    print "Overall throughput: %6.2f MB/s in %5.2f s" % (tthrough, (tmax-tmin))
-    status = (bspeed, cspeed, tspeed)
-    return status
+        import httplib
 
+        if (parallel):
+            tst = time.time()
+            myDDThreads = []
 
-def writeTestDD(dev, skip, testcount, iosize, blocksize):
-    """
-    This is actually running the write test.
-
-    Input:
-         dev:            String, device name
-         skip:           integer, number of GB to be skipped
-         testcount:      integer, number of tests
-         iosize:         integer, number of bytes/test
-         blocksize:      integer, number of bytes/write
-         parallel:       boolean, [False], whether to run the testcount
-                         tests on seperate processes.
-    """
-
-    blocksize = long(blocksize)/4 * 4   # blocksize multiple of 4
-    iosize = long(iosize)/4 * 4   # blocksize multiple of 4
-    iocount = iosize/blocksize
-    if dioflag:
-        blocksize = long(blocksize)/512 * 512   # blocksize multiple of 512
-        iosize = long(iosize)/512 * 512   # blocksize multiple of 512
-        iocount = iosize/blocksize
-
-    bspeed = []
-    cspeed = []
-    tspeed = []
-    myblock = str(bytearray(os.urandom(blocksize)))
-
-    for ii in range(testcount):
-        st = time.time()
-        if method == 'dd':
-            command = 'dd if=/dev/zero of=%s skip=%d bs=%d count=%d' \
-                  % (dev, skip, blocksize, iocount)
-            print command
+        myblock = str(bytearray(os.urandom(self.blocksize)))
+        for ii in range(self.testcount):
             st = time.time()
-            (status, output) = commands.getstatusoutput(command)
-        else:
-            if dev[:4] != '/dev':
-                devn = dev + str(ii)
-            else:
-                devn = dev
+            fname = '%s_%s_%s.dat' % (sessionId, nodeId, str(ii))
+            contDisp = "attachment; filename=\"%s\"; no_versioning=1" % fname
+            # make HTTP headers
+            url = self.dev
+            idx = (url[7:].find("/") + 7)  # Separate the URL from the command.
+            tmpUrl = url[7:idx]
+            cmd = url[(idx + 1):]
+
+            http = httplib.HTTP(tmpUrl)
             try:
-                st = time.time()
-                print "myDD('/dev/zero', myblock, "+devn+"," +\
-                      str(skip*blocksize) + "," + str(blocksize) + "," + \
-                      str(iocount)+", 0, None, 'write')"
-                status = myDD('/dev/zero', myblock, devn,
-                              long(skip)*blocksize, blocksize,
-                              iocount, 0, None, 'write')
+                # print "Sending HTTP header ..."
+                http.putrequest(self.NGAMS_HTTP_POST, cmd)
+                http.putheader("Content-Type", mimeType)
+                http.putheader("Content-Disposition", contDisp)
+                http.putheader("Content-Length", str(self.iosize))
+                http.putheader("x-ddn-policy", "replica-store")
+                print "Content-Length = %s" % str(self.iosize)
+                http.putheader("Authorization", authHdrVal)
+                http.putheader("Host", nodeId)
+                http.putheader("NGAS-File-CRC", "1533330096")
+                http.endheaders()
+                # send payload
+                http._conn.sock.settimeout(locTimeout)
+                if (sndbufsize):
+                    try:
+                        http._conn.sock.setsockopt(socket.SOL_SOCKET,
+                                                   socket.SO_SNDBUF,
+                                                   sndbufsize)
+                        print("Set TCP SNDBUF to %d" % sndbufsize)
+                    except Exception, eer:
+                        print('Fail to set TCP SNDBUF to %d: %s' %
+                              (sndbufsize, str(eer)))
+
+                if (not parallel):
+                    st = time.time()
+                    status = myDD(block=myblock,
+                                       skip=long(skip)*self.blocksize,
+                                       httpobj=http)
+                else:
+                    kwargs = {'block': myblock,
+                              'skip': long(self.skip)*self.blocksize,
+                              'seek': 0, 'httpobj': http}
+                    thrdName = 'myDDThrd_%d' % ii
+                    ddThrRef = threading.Thread(None, myDD, thrdName,
+                                                kwargs=kwargs)
+                    ddThrRef.setDaemon(0)
+                    ddThrRef.start()
+                    myDDThreads.append(ddThrRef)
 
             except Exception, e:
                 ex = str(e) + traceback.format_exc()
                 print ex
                 raise e
             finally:
-                pass
-            if status == 256:
-                print "Permission denied"
-                print "Probably you don't have read access to "\
-                      "device "+devn
-                print "Bailing out!"
-                sys.exit()
-            elif status == 255:
-                print "Fail to open file obj, make sure the file system " +\
-                      "supports low-level I/O"
-                sys.exit(255)
-            else:
+                if (not parallel):
+                    if (http):
+                        try:
+                            http.close()  # this may fail?
+                        finally:
+                            del http
+            if (not parallel):
                 elapsed = time.time()-st
-                print 'Throughput (elapsed time): %3.2f MB/s (%5.2f s)\n' % \
-                      (iosize/elapsed/1024./1024., elapsed)
+                print 'Throughput (elapsed time during test): %3.2f MB/s ' + \
+                      '(%5.2f s)\n' % (self.iosize/self.elapsed/1024./1024.,
+                                       self.elapsed)
                 bspeed += status[0]
                 cspeed += status[1]
                 tspeed += status[2]
-        if method != 'dd':
-            status = (bspeed, cspeed, tspeed)
 
-    return status
+        if (parallel):
+            for dtr in myDDThreads:
+                dtr.join()
+            telapsed = time.time() - tst
+            print 'Test throughput (elapsed time during test): ' +\
+                '%3.2f MB/s (%5.2f s)\n' %\
+                (self.iosize * self.testcount/telapsed/1024./1024., telapsed)
 
+        return (bspeed, cspeed, tspeed)
 
-def writeTest(dev, skip, testcount, iosize, blocksize):
-    """
-    This is actually running the write test.
+    def parallelWriteTestDD(self):
+        """
+        This is actually running the parallel write test on multiple processes
 
-    Input:
-         dev:            String, device name
-         skip:           integer, number of GB to be skipped
-         testcount:      integer, number of tests
-         iosize:         integer, number of bytes/test
-         blocksize:      integer, number of bytes/write
-    """
-    blocksize = long(blocksize)/4 * 4   # blocksize multiple of 4
-    iosize = long(iosize)/4 * 4   # blocksize multiple of 4
-    iocount = iosize/blocksize
+        Input:
+             dev:            String, device name
+             skip:           integer, number of GB to be skipped
+             testcount:      integer, number of tests
+             iosize:         integer, number of bytes/test
+             blocksize:      integer, number of bytes/write
+        """
+        blocksize = long(self.blocksize)/4 * 4   # blocksize multiple of 4
+        iosize = long(self.iosize)/4 * 4   # blocksize multiple of 4
+        iocount = iosize/blocksize
+        bspeed = []
+        cspeed = []
+        tspeed = []
+        myblock = str(bytearray(os.urandom(blocksize)))
+        tst = time.time()
+        # limit numer of parallel processes to number of CPUs
+        if self.testcount > cpu_count():
+            testcount = cpu_count()
+        pool = Pool(processes=testcount)
+        tres = []
+        tstart = []
+        print "Executing parallel write test with %d processes.\n" % testcount
+        for ii in range(testcount):
+            flags = (self.syncflag, self.asyncflag, self.dioflag,
+                     self.llflag, self.crcfl)
+            args = ('/dev/zero', myblock, self.dev+str(ii),
+                    long(self.skip)*blocksize, blocksize,
+                    iocount, 0, None, self.Test, False, flags)
+            # thrdName = 'myDDThrd_%d' % ii
+            tstart.append(time.time())
+            res = pool.apply_async(myDD, args)
+            tres.append(res)
+        telapsed = time.time() - tst
+        tbytes = 0
+        tmin = time.time() + 10000
+        tmax = 0
+        for ii in range(testcount):
+            res = tres[ii].get(timeout=100)
+            bspeed += res[0]
+            cspeed += res[1]
+            tspeed += res[2]
+            tbytes += res[3]
+            tmin = min([tmin, res[4]])
+            tmax = max([tmax, res[5]])
 
-    # create a block filled with pattern and write it to file
-    block = pattern * (blocksize/len(pattern))
+        tthrough = tbytes/(tmax-tmin)
 
-    ofil = open(dev, 'w')
+        print
+        print "Overall throughput: %6.2f MB/s in %5.2f s" % (tthrough,
+                                                             (tmax-tmin))
+        status = (bspeed, cspeed, tspeed)
+        return status
 
-    bspeed = []
-    for ii in range(testcount):
+    def writeTestDD(self):
+        """
+        This is actually running the write test.
+
+        Input:
+             dev:            String, device name
+             skip:           integer, number of GB to be skipped
+             testcount:      integer, number of tests
+             iosize:         integer, number of bytes/test
+             blocksize:      integer, number of bytes/write
+             parallel:       boolean, [False], whether to run the testcount
+                             tests on seperate processes.
+        """
+
+        blocksize = long(self.blocksize)/4 * 4   # blocksize multiple of 4
+        iosize = long(self.iosize)/4 * 4   # blocksize multiple of 4
+        iocount = iosize/blocksize
+        if self.dioflag:
+            blocksize = long(blocksize)/512 * 512   # blocksize multiple of 512
+            iosize = long(iosize)/512 * 512   # blocksize multiple of 512
+            iocount = iosize/blocksize
+
+        bspeed = []
+        cspeed = []
+        tspeed = []
+        myblock = str(bytearray(os.urandom(blocksize)))
+
+        for ii in range(self.testcount):
             st = time.time()
-            status = 0
-            ofil.seek(skip, 0)
-            for jj in range(iocount):
-                    stb = time.time()
-                    ofil.write(block)
-                    bspeed.append(blocksize/1024.**2/(time.time() - stb))
+            if self.method == 'dd':
+                command = 'dd if=/dev/zero of=%s skip=%d bs=%d count=%d' \
+                      % (self.dev, self.skip, blocksize, iocount)
+                print command
+                st = time.time()
+                (status, output) = commands.getstatusoutput(command)
+            else:
+                if self.dev[:4] != '/dev':
+                    devn = self.dev + str(ii)
+                else:
+                    devn = self.dev
+                try:
+                    st = time.time()
+                    flags = (self.syncflag, self.asyncflag, self.dioflag,
+                             self.llflag, self.crcfl)
+                    print "myDD('/dev/zero', myblock, "+devn+"," +\
+                          str(self.skip*blocksize) + "," + str(blocksize) +\
+                          "," + str(iocount)+", 0, None, 'write'" + \
+                          str(flags) + ")"
+                    status = myDD('/dev/zero', myblock, devn,
+                                  long(self.skip)*blocksize, blocksize,
+                                  iocount, 0, None, 'write', flags=flags)
 
-            if status == 256:
+                except Exception, e:
+                    ex = str(e) + traceback.format_exc()
+                    print ex
+                    raise e
+                finally:
+                    pass
+                if status == 256:
                     print "Permission denied"
                     print "Probably you don't have read access to "\
-                          "device "+dev
+                          "device "+devn
                     print "Bailing out!"
                     sys.exit()
-            else:
+                elif status == 255:
+                    print "Fail to open file obj, make sure the file system "\
+                          + "supports low-level I/O"
+                    sys.exit(255)
+                else:
                     elapsed = time.time()-st
-                    print 'Throughput (elapsed time of test): %3.2f MB/s ' +\
-                          '(%5.2f s)' % (iosize/elapsed/1024./1024., elapsed)
-                    print
+                    print 'Throughput (elapsed time): %3.2f MB/s (%5.2f s)\n'\
+                          % (iosize/elapsed/1024./1024., elapsed)
+                    bspeed += status[0]
+                    cspeed += status[1]
+                    tspeed += status[2]
+            if self.method != 'dd':
+                status = (bspeed, cspeed, tspeed)
 
-            skip = skip + iocount
+        return status
 
-    return bspeed
+    def writeTest(self):
+        """
+        This is actually running the write test.
+
+        Input:
+             dev:            String, device name
+             skip:           integer, number of GB to be skipped
+             testcount:      integer, number of tests
+             iosize:         integer, number of bytes/test
+             blocksize:      integer, number of bytes/write
+        """
+        blocksize = long(self.blocksize)/4 * 4   # blocksize multiple of 4
+        iosize = long(self.iosize)/4 * 4   # blocksize multiple of 4
+        iocount = self.iosize/self.blocksize
+
+        # create a block filled with pattern and write it to file
+        block = self.pattern * (self.blocksize/len(self.pattern))
+
+        ofil = open(self.dev, 'w')
+
+        bspeed = []
+        for ii in range(self.testcount):
+                st = time.time()
+                status = 0
+                ofil.seek(self.skip, 0)
+                for jj in range(iocount):
+                        stb = time.time()
+                        ofil.write(block)
+                        bspeed.append(blocksize/1024.**2/(time.time() - stb))
+
+                if status == 256:
+                        print "Permission denied"
+                        print "Probably you don't have read access to "\
+                              "device "+self.dev
+                        print "Bailing out!"
+                        sys.exit()
+                else:
+                        elapsed = time.time()-st
+                        print 'Throughput (elapsed time of test): %3.2f MB/s '\
+                              + '(%5.2f s)' % (iosize/elapsed/1024./1024.,
+                                               elapsed)
+                        print
+
+                self.skip = self.skip + iocount
+
+        return bspeed
+
+    def cleanup(self, fnm):
+        """
+        Remove the files produced during the write test
+        """
+        print "Cleaning up...."
+        fils = glob.glob(fnm+'*')
+        dum = map(lambda x: os.remove(x), fils)
+        return dum
 
 
 def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
          blocksize=1024, count=1, seek=0, httpobj=None, Test='read',
-         writeStat=False):
+         writeStat=False, flags=(0, 0, 0, 0, 0)):
     """
     """
     bspeed = []
     cspeed = []
     tspeed = []
     tsize = 0
+    one_mb = 1024. ** 2
     bsize = blocksize/one_mb
     crc = 0
     sleepTime = None
+    data_rate = None
+    (syncflag, asyncflag, dioflag, llflag, crcfl) = flags
+    NGAMS_HTTP_SUCCESS = 200
+
     ifil_not_zero = (ifil != '/dev/zero')
     if ifil_not_zero:
         try:
@@ -528,7 +558,7 @@ def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
     else:
         block = str(bytearray(os.urandom(blocksize)))
     """
-    # print "myDD(ifil='{0}', block = {1}, ofil='{2}',skip={3},blocksize={4},
+    # print "myDD(ifil='{0}',block = {1},ofil='{2}',skip={3},blocksize={4},
     # count={5},seek={6}, httpobj={7})".\
     # format(ifil, block, ofil, skip, blocksize, count, seek, httpobj)
 
@@ -537,21 +567,22 @@ def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
         try:
             out = None
             if (httpobj):
-                global crcfl
-                crcfl = ''  # http does not need to do crc at the client side
+                crcfl = 0  # http does not need to do client crc
                 if (data_rate):
                     sleepTime = blocksize / (data_rate * one_mb)
             else:
                 if llflag:
                     if asyncflag == 1 and dioflag == 0:
-                        fd = os.open(ofil, os.O_CREAT | os.O_TRUNC |
-                                     os.O_WRONLY | os.O_ASYNC)
+                        fd = os.open(ofil,
+                                     os.O_CREAT | os.O_TRUNC | os.O_WRONLY |
+                                     os.O_ASYNC)
                     elif asyncflag == 0 and dioflag == 0:
-                        fd = os.open(ofil, os.O_CREAT | os.O_TRUNC |
-                                     os.O_WRONLY)
+                        fd = os.open(ofil,
+                                     os.O_CREAT | os.O_TRUNC | os.O_WRONLY)
                     if dioflag == 1:
                         if os.__dict__.has_key('O_DIRECT'):
-                            fd = os.open(ofil, os.O_CREAT | os.O_TRUNC |
+                            fd = os.open(ofil,
+                                         os.O_CREAT | os.O_TRUNC |
                                          os.O_DIRECT | os.O_WRONLY)
                         else:
                             print "The OS does not support direct I/O"
@@ -629,7 +660,7 @@ def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
                             m.seek(0, 0)
                             m.write(block)
                             os.write(fd, m)
-                            #block = m
+                            # block = m
                         else:
                             os.write(fd, block)
                     else:
@@ -655,7 +686,7 @@ def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
                 if writeStat:
                     tspeed.append((bsize/total_block_time, stt,
                                    total_block_time))
-                # tspeed.append((bsize/one_block_time, stt, one_block_time))
+                # tspeed.append((bsize/one_block_time, stt,one_block_time))
         if (Test == 'write'):
             print "Pure write throughput:  %6.2f MB/s" % (tsize/write_time)
         elif (Test == 'read' or ifil != '/dev/zero'):
@@ -685,7 +716,8 @@ def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
 
             if (reply != NGAMS_HTTP_SUCCESS):
                 raise Exception("Error in HTTP response %d" % reply)
-            # we do not close http or its internal socket inside this function
+            # we do not close http or its internal socket inside this`
+            # function
         else:
             if llflag or dioflag:
                 # out.flush()
@@ -711,94 +743,80 @@ def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
         return status
 
 
-def cleanup(fnm):
-    """
-    Remove the files produced during the write test
-    """
-    fils = glob.glob(fnm+'*')
-    dum = map(lambda x: os.remove(x), fils)
-    return dum
-
-
-if __name__ == '__main__':
-
-    import getopt
-
-    opts, args = getopt.getopt(sys.argv[1:], "d:s:t:i:b:z:c:e:r:f:l:womphuS",
-                               ["device", "skip", "testcount", "iosize",
-                                "blocksize", "sndbufsize",
-                                "crc", "lowio", "session", "datarate", "file",
-                                "write", "old", "method", "parallel", "help",
-                                "cpu"])
+def main(opts):
+    global crc32
+    dT = diskTest()
 
     for o, v in opts:
         if o in ("-d", "--device"):
-            dev = v
+            dT.dev = v
         if o in ("-s", "--skip"):
-            skip = long(v) * 1073741824l/blocksize
+            dT.skip = long(v) * 1073741824l/dT.blocksize
         if o in ("-t", "--testcount"):
-            testcount = int(v)
+            dT.testcount = int(v)
         if o in ("-i", "--iosize"):
-            iosize = int(v)
+            dT.iosize = int(v)
         if o in ("-b", "--blocksize"):
-            blocksize = int(v)
+            dT.blocksize = int(v)
         if o in ("-z", "--sndbufsize"):
-            tcpsndbuf = int(v)
+            dT.tcpsndbuf = int(v)
         if o in ("-c", "--crc"):
             crcfl = v
             if crcfl not in ['b', 'z', 'c']:
                 crcfl = 'b'
+                dT.crcfl = 1
             if crcfl == 'b':
+                dT.crcfl = 1
                 from binascii import crc32
             elif crcfl == 'z':
+                dT.crcfl = 1
                 from zlib import crc32
             else:
+                dT.crcfl = 1
                 from crc32c import crc32
         if o in ("-e", "--session"):
             session_id = v
         if o in ("-r", "--datarate"):
-            data_rate = int(v)
+            dT.data_rate = int(v)
         if o in ("-f", "--file"):
             DEFAULT_FNM = v
         if o in ("-l", "--lowio"):
-            llflag = 1
+            dT.llflag = 1
             if v == 'direct':
-                dioflag = 1
+                dT.dioflag = 1
                 # DIRECT I/O only works with 512 mutiples
-                blocksize = long(blocksize)/512 * 512   # blocksize 512 multpl
-                iosize = long(iosize)/512 * 512   # blocksize multiple of 512
-                iocount = iosize/blocksize
+                dT.blocksize = long(dT.blocksize)/512 * 512   # blocksize 512
+                dT.iosize = long(dT.iosize)/512 * 512   # blocksize 512
+                dT.iocount = dT.iosize/dT.blocksize
             elif v == 'async':
-                asyncflag = 1
+                dT.asyncflag = 1
             elif v == 'sync':
-                syncflag = 1
+                dT.syncflag = 1
         if o in ("-u", "--cpu"):
-            Test = 'cpu'  # cpu test only
+            dT.Test = 'cpu'  # cpu test only
         if o in ("-w", "--write"):
-            Test = 'write'
+            dT.Test = 'write'
         if o in ("-o", "--old"):
             old = 1
         if o in ("-m", "--method"):
-            method = 'myDD'
+            dT.method = 'myDD'
         if o in ("-p", "--parallel"):
-            parallel_stream = True
+            dT.parallel_stream = True
         if o in ("-S", "--Stats"):
             writeStat = True
         if o in ("-h", "--help"):
             usage()
 
-    if dev is None:
+    if dT.dev is None:
         usage()
 
-    if Test == 'read':
-        bspeed = readTest(dev, skip, testcount, iosize, blocksize)
-    elif Test == 'write' or Test == 'cpu':
-        if dev[0:4].lower() == 'http':
+    if dT.Test == 'read':
+        bspeed = dT.readTest()
+    elif dT.Test == 'write' or dT.Test == 'cpu':
+        if dT.dev[0:4].lower() == 'http':
             print "To test writing to a remote NGAS disk"
-            bspeed = writeTestHTTP(dev, skip, testcount, iosize, blocksize,
-                                   sndbufsize=tcpsndbuf,
-                                   parallel=parallel_stream)
-        elif dev[0:4] == '/dev':
+            bspeed = dT.writeTestHTTP()
+        elif dT.dev[0:4] == '/dev':
 
             # All the rest here just to make sure that there
             # is no dummy out there doing something wrong on
@@ -811,8 +829,7 @@ if __name__ == '__main__':
             w = sys.stdin.readline()[0:-1]
 
             if w == 'Yes':
-                bspeed = writeTestDD(dev, skip, testcount, iosize,
-                                     blocksize)
+                bspeed = dT.writeTestDD()
             elif w == 'No':
                 sys.exit()
             else:
@@ -822,34 +839,31 @@ if __name__ == '__main__':
                 sys.exit()
 
         else:
-            if iosize > 1073741824l * 100:
+            if dT.iosize > 1073741824l * 100:
                 print "You have selected a file for the " +\
                       "write test, but the size of that " +\
                       "file would be ",\
-                      iosize/1073741824l * 100, " GB"
+                      dT.iosize/1073741824l * 100, " GB"
                 print "This may cause trouble on some systems"
                 print "Bailing out!!"
                 sys.exit()
 
             # create the file with the necessary size
-            ofil = open(dev, 'w')
-            ofil.truncate(iosize)
+            ofil = open(dT.dev, 'w')
+            ofil.truncate(dT.iosize)
             ofil.close()
-            if not old:
-                if not parallel_stream:
-                    bspeed = writeTestDD(dev, skip, testcount, iosize,
-                                         blocksize)
+            if not dT.old:
+                if not dT.parallel_stream:
+                    bspeed = dT.writeTestDD()
                 else:
-                    bspeed = parallelWriteTestDD(dev, skip, testcount, iosize,
-                                                 blocksize)
+                    bspeed = dT.parallelWriteTestDD()
 
             else:
-                bspeed = writeTest(dev, skip, testcount, iosize,
-                                   blocksize)
-            cleanup(dev)
+                bspeed = dT.writeTest()
+            dT.cleanup(dT.dev)
     else:
         sys.exit()
-    if writeStat and bspeed:
+    if dT.writeStat and bspeed:
         fo = open(DEFAULT_FNM, 'w')
         p = pickle.Pickler(fo)
         p.dump(bspeed)
@@ -874,7 +888,7 @@ def speedPlot(ifile=DEFAULT_FNM, timefl=1):
     import matplotlib.patches as mpatches
     f = open(ifile)
     p = pickle.Unpickler(f)
-    (bspeed, cspeed, tspeed) = p.load()
+    (bspeed, cspeed, tspeed) = p.load
     f.close()
     bspeed = pylab.array(bspeed)
     cspeed = pylab.array(cspeed)
@@ -912,3 +926,16 @@ def speedPlot(ifile=DEFAULT_FNM, timefl=1):
     plt[0].axes.set_ylim([0, ymax])
 
     return
+
+
+if __name__ == '__main__':
+    import getopt
+
+    opts, args = getopt.getopt(sys.argv[1:], "d:s:t:i:b:z:c:e:r:f:l:womphuS",
+                               ["device", "skip", "testcount", "iosize",
+                                "blocksize", "sndbufsize",
+                                "crc", "lowio", "session", "datarate", "file",
+                                "write", "old", "method", "parallel", "help",
+                                "cpu"])
+
+    main(opts)
