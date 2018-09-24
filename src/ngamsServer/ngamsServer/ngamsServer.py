@@ -141,7 +141,9 @@ class _atomic_counter(object):
 
 class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
-    Class used to handle an HTTP request.
+    Class used to handle an HTTP request. The various ``send_*`` methods
+    should make it easy for the rest of the code to send different kind of
+    replies to users
     """
 
     server_version = "NGAMS/" + getNgamsVersion()
@@ -224,7 +226,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     # Richer send_response method to pass down headers
     def send_response(self, code, message=None, hdrs={}):
-        """Sends the initial status line plus headers to the client"""
+        """Sends the initial status line plus headers to the client, can't be called twice"""
 
         # Prevent multiple replies being sent
         if self.reply_sent:
@@ -236,7 +238,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_header(k, v)
 
     def redirect(self, host, port):
-        """Redirects the client to the requested path, but on host:port"""
+        """Redirects the client to the requested path, but on ``host``:``port``"""
 
         path = self.path
         if not path.startswith('/'):
@@ -249,7 +251,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def send_file(self, f, mime_type, start_byte=0, fname=None, hdrs={}):
         """
-        Sends file `f` of type `mime_type` to the client. Optionally a different
+        Sends file ``f`` of type ``mime_type`` to the client. Optionally a different
         starting byte to start the transmission from, and a different name for
         the file to present the data to the user can be given.
         """
@@ -261,9 +263,9 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.write_file_data(f, size, start_byte)
 
     def send_file_headers(self, fname, mime_type, size, start_byte=0, hdrs={}):
-        """Sends the headers advertising file `fname`, but without its data.
+        """Sends the headers advertising file ``fname``, but without its data.
         Headers set by this method take precedence over values given by the
-        caller via the `hdrs` optional argument"""
+        caller via the ``hdrs`` optional argument"""
 
         _hdrs = {'Content-Type': mime_type,
                 'Content-Disposition': 'attachment; filename="%s"' % fname,
@@ -277,7 +279,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.end_headers()
 
     def write_file_data(self, f, size, start_byte=0):
-        """sends file `f`, hopefully using sendfile(2)"""
+        """sends file ``f``, hopefully using ``sendfile(2)``"""
 
         if not self.headers_sent:
             raise RuntimeError('Trying to send file data but HTTP headers not sent')
@@ -293,7 +295,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def send_data(self, data, mime_type, code=200, message=None, fname=None, hdrs={}):
         """
-        Sends back `data`, which is of type `mime_type`. If `fname` is given
+        Sends back ``data``, which is of type ``mime_type``. If ``fname`` is given
         then the data is sent as an attachment.
         """
 
@@ -311,7 +313,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.write_data(data)
 
     def write_data(self, data):
-        """Writes `data` into the HTTP response body"""
+        """Writes ``data`` into the HTTP response body"""
 
         if not self.headers_sent:
             raise RuntimeError('Trying to send data but HTTP headers not sent')
@@ -345,7 +347,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_data(six.b(xml), NGAMS_XML_MT)
 
     def proxy_request(self, host_id, host, port, timeout=300):
-        """Proxy the current request to `host`:`port`"""
+        """Proxy the current request to ``host``:``port``"""
 
         # Calculate target URL
         path = self.path
