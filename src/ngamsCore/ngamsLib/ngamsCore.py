@@ -69,9 +69,9 @@ import os
 import re
 import shutil
 import socket
+import subprocess
 import threading
 import time
-import subprocess
 
 import pkg_resources
 import six
