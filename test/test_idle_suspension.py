@@ -46,10 +46,12 @@ from .ngamsTestLib import ngamsTestSuite, sendPclCmd, \
 SUSP_EL = "NgamsCfg.HostSuspension[1]"
 
 # Simulated nodes in the cluster.
-masterNode = getHostName() + ":8000"
-subNode1   = getHostName() + ":8001"
-subNode2   = getHostName() + ":8002"
-susp_nodes = (subNode1, subNode2)
+def get_nodes():
+    master = getHostName() + ":8000"
+    subNode1 = getHostName() + ":8001"
+    subNode2 = getHostName() + ":8002"
+    suspended = (subNode1, subNode2)
+    return master, suspended
 
 # Log files.
 _logPat = "/tmp/ngamsTest/NGAS:%d/log/LogFile.nglog"
@@ -76,6 +78,7 @@ def prepSimCluster(testObj,
     Returns:      Void.
     """
 
+    masterNode, _ = get_nodes()
     subnode_ports = [n + 8001 for n in range(noOfSubNodes)]
     subnode_pars = (("NgamsCfg.HostSuspension[1].IdleSuspension", '1'),
                     ("NgamsCfg.HostSuspension[1].IdleSuspensionTime", '5'),
@@ -155,8 +158,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cluster = prepSimCluster(self)
-        print(list(cluster.keys()))
+        masterNode, susp_nodes = get_nodes()
+        subNode1 = susp_nodes[0]
         dbConObj = prepSimCluster(self)[masterNode][1]
         self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
         self.markNodesAsUnsusp(dbConObj, susp_nodes)
@@ -191,6 +194,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Remarks:
         ...
         """
+        masterNode, susp_nodes = get_nodes()
+        subNode1 = susp_nodes[0]
         dbConObj = prepSimCluster(self)[masterNode][1]
         self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
 
@@ -243,6 +248,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Remarks:
         ...
         """
+        masterNode, susp_nodes = get_nodes()
+        subNode1 = susp_nodes[0]
         dbConObj = prepSimCluster(self)[masterNode][1]
 
         # Archive some files on the two nodes and wait till sub-node
@@ -295,6 +302,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Remarks:
         TODO!: Check that the file has arrived on disk as expected.
         """
+        masterNode, susp_nodes = get_nodes()
+        subNode1 = susp_nodes[0]
         dbConObj = prepSimCluster(self)[masterNode][1]
         for n in range(3):
             sendPclCmd(port=8001).archive("src/SmallFile.fits")
@@ -496,6 +505,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Remarks:
         ...
         """
+        masterNode, susp_nodes = get_nodes()
+        subNode1 = susp_nodes[0]
         dbConObj = prepSimCluster(self)[masterNode][1]
         sendPclCmd(port=8001).archive("src/TinyTestFile.fits")
         sendPclCmd(port=8001).archive("src/SmallFile.fits")
@@ -578,6 +589,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Remarks:
         ...
         """
+        masterNode, susp_nodes = get_nodes()
+        subNode1 = susp_nodes[0]
 
         # Always delete sub-node log file (to run test with a fresh log file).
         rmFile(subNode1Log)
