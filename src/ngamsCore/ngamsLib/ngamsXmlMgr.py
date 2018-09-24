@@ -346,11 +346,6 @@ class ngamsXmlMgr:
             errMsg = genLog("NGAMS_ER_LOAD_CFG", [xmlDoc, str(e)])
             raise Exception(errMsg)
 
-        # The Expat parser does not like XSL declarations. Can be removed if
-        # a parser is used which conforms with the XML standards.
-        doc = re.sub('<\?xml:stylesheet', '<!-- ?xml:stylesheet', doc)
-        doc = re.sub('.xsl"\?>', '.xsl"? -->', doc)
-
         self.unpackXmlDoc(doc)
         return self
 

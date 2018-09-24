@@ -33,9 +33,12 @@ Configuration, in particular, the handling of the configuration in the
 DB is tested.
 """
 
+import os
 import re
+import tempfile
+import unittest
 
-from ngamsLib import ngamsConfig, ngamsDb
+from ngamsLib import ngamsConfig, ngamsDb, ngamsXmlMgr
 from .ngamsTestLib import delNgasTbls, ngamsTestSuite, \
     saveInFile, sendPclCmd, filterDbStatus1, db_aware_cfg
 
@@ -311,3 +314,19 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
                           "returned for Archive Push Request")
+
+class XmlMgrTests(unittest.TestCase):
+
+    def test_no_xsl_declaration(self):
+        """Double-check that documents with "xml:stylesheet" XML elements
+        can be parsed correctly"""
+
+        fd, fname = tempfile.mkstemp(text=True)
+        try:
+            os.write(fd, b"""<?xml version="1.0" encoding="UTF-8"?>
+            <?xml-stylesheet type="text/xsl" href="class.xsl"?>
+            <foo/>""")
+            ngamsXmlMgr.ngamsXmlMgr('foo', fname)
+        finally:
+            os.close(fd)
+            os.remove(fname)
