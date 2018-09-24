@@ -85,7 +85,7 @@ class LogDefHolder(object):
             # sequence of blanks.
             text = ' '.join(text)
             text = text.replace("\n", "")
-            text = re.sub("\s *", " ", text)
+            text = re.sub(r"\s *", " ", text)
             ltext = text
 
             # Get the Log Description
