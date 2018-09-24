@@ -16,7 +16,7 @@ is to implement a method at the module level:
 
 The arguments are the following:
 
-* ``server`` is a reference to the ``ngamsServer`` instance
+* ``server`` is a reference to the :py:class:`ngamsServer <ngamsServer.ngamsServer.ngamsServer>` instance
   this command is running in.
   From the ``server`` object
   a pointer to the database object
@@ -44,7 +44,7 @@ a generic success XML NGAS status document will be sent to the client.
 
 To send other kind of replies,
 please refer to the
-:class:`ngamsServer.ngamsServer.ngamsHttpRequestHandler` class documentation.
+:class:`ngamsHttpRequestHandler <ngamsServer.ngamsServer.ngamsHttpRequestHandler>` class documentation.
 
 Registration
 ============

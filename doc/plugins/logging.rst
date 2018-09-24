@@ -18,7 +18,7 @@ by writing a python module with a ``run`` method.
    def run(srv, fname):
        pass
 
-The ``srv`` argument is an ``ngamsServer`` object,
+The ``srv`` argument is an :py:class:`ngamsServer <ngamsServer.ngamsServer.ngamsServer>` object,
 and the ``fname`` is the path to the rotated logfile.
 Logfile handler plug-ins run asynchronously
 as part of the :ref:`janitor thread <bg.janitor_thread>`,

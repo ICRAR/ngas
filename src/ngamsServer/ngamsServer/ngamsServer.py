@@ -511,10 +511,12 @@ class ngamsServer(object):
 
     # These are here purely for documentation reasons
     db = None
-    """A reference to the underlying database"""
+    """A reference to the underlying database of type
+    :py:class:`ngamsDb <ngamsLib.ngamsDb.ngamsDb>`"""
 
     cfg = None
-    """The underlying configuration object"""
+    """The underlying configuration object of type
+    :py:class:`ngamsConfig <ngamsLib.ngamsConfig.ngamsConfig>`"""
 
     def __init__(self, cfg_fname):
         """

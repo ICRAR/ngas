@@ -21,7 +21,7 @@ in other words, the file containing it must be called
 
 The arguments are the following:
 
-* ``server`` is a reference to the ``ngamsServer`` instance
+* ``server`` is a reference to the :py:class:`ngamsServer <ngamsServer.ngamsServer.ngamsServer>` instance
   this command is running in.
   From the ``server`` object
   a pointer to the database object
