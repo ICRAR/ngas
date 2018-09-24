@@ -155,6 +155,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Remarks:
         ...
         """
+        cluster = prepSimCluster(self)
+        print(list(cluster.keys()))
         dbConObj = prepSimCluster(self)[masterNode][1]
         self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
         self.markNodesAsUnsusp(dbConObj, susp_nodes)
