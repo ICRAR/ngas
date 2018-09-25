@@ -21,6 +21,22 @@ import os
 sys.path.insert(0, os.path.abspath('../src/ngamsCore'))
 sys.path.insert(0, os.path.abspath('../src/ngamsServer'))
 
+# Mock the rest of the external modules we need so the API autodoc
+# gets correctly generated
+try:
+    from unittest.mock import MagicMock
+except:
+    from mock import Mock as MagicMock
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, _):
+        return MagicMock()
+
+MOCK_MODULES = ("DBUtils", "DBUtils.PooledDB", "daemon", "netifaces", "pysendfile",
+        "bsddb3")
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
