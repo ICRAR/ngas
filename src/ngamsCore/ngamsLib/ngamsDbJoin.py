@@ -689,7 +689,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
                              <File Key>__COUNTER
 
-                           - pointing to a counter indicating the number of
+                           pointing to a counter indicating the number of
                            occurrences. Note, the usage of '__' in the name of
                            the counter for each file, means it will be skipped
                            when doing a ngamsDbm.getNext(), scanning through

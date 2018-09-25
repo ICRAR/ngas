@@ -268,13 +268,8 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         with the information contained in the Disk Info Object. Otherwise,
         a new entry is created.
 
-        diskId
-        ...
-        lastHostId:      Values for the columns in the ngas_disks
-                         table (use values returned from ngamsDiskInfo).
-
-        Returns:         Returns 1 if a new entry was created in the DB
-                         and 0 if an existing entry was updated (integer/0|1).
+        :return: 1 if a new entry was created in the DB, 0 if an existing entry
+                 was updated.
         """
         sql = []
         vals = []

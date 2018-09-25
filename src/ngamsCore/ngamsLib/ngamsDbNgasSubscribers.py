@@ -426,10 +426,10 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         Delete all entries to be delivered to a subscriber with subscrId
 
-        hostId:        Host ID for NGAS host where Data Provider concerned
-                       is running (string).
-        portNo:        Port number used by Data Provider concerned (integer).
-        subscrId:      Subscriber ID (string).
+        :param str hostId: Host ID for NGAS host where Data Provider concerned
+                 is running.
+        :param int portNo: Port number used by Data Provider concerned
+        :param str subscrId: Subscriber ID
 
         """
         sql = ("DELETE FROM ngas_subscr_back_log WHERE subscr_id = {}"

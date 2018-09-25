@@ -493,10 +493,10 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         added to the container. This can then be used to update the total
         size of the container
 
-        :param containerId: string
-        :param fileId: string
-        :param force bool
-        :return integer
+        :param str containerId: the id of the container where the file will be added
+        :param str fileId: the id of the file to add to the container
+        :param bool force: force the operation
+        :return: the uncompressed file size of the file denoted by `fileId`
         """
         # Check if the file exists, and if
         # it already is contained in another container
@@ -537,9 +537,10 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         removed from the container. This can then be used to update the total
         size of the container
 
-        :param fileId: string
-        :param containerId: string
-        :return integer
+        :param str fileId: the id to remove from the container
+        :param str containerId: the container from which the file needs to be removed
+        :return: the uncompressed size of the file just removed from the container
+        :rtype: integer
         """
 
         sql = "SELECT container_id, uncompressed_file_size FROM ngas_files WHERE file_id = {0} ORDER BY file_version DESC"

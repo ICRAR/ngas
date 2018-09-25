@@ -878,11 +878,10 @@ class ngamsConfig:
         """
         Defines the CRC Variant to use.
 
-        Returns: -1: Don't perform any CRC calculation at all
-                 0: crc32 (using python's binascii implementation w/o masking)
-                 1: crc32c (using Intel's SSE 4.2 implementation via our
-                    custom crc32c module)
-                 2: crc32z (using python's binascii implementation w/ masking)
+        :return: * -1: Don't perform any CRC calculation at all
+                 * 0: ``crc32`` (using python's binascii implementation w/o masking)
+                 * 1: ``crc32c`` (using Intel's SSE 4.2 implementation via the ``crc32c`` module)
+                 * 2: ``crc32z`` (using python's binascii implementation w/ masking)
         """
         par = "ArchiveHandling[1].CRCVariant"
         return getInt(par, self.getVal(par), 0)

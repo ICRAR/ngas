@@ -87,8 +87,9 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
         """
         Reads a single ngamsContainer object from the database
 
-        :param containerId: string
-        :return ngamsContainer.ngamsContainer
+        :param str containerId: the id of the container to read
+        :return: the container object
+        :rtype: ngamsContainer.ngamsContainer
         """
 
         sql = "SELECT container_name, container_size, parent_container_id, ingestion_date FROM ngas_containers WHERE container_id = {0}"
@@ -114,8 +115,9 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
         Reads an ngamsContainer object from the database
         and recursively populates it with its children containers.
 
-        :param containerId: string
-        :return ngamsContainer.ngamsContainer
+        :param str containerId: the id of the container whose hierarchy is to be read
+        :return: The container object recursively populated
+        :rtype: ngamsContainer.ngamsContainer
         """
 
         container = self.read(containerId)

@@ -193,13 +193,13 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
                           srvInfo):
         """
         Update the information in the DB, which is managed by the server
-        itself. All columns starting with 'srv_' in the ngas_hosts tables
+        itself. All columns starting with ``srv_`` in the ngas_hosts tables
         are defined. The values can be taken from an instance of the
         ngamsHostInfo class.
 
         srvInfo:    List containing all information about the host. These are
-                    all fields starting with 'srv_' from 'srv_version' to
-                    'srv_state' (list).
+                    all fields starting with ``srv_`` from ``srv_version`` to
+                    ``srv_state`` (list).
 
         ignoreErr:  If set to 1, a possible exception thrown will be
                     caught, and this error ignored. Otherwise the
