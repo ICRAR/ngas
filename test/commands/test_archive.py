@@ -38,8 +38,8 @@ import getpass
 import glob
 import os
 import subprocess
+import unittest
 from multiprocessing.pool import ThreadPool
-from unittest.case import skip, skipIf
 
 from six.moves import cPickle # @UnresolvedImport
 
@@ -763,7 +763,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         pollForFile("/tmp/ngamsTest/NGAS/bad-files/*", 0)
 
 
-    @skip("Test case requires missing file under src/")
+    @unittest.skip("Test case requires missing file under src/")
     def test_MainDiskSmallerThanRep_1(self):
         """
         Synopsis:
@@ -1491,7 +1491,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         self.assertStatus(status, expectedStatus=NGAMS_FAILURE)
 
 
-    @skipIf(not _space_available_for_big_file_test,
+    @unittest.skipIf(not _space_available_for_big_file_test,
             "Not enough disk space available to run this test " + \
             "(4 GB are required under /tmp)")
     def test_QArchive_big_file(self):
@@ -1530,7 +1530,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             os.unlink(test_file)
 
 
-    @skipIf(not _test_checksums, "crc32c not available in your platform")
+    @unittest.skipIf(not _test_checksums, "crc32c not available in your platform")
     def test_checksums(self):
         """
         Check that both the crc32 and crc32c checksums work as expected
@@ -1582,7 +1582,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             else:
                 self.assertNotIn('NGAMS_ER_FILE_NOK', stat.getMessage())
 
-    @skip("Run manually when necessary")
+    @unittest.skip("Run manually when necessary")
     def test_performance_of_crc32(self):
 
         client = sendPclCmd(timeout=120)
@@ -1614,7 +1614,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
             self.terminateAllServer()
 
-    @skip("Run manually when necessary")
+    @unittest.skip("Run manually when necessary")
     def test_performance_of_parallel_crc32(self):
 
         kb = 2 ** 10
@@ -1651,3 +1651,83 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                 self.terminateAllServer()
 
         os.unlink(test_file)
+
+    @unittest.skipUnless('NGAS_ENABLE_NO_VERSIONING_TESTS' in os.environ, 'known to fail, enable once they work reliably')
+    def test_archive_no_versioning(self):
+        self._test_archive_no_versioning('ARCHIVE')
+
+    @unittest.skipUnless('NGAS_ENABLE_NO_VERSIONING_TESTS' in os.environ, 'known to fail, enable once they work reliably')
+    def test_qarchive_no_versioning(self):
+        self._test_archive_no_versioning('QARCHIVE')
+
+    def _test_archive_no_versioning(self, cmd):
+
+        _, db = self.prepExtSrv()
+        client = sendPclCmd()
+
+        def archive(data, versioning_param=None, version=None, expected_status='SUCCESS'):
+            pars = []
+            if version is not None:
+                pars.append(('file_version', version))
+            if versioning_param == 'no_versioning':
+                pars.append(('no_versioning', 1))
+            elif versioning_param == 'versioning':
+                pars.append(('versioning', 0))
+
+            self.assert_ngas_status(client.archive_data, data, 'file1.txt',
+                                    'application/octet-stream', cmd=cmd, pars=pars,
+                                    expectedStatus=expected_status)
+
+        def assert_retrieve(data, version=None):
+            version = -1 if version is None else version
+            self.assert_ngas_status(client.retrieve, 'file1.txt', fileVersion=version, targetFile='tmp/')
+            with open('tmp/file1.txt', 'rb') as f:
+                self.assertEqual(data, f.read())
+
+        # Initial normal archiving of contents, should create versions 1 and 2
+        # of the file
+        contents1 = os.urandom(64)
+        contents2 = os.urandom(64)
+        archive(contents1)
+        archive(contents2)
+        assert_retrieve(contents1, version=1)
+        assert_retrieve(contents2, version=2)
+
+        def replace_and_restore(original, new, v1_contents, v2_contents, version=None):
+
+            # Re-archiving using the different parameters that specify we don't
+            # a new file version, then put back the original file vesion's contents.
+            # We repeat this to ensure that when using QARCHIVE we end up targeting
+            # a different disk than the one where the file being replaced is stored in
+            file_copies = (2 if cmd == 'ARCHIVE' else 1)
+            for _ in range(5):
+                for versioning_param in ('no_versioning', 'versioning'):
+                    archive(new, versioning_param=versioning_param, version=version)
+                    n_files = db.query2('SELECT count(*) FROM ngas_files WHERE file_id={}', ('file1.txt',))[0][0]
+                    self.assertEqual(2 * file_copies, n_files)
+                    n_files = db.query2('SELECT SUM(number_of_files) FROM ngas_disks')[0][0]
+                    self.assertEqual(2 * file_copies, n_files)
+                    if version is not None:
+                        n_files = db.query2('SELECT count(*) FROM ngas_files WHERE file_id={} AND file_version={}', ('file1.txt', version))[0][0]
+                        self.assertEqual(1 * file_copies, n_files)
+                    assert_retrieve(v1_contents, version=1)
+                    assert_retrieve(v2_contents, version=2)
+
+                    # Put back original contents
+                    archive(original, versioning_param=versioning_param, version=version)
+                    assert_retrieve(contents1, version=1)
+                    assert_retrieve(contents2, version=2)
+
+        data = os.urandom(128)
+        # Replace and restore version=1 specifically
+        replace_and_restore(contents1, data, data, contents2, version=1)
+        # Replace and restore version=2 specifically
+        replace_and_restore(contents2, data, contents1, data, version=2)
+        # Replace and restore no specific version, should be like version=2
+        replace_and_restore(contents2, data, contents1, data)
+
+        # Replace non-existing version, should fail
+        for versioning_param in ('no_versioning', 'versioning'):
+            archive(data, versioning_param=versioning_param, version=3, expected_status='FAILURE')
+            archive(data, versioning_param=versioning_param, version=4, expected_status='FAILURE')
+            archive(data, versioning_param=versioning_param, version=50, expected_status='FAILURE')
