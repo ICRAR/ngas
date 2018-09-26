@@ -1063,15 +1063,14 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         # Check if we can directly perform checksum calculation at reception time;
         # otherwise we must postpone it until the data archiving plug-in is executed,
         # since it can potentially change the data.
-        # This method is optional, in which case it is assumed the data is not
-        # changed
-        skip_crc = False
+        # This method is optional, in which case it is assumed the data is changed
+        skip_crc = True
         plugIn = srvObj.getMimeTypeDic()[mimeType]
         modifies = loadPlugInEntryPoint(plugIn,
                                         entryPointMethodName='modifies_content',
                                         returnNone=True)
-        if modifies and modifies(srvObj, reqPropsObj):
-            skip_crc = True
+        if modifies:
+            skip_crc = modifies(srvObj, reqPropsObj)
 
         try:
             ngamsHighLevelLib.acquireDiskResource(cfg, trgDiskInfo.getSlotId())
