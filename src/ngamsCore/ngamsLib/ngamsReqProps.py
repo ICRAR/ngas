@@ -225,6 +225,12 @@ class ngamsReqProps:
     def __getitem__(self, k):
         return self.__httpPars[k]
 
+    def __setitem__(self, k, val):
+        self.__httpPars[k] = val
+
+    def get(self, k, default=None):
+        return self.__httpPars.get(k, default)
+
     def hasHttpHdr(self,
                    httpHdr):
         """
