@@ -32,6 +32,10 @@ class InvalidParameter(Exception):
     """Error indicating a valid or missing parameter"""
     pass
 
+class FileDoesntExist(Exception):
+    """Error indicating a missing file"""
+    pass
+
 class NoSuchCommand(Exception):
     """Error indicating a command's implementation cannot be found"""
     pass

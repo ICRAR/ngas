@@ -35,6 +35,7 @@ import collections
 import contextlib
 import glob
 import logging
+import operator
 import os
 import random
 import time
@@ -53,10 +54,11 @@ from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE,\
     NGAMS_NOTIF_ERROR
 from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib,\
-    ngamsHttpUtils
+    ngamsHttpUtils, utils
 from ngamsLib import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
 from . import ngamsFileUtils
 from . import ngamsCacheControlThread
+from . import FileDoesntExist, InvalidParameter
 
 
 logger = logging.getLogger(__name__)
@@ -107,6 +109,8 @@ class too_much_data(Exception):
 
 archiving_results = collections.namedtuple('archiving_results',
                                            'size rtime wtime crctime totaltime crcname crc')
+previous_file_info = collections.namedtuple('previous_file_info', 'disk_id size path')
+
 
 def archive_contents(out_fname, fin, fsize, block_size, crc_name, skip_crc=False):
     """
@@ -253,7 +257,8 @@ def archive_contents_from_request(out_fname, cfg, req, rfile, skip_crc=False, tr
 def updateFileInfoDb(srvObj,
                      piStat,
                      checksum,
-                     checksumPlugIn, sync_disk=True, ingestion_rate=None):
+                     checksumPlugIn, sync_disk=True, ingestion_rate=None,
+                     prev_disk_id=None):
     """
     Update the information for the file in the NGAS DB.
 
@@ -319,7 +324,7 @@ def updateFileInfoDb(srvObj,
     if ingestion_rate is not None:
         fileInfo.setIngestionRate(ingestion_rate)
 
-    fileInfo.write(srvObj.getHostId(), srvObj.getDb())
+    fileInfo.write(srvObj.getHostId(), srvObj.getDb(), prev_disk_id=prev_disk_id)
     logger.debug("Updated file info in NGAS DB for file with ID: %s", piStat.getFileId())
 
     # Update the container size with the new size
@@ -573,7 +578,7 @@ def postFileRecepHandling(srvObj,
                           resultPlugIn,
                           tgtDiskInfo,
                           cksum=None, sync_disk=True, ingestion_rate=None,
-                          do_replication=True):
+                          do_replication=True, prev_file=None):
     """
     The function carries out the action needed after a file has been received
     for archiving. This consists of updating the information about the
@@ -604,23 +609,24 @@ def postFileRecepHandling(srvObj,
 
     # Update information for File in DB.
     fileInfo = updateFileInfoDb(srvObj, resultPlugIn, checksum, checksumPlugIn,
-                     sync_disk=sync_disk, ingestion_rate=ingestion_rate)
+                     sync_disk=sync_disk, ingestion_rate=ingestion_rate,
+                     prev_disk_id=(prev_file.disk_id if prev_file else None))
     ngamsLib.makeFileReadOnly(resultPlugIn.getCompleteFilename())
 
-    # Update information about main disk
-    # TODO: This doesn't handle (yet) the fact that we might be overwriting
-    #       an existing file (and therefore the number of files shouldn't go up),
-    #       the new amount of available space, and the accumulated amount of
-    #       I/O spent on the disk (who cares?). We are only updated these values
-    #       on the disk object in memory, while on the database we perform only
-    #       certain updates.
-    #       The routine commented below did all this, but it reads from the DB
-    #       and then writes back again, which is not exactly great either.
-    if not resultPlugIn.getFileExists():
+    # Update information about main disk (both the in-memory object and the DB)
+    if not prev_file:
         tgtDiskInfo.setNumberOfFiles(tgtDiskInfo.getNumberOfFiles() + 1)
-    tgtDiskInfo.setBytesStored(tgtDiskInfo.getBytesStored() + resultPlugIn.getFileSize())
+    bytes_stored = tgtDiskInfo.getBytesStored() + resultPlugIn.getFileSize()
+    if prev_file:
+        bytes_stored -= prev_file.size
+    tgtDiskInfo.setBytesStored(bytes_stored)
     tgtDiskInfo.setTotalDiskWriteTime(tgtDiskInfo.getTotalDiskWriteTime() + resultPlugIn.getIoTime())
-    srvObj.getDb().updateDiskInfo(resultPlugIn.getFileSize(), resultPlugIn.getDiskId())
+
+    if prev_file:
+        srvObj.db.replace_file(prev_file.size, prev_file.disk_id, resultPlugIn.getFileSize(), tgtDiskInfo.getDiskId())
+    else:
+        srvObj.getDb().updateDiskInfo(resultPlugIn.getFileSize(), resultPlugIn.getDiskId())
+
 #     mainDiskInfo = ngamsDiskUtils.updateDiskStatusDb(srvObj.getDb(),
 #                                                      resultPlugIn)
 
@@ -633,12 +639,6 @@ def postFileRecepHandling(srvObj,
                                                     resultPlugIn.getDiskId(),
                                                     resultPlugIn.getFileId(),
                                                     fileVersion, filename)
-
-    # Log a message if a file with the File ID of the new file already existed.
-    if (resultPlugIn.getFileExists()):
-        msg = genLog("NGAMS_NOTICE_FILE_REINGESTED",
-                     [reqPropsObj.getSafeFileUri()])
-        logger.warning(msg)
 
     # Now handle the Replication Disk - if there is a corresponding Replication
     # Disk for the Main Disk and if not replication was disabled by the DAPI.
@@ -659,6 +659,14 @@ def postFileRecepHandling(srvObj,
             filename    = resRep.getRelFilename()
             ngamsCacheControlThread.addEntryNewFilesDbm(srvObj, diskId, fileId,
                                                         fileVersion, filename)
+
+    # When overwriting, the previous file contents might have been
+    # overwritten by the previous file renaming operation (or not). In the
+    # case that it has we want to make sure we don't delete it afterwards
+    if prev_file:
+        old_path, new_path = map(os.path.normpath, (prev_file.path, resultPlugIn.getCompleteFilename()))
+        if old_path != new_path:
+            rmFile(prev_file.path)
 
     # Check if we should change to next disk.
     checkDiskSpace(srvObj, resultPlugIn.getDiskId(), tgtDiskInfo)
@@ -884,6 +892,66 @@ def _is_overwrite_request(request):
         return int(request['no_versioning'])
     return False
 
+
+def _validate_overwrite(srv, req, target_disk, plugin_result):
+
+    # This file already exists, regardless of what the plug-in thinks.
+    # This is because the logic implemented in the ngamsPlugInApi is
+    # fairly wrong, and doesn't properly take into account these nuances
+    plugin_result.setFileExists(True)
+    file_id = plugin_result.getFileId()
+    file_version = int(req.get('file_version', -1))
+    file_version_str = "<none>" if file_version == -1 else str(file_version)
+
+    # Invalid request, can't overwrite a version that is higher than
+    # the latest version
+    if file_version != -1 and file_version > srv.db.getLatestFileVersion(file_id):
+        raise InvalidParameter("file_version=%d doesn't exist for file id=%s, can't overwrite", file_version, file_id)
+
+    # prev_files might be more than one depending on replication settings
+    # back from when it was previously archived
+    prev_files = list(srv.db.getFileSummary1(srv.host_id, fileIds=[file_id]))
+    if not prev_files:
+        raise FileDoesntExist("file id=%s, version=%s doesn't exist, can't overwrite", file_id, file_version_str)
+
+    # Get the files with the required version, which can be either the
+    # latest or a specific one, so we sort them by descending version
+    prev_files.sort(key=operator.itemgetter(6), reverse=True)
+    logger.warning('Dealing with previous files: %r', prev_files)
+    target_version = prev_files[0][6] if file_version == -1 else file_version
+    prev_files = list(filter(lambda x:x[6] == target_version, prev_files))
+    logger.warning('previous files after filtering: %r', prev_files)
+
+    # If there is more than one, take the one sitting in a main disk,
+    # not a replication disk
+    if len(prev_files) == 1:
+        prev_file = prev_files[0]
+    else:
+        prev_file = None
+        for f in prev_files:
+            slot_id = f[0]
+            if ngamsDiskUtils.isMainDisk(slot_id, srv.cfg):
+                prev_file = f
+        if prev_file is None:
+            raise FileDoesntExist("file id=%s, version=%s cannot be found on a main disk, can't overwrite",
+                file_id, file_version_str)
+
+    # Check whether the disk where we wrote the new contents on (disk A)
+    # is the same than the one hosting the contents of the current version
+    # of the file that we are about to overwrite (disk B). If A is not B
+    # we still write the new contents to A, then change the DB record to
+    # point to A instead of B, and finally remove the copy sitting in B.
+    this_disk_id = target_disk.getDiskId()
+    prev_disk_id = prev_file[9]
+    prev_file_size = utils._long(prev_file[7])
+    prev_file_path = os.path.join(prev_file[1], prev_file[2])
+
+    logger.warning("File id=%s, version=%s, disk_id=%s will be replaced "
+                   "with contents on disk_id=%s", file_id, file_version_str, prev_disk_id, this_disk_id)
+
+    return previous_file_info(prev_disk_id, prev_file_size, prev_file_path)
+
+
 def archiveInitHandling(srvObj, reqPropsObj, httpRef, do_probe=False, try_to_proxy=False):
     """
     Handle the initialization of the ARCHIVE Command.
@@ -1100,6 +1168,15 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         del reqPropsObj.getHttpParsDic()['crc_name']
         logger.debug("Invoked DAPI: %s. Time: %.3fs.", plugIn, (time.time() - timeBeforeDapi))
 
+        # Now that we have the file ID, and if the user means to overwrite a
+        # previous version, we need to double-check that we can actually do this
+        # The old copy of the file might be in a different disk from trgDiskInfo,
+        # so we need to keep track of this
+        prev_file = None
+        if _is_overwrite_request(reqPropsObj):
+            prev_file = _validate_overwrite(srvObj, reqPropsObj, trgDiskInfo, plugin_result)
+
+
         # Move the file to final destination.
         ioTime = mvFile(reqPropsObj.getStagingFilename(),
                         plugin_result.getCompleteFilename())
@@ -1137,7 +1214,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     diskInfo = postFileRecepHandling(srvObj, reqPropsObj, plugin_result,
                                      reqPropsObj.getTargDiskInfo(), cksum=cksum,
                                      sync_disk=sync_disk, ingestion_rate=intestion_rate,
-                                     do_replication=do_replication)
+                                     do_replication=do_replication, prev_file=prev_file)
     msg = genLog("NGAMS_INFO_FILE_ARCHIVED", [reqPropsObj.getSafeFileUri()])
     msg = msg + ". Time: %.3fs" % (time.time() - archiving_start)
     logger.info(msg, extra={'to_syslog': True})
