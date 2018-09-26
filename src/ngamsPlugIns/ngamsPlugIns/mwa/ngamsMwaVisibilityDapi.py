@@ -72,7 +72,6 @@ logger = logging.getLogger(__name__)
 
 TARG_MIME_TYPE  = "target_mime_type"
 FILE_ID         = "file_id"
-VERSIONING      = "versioning"
 COMPRESSION     = "compression"
 COMPRESSION_EXT = "compression_ext"
 
@@ -95,7 +94,6 @@ def handlePars(reqPropsObj,
     logger.debug("Get request parameters")
     parDic[TARG_MIME_TYPE]  = None
     parDic[FILE_ID]         = None
-    parDic[VERSIONING]      = 1
     parDic[COMPRESSION]     = None
     parDic[COMPRESSION_EXT] = None
 
@@ -113,14 +111,6 @@ def handlePars(reqPropsObj,
         else:
             parDic[FILE_ID] = os.path.basename(reqPropsObj.getFileUri())
             logger.info("No file_id given, using basename of URI: %s", parDic[FILE_ID])
-
-    if (reqPropsObj.hasHttpPar(VERSIONING)):
-        parDic[VERSIONING] = int(reqPropsObj.getHttpPar(VERSIONING))
-    # Set also the no_versioning parameter for backwards compatibility reasons
-    if (parDic[VERSIONING]):
-        reqPropsObj.addHttpPar("no_versioning", "0")
-    else:
-        reqPropsObj.addHttpPar("no_versioning", "1")
 
     if (reqPropsObj.hasHttpPar(COMPRESSION)):
         parDic[COMPRESSION] = reqPropsObj.getHttpPar(COMPRESSION)

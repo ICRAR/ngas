@@ -908,6 +908,15 @@ def cleanUpStagingArea(tmpStagingFilename,
             logger.warning("Removing Staging File: %s", stgFile)
             rmFile(stgFile)
 
+def _is_overwrite_request(request):
+
+    # 'versioning' is actually not used anywhere in the code, that I can see,
+    # but is still given priority over no_versioning
+    if 'versioning' in request:
+        return not int(request['versioning'])
+    elif 'no_versioning' in request:
+        return int(request['no_versioning'])
+    return False
 
 def archiveInitHandling(srvObj, reqPropsObj, httpRef, do_probe=False, try_to_proxy=False):
     """
@@ -1031,6 +1040,9 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
 
     mimeType = reqPropsObj.getMimeType()
     archiving_start = time.time()
+
+    # Is this request intended to overwrite an existing file?
+    reqPropsObj['no_versioning'] = _is_overwrite_request(reqPropsObj)
 
     logger.info("Archiving file: %s with mime-type: %s",
                 reqPropsObj.getSafeFileUri(), mimeType)

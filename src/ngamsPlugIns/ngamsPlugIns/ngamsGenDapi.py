@@ -72,7 +72,6 @@ logger = logging.getLogger(__name__)
 
 TARG_MIME_TYPE  = "target_mime_type"
 FILE_ID         = "file_id"
-VERSIONING      = "versioning"
 COMPRESSION     = "compression"
 COMPRESSION_EXT = "compression_ext"
 
@@ -110,7 +109,6 @@ def handlePars(reqPropsObj,
     logger.debug("Get request parameters")
     parDic[TARG_MIME_TYPE]  = None
     parDic[FILE_ID]         = None
-    parDic[VERSIONING]      = 1
 
     if (reqPropsObj.hasHttpPar(TARG_MIME_TYPE)):
         parDic[TARG_MIME_TYPE] = reqPropsObj.getHttpPar(TARG_MIME_TYPE)
@@ -127,20 +125,6 @@ def handlePars(reqPropsObj,
             parDic[FILE_ID] = os.path.basename(reqPropsObj.getFileUri())
             logger.info("No file_id given, using basename of fileUri: %s", 
                  parDic[FILE_ID])
-
-    # TODO: It would seem like 'versioning' is not used anywhere,
-    #       but still gets more priority than 'no_versioning'.
-    #       which is used everywhere
-    if VERSIONING in reqPropsObj:
-        parDic[VERSIONING] = int(reqPropsObj[VERSIONING])
-    elif 'no_versioning' in reqPropsObj:
-        parDic[VERSIONING] = 0 if int(reqPropsObj['no_versioning']) else 1
-
-    # Set also the no_versioning parameter for backwards compatibility reasons
-    if (parDic[VERSIONING]):
-        reqPropsObj.addHttpPar("no_versioning", "0")
-    else:
-        reqPropsObj.addHttpPar("no_versioning", "1")
 
     extract_compression_params(reqPropsObj, parDic)
 
