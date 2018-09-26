@@ -875,41 +875,7 @@ def checkBackLogBuffer(srvObj):
                 rmFile(pickleObjFile)
 
 
-def cleanUpStagingArea(tmpStagingFilename,
-                       stagingFilename,
-                       tmpReqPropsFilename,
-                       reqPropsFilename):
-    """
-    The function cleans up the Staging Area for the files involved
-    in the Archive Request.
-
-    If the client requested wait=0, the Original Staging File +
-    Request Properties File are moved to the Bad Files Area. Possible, other
-    Staging Files are removed.
-
-    If the client requested wait=1, all files are deleted.
-
-    tmpStagingFilename:    Temporary Staging File (string).
-
-    stagingFilename:       Staging File (string).
-
-    tmpReqPropsFilename:   Temporary Request Properties File (string).
-
-    reqPropsFilename:      Request Properties File (string).
-
-    Returns:               Void.
-    """
-
-    # All Staging Files can be deleted.
-    stgFiles = [tmpStagingFilename, stagingFilename, tmpReqPropsFilename,
-                reqPropsFilename]
-    for stgFile in stgFiles:
-        if (stgFile):
-            logger.warning("Removing Staging File: %s", stgFile)
-            rmFile(stgFile)
-
 def _is_overwrite_request(request):
-
     # 'versioning' is actually not used anywhere in the code, that I can see,
     # but is still given priority over no_versioning
     if 'versioning' in request:
@@ -1063,6 +1029,12 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
                             genStagingFilename(cfg, reqPropsObj,
                                                trgDiskInfo, reqPropsObj.getFileUri(),
                                                genTmpFiles=1)
+        def cleanUpStagingArea():
+            stgFiles = [tmpStagingFilename, stagingFilename, tmpReqPropsFilename,
+                        reqPropsFilename]
+            for stgFile in filter(None, stgFiles):
+                logger.warning("Removing Staging File: %s", stgFile)
+                rmFile(stgFile)
 
         # Check if we can directly perform checksum calculation at reception time;
         # otherwise we must postpone it until the data archiving plug-in is executed,
@@ -1137,40 +1109,12 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         plugin_result.setIoTime(reqPropsObj.getIoTime())
 
     except Exception as e:
-        if (str(e).find("NGAMS_ER_DAPI_BAD_FILE") != -1):
-            errMsg = "Problems during archiving! URI: " +\
-                     reqPropsObj.getFileUri() + ". Exception: " + str(e)
-            cleanUpStagingArea(tmpStagingFilename,
-                               stagingFilename, tmpReqPropsFilename,
-                               reqPropsFilename)
-        elif (str(e).find("NGAMS_ER_DAPI_RM") != -1):
-            errMsg = "DAPI: " + plugIn + " encountered problem handling " +\
-                     "the file with URI: " + reqPropsObj.getFileUri() +\
-                     ". Removal of Staging Files requested by DAPI."
-            logger.warning(errMsg)
-            stgFiles = [tmpStagingFilename, stagingFilename,
-                        tmpReqPropsFilename, reqPropsFilename]
-            for stgFile in stgFiles:
-                logger.warning("Removing Staging File: %s", stgFile)
-                rmFile(stgFile)
-            errMsg += " Error from DAPI: " + str(e)
-        elif (ngamsHighLevelLib.performBackLogBuffering(cfg, reqPropsObj, e)):
+        if ngamsHighLevelLib.performBackLogBuffering(cfg, reqPropsObj, e):
             backLogBufferFiles(srvObj, stagingFilename, reqPropsFilename)
             errMsg = genLog("NGAMS_WA_BUF_DATA",
                             [reqPropsObj.getFileUri(), str(e)])
             logger.error(errMsg)
-            stgFiles = [tmpStagingFilename, stagingFilename,
-                        tmpReqPropsFilename]
-            for stgFile in stgFiles:
-                logger.warning("Removing Staging File: %s", stgFile)
-                rmFile(stgFile)
-        else:
-            # Another error ocurred.
-            errMsg = "Error encountered handling file: " + str(e)
-            logger.error(errMsg)
-            cleanUpStagingArea(tmpStagingFilename,
-                               stagingFilename, tmpReqPropsFilename,
-                               reqPropsFilename)
+        cleanUpStagingArea()
         raise
 
     # Backwards compatibility for the ARCHIVE command based on plug-in'ed CRCs
