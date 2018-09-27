@@ -1456,14 +1456,6 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.checkEqual(resp.status, 400, None)
             self.checkEqual(b'Content-Length is 0' in resp.read(), True, None)
 
-        # Invalid file_version parameter, is not a number
-        params = {'filename': 'src/SmallFile.fits',
-                  'file_version': 'test',
-                  'mime_type': 'application/octet-stream'}
-        with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
-            self.assertEqual(400, resp.status)
-            self.assertIn(b'invalid literal for int() with base 10', resp.read())
-
         # All is fine
         params = {'filename': 'src/SmallFile.fits',
                   'mime_type': 'application/octet-stream'}
