@@ -1044,18 +1044,15 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     # Is this request intended to overwrite an existing file?
     reqPropsObj['no_versioning'] = _is_overwrite_request(reqPropsObj)
 
+    trgDiskInfo = find_target_disk(srvObj)
+    if trgDiskInfo is None:
+        errMsg = "No disk volumes are available for ingesting any files."
+        raise Exception(errMsg)
+    reqPropsObj.setTargDiskInfo(trgDiskInfo)
+
     logger.info("Archiving file: %s with mime-type: %s",
                 reqPropsObj.getSafeFileUri(), mimeType)
-    tmpStagingFilename = stagingFilename = tmpReqPropsFilename =\
-                         reqPropsFilename = None
     try:
-
-        # Generate target filename. Remember to set this in the Request Object.
-        trgDiskInfo = find_target_disk(srvObj)
-        reqPropsObj.setTargDiskInfo(trgDiskInfo)
-        if trgDiskInfo is None:
-            errMsg = "No disk volumes are available for ingesting any files."
-            raise Exception(errMsg)
 
         # Generate Staging Filename + Temp Staging File + save data in this
         # file. Also Org. Staging Filename is created, Processing Staging
