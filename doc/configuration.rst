@@ -119,6 +119,21 @@ each of which must define the following attributes:
 * *Name*: The command name, case-sensitive.
 * *Module*: The python module implementing this command.
 
+.. _config.mime_types:
+
+MimeTypes
+---------
+
+Lists a mapping of filename extensions and mime types.
+It contains one or more ``MimeTypeMap`` elements,
+each one listing the following attributes:
+
+ * *Extension*: A filename extension.
+ * *MimeType*: The mime-type associated to that filename extension.
+
+This information is used, for example,
+by the :ref:`commands.archive` command
+when no mime-type information has been sent by the user.
 
 .. _config.storage_sets:
 

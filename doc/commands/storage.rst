@@ -6,33 +6,40 @@ Storage
 ARCHIVE
 -------
 
-Like :ref:`commands.qarchive`, but
-the target volume is selected depending on the incoming data type
-and based on the :ref:`server configuration <config.streams>`.
-In the future both commands will be unified back into ``ARCHIVE``.
-
-.. _commands.qarchive:
-
-QARCHIVE
---------
-
-Archive data files within an NGAS node.
+Archive data files within an NGAS node,
+calculating and storing the CRC of the archived file
+in the NGAS database.
 
 After a successful archiving of a file,
 all archiving event handlers are invoked.
 Read :ref:`server.archiving_events` for more information
 about these events and how to handle them.
 
-The QARCHIVE command supports two modes of operation, Archive Pull and Push.
-Pull tells an NGAS node to fetch and archive a file based on a valid URI.
-A Push command requires the client to send the file contents as a byte stream to the NGAS server.
-The QARCHIVE command will also calculate and store the CRC of the archived file in the NGAS database.
+The ``ARCHIVE`` command supports two modes of operation: *pull* and *push*.
+A pull request is issued by using the ``GET`` method,
+and tells an NGAS node to fetch and archive a file based on a valid URI.
+A push request, on the other hand, is issued by using the ``POST`` method,
+and requires the client to send the file contents as a byte stream to the NGAS server.
+
+When incoming files matching an existing file ID in the NGAS DB,
+their contents are stored using a new version number if file versioning is on.
+If file versioning is off, they will overwrite an existing file's contents instead.
+When overwriting, users can specify a specific file version to overwrite,
+which must exist **locally** in the server receiving the request.
 
 **Parameters**
 
 - ``filename``: a valid URI i.e. ``file://, http://, ftp://`` for Pull or filename ie. ``test.fits`` for Push.
 - ``mime_type``: describes the content-type of the file.
-- ``no-versioning``: used to switch the automatic versioning on/off. If file versioning is on, a file archived with a File ID already registered in the NGAS DB will get a new version number.
+  If not given, NGAS tries to guess it based on the filename's extension,
+  and the :ref:`internal mime-type information <config.mime_types>`
+  stored in the NGAS configuration.
+- ``versioning``: used to switch the automatic versioning on
+  (``1``, the default behavior) or off (``0``).
+- ``no_versioning``: The inverse of ``versioning``. This is kept for backwards compatibility.
+  If both are specified, ``versioning`` takes precedence.
+- ``file_version``: specifies which file version to overwrite.
+  Only taken into account when ``versioning=0``/``no_versioning=1``.
 - ``crc_variant``: used to explicitly choose which CRC variant will be used to checksum the file,
   overriding the system-wide configuration. See :ref:`server.crc` for details
 
@@ -40,15 +47,37 @@ The QARCHIVE command will also calculate and store the CRC of the archived file 
 
 In this case the NGAS server will attempt to retrieve and archive the file ``remote.fits`` from the remote http server::
 
- curl http://<host>:<port>/QARCHIVE?filename=http://<remotehost>:<remoteport>/remote.fits
+ curl http://<host>:<port>/ARCHIVE?filename=http://<remotehost>:<remoteport>/remote.fits
 
 
 **Archive Push Example**
 
 In this example it is expected that the client uploads the file content as a byte stream to the NGAS server::
 
-  curl -X POST -i -H "Content-Type: application/octet-stream" --data-binary "@/tmp/file.fits" http://<host>:<port>/QARCHIVE?filename=file.fits
+  curl -X POST -i -H "Content-Type: application/octet-stream" --data-binary "@/tmp/file.fits" http://<host>:<port>/ARCHIVE?filename=file.fits
 
+
+.. _commands.qarchive:
+
+QARCHIVE
+--------
+
+Like :ref:`commands.archive`, but with the following differences:
+
+* The target volume is selected at random from the available volumes in the server.
+  This bypasses the server's :ref:`stream configuration <config.streams>`,
+  but should yield a more even loading of the available volumes.
+* No file replication is carried out,
+  even if a storage set declares a replication disk.
+
+The ``QARCHIVE`` command was initially implemented
+separately from the ``ARCHIVE`` command,
+and therefore they used to differ in more ways.
+In particular ``QARCHIVE`` originally was the only one
+implementing on-stream checksuming,
+while ``ARCHIVE`` didn't.
+Nowadays they share the same underlying logic though,
+and only the differences documented above remain.
 
 .. _commands.retrieve:
 
