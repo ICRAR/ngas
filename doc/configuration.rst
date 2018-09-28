@@ -168,10 +168,11 @@ ArchiveHandling
 
 Contains archiving-related configuration.
 
- * *CRCVariant*: The CRC algorithm (and implementation) to use.
+ * *CRCVariant*: The CRC algorithm (and implementation) to use
+   to calculate the checksum of incoming files.
    See :ref:`server.crc` for details.
    If not specified the server will use the ``crc32`` variant. If specified,
-   ``0`` means ``crc32`` and ``1`` means ``crc32c``.
+   ``0`` means ``crc32``, ``1`` means ``crc32c`` and ``2`` means ``crc32z``.
  * *EventHandlerPlugIn*: Zero or more sub-elements defining additional modules
    that will handle :ref:`archiving events <server.archiving_events>`.
    Each element should have a ``Name`` attribute with the fully-qualified
@@ -217,15 +218,11 @@ The following attributes are available:
 The following attributes are present in old configuration files
 but are not used anymore: *FileSeq*, *DiskSeq*, *LogSummary*, *Prio*.
 
-Finally, the *ChecksumPlugIn* attribute
-names the plug-in that should calculate the checksum of the new file
-being archived by the ``ARCHIVE`` command.
-This attribute will disappear in future versions
-when ``ARCHIVE`` starts performing checksum calculation
-on the incoming data as it arrives
-(similar to how ``QARCHIVE`` works)
-in favor of the ``ArchiveHandling.CRCVariant`` attribute
-(see `ArchiveHandling`).
+Finally, the *ChecksumPlugIn* is maintained only for backward-compatibility reasons
+(it used to name a plug-in calculating checksums on files).
+Users instead should use the ``ArchiveHandling.CRCVariant`` attribute
+(see :ref:`config.archivehandling`)
+to specify the checksuming algorithm to use for incoming data.
 
 .. _config.log:
 
