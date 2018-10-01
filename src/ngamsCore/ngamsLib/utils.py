@@ -33,9 +33,11 @@ logger = logging.getLogger(__name__)
 if sys.version_info[0] > 2:
     def b2s(b, enc='utf8'):
         return b.decode(enc)
+    _long = int
 else:
     def b2s(b, _='utf8'):
         return b
+    _long = long
 
 class Task(object):
     """

@@ -790,7 +790,6 @@ def fromiso8601(s, local=False, fmt=FMT_DATETIME):
     t = totime(time.strptime(s, fmt.format))
     return t + ms
 
-_long = int if six.PY3 else long
 def toiso8601(t=None, local=False, fmt=FMT_DATETIME):
     """
     Converts the time value `t` to a string formatted using the ISO 8601
@@ -811,7 +810,7 @@ def toiso8601(t=None, local=False, fmt=FMT_DATETIME):
     totuple = time.gmtime if not local else time.localtime
     timeStamp = time.strftime(fmt.format, totuple(t))
     if fmt.msecs:
-        t = (t - _long(t)) * 1000
+        t = (t - utils._long(t)) * 1000
         timeStamp += '.%03d' % int(t)
 
     return timeStamp
