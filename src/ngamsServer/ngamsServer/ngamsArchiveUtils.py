@@ -596,18 +596,9 @@ def postFileRecepHandling(srvObj,
         logger.debug("Data returned from Data Archiving Plug-In: %r", resultPlugIn)
 
     # if checksum is already supplied then do not calculate it from the plugin
-    if (cksum == None):
-        # Calculate checksum (if plug-in specified).
-        checksumPlugIn = srvObj.getCfg().getChecksumPlugIn()
-        if (checksumPlugIn != ""):
-            logger.info("Invoking Checksum Plug-In: %s to handle file: %s",
-                         checksumPlugIn, resultPlugIn.getCompleteFilename())
-            plugInMethod = loadPlugInEntryPoint(checksumPlugIn)
-            checksum = plugInMethod(srvObj, resultPlugIn.getCompleteFilename(), 0)
-            logger.info("Result: %s", checksum)
-        else:
-            checksum = ''
-            checksumPlugIn = ''
+    if cksum is None:
+        checksumPlugIn = srvObj.cfg.getCRCVariant()
+        checksum = ngamsFileUtils.get_checksum(65536, resultPlugIn.getCompleteFilename(), checksumPlugIn)
     else:
         checksum, checksumPlugIn = cksum
 
