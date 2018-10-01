@@ -768,7 +768,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                        iotime,
                        ingestionRate,
                        genSnapshot = 1,
-                       updateDiskInfo = 0):
+                       updateDiskInfo = 0,
+                       prev_disk_id=None):
         """
         The method writes the information in connection with a file in the
         NGAS DB. If an entry already exists for that file, it is updated
@@ -798,17 +799,17 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         vals = []
         sql_str = None
 
-        if (self.fileInDb(diskId, fileId, fileVersion)):
+        if (self.fileInDb(prev_disk_id or diskId, fileId, fileVersion)):
             # We only allow to modify a limited set of columns.
             sql.append(("UPDATE ngas_files SET "
                        "file_name={}, format={}, file_size={}, "
                        "uncompressed_file_size={}, compression={}, "
                        "%s={}, checksum={}, checksum_plugin={}, "
                        "file_status={}, creation_date={}, io_time={}, "
-                       "ingestion_rate={} WHERE file_id={} AND disk_id={}" % (self._file_ignore_columnname,)))
+                       "ingestion_rate={}, disk_id={} WHERE file_id={} AND disk_id={}" % (self._file_ignore_columnname,)))
             vals = [filename, format, fileSize, uncompressedFileSize, compression,\
                     ignore, checksum, checksumPlugIn, fileStatus, creDate,\
-                    int(iotime*1000), ingestionRate, fileId, diskId]
+                    int(iotime*1000), ingestionRate, diskId, fileId, prev_disk_id or diskId]
 
             if int(fileVersion) != -1:
                 sql.append(" AND file_version={}")

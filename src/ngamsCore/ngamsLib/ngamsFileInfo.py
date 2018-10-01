@@ -749,7 +749,8 @@ class ngamsFileInfo:
               hostId,
               dbConObj,
               genSnapshot = 1,
-              updateDiskInfo = 0):
+              updateDiskInfo = 0,
+              prev_disk_id=None):
         """
         Write the contents of the object into the NGAS DB.
 
@@ -773,7 +774,8 @@ class ngamsFileInfo:
                                 self.getCreationDate(), self.getIoTime(),
                                 self.getIngestionRate(),
                                 genSnapshot=genSnapshot,
-                                updateDiskInfo=updateDiskInfo)
+                                updateDiskInfo=updateDiskInfo,
+                                prev_disk_id=prev_disk_id)
         return self
 
 
