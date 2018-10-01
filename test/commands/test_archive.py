@@ -1644,11 +1644,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         os.unlink(test_file)
 
-    @unittest.skipUnless('NGAS_ENABLE_NO_VERSIONING_TESTS' in os.environ, 'known to fail, enable once they work reliably')
     def test_archive_no_versioning(self):
         self._test_archive_no_versioning('ARCHIVE')
 
-    @unittest.skipUnless('NGAS_ENABLE_NO_VERSIONING_TESTS' in os.environ, 'known to fail, enable once they work reliably')
     def test_qarchive_no_versioning(self):
         self._test_archive_no_versioning('QARCHIVE')
 
