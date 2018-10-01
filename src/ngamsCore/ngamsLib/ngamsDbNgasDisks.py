@@ -673,8 +673,54 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Update the row for the volume ``diskId`` hosting the new file of size
         ``fileSize``.
         """
+        self._add_file(self.query2, fileSize, diskId)
+
+    def _add_file(self, query_method, fileSize, diskId):
         sqlQuery = "UPDATE ngas_disks SET " +\
                    "number_of_files=(number_of_files + 1), " +\
                    "bytes_stored=(bytes_stored + {0}) WHERE " +\
                    "disk_id={1}"
-        self.query2(sqlQuery, args=(fileSize, diskId))
+        query_method(sqlQuery, args=(fileSize, diskId))
+
+    def _remove_file(self, query_method, file_size, disk_id):
+        sql = """UPDATE ngas_disks
+        SET number_of_files=(number_of_files - 1),
+            bytes_stored=(bytes_stored - {0})
+        WHERE disk_id={1}"""
+        query_method(sql, args=(file_size, disk_id))
+
+    def remove_file(self, file_size, disk_id):
+        """Update the disk information to reflect that a file has been removed
+        from the disk
+        :param int file_size: the size of the file on disk
+        :param str disk_id: the ID of the disk
+        """
+        self._remove_file(self.query2, file_size, disk_id)
+
+    def replace_file(self, old_file_size, old_disk_id, new_file_size, new_disk_id):
+        """Update the disk information to reflect a file, potentially of a
+        different size, is being replaced, potentially in a different disk
+        :param int old_file_size: the size of the old copy of the file on disk
+        :param str old_disk_id: the ID of the disk with the old copy of the file
+        :param int new_file_size: the size of the new copy of the file on disk,
+         could be the same as ``old_file_size``.
+        :param str new_disk_id: the ID of the disk with the old copy of the file,
+         could be the same as ``new_disk_id``.
+        """
+
+        if old_disk_id == new_disk_id:
+            if old_file_size == new_file_size:
+                # there's nothing to update really
+                return
+
+            # The update affects only one disk/row
+            sql = """UPDATE ngas_disks
+                     SET bytes_stored=(bytes_stored + {0})
+                     WHERE disk_id={1}"""
+            self.query2(sql, (new_file_size - old_file_size, new_disk_id))
+            return
+
+        # Update two rows in a transaction
+        with self.transaction() as t:
+            self._remove_file(t.execute, old_file_size, old_disk_id)
+            self._add_file(t.execute, new_file_size, new_disk_id)
