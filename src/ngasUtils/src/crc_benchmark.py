@@ -29,10 +29,17 @@ import multiprocessing.pool
 import time
 import sys
 
-import six
-
 from ngamsServer import ngamsFileUtils
 
+
+class ReadonlyIO(object):
+    def __init__(self, data):
+        self._data = data
+        self.pos = 0
+    def read(self, n):
+        x = self._data[self.pos:self.pos + n]
+        self.pos += n
+        return x
 
 def checksum_data(data, bufsize, variant):
     if bufsize == 0:
@@ -40,7 +47,7 @@ def checksum_data(data, bufsize, variant):
         crc_info = ngamsFileUtils.get_checksum_info(variant)
         crc = crc_info.final(crc_info.method(data, crc_info.init))
     else:
-        f = six.BytesIO(data)
+        f = ReadonlyIO(data)
         start = time.time()
         crc = ngamsFileUtils.get_checksum(bufsize, f, variant)
     return crc, start, time.time() - start
@@ -51,7 +58,7 @@ def set_shmem_val(val):
     _shmem_val = val
 
 def _checksum_data_shmem_proc(bufsize, variant, _):
-    return checksum_data(_shmem_val.raw, bufsize, variant)
+    return checksum_data(_shmem_val, bufsize, variant)
 
 def _checksum_data_proc(data, bufsize, variant, _):
     return checksum_data(data, bufsize, variant)
@@ -70,10 +77,11 @@ def _get_pool(opts, data, size_mb):
         return multiprocessing.pool.ThreadPool(opts.number_tasks)
     elif opts.processes:
         t0 = time.time()
-        shmem_val = multiprocessing.sharedctypes.RawArray('c', size_mb * 1024 * 1024)
+        shmem_val = multiprocessing.sharedctypes.RawArray('c', len(data))
         t1 = time.time()
-        shmem_val.value = data
-        print("%d [MB] of shared memory created in %.3f [s] and initialized in %.3f [s]" % (size_mb, t1 - t0, time.time() - t1))
+        shmem_val.raw = bytes(data)
+        del data[:]
+        print("%.2f [MB] of shared memory created in %.3f [s] and initialized in %.3f [s]" % (size_mb, t1 - t0, time.time() - t1))
         return multiprocessing.Pool(opts.number_tasks, set_shmem_val, (shmem_val,))
     elif opts.processes_copy:
         return multiprocessing.Pool(opts.number_tasks)
@@ -86,8 +94,9 @@ def _get_checksum_function(opts, data, bufsize, variant):
         return functools.partial(_checksum_data_proc, data, bufsize, variant)
     return lambda _: checksum_data(data, bufsize, variant)
 
-def do_benchmarking(opts, data, size_mb):
+def do_benchmarking(opts, data):
 
+    size_mb = len(data) / 1024. / 1024
     pool = _get_pool(opts, data, size_mb)
 
     mechanism = 'serial evaluation(s)'
@@ -141,16 +150,18 @@ def main():
     opts = parser.parse_args()
 
     if opts.file:
-        fname = sys.argv[1]
-        with open(fname, 'rb') as f:
+        with open(opts.file, 'rb') as f:
             data = f.read()
-            size_mb = len(data) / 1024. / 1024.
-            print("Checking file %s (%d bytes)\n" % (fname, len(data)))
+            print("Checking file %s (%d bytes)\n" % (opts.file, len(data)))
     else:
-        size_mb = opts.megabytes
-        data = b' ' * 1024 * 1024 * size_mb
+        data = b' ' * 1024 * 1024 * opts.megabytes
 
-    do_benchmarking(opts, data, size_mb)
+    if opts.processes:
+        # turn it into a modifiable array so we can easily empty it later
+        # after copying to the shared memory area
+        data = bytearray(data)
+
+    do_benchmarking(opts, data)
 
 if __name__ == '__main__':
     main()
