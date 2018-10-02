@@ -692,6 +692,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
     def remove_file(self, file_size, disk_id):
         """Update the disk information to reflect that a file has been removed
         from the disk
+
         :param int file_size: the size of the file on disk
         :param str disk_id: the ID of the disk
         """
@@ -700,6 +701,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
     def replace_file(self, old_file_size, old_disk_id, new_file_size, new_disk_id):
         """Update the disk information to reflect a file, potentially of a
         different size, is being replaced, potentially in a different disk
+
         :param int old_file_size: the size of the old copy of the file on disk
         :param str old_disk_id: the ID of the disk with the old copy of the file
         :param int new_file_size: the size of the new copy of the file on disk,
