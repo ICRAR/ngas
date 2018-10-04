@@ -1382,7 +1382,7 @@ class ngamsTestSuite(unittest.TestCase):
                 rmFile('tmp/ngas.sqlite')
                 import sqlite3
                 fname = 'ngamsCreateTables-SQLite.sql'
-                script = pkg_resources.resource_string('ngamsSql', fname)  # @UndefinedVariable
+                script = utils.b2s(pkg_resources.resource_string('ngamsSql', fname))  # @UndefinedVariable
                 with contextlib.closing(sqlite3.connect('tmp/ngas.sqlite')) as conn:  # @UndefinedVariable
                     conn.executescript(script)
 

@@ -1575,73 +1575,41 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                 self.assertNotIn('NGAMS_ER_FILE_NOK', stat.getMessage())
 
     @unittest.skip("Run manually when necessary")
-    def test_performance_of_crc32(self):
-
-        client = sendPclCmd(timeout=120)
-        kb = 2 ** 10
-        for log_blockSize_kb in range(8):
-
-            blockSize = (2**log_blockSize_kb) * kb
-            self.prepExtSrv(cfgProps=[['NgamsCfg.Server[1].BlockSize', blockSize]])
-
-            for log_fsize_mb in range(13):
-                size = (2**log_fsize_mb) * kb * kb
-
-                for crc32_variant in (0, 1):
-
-                    test_file = 'tmp/largefile'
-                    with open(test_file, 'wb') as f:
-                        f.seek(size)
-                        f.write('a')
-
-                    params = {}
-                    if crc32_variant is not None:
-                        params['crc_variant'] = crc32_variant
-
-                    file_uri = 'file://' + os.path.normpath(os.path.abspath(test_file))
-                    stat = client.archive(file_uri, mimeType='application/octet-stream',
-                                          pars=params, cmd='QARCHIVE')
-                    self.assertEqual(NGAMS_SUCCESS, stat.getStatus())
-                    os.unlink(test_file)
-
-            self.terminateAllServer()
-
-    @unittest.skip("Run manually when necessary")
     def test_performance_of_parallel_crc32(self):
 
-        kb = 2 ** 10
-        size = 100 * kb * kb
-        test_file = 'tmp/largefile'
-        file_uri = 'file://' + os.path.normpath(os.path.abspath(test_file))
+        # Try to use an in-memory filesystem if possible
+        root = '/dev/shm'
+        if not os.path.isdir(root):
+            root = '/tmp/ngas'
+
+        size_mb = int(os.environ.get('NGAS_TESTS_CRC32_DATA_SIZE', 300))
+        size = size_mb * 1024 * 1024
+        test_file = os.path.join(root, 'largefile')
+        file_uri = 'file://' + test_file
         with open(test_file, 'wb') as f:
             f.seek(size)
-            f.write('a')
+            f.write(b'a')
 
+        n_clients = int(os.environ.get('NGAS_TESTS_CRC32_CLIENTS', 1))
+        tp = ThreadPool(n_clients)
         for log_blockSize_kb in (2,3):
 
-            blockSize = (2**log_blockSize_kb) * kb
+            blockSize = (2**log_blockSize_kb) * 1024
+            cfg = (("NgamsCfg.Server[1].RootDirectory", os.path.join(root, 'ngas')),
+                   ('NgamsCfg.Server[1].BlockSize', blockSize),
+                   ("NgamsCfg.Log[1].LocalLogLevel", "4"))
+            self.prepExtSrv(cfgProps=cfg)
+            for crc32_variant in (1, 0):
+                params = [('crc_variant', crc32_variant)]
+                def submit_file(_):
+                    return sendPclCmd().archive(file_uri, mimeType='application/octet-stream',
+                                                pars=params, cmd='QARCHIVE')
 
-            for nfiles in range(5):
-                nfiles += 1
-                tp = ThreadPool(nfiles)
+                for stat in tp.map(submit_file, range(n_clients)):
+                    self.assertEqual(NGAMS_SUCCESS, stat.getStatus())
+            self.terminateAllServer()
 
-                self.prepExtSrv(cfgProps=[['NgamsCfg.Server[1].BlockSize', blockSize]])
-                for crc32_variant in (0, 1):
-
-                    params = {}
-                    if crc32_variant is not None:
-                        params['crc_variant'] = crc32_variant
-
-                    def submit_file(file_uri):
-                        return sendPclCmd().archive(file_uri, mimeType='application/octet-stream',
-                                                    pars=params, cmd='QARCHIVE')
-
-                    for stat in tp.map(submit_file, [file_uri]*nfiles):
-                        self.assertEqual(NGAMS_SUCCESS, stat.getStatus())
-
-                tp.close()
-                self.terminateAllServer()
-
+        tp.close()
         os.unlink(test_file)
 
     def test_archive_no_versioning(self):
