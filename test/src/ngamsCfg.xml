@@ -245,7 +245,7 @@
                    Scan="0"/>
 
   <Log Id="Log-Test" 
-       LocalLogFile="/tmp/ngamsTest/NGAS/log/LogFile.nglog"
+       LocalLogFile="log/LogFile.nglog"
        LocalLogLevel="1"
        LogBufferSize="10"
        LogRotateCache="30" 

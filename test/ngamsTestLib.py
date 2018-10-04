@@ -1305,7 +1305,6 @@ class ngamsTestSuite(unittest.TestCase):
         cfg.storeVal("NgamsCfg.Server[1].RootDirectory", mtRtDir)
         cfg.storeVal("NgamsCfg.ArchiveHandling[1].BackLogBufferDirectory", mtRtDir)
         cfg.storeVal("NgamsCfg.Processing[1].ProcessingDirectory", mtRtDir)
-        cfg.storeVal("NgamsCfg.Log[1].LocalLogFile", os.path.normpath(mtRtDir + "/log/LogFile.nglog"))
 
         # Set special values if so specified.
         for cfgPar in cfg_pars:
