@@ -111,19 +111,19 @@
                 DiskLabel="FITS"
                 MainDiskSlotId="1"
                 RepDiskSlotId="2"
-                Mutex="1"
+                Mutex="0"
                 Synchronize="1"/>
 
     <StorageSet StorageSetId="FitsStorage2"
                 MainDiskSlotId="3"
                 RepDiskSlotId="4"
-                Mutex="1"
+                Mutex="0"
                 Synchronize="1"/>
 
     <StorageSet StorageSetId="FitsStorage3"
                 MainDiskSlotId="5"
                 RepDiskSlotId="6"
-                Mutex="1"
+                Mutex="0"
                 Synchronize="1"/>
 
     <StorageSet StorageSetId="PafStorage"

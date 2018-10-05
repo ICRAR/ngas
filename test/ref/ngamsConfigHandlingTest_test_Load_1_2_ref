@@ -68,9 +68,9 @@
   </Register>
   <Server ArchiveName="ESO-ARCHIVE" BlockSize="65536" Id="Server-Sim" IpAddress="127.0.0.1" MaxSimReqs="30" PortNo="8888" ProxyMode="1" RootDirectory="/tmp/ngamsTest/NGAS" Simulation="1" SwVersion=""/>
   <StorageSets Id="StorageSets-PATA-8-Dbl">
-    <StorageSet DiskLabel="FITS" MainDiskSlotId="1" Mutex="1" RepDiskSlotId="2" StorageSetId="FitsStorage1" Synchronize="1"/>
-    <StorageSet MainDiskSlotId="3" Mutex="1" RepDiskSlotId="4" StorageSetId="FitsStorage2" Synchronize="1"/>
-    <StorageSet MainDiskSlotId="5" Mutex="1" RepDiskSlotId="6" StorageSetId="FitsStorage3" Synchronize="1"/>
+    <StorageSet DiskLabel="FITS" MainDiskSlotId="1" Mutex="0" RepDiskSlotId="2" StorageSetId="FitsStorage1" Synchronize="1"/>
+    <StorageSet MainDiskSlotId="3" Mutex="0" RepDiskSlotId="4" StorageSetId="FitsStorage2" Synchronize="1"/>
+    <StorageSet MainDiskSlotId="5" Mutex="0" RepDiskSlotId="6" StorageSetId="FitsStorage3" Synchronize="1"/>
     <StorageSet MainDiskSlotId="7" Mutex="0" RepDiskSlotId="8" StorageSetId="PafStorage" Synchronize="1"/>
     <StorageSet MainDiskSlotId="9" Mutex="0" RepDiskSlotId="10" StorageSetId="LogStorage" Synchronize="1"/>
   </StorageSets>
