@@ -532,10 +532,13 @@ class transaction(object):
     def __exit__(self, typ, *_):
 
         # React accordingly
+        t0 = time.time()
         if not typ:
             self.conn.commit()
         else:
             self.conn.rollback()
+        t1 = time.time()
+        logger.debug('Committed/rolled back transaction in %.2f [s]', t1 - t0)
 
         # Always close the cursor and the connection at the end
         for x in (self.cursor, self.conn):
@@ -543,6 +546,7 @@ class transaction(object):
                 x.close()
             except:
                 pass
+        logger.debug('closed connection/cursor in %.2f [s]', time.time() - t1)
 
         # Re-raise original exception
         if typ:
