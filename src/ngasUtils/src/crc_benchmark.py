@@ -21,6 +21,7 @@
 #
 
 import argparse
+import collections
 import functools
 import itertools
 import math
@@ -28,28 +29,52 @@ import multiprocessing.sharedctypes
 import multiprocessing.pool
 import time
 import sys
+import binascii
+import zlib
 
-from ngamsServer import ngamsFileUtils
+try:
+    import crc32c
+except ImportError:
+    crc32c = None
+try:
+    import xxhash
+except ImportError:
+    xxhash = None
 
+checksum_info = collections.namedtuple('checksum_info', 'name init method final')
+checksums = {
+    'crc32': checksum_info("binascii's crc32 implementation", lambda: 0, binascii.crc32, lambda x: x & 0xffffffff),
+    'crc32z': checksum_info("zlib's crc32 implementation", lambda: 0, zlib.crc32, lambda x: x & 0xffffffff),
+    'adler32': checksum_info("zlib's adler32 implementation", lambda: 0, zlib.adler32, lambda x: x & 0xffffffff),
+}
+if crc32c:
+    checksums['crc32c'] = checksum_info("crc32c's crc32c implementation", lambda: 0, crc32c.crc32, lambda x: x & 0xffffffff)
+if xxhash:
+    def _update_xxhash(x, crc):
+        crc.update(x)
+        return crc
+    checksums['xxhash32'] = checksum_info("xxhash's xxhash32 implementation", xxhash.xxh32, _update_xxhash, lambda x: x.intdigest() & 0xffffffff)
 
-class ReadonlyIO(object):
-    def __init__(self, data):
-        self._data = data
-        self.pos = 0
-    def read(self, n):
-        x = self._data[self.pos:self.pos + n]
-        self.pos += n
-        return x
+def chunker(seq, size):
+    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+
+def get_checksum(bufsize, data, variant):
+    crc_info = checksums[variant]
+    crc_method = crc_info.method
+    crc = crc_info.init()
+    for block in (data[pos:pos + bufsize] for pos in range(0, len(data), bufsize)):
+        crc = crc_method(block, crc)
+    crc = crc_info.final(crc)
+    return crc
 
 def checksum_data(data, bufsize, variant):
     if bufsize == 0:
         start = time.time()
-        crc_info = ngamsFileUtils.get_checksum_info(variant)
-        crc = crc_info.final(crc_info.method(data, crc_info.init))
+        crc_info = checksums[variant]
+        crc = crc_info.final(crc_info.method(data, crc_info.init()))
     else:
-        f = ReadonlyIO(data)
         start = time.time()
-        crc = ngamsFileUtils.get_checksum(bufsize, f, variant)
+        crc = get_checksum(bufsize, data, variant)
     return crc, start, time.time() - start
 
 _shmem_val = None
@@ -81,7 +106,7 @@ def _get_pool(opts, data, size_mb):
         t1 = time.time()
         shmem_val.raw = bytes(data)
         del data[:]
-        print("%.2f [MB] of shared memory created in %.3f [s] and initialized in %.3f [s]" % (size_mb, t1 - t0, time.time() - t1))
+        print("\n%.2f [MB] of shared memory created in %.3f [s] and initialized in %.3f [s]" % (size_mb, t1 - t0, time.time() - t1))
         return multiprocessing.Pool(opts.number_tasks, set_shmem_val, (shmem_val,))
     elif opts.processes_copy:
         return multiprocessing.Pool(opts.number_tasks)
@@ -97,8 +122,6 @@ def _get_checksum_function(opts, data, bufsize, variant):
 def do_benchmarking(opts, data):
 
     size_mb = len(data) / 1024. / 1024
-    pool = _get_pool(opts, data, size_mb)
-
     mechanism = 'serial evaluation(s)'
     if opts.threads:
         mechanism = "thread(s)"
@@ -106,10 +129,16 @@ def do_benchmarking(opts, data):
         mechanism = "process(es)"
 
     print("Using python: %s" % ('.'.join(map(str, sys.version_info[:3])),))
-    print("Checksuming %.2f [MB] using %d %s\n" % (size_mb, opts.number_tasks, mechanism))
-    print("Algo   Chksum   Chksum(int) BufSize         Speed [MB/s]       Time [s] Setup Time [s]")
-    print("====== ======== =========== ======= ==================== ============== ==============")
-    for variant, bufsize_log2 in itertools.product(('crc32', 'crc32c', 'crc32z'), list(range(9, 21)) + [0]):
+    print("Checksuming %.2f [MB] using %d %s" % (size_mb, opts.number_tasks, mechanism))
+    print("Checksum methods to be tested:")
+    for variant, info in checksums.items():
+        print(' * %s: %s' % (variant, info.name))
+
+    pool = _get_pool(opts, data, size_mb)
+    print("")
+    print("Algo     Chksum   Chksum(int) BufSize         Speed [MB/s]       Time [s] Setup Time [s]")
+    print("======== ======== =========== ======= ==================== ============== ==============")
+    for variant, bufsize_log2 in itertools.product(checksums, list(range(9, 21)) + [0]):
 
         # bufsize = 0 causes the whole buffer to be processed in one go
         bufsize = 2 ** bufsize_log2 if bufsize_log2 > 0 else 0
@@ -126,15 +155,12 @@ def do_benchmarking(opts, data):
         if not all(x == crcs[0] for x in crcs):
             raise Exception("Different checksum results obtained for %s: %r" % (variant, crcs))
         crc = crcs[0]
-        if crc is None:
-            print("Variant not supported: %s" % variant)
-        else:
-            mean_time, stddev_time = mean_and_stddev(times)
-            mean_setup, stddev_setup = mean_and_stddev(setup_times)
-            mean_speed, stddev_speed = mean_and_stddev(speeds)
-            args = (variant, crc & 0xffffffff, crc, bufsize, mean_speed,
-                    stddev_speed, mean_time, stddev_time, mean_setup, stddev_setup)
-            print(u"%-6s %08x %11d %-7d %9.3f \u00b1 %8.3f %6.3f \u00b1 %5.3f %6.3f \u00b1 %5.3f" % args)
+        mean_time, stddev_time = mean_and_stddev(times)
+        mean_setup, stddev_setup = mean_and_stddev(setup_times)
+        mean_speed, stddev_speed = mean_and_stddev(speeds)
+        args = (variant, crc & 0xffffffff, crc, bufsize, mean_speed,
+                stddev_speed, mean_time, stddev_time, mean_setup, stddev_setup)
+        print(u"%-8s %08x %11d %-7d %9.3f \u00b1 %8.3f %6.3f \u00b1 %5.3f %6.3f \u00b1 %5.3f" % args)
 
 def main():
 
