@@ -167,16 +167,40 @@ then you need to install at least one additional package::
 
   $> pip install psutil
 
-Unit tests are found in the ``*Test.py`` files
-under the ``src/ngamsTest/ngamsTest`` directory
+Unit tests are found in the ``test_*.py`` files
+under the ``test`` directory
 of the ngas source distribution.
 You can use any unittest runner to execute the tests.
 In particular, we tend to use pytest, like this::
 
   $> pip install pytest
-  $> cd ngas_src_directory/src/ngamsTest/ngamsTest
-  $> py.test -o 'python_files=*Test.py'
+  $> cd ngas_src_directory/test
+  $> pytest
 
-In the future we plan to standarize the names
-of the unit test modules to make it easier
-to execute them from different tools.
+Using alternative databases
+---------------------------
+
+By default the unit tests will run
+against a temporary on-disk sqlite database.
+If users want to run the tests against a different database
+they can do so by setting the ``NGAS_TESTDB`` environment variable
+to contain a :ref:`config.db` XML element
+with the correct information.
+
+For example, in Travis we run our tests against
+the local MySQL database like this::
+
+ export NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="MySQLdb" host="127.0.0.1" db="ngas" user="ngas" passwd="ngas"/>'
+ pip install psutil pytest-cov
+ pytest --cov
+
+Keeping intermediate results
+----------------------------
+
+Tests generate a number of temporary files and directories on disk
+that are automatically removed after each test finishes,
+regardless of whether they fail or succeed.
+If the output of **the last test executed** needs to be kept
+users can set the ``NGAS_TESTS_NO_CLEANUP`` to a value different than ``0``.
+This will keep the ``tests/tmp/`` and ``/tmp/ngas`` directories untouched
+so users can go and get more details about the test execution.
