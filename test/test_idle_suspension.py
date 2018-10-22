@@ -200,21 +200,10 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
 
         # 1. Send STATUS Command to sub-node using master as proxy.
-        statObj = sendPclCmd(port=8000).\
-                      get_status(NGAMS_STATUS_CMD, pars = [["host_id", subNode1]])
-        statBuf = filterOutLines(statObj.dumpBuf(), ["Date:", "Version:"])
-        tmpStatFile = saveInFile(None, statBuf)
-        refStatFile = "ref/ngamsIdleSuspensionTest_test_WakeUpStatus_1_1_ref"
-        refStatFile = saveInFile(None, loadFile(refStatFile) % getHostName())
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Sub-node not woken up as expected")
+        self.assert_ngas_status(sendPclCmd(port=8000).status, pars=[["host_id", subNode1]])
 
         # 2. Double-check that sub-node is no longer suspended.
-        statObj = sendPclCmd(port=8001).status()
-        statBuf = filterOutLines(statObj.dumpBuf(), ["Date:", "Version:"])
-        tmpStatFile = saveInFile(None, statBuf)
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Sub-node not woken up as expected")
+        self.assert_ngas_status(sendPclCmd(port=8001).status)
 
         # Clean up.
         self.markNodesAsUnsusp(dbConObj, susp_nodes)

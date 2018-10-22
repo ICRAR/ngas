@@ -97,18 +97,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # Retrieve the file.
         trgFile = "tmp/test_RetrieveCmd_1_1_tmp"
         outFilePath = "tmp/SmallFile.fits"
-        status = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
+        self.assert_ngas_status(client.retrieve, "TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
         unzip(trgFile, outFilePath)
-
-        # Check reply.
-        refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_1_1_ref"
-        tmpStatFile = "tmp/ngamsRetrieveCmdTest_test_RetrieveCmd_1_1_tmp"
-        saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status for RETRIEVE Command/Normal " +\
-                          "Execution")
-
-        # Check file retrieved.
         self.checkFilesEq("src/SmallFile.fits", outFilePath, "Retrieved file incorrect")
 
 
@@ -186,20 +176,9 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # Retrieve a file.
         trgFile = "tmp/test_RetrieveCmd_3_1_tmp"
         client = sendPclCmd(port=8000)
-        status = client.retrieve("NCU.2003-11-11T11:11:11.111", targetFile=trgFile)
-
-        # Check reply.
-        refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_3_1_ref"
-        tmpStatFile = "tmp/ngamsRetrieveCmdTest_test_RetrieveCmd_3_1_tmp"
-        saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status for RETRIEVE Command/Cluster " +\
-                          "Retrieval")
-
+        self.assert_ngas_status(client.retrieve, "NCU.2003-11-11T11:11:11.111", targetFile=trgFile)
         outFilePath = 'tmp/test_RetrieveCmd_3_1_tmp_unzip'
         unzip(trgFile, outFilePath)
-
-        # Check the retrieved file (checksum).
         refFile = "src/TinyTestFile.fits"
         self.checkFilesEq(outFilePath, refFile, "Retrieved file incorrect")
 
@@ -254,20 +233,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Retrieve file (File ID).
         fileId = "TEST.2001-05-08T15:25:00.123"
-        statObj = client.retrieve(fileId)
-        refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_7_1_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Unexpected response returned to RETRIEVE Command")
-
-        # Retrieve file (File ID + File Version).
-        statObj = client.retrieve(fileId, fileVersion=2)
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Unexpected response returned to RETRIEVE Command")
-
-        # Retrieve file (Disk ID + File ID + File Version).
-        # TODO: Implement this case
+        self.assert_ngas_status(client.retrieve, fileId)
+        self.assert_ngas_status(client.retrieve, fileId, fileVersion=2)
 
 
     def test_HttpRedirection_01(self):

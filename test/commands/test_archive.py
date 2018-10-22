@@ -325,15 +325,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv()
-        sendPclCmd().archive("src/SmallFile.fits")
-        statObj = sendPclCmd().archive("src/SmallFile.fits", noVersioning=1)
-        filePat = "ngamsArchiveCmdTest_test_NormalArchivePushReq"
-        tmpStatFile = "tmp/%s_4_1_tmp" % filePat
-        refStatFile = "ref/%s_4_1_ref" % filePat
-        saveInFile(tmpStatFile, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "File incorrectly " +\
-                          "archived/no_versioning=1")
+        self.prepExtSrv()
+        client = sendPclCmd()
+        self.assert_ngas_status(client.archive, "src/SmallFile.fits")
+        self.assert_ngas_status(client.archive, "src/SmallFile.fits", noVersioning=1)
 
 
     def test_ArchivePushReq_1(self):
@@ -359,13 +354,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
-        tmpFile = "tmp/Tmp=Fits=File.fits"
+        tmpFile = genTmpFilename(prefix="Tmp=Fits=File", suffix='.fits')
         cpFile("src/SmallFile.fits", tmpFile)
-        statObj = sendPclCmd().archive(tmpFile)
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-        refStatFile = "ref/ngamsArchiveCmdTest_test_ArchivePushReq_1_1_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "File with ='s in name " +\
-                          "incorrectly handled")
+        self.assertArchive(tmpFile)
 
 
     def test_BackLogBuf_01(self):

@@ -31,8 +31,7 @@
 This module contains the Test Suite for the ONLINE Command.
 """
 
-from ngamsLib.ngamsCore import NGAMS_ONLINE_CMD
-from ..ngamsTestLib import ngamsTestSuite, sendExtCmd
+from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
 
 
 class ngamsOnlineCmdTest(ngamsTestSuite):
@@ -88,8 +87,4 @@ class ngamsOnlineCmdTest(ngamsTestSuite):
         TODO: Check that the server is Online (DB + STATUS Command).
         """
         self.prepExtSrv(autoOnline=0)
-        tmpStatFile = sendExtCmd(8888, NGAMS_ONLINE_CMD,
-                                 genStatFile = 1)
-        refStatFile = "ref/ngamsOnlineCmdTest_test_OnlineCmd_1_1_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status returned for ONLINE command")
+        self.assert_ngas_status(sendPclCmd().online)

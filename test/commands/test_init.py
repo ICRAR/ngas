@@ -31,8 +31,7 @@
 This module contains the Test Suite for the INIT Command.
 """
 
-from ngamsLib.ngamsCore import NGAMS_INIT_CMD
-from ..ngamsTestLib import ngamsTestSuite, sendExtCmd
+from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
 
 
 class ngamsInitCmdTest(ngamsTestSuite):
@@ -72,9 +71,4 @@ class ngamsInitCmdTest(ngamsTestSuite):
               actually re-loaded.
         """
         self.prepExtSrv()
-        # TODO: Change some cfg. parameter
-        tmpStatFile = sendExtCmd(8888, NGAMS_INIT_CMD)
-        refStatFile = "ref/ngamsInitCmdTest_test_handleCmdInit_1_1_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status returned for INIT Command")
-        # TODO: Check that server has initialized with new parameter
+        self.assert_ngas_status(sendPclCmd().init)
