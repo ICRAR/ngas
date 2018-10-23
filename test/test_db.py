@@ -28,8 +28,8 @@ class DbTests(ngamsTestLib.ngamsTestSuite):
     def setUp(self):
         super(DbTests, self).setUp()
         cfg = ngamsTestLib.db_aware_cfg('src/ngamsCfg.xml')
-        self.db = ngamsDb.from_config(cfg, maxpool=1)
         self.point_to_sqlite_database(cfg, True)
+        self.db = ngamsDb.from_config(cfg, maxpool=1)
         ngamsTestLib.delNgasTbls(self.db)
 
     def tearDown(self):
