@@ -41,7 +41,7 @@ import six
 from . import ngamsConfigBase, ngamsSubscriber
 from . import ngamsStorageSet, ngamsStream, ngamsMirroringSource
 from . import utils
-from .ngamsCore import genLog, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
+from .ngamsCore import genLog, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_BACK_LOG_DIR
 
 
 logger = logging.getLogger(__name__)
@@ -413,10 +413,6 @@ class ngamsConfig:
         Returns:     Reference to object itself.
         """
         self.clear()
-
-        # Create log file directory if defined.
-        if (self.getLocalLogFile()):
-            checkCreatePath(os.path.dirname(self.getLocalLogFile()))
 
         # Get session SQL statements
         db_obj = self.__cfgMgr.getXmlObj('Db[1]')
@@ -2102,17 +2098,8 @@ class ngamsConfig:
                              self.getCheckRep())
         checkIfSetInt("Server.BlockSize", self.getBlockSize(),
                       self.getCheckRep())
-        if (checkIfSetStr("Server.RootDirectory",
-                          self.getRootDirectory(), self.getCheckRep())):
-            # Check if a legal root directory specified.
-            if (not os.path.exists(self.getRootDirectory())):
-                try:
-                    checkCreatePath(self.getRootDirectory())
-                except:
-                    errMsg = genLog("NGAMS_ER_ILL_ROOT_DIR",
-                                    [self.getCfg(), self.getRootDirectory()])
-                    logger.exception(errMsg)
-                    self.getCheckRep().append(errMsg)
+        checkIfSetStr("Server.RootDirectory",
+                      self.getRootDirectory(), self.getCheckRep())
         checkIfZeroOrOne("Server.ProxyMode", self.getProxyMode(),
                          self.getCheckRep())
         logger.debug("Checked Server Element")
@@ -2222,18 +2209,6 @@ class ngamsConfig:
         if (self.getAllowProcessingReq()):
             checkIfSetStr("Processing.ProcessingDirectory",
                           self.getProcessingDirectory(), self.getCheckRep())
-            if (self.getProcessingDirectory()):
-                procDir = os.path.normpath(self.getProcessingDirectory()+"/" +\
-                                           NGAMS_PROC_DIR)
-                if (not os.path.exists(procDir)):
-                    try:
-                        os.makedirs(procDir)
-                    except:
-                        errMsg = genLog("NGAMS_ER_ILL_PROC_DIR",
-                                        [self.getCfg(),
-                                         self.getProcessingDirectory()])
-                        logger.error(errMsg)
-                        self.getCheckRep().append(errMsg)
         for dppi_plugin in self.dppi_plugins.values():
             checkIfSetStr("Processing.PlugIn.Name", dppi_plugin.name,
                           self.getCheckRep())

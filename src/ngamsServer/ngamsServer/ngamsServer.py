@@ -449,6 +449,7 @@ class NgasRotatingFileHandler(BaseRotatingHandler):
     """
 
     def __init__(self, fname, interval):
+        checkCreatePath(os.path.dirname(fname))
         BaseRotatingHandler.__init__(self, fname, mode='a')
         self.interval = interval
         self.rolloverAt = self.interval + time.time()
@@ -1924,6 +1925,9 @@ class ngamsServer(object):
         # Load NG/AMS Configuration (from XML Document/DB).
         self.loadCfg()
 
+        # Make sure we have a root directory, which is quite basic
+        checkCreatePath(self.cfg.getRootDirectory())
+
         # Extend the system path to include anything specified in the config
         plugins_path = self.getCfg().getPluginsPath()
         if plugins_path:
@@ -2053,6 +2057,10 @@ class ngamsServer(object):
                                 setSrvProcess(allowProcessingReq).\
                                 setSrvRemove(allowRemoveReq).\
                                 setSrvDataChecking(0)
+
+        if allowProcessingReq:
+            checkCreatePath(self.cfg.getProcessingDirectory())
+
 
         # Check if there is already a PID file.
         logger.debug("Check if NG/AMS PID file is existing ...")
