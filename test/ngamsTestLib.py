@@ -1303,8 +1303,6 @@ class ngamsTestSuite(unittest.TestCase):
         cfg.storeVal("NgamsCfg.Header[1].Type", "TEST CONFIG: %s" % srvId)
         cfg.storeVal("NgamsCfg.Server[1].PortNo", port)
         cfg.storeVal("NgamsCfg.Server[1].RootDirectory", mtRtDir)
-        cfg.storeVal("NgamsCfg.ArchiveHandling[1].BackLogBufferDirectory", mtRtDir)
-        cfg.storeVal("NgamsCfg.Processing[1].ProcessingDirectory", mtRtDir)
 
         # Set special values if so specified.
         for cfgPar in cfg_pars:
