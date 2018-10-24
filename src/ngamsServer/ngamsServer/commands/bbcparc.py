@@ -121,7 +121,7 @@ def get_params(request):
     uri = 'ssh://' + uri
     uri_parsed = urlparse.urlparse(uri)
     if uri_parsed.path.lower().startswith(invalid_paths):
-        raise Exception('Requested to pull file from exluded location')
+        raise Exception('Requested to pull file from excluded location')
 
     # Collect BBCP parameters
     port = None
