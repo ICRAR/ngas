@@ -33,6 +33,7 @@ The ngamsConfig class is used to handle the NG/AMS Configuration.
 
 import base64
 import collections
+import functools
 import logging
 import os
 
@@ -215,6 +216,18 @@ class ngamsConfigException(Exception): pass
 plugin_def = collections.namedtuple('plugin_def', 'name pars')
 dppi_plugin_def = collections.namedtuple('dppi_plugin_def', 'name pars mime_types')
 
+def relative_to_root(f):
+    @functools.wraps(f)
+    def _wrapper(self):
+        try:
+            p = f(self)
+        except:
+            return ''
+        p = p or ''
+        if not p.startswith('/'):
+            p = os.path.join(self.getRootDirectory(), p)
+        return p
+    return _wrapper
 
 class ngamsConfig:
     """
@@ -725,34 +738,23 @@ class ngamsConfig:
             raise Exception("Server[1].RootDirectory not properly defined")
         return rootDir
 
-
+    @relative_to_root
     def getVolumeDirectory(self):
         """
         Return value of the Volume Directory attribute in the Server Element.
 
         Returns:   Value of VolumeDirectory (string).
         """
-        try:
-            volDir = self.getVal("Server[1].VolumeDirectory")
-        except:
-            return ""
-        if (not volDir): volDir = ""
-        if volDir != "" and volDir[0] != '/':
-            volDir = self.getRootDirectory() + '/' + volDir
-        return volDir
+        return self.getVal("Server[1].VolumeDirectory")
 
-
+    @relative_to_root
     def getProcessingDirectory(self):
         """
         Get NG/AMS Processing Directory.
 
         Returns:   Processing directory (string).
         """
-        procDir = self.getVal("Processing[1].ProcessingDirectory")
-        if procDir == "." or procDir[0] != '/':
-            if procDir == ".": procDir = ""
-            procDir = self.getRootDirectory() + '/' + procDir
-        return os.path.join(procDir, 'processing')
+        return self.getVal("Processing[1].ProcessingDirectory")
 
 
     def getPortNo(self):
@@ -1023,18 +1025,14 @@ class ngamsConfig:
         par = "ArchiveHandling[1].BackLogBuffering"
         return getInt(par, self.getVal(par))
 
-
+    @relative_to_root
     def getBackLogBufferDirectory(self):
         """
         Get the Back Log Buffer Directory.
 
         Returns:   Back Log Buffer Directory (string).
         """
-        bbufDir = self.getVal("ArchiveHandling[1].BackLogBufferDirectory")
-        if bbufDir == "." or bbufDir[0] != '/':
-            if bbufDir == ".": bbufDir = ""
-            bbufDir = self.getRootDirectory() + '/' + bbufDir
-        return bbufDir
+        return self.getVal("ArchiveHandling[1].BackLogBufferDirectory")
 
 
     def getDbSnapshot(self):
@@ -1467,17 +1465,14 @@ class ngamsConfig:
         """
         return self.getVal("Log[1].SysLogAddress")
 
-
+    @relative_to_root
     def getLocalLogFile(self):
         """
         Return the Local Log File.
 
         Returns:  Name of Local Log File (string).
         """
-        logFile = self.getVal("Log[1].LocalLogFile")
-        if logFile and logFile[0] != '/':
-            logFile = self.getRootDirectory() + '/' + logFile
-        return logFile
+        return self.getVal("Log[1].LocalLogFile")
 
 
     def getLocalLogLevel(self):
