@@ -44,7 +44,7 @@ import time
 
 from .ngamsCore import genLog, NGAMS_HOST_LOCAL,\
     NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE,\
-    NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
+    NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
     checkCreatePath, checkAvailDiskSpace,\
     getFileSize, NGAMS_BAD_FILES_DIR, NGAMS_BAD_FILE_PREFIX, NGAMS_STATUS_CMD,\
     mvFile, rmFile, NGAMS_HTTP_UNAUTH, NGAMS_HTTP_SUCCESS, to_valid_filename
@@ -306,7 +306,7 @@ def genProcDirName(ngamsCfgObj):
 
     Returns:
     """
-    procdir = os.path.join(ngamsCfgObj.getProcessingDirectory(), NGAMS_PROC_DIR)
+    procdir = ngamsCfgObj.getProcessingDirectory()
     return tempfile.mkdtemp(dir=procdir)
 
 

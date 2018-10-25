@@ -514,6 +514,10 @@ passwords will be expressed literally.
 	    plug-ins, which specify which mime types are allowed to be processed
 	    by which plug-in (users specify in the HTTP request which plugin
 	    they want to use for processing).
+
+	    Temporary files used during processing are stored under a "processing"
+	    directory under the directory indicated by ProcessingDirectory,
+	    which can be relative to the NGAS root directory
 	-->
 	<Processing Id="Processing-Std" ProcessingDirectory=".">
 		<PlugIn Name="ngamsEsoArchDppi" PlugInPars="">

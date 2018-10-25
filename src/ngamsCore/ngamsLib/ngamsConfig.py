@@ -752,7 +752,7 @@ class ngamsConfig:
         if procDir == "." or procDir[0] != '/':
             if procDir == ".": procDir = ""
             procDir = self.getRootDirectory() + '/' + procDir
-        return procDir
+        return os.path.join(procDir, 'processing')
 
 
     def getPortNo(self):

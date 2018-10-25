@@ -26,7 +26,7 @@ import os
 
 from .common import checkCleanDirs
 from ngamsLib import ngamsHighLevelLib
-from ngamsLib.ngamsCore import NGAMS_SUBSCR_BACK_LOG_DIR, NGAMS_PROC_DIR
+from ngamsLib.ngamsCore import NGAMS_SUBSCR_BACK_LOG_DIR
 from ngamsLib.ngamsCore import isoTime2Secs
 
 
@@ -37,7 +37,7 @@ def run(srvObj, stopEvt):
     cfg = srvObj.getCfg()
     cleaning_info = (
         ("processing directory",
-         os.path.join(cfg.getProcessingDirectory(), NGAMS_PROC_DIR),
+         cfg.getProcessingDirectory(),
          1800,
          0),
         ("subscription backlog buffer",

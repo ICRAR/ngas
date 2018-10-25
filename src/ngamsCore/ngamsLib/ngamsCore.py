@@ -118,7 +118,6 @@ NGAMS_BACK_LOG_DIR            = "back-log"
 NGAMS_SUBSCR_BACK_LOG_DIR     = "subscr-back-log"
 NGAMS_SUBSCR_BACK_LOG         = NGAMS_SUBSCR_BACK_LOG_DIR
 NGAMS_STAGING_DIR             = "staging"
-NGAMS_PROC_DIR                = "processing"
 NGAMS_TMP_FILE_PREFIX         = "NGAMS_TMP_FILE___"
 NGAMS_BACK_LOG_TMP_PREFIX     = "NGAMS_BACK_LOG_TMP___"
 NGAMS_BAD_FILE_PREFIX         = "BAD-FILE-"
