@@ -47,6 +47,7 @@ import signal
 import socket
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import unittest
@@ -83,6 +84,32 @@ srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
 STD_DISK_STAT_FILT = ["AccessDate", "AvailableMb", "CreationDate", "Date",
                       "HostId", "IngestionDate", "InstallationDate",
                       "ModificationDate", "TotalDiskWriteTime", "Version"]
+
+# Almost all unit tests generate temporary files. These were originally stored
+# under 'tmp' relative to the cwd. We now instead try different approaches,
+# using a temporary directory under the system's tmp directory,
+# or under /dev/shm which would yield faster test runs
+_tmp_root_base = os.environ.get('NGAS_TESTS_TMP_DIR_BASE', tempfile.gettempdir())
+if not os.path.isdir(_tmp_root_base):
+    raise ValueError('%s is not a directory, cannot use it as the base for NGAS temporary files')
+tmp_root = os.path.join(_tmp_root_base, 'ngas')
+
+def save_to_tmp(text, fname=None, prefix=None, suffix=None):
+    if bool(fname) and bool(prefix or suffix):
+        raise ValueError("Either fname or prefix/suffix can be given (or none)")
+    if fname:
+        fname = os.path.join(tmp_root, fname)
+    else:
+        fname = tempfile.mktemp(dir=tmp_root, prefix=prefix or '', suffix=suffix or '')
+    with open(fname, 'wt') as f:
+        f.write(text)
+    return fname
+
+def tmp_path(*p):
+    return os.path.join(tmp_root, *p)
+
+def as_ngas_disk_id(s):
+    return s.strip('/').replace('/', '-')
 
 # this_dir, which we use in a few places to refer to files, etc
 this_dir = os.path.normpath(os.path.abspath(pkg_resources.resource_filename(__name__, '.')))  # @UndefinedVariable
@@ -989,9 +1016,15 @@ class ngamsTestSuite(unittest.TestCase):
         if autoOnline:   execCmd.append("-autoonline")
         if dbCfgName:    execCmd.extend(["-dbcfgid", dbCfgName])
 
+        # Make sure spawned servers use the same tmp dir base as we do, since
+        # some of them use unit-test-provided code to perform some checks, and
+        # sometimes communicate through files in the temporary area
+        environ = os.environ.copy()
+        environ['NGAS_TESTS_TMP_DIR_BASE'] = _tmp_root_base
+
         logger.info("Starting external NG/AMS Server in port %d with command: %s", port, " ".join(execCmd))
         with self._proc_startup_lock:
-            srvProcess = subprocess.Popen(execCmd, shell=False)
+            srvProcess = subprocess.Popen(execCmd, shell=False, env=environ)
 
         # We have to wait until the server is serving.
         server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory(), tmpCfg, daemon)
@@ -1225,6 +1258,25 @@ class ngamsTestSuite(unittest.TestCase):
         msg = msg % (str(refValue), str(tstValue))
         self.assertEqual(refValue, tstValue, msg)
 
+    def ngas_root(self, port=None):
+        '''Get the NGAS root directory for the running server. If more than one
+        server is running a port must be given'''
+        if len(self.extSrvInfo) == 1:
+            return self.extSrvInfo[0].rootDir
+        if port is None:
+            return None
+        for srv_info in self.extSrvInfo:
+            if srv_info.port == port:
+                return srv_info.rootDir
+        raise RuntimeError('No NGAS server found running on port %d' % (port,))
+
+    def ngas_path(self, *p, **kwargs):
+        port = kwargs.pop('port', None)
+        return os.path.normpath(os.path.join(self.ngas_root(port=port), *p))
+
+    def ngas_disk_id(self, *p, **kwargs):
+        port = kwargs.pop('port', None)
+        return as_ngas_disk_id(self.ngas_path(port=port, *p))
 
     def checkFilesEq(self,
                      refFile,
