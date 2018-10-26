@@ -101,7 +101,7 @@ elif [[ "$DB" == "postgresql" ]]; then
 		 || fail "$ECREAT"
 
 	# Python packages needed
-	PIP_PACKAGES+=" psycopg2"
+	PIP_PACKAGES+=" psycopg2-binary"
 
 fi
 # sqlite3 we doesn't require preparation or any extra modules
