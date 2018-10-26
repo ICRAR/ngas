@@ -17,6 +17,8 @@ Changelog
   which is not the case anymore.
   Moreover, a single python module can implement the logic
   of more than one command.
+* Unit tests can be run against :ref:`arbitrary filesystems <post_inst.run_tests.tmp_dir>`,
+  and they default to run under ``/dev/shm`` for faster execution.
 * Added new CRC variant called ``crc32z``.
   It behaves exactly like ``crc32``, except that its values,
   *as stored in the database*, should be consistent
