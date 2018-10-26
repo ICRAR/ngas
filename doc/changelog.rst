@@ -1,7 +1,7 @@
 Changelog
 =========
 
-.. rubric:: Development version
+.. rubric:: 11.0
 
 * Initial python 3 support.
   The code not only correctly imports under python 3,
