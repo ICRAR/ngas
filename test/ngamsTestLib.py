@@ -83,7 +83,11 @@ srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
 # under 'tmp' relative to the cwd. We now instead try different approaches,
 # using a temporary directory under the system's tmp directory,
 # or under /dev/shm which would yield faster test runs
-_tmp_root_base = os.environ.get('NGAS_TESTS_TMP_DIR_BASE', tempfile.gettempdir())
+_tmp_root_base = os.environ.get('NGAS_TESTS_TMP_DIR_BASE', '')
+if not _tmp_root_base:
+    _tmp_root_base = tempfile.gettempdir()
+    if os.path.isdir('/dev/shm') and getDiskSpaceAvail('/dev/shm') > 1024:
+        _tmp_root_base = '/dev/shm'
 if not os.path.isdir(_tmp_root_base):
     raise ValueError('%s is not a directory, cannot use it as the base for NGAS temporary files')
 tmp_root = os.path.join(_tmp_root_base, 'ngas')
