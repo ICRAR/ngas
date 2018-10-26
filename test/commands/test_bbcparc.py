@@ -85,7 +85,9 @@ class ngamsBBCPArchiveTest(ngamsTestSuite):
             elif crc_msb == 1 and msb == 1:
                 break
 
-        fname = 'tmp/dummy'
+        # This file needs to actually be under /tmp because our BBCP command
+        # rejects file pulls from some hardcoded locations (/dev/, /var, etc)
+        fname = ('/tmp/dummy')
         with open(fname, 'wb') as f:
             f.write(b''.join(content))
 

@@ -11,7 +11,7 @@ Manufacturer:                       testmanu1
 LogicalName:                        M-000001
 SlotId:                             Volume001
 Mounted:                            1
-MountPoint:                         /tmp/ngamsTest/NGAS/volumes/Volume001
+MountPoint:                         %NGAS_ROOT%/volumes/Volume001
 NumberOfFiles:                      1
 Completed:                          0
 LastCheck:                          

@@ -32,7 +32,7 @@ This module contains the Test Suite for the STATUS Command.
 """
 
 from ngamsLib.ngamsCore import toiso8601
-from ..ngamsTestLib import ngamsTestSuite, getNcu11, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite, getNcu11, sendPclCmd, genTmpFilename
 
 
 class ngamsStatusCmdTest(ngamsTestSuite):
@@ -167,9 +167,10 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         start = toiso8601()
 
         def run_checks():
-            self.assertStatus(client.status(output='tmp/list.xml.gz', pars=(('file_list', 1),)))
-            self.assertStatus(client.status(output='tmp/list.xml.gz', pars=(('file_list', 1), ('from_ingestion_date', start))))
-            self.assertStatus(client.status(output='tmp/list.xml.gz', pars=(('file_list', 1), ('from_ingestion_date', start), ('unique', 1))))
+            fname = genTmpFilename(suffix='.xml.gz')
+            self.assertStatus(client.status(output=fname, pars=(('file_list', 1),)))
+            self.assertStatus(client.status(output=fname, pars=(('file_list', 1), ('from_ingestion_date', start))))
+            self.assertStatus(client.status(output=fname, pars=(('file_list', 1), ('from_ingestion_date', start), ('unique', 1))))
 
         # Checks should be scucessfull with and wihtout files archived
         run_checks()

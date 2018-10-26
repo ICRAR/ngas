@@ -37,7 +37,7 @@ import threading
 import time
 
 from ngamsLib.ngamsCore import cpFile
-from ..ngamsTestLib import incArcfile, sendPclCmd, ngamsTestSuite
+from ..ngamsTestLib import incArcfile, sendPclCmd, ngamsTestSuite, genTmpFilename
 
 
 TST_STR1 = "Successfully handled Archive Push Request for data file " +\
@@ -64,7 +64,7 @@ def archiveThread(testObj,
     Returns:  Void
     """
     if (inc):
-        filename = "tmp/ngamsArchiveStressTest_%d.fits" % no
+        filename = genTmpFilename(prefix='ngamsArchiveStressTest_%d' % no, suffix='.fits')
         cpFile("src/TinyTestFile.fits", filename)
         incArcfile(filename, step=(100 * no))
     else:

@@ -1,1 +1,1 @@
-NGAMS_ER_UNAVAIL_FILE:4019:ERROR: File with ID: ___TEST.2001-05-08T15:25:00.123___/Version: 1/Disk ID: tmp-ngamsTest-NGAS-FitsStorage1-Main-1 appears not to be available.
+NGAMS_ER_UNAVAIL_FILE:4019:ERROR: File with ID: ___TEST.2001-05-08T15:25:00.123___/Version: 1/Disk ID: %NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1 appears not to be available.

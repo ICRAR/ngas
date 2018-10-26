@@ -31,9 +31,8 @@
 This module contains the Test Suite for the REMDISK Command.
 """
 
-from ngamsLib.ngamsCore import NGAMS_REMDISK_CMD
-from ..ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
-    filterDbStatus1, getThreadId, sendExtCmd, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite, waitReqCompl, getThreadId, \
+    sendPclCmd
 
 
 class ngamsRemDiskCmdTest(ngamsTestSuite):
@@ -89,7 +88,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         client = sendPclCmd()
 
         # Archive a file + clone it to be able to execute the REMDISK Command.
-        diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
+        diskId = self.ngas_disk_id("FitsStorage1/Main/1")
         client.archive("src/SmallFile.fits")
         status = client.clone("", diskId, -1)
         waitReqCompl(client, status.getRequestId())
@@ -97,18 +96,14 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         # Remove the cloned disk (execute=0), should be successfull.
         status = client.remDisk(diskId, 0)
         refStatFile = "ref/ngamsRemDiskCmdTest_test_RemDiskDisk_1_1_ref"
-        tmpStatFile = "tmp/ngamsRemDiskCmdTest_test_RemDiskDisk_1_1_tmp"
-        saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status for REMDISK Command/no execution")
+        msg = "Incorrect status for REMDISK Command/no execution"
+        self.assert_status_ref_file(refStatFile, status, msg=msg, status_dump_args=(0, 1, 1))
 
         # Remove the cloned disk (execute=1), should be successfull.
         status = client.remDisk(diskId, 1)
         refStatFile = "ref/ngamsRemDiskCmdTest_test_RemDiskDisk_1_2_ref"
-        tmpStatFile = "tmp/ngamsRemDiskCmdTest_test_RemDiskDisk_1_2_tmp"
-        saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status for REMDISK Command/execution")
+        msg = "Incorrect status for REMDISK Command/execution"
+        self.assert_status_ref_file(refStatFile, status, msg=msg, status_dump_args=(0, 1, 1))
 
 
     def test_RemDiskCmd_2(self):
@@ -147,21 +142,17 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         client.archive("src/SmallFile.fits")
 
         # Remove the cloned disk (execute=0), should fail.
-        diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
+        diskId = self.ngas_disk_id("FitsStorage1/Main/1")
         status = client.remDisk(diskId, 0)
         refStatFile = "ref/ngamsRemDiskCmdTest_test_RemDiskDisk_2_1_ref"
-        tmpStatFile = "tmp/ngamsRemDiskCmdTest_test_RemDiskDisk_2_1_tmp"
-        saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status for REMDISK Command/no execution")
+        msg = "Incorrect status for REMDISK Command/no execution"
+        self.assert_status_ref_file(refStatFile, status, msg=msg, status_dump_args=(0, 1, 1))
 
         # Remove the cloned disk (execute=1), should fail.
         status = client.remDisk(diskId, 1)
         refStatFile = "ref/ngamsRemDiskCmdTest_test_RemDiskDisk_2_2_ref"
-        tmpStatFile = "tmp/ngamsRemDiskCmdTest_test_RemDiskDisk_2_2_tmp"
-        saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status for REMDISK Command/execution")
+        msg = "Incorrect status for REMDISK Command/execution"
+        self.assert_status_ref_file(refStatFile, status, msg=msg, status_dump_args=(0, 1, 1))
 
 
     def test_query_plan_exec_0_1(self):
@@ -197,11 +188,11 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         self.prepExtSrv(cfgProps=[["NgamsCfg.Log[1].LocalLogLevel","5"]])
         client = sendPclCmd()
         for _ in range(5): client.archive("src/SmallFile.fits")
-        client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
-        client.remDisk("tmp-ngamsTest-NGAS-FitsStorage2-Main-3", execute=0)
+        client.clone("", self.ngas_disk_id("FitsStorage1/Main/1"), -1)
+        client.remDisk(self.ngas_disk_id("FitsStorage2/Main/3"), execute=0)
         client.offline()
         refQueryPlan = "ref/ngamsRemDiskCmdTest_test_query_plan_exec_0_1_1.ref"
-        logFile = "/tmp/ngamsTest/NGAS/log/LogFile.nglog"
+        logFile = self.ngas_path("log/LogFile.nglog")
         threadId = getThreadId(logFile, ["REMDISK", "HTTP"])
         self.checkQueryPlanLogFile(logFile, threadId, refQueryPlan)
 
@@ -238,11 +229,11 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         self.prepExtSrv(cfgProps=[["NgamsCfg.Log[1].LocalLogLevel","5"]])
         client = sendPclCmd()
         for _ in range(5): client.archive("src/SmallFile.fits")
-        client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
-        client.remDisk("tmp-ngamsTest-NGAS-FitsStorage2-Main-3", execute=1)
+        client.clone("", self.ngas_disk_id("FitsStorage1/Main/1"), -1)
+        client.remDisk(self.ngas_disk_id("FitsStorage2/Main/3"), execute=1)
         client.offline()
         refQueryPlan = "ref/ngamsRemDiskCmdTest_test_query_plan_exec_1_1_1.ref"
-        logFile = "/tmp/ngamsTest/NGAS/log/LogFile.nglog"
+        logFile = self.ngas_path("log/LogFile.nglog")
         threadId = getThreadId(logFile, ["REMDISK", "HTTP"])
         self.checkQueryPlanLogFile(logFile, threadId, refQueryPlan)
 
@@ -278,10 +269,9 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         ...
         """
         self.prepCluster((8000, 8011))
-        diskId  = "tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1"
+        diskId  = self.ngas_disk_id("FitsStorage1/Main/1", port=8011)
         for execute in [0, 1]:
-            httpPars=[["disk_id", diskId], ["execute", execute]]
-            tmpStatFile = sendExtCmd(8000, NGAMS_REMDISK_CMD, pars=httpPars)
+            status = sendPclCmd(port=8000).remDisk(diskId, execute=execute)
             refStatFile = "ref/ngamsRemDiskCmdTest_test_ProxyMode_01_01_ref"
-            self.checkFilesEq(refStatFile, tmpStatFile,
-                              "Incorrect handling of REMDISK Command detected")
+            msg = "Incorrect handling of REMDISK Command detected"
+            self.assert_status_ref_file(refStatFile, status, msg=msg, port=8011)

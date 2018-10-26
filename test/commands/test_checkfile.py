@@ -31,9 +31,8 @@
 This module contains the Test Suite for the CHECKFILE Command.
 """
 
-from ngamsLib.ngamsCore import getHostName, NGAMS_CHECKFILE_CMD
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd, saveInFile, \
-    loadFile, sendExtCmd
+from ngamsLib.ngamsCore import NGAMS_CHECKFILE_CMD
+from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
 
 
 class ngamsCheckFileCmdTest(ngamsTestSuite):
@@ -73,17 +72,15 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         sendPclCmd().archive("src/SmallFile.fits")
-        diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
+        diskId = self.ngas_disk_id("FitsStorage1/Main/1")
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = sendPclCmd(port=8888).get_status(NGAMS_CHECKFILE_CMD,
                                           pars = [["disk_id", diskId],
                                                   ["file_id", fileId],
                                                   ["file_version", "1"]])
         refStatFile = "ref/ngamsCheckFileCmdTest_test_NormalExec_1_1_ref"
-        refStatFile = saveInFile(None, loadFile(refStatFile) % ("%s:%d" % (getHostName(), 8888)))
-        tmpStatFile = saveInFile(None, statObj.getMessage())
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect info in " +\
-                          "STATUS Command XML Status Document")
+        msg = "Incorrect info in STATUS Command XML Status Document"
+        self.assert_ref_file(refStatFile, statObj.getMessage(), msg=msg)
 
 
     def test_ErrHandling_1(self):
@@ -127,25 +124,23 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
                          "1",
                          "ref/ngamsCheckFileCmdTest_test_ErrHandling_1_1_ref"],
                         ["File ID Non-Existing",
-                         "tmp-ngamsTest-NGAS-FitsStorage1-Main-1",
+                         self.ngas_disk_id("FitsStorage1/Main/1"),
                          "___TEST.2001-05-08T15:25:00.123___",
                          "1",
                          "ref/ngamsCheckFileCmdTest_test_ErrHandling_1_2_ref"],
                         ["File Version Non-Existing",
-                         "tmp-ngamsTest-NGAS-FitsStorage1-Main-1",
+                         self.ngas_disk_id("FitsStorage1/Main/1"),
                          "TEST.2001-05-08T15:25:00.123",
                          "100",
                          "ref/ngamsCheckFileCmdTest_test_ErrHandling_1_3_ref"]]
+        client = sendPclCmd(port=8888)
         for testData in testDataList:
-            statObj = sendPclCmd(port=8888).\
-                      get_status(NGAMS_CHECKFILE_CMD,
-                                 pars = [["disk_id", testData[1]],
-                                         ["file_id", testData[2]],
-                                         ["file_version", testData[3]]])
-            tmpStatFile = saveInFile(None, statObj.getMessage())
-            self.checkFilesEq(testData[4], tmpStatFile, "Incorrect info in " +\
-                              "STATUS Command XML Status Document/" +\
-                              testData[0])
+            statObj = client.get_status(NGAMS_CHECKFILE_CMD,
+                                       pars = [["disk_id", testData[1]],
+                                               ["file_id", testData[2]],
+                                               ["file_version", testData[3]]])
+            msg = "STATUS Command XML Status Document/" + testData[0]
+            self.assert_ref_file(testData[4], statObj.getMessage(), msg=msg)
 
 
     def test_ProxyMode_01(self):
@@ -183,15 +178,16 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         ...
         """
         self.prepCluster((8000, 8011))
-        sendPclCmd(port=8000).archive("src/SmallFile.fits")
-        stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
-        diskId  = "tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1"
+        client8000 = sendPclCmd(port=8000)
+        self.assert_ngas_status(client8000.archive, "src/SmallFile.fits")
+        self.assert_ngas_status(sendPclCmd(port=8011).archive, "src/SmallFile.fits")
+        diskId  = self.ngas_disk_id("FitsStorage1/Main/1", port=8011)
         fileId  = "TEST.2001-05-08T15:25:00.123"
         fileVer = 2
         httpPars=[["disk_id", diskId], ["file_id", fileId],
                   ["file_version", fileVer]]
-        tmpStatFile = sendExtCmd(8000, NGAMS_CHECKFILE_CMD,
-                                 pars=httpPars, replaceLocalHost=1)
+
+        status = client8000.get_status(NGAMS_CHECKFILE_CMD, pars=httpPars)
         refStatFile = "ref/ngamsCheckFileCmdTest_test_ProxyMode_01_01_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling of "+\
-                          "CHECKFILE Command detected")
+        msg = "Incorrect handling of CHECKFILE Command detected"
+        self.assert_status_ref_file(refStatFile, status, msg=msg, port=8011)

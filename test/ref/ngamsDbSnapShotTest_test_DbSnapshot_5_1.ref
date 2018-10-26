@@ -1,7 +1,7 @@
 CONVERTED DB SNAPSHOT:
 
 FILE: TEST.2001-05-08T15:25:00.123_1
-disk_id          = tmp-ngamsTest-NGAS-FitsStorage2-Main-3
+disk_id          = %NGAS_ROOT_DISK_ID%-FitsStorage2-Main-3
 file_name        = saf/2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.gz
 file_id          = TEST.2001-05-08T15:25:00.123
 file_version     = 1
@@ -13,7 +13,7 @@ checksum_plugin  = ngamsGenCrc32
 file_status      = 00000000
 
 FILE: TEST.2001-05-08T15:25:00.123_2
-disk_id          = tmp-ngamsTest-NGAS-FitsStorage2-Main-3
+disk_id          = %NGAS_ROOT_DISK_ID%-FitsStorage2-Main-3
 file_name        = saf/2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.gz
 file_id          = TEST.2001-05-08T15:25:00.123
 file_version     = 2
@@ -25,7 +25,7 @@ checksum_plugin  = ngamsGenCrc32
 file_status      = 00000000
 
 FILE: TEST.2001-05-08T15:25:00.123_3
-disk_id          = tmp-ngamsTest-NGAS-FitsStorage2-Main-3
+disk_id          = %NGAS_ROOT_DISK_ID%-FitsStorage2-Main-3
 file_name        = saf/2001-05-08/3/TEST.2001-05-08T15:25:00.123.fits.gz
 file_id          = TEST.2001-05-08T15:25:00.123
 file_version     = 3

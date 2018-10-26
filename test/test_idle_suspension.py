@@ -37,10 +37,8 @@ import time
 
 from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 
-from ngamsLib.ngamsCore import getHostName, NGAMS_STATUS_CMD, \
-    NGAMS_CHECKFILE_CMD, rmFile, NGAMS_SUCCESS
-from .ngamsTestLib import ngamsTestSuite, sendPclCmd, \
-    filterOutLines, saveInFile, loadFile, genTmpFilename, unzip
+from ngamsLib.ngamsCore import getHostName, NGAMS_CHECKFILE_CMD, rmFile
+from .ngamsTestLib import ngamsTestSuite, sendPclCmd, loadFile, genTmpFilename, unzip, tmp_path
 
 
 SUSP_EL = "NgamsCfg.HostSuspension[1]"
@@ -54,7 +52,7 @@ def get_nodes():
     return master, suspended
 
 # Log files.
-_logPat = "/tmp/ngamsTest/NGAS:%d/log/LogFile.nglog"
+_logPat = tmp_path("NGAS:%d/log/LogFile.nglog")
 masterNodeLog = _logPat % 8000
 subNode1Log   = _logPat % 8001
 subNode2Log   = _logPat % 8002
@@ -250,15 +248,10 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
 
         # Retrieve information about the file on the suspended sub-node.
         fileId = "TEST.2001-05-08T15:25:00.123"
-        statObj = sendPclCmd(port=8000).\
-                  get_status(NGAMS_STATUS_CMD, pars=[["file_access", fileId]])
-        statBuf = filterOutLines(statObj.dumpBuf(), ["Date:", "Version:"])
-        tmpStatFile = saveInFile(None, statBuf)
+        statObj = sendPclCmd(port=8000).status(pars=[["file_access", fileId]])
         refStatFile = "ref/ngamsIdleSuspensionTest_test_WakeUpStatus_2_1_ref"
-        refStatFile = saveInFile(None, loadFile(refStatFile) %\
-                                 (getHostName(), getHostName()))
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Unexpected reply to STATUS?file_access request")
+        msg = "Unexpected reply to STATUS?file_access request"
+        self.assert_status_ref_file(refStatFile, statObj, msg=msg)
 
 
     def test_WakeUpRetrieve_1(self):
@@ -306,10 +299,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
             tmpRetFile = genTmpFilename("original_")
             unzippedRetFile = genTmpFilename("unzip_")
 
-            statObj = sendPclCmd(port=8000).\
-                      retrieve(fileId, fileVersion=version,
-                                    targetFile=tmpRetFile)
-            self.checkEqual(NGAMS_SUCCESS, statObj.getStatus(), "Unexpected return value for RETRIEVE Command")
+            self.assert_ngas_status(sendPclCmd(port=8000).retrieve,
+                                    fileId, fileVersion=version, targetFile=tmpRetFile)
             unzip(tmpRetFile, unzippedRetFile)
             self.checkFilesEq("src/SmallFile.fits", unzippedRetFile, "File retrieved incorrect")
 
@@ -496,7 +487,9 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         """
         masterNode, susp_nodes = get_nodes()
         subNode1 = susp_nodes[0]
-        dbConObj = prepSimCluster(self)[masterNode][1]
+        cluster_info = prepSimCluster(self)
+        dbConObj = cluster_info[masterNode][1]
+        subnode1_cfg = cluster_info[subNode1][0]
         sendPclCmd(port=8001).archive("src/TinyTestFile.fits")
         sendPclCmd(port=8001).archive("src/SmallFile.fits")
         sendPclCmd(port=8000).archive("src/TinyTestFile.fits")
@@ -507,18 +500,10 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         file_id = "TEST.2001-05-08T15:25:00.123"
         cmdPars = [["file_id", file_id],
                    ["file_version", "1"]]
-        statObj = sendPclCmd(port=8000).\
-                  get_status(NGAMS_CHECKFILE_CMD, pars=cmdPars)
-        # Check that request response is as expected.
-        statBuf = filterOutLines(statObj.dumpBuf(),
-                                 ["Date:",
-                                  "Version:"])
-        tmpStatFile = saveInFile(None, statBuf)
+        statObj = sendPclCmd(port=8000).get_status(NGAMS_CHECKFILE_CMD, pars=cmdPars)
         refStatFile="ref/ngamsIdleSuspensionTest_test_WakeUpCheckfile_1_1_ref"
-        refStatFile = saveInFile(None, loadFile(refStatFile) %\
-                                 (subNode1, subNode1))
-        self.checkFilesEq(refStatFile, tmpStatFile,"CHECKFILE Command not " +\
-                          "executed on sub-node as expected")
+        msg = "CHECKFILE Command not executed on sub-node as expected"
+        self.assert_status_ref_file(refStatFile, statObj, msg=msg, cfg=subnode1_cfg)
 
         #tstStr = "NGAMS_INFO_FILE_OK:4056:INFO: Checked file with File ID: "+\
         #       "TEST.2001-05-08T15:25:00.123/File Version: 1/Disk ID"

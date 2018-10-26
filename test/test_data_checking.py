@@ -36,7 +36,8 @@ import shutil
 import time
 
 from ngamsLib.ngamsCore import checkCreatePath
-from .ngamsTestLib import ngamsTestSuite, sendPclCmd, getNoCleanUp, setNoCleanUp
+from .ngamsTestLib import ngamsTestSuite, sendPclCmd, getNoCleanUp, setNoCleanUp, \
+    tmp_path
 
 
 class ngamsDataCheckingThreadTest(ngamsTestSuite):
@@ -101,7 +102,7 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         # Start the server normally without the datacheck thread
         # and perform some archives. Turn off snapshoting also,
         # it messes up with the database updates in one of the tests
-        _, db = self.prepExtSrv(cfgProps=(("NgamsCfg.Db[1].Snapshot", "0"),))
+        cfg, db = self.prepExtSrv(cfgProps=(("NgamsCfg.Db[1].Snapshot", "0"),))
         client = sendPclCmd()
         for _ in range(3):
             client.archive("src/SmallFile.fits")
@@ -114,7 +115,7 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
 
         # Potentially corrupt the NGAS data somehow
         if corrupt:
-            corrupt(db)
+            corrupt(cfg, db)
 
         # Restart and see what does the data checker thread find
         cfg, db = self.start_srv(delDirs=0, clearDb=0)
@@ -126,8 +127,8 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
     def test_unregistered(self):
 
         # Manually copy a file into the disk
-        checkCreatePath('/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/')
-        trgFile = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/SmallFile.fits"
+        trgFile = tmp_path("NGAS/FitsStorage1-Main-1/SmallFile.fits")
+        checkCreatePath(os.path.dirname(trgFile))
         shutil.copy("src/SmallFile.fits", trgFile)
 
         # It should appear as unregistered when the server checks it
@@ -137,9 +138,10 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
     def test_fsize_changed(self):
 
         # Modify the archived file so it contains extra data
-        def add_data(_):
-            trgFile = ('/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/saf/2001-05-08/1/'
-                       'TEST.2001-05-08T15:25:00.123.fits.gz')
+        def add_data(cfg, _):
+            root_dir = cfg.getRootDirectory()
+            trgFile = os.path.join(root_dir, ('FitsStorage1-Main-1/saf/2001-05-08/1/'
+                       'TEST.2001-05-08T15:25:00.123.fits.gz'))
             os.chmod(trgFile, 0o666)
             with open(trgFile, 'ab') as f:
                 f.write(os.urandom(16))
@@ -149,9 +151,10 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
     def test_data_changed(self):
 
         # Modify the archived file so it contains extra data
-        def change_data(_):
-            trgFile = ('/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/saf/2001-05-08/1/'
-                       'TEST.2001-05-08T15:25:00.123.fits.gz')
+        def change_data(cfg, _):
+            root_dir = cfg.getRootDirectory()
+            trgFile = os.path.join(root_dir, ('FitsStorage1-Main-1/saf/2001-05-08/1/'
+                       'TEST.2001-05-08T15:25:00.123.fits.gz'))
             os.chmod(trgFile, 0o666)
             with open(trgFile, 'r+b') as f:
                 f.seek(-16, 2)
@@ -162,7 +165,7 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
     def test_checksum_changed(self):
 
         # Modify the checksum in the database
-        def change_checksum(db):
+        def change_checksum(_, db):
             sql = ('UPDATE ngas_files SET checksum = {0} WHERE file_id = {1} '
                    'AND file_version = 1')
             db.query2(sql, args=('123', 'TEST.2001-05-08T15:25:00.123'))

@@ -39,7 +39,7 @@ import time
 from ngamsLib import utils
 from ngamsLib.ngamsCore import NGAMS_CLONE_CMD, NGAMS_REMFILE_CMD, \
     NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD, cpFile
-from .ngamsTestLib import saveInFile, ngamsTestSuite, sendPclCmd
+from .ngamsTestLib import ngamsTestSuite, sendPclCmd
 
 
 NM2IDX = "___NM2ID___"
@@ -105,8 +105,8 @@ def _checkContDbSnapshot(testSuiteObj,
 
     Returns:        Void.
     """
-    dirPat = "/tmp/ngamsTest/NGAS/%s/.db/NgasFiles.bsddb"
-    cacheDirPat = "/tmp/ngamsTest/NGAS/%s/.db/cache"
+    dirPat = testSuiteObj.ngas_path("%s/.db/NgasFiles.bsddb")
+    cacheDirPat = testSuiteObj.ngas_path("%s/.db/cache")
     refFilePat = "ref/ngamsDbSnapShotTest_test_DbSnapshot_%d_%d.ref"
     count = 1
     startTime = time.time()
@@ -126,7 +126,6 @@ def _checkContDbSnapshot(testSuiteObj,
 
         complName = dirPat % dataDir
         refFile = refFilePat % (testCaseNo, count)
-        tmpFile = complName + ".dump"
         startTime = time.time()
         while ((not os.path.exists(complName)) and
                ((time.time() - startTime) < 10)):
@@ -138,9 +137,8 @@ def _checkContDbSnapshot(testSuiteObj,
             snapshotDump = _parseDbSnapshot(out)
         else:
             snapshotDump = out
-        saveInFile(tmpFile, snapshotDump)
-        testSuiteObj.checkFilesEq(refFile, tmpFile,
-                                  "Incorrect contents of DB Snapshot")
+        testSuiteObj.assert_ref_file(refFile, snapshotDump,
+                                           msg="Incorrect contents of DB Snapshot")
         count += 1
 
 
@@ -275,7 +273,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         self._prepSrv()
         client = sendPclCmd()
         for _ in range(3): client.archive("src/SmallFile.fits")
-        diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
+        diskId = self.ngas_disk_id("FitsStorage1/Main/1")
         client.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
         fileId = "TEST.2001-05-08T15:25:00.123"
         client.get_status(NGAMS_REMFILE_CMD,
@@ -348,7 +346,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         self._prepSrv()
         client = sendPclCmd()
         for _ in range(3): client.archive("src/SmallFile.fits")
-        diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
+        diskId = self.ngas_disk_id("FitsStorage1/Main/1")
         client.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
         time.sleep(5)
         _checkContDbSnapshot(self, 5, ["FitsStorage2-Main-3"])
@@ -380,7 +378,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         """
         self._prepSrv()
         client = sendPclCmd()
-        regTestDir = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/reg_test"
+        regTestDir = self.ngas_path("FitsStorage1-Main-1/reg_test")
         checkCreatePath(regTestDir)
         for n in range(3):
             cpFile('src/SmallFile.fits', os.path.join(regTestDir, "%d.fits" % n))

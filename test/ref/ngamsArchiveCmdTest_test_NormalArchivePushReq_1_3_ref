@@ -4,7 +4,7 @@ Message:                            Disk status file
 State:                              
 SubState:                           
 DiskStatus:
-DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Rep-2
+DiskId:                             %NGAS_ROOT_DISK_ID%-FitsStorage1-Rep-2
 Archive:                            ESO-ARCHIVE
 Type:                               TEST-TYPE
 Manufacturer:                       TEST-MANUFACTURER

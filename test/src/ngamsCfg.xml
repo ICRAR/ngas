@@ -49,11 +49,14 @@
     <Description/>
   </Header>
 
+  <!-- The Root Directory is replaced at runtime by all unit tests,
+       so the value here doesn't matter (except that the test_config_handling
+       test relies on there being a dot) -->
   <Server Id="Server-Sim"
           ArchiveName="ESO-ARCHIVE" 
           BlockSize="65536"
           MaxSimReqs="30" 
-          RootDirectory="/tmp/ngamsTest/NGAS" 
+          RootDirectory="."
           IpAddress="127.0.0.1"
           PortNo="8888" 
           ProxyMode="1"
@@ -75,7 +78,7 @@
 
   <Db Id="Db-Test"
       Interface="sqlite3"
-      database="tmp/ngas.sqlite"
+      database="*replaced at unit test execution time*"
       Snapshot="0"/>
 
   <SystemPlugIns Id="SystemPlugIns-Std"

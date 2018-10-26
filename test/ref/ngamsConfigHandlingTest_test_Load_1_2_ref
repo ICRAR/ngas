@@ -2,7 +2,7 @@
 <!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
 
 <NgamsCfg Id="ngamsCfg-Test">
-  <ArchiveHandling ArchiveUnits="-----" BackLogBufferDirectory="/tmp/ngamsTest/NGAS" BackLogBuffering="1" FreeSpaceDiskChangeMb="20" Id="ArchiveHandling-Test" MinFreeSpaceWarningMb="0" PathPrefix="saf" Replication="1"/>
+  <ArchiveHandling ArchiveUnits="-----" BackLogBufferDirectory="." BackLogBuffering="1" FreeSpaceDiskChangeMb="20" Id="ArchiveHandling-Test" MinFreeSpaceWarningMb="0" PathPrefix="saf" Replication="1"/>
   <Authorization Enable="0" Id="Authorization-Test"/>
   <DataCheckThread Active="0" ChecksumPlugIn="ngamsGenCrc32" ChecksumPlugInPars="" DiskSeq="SEQUENTIAL" FileSeq="SEQUENTIAL" ForceNotif="1" Id="DataCheckThread-Test" LogSummary="1" MaxProcs="4" MinCycle="00T00:03:00" Prio="25" Scan="0"/>
   <Header Context="NG/AMS" Name="ngamsCfg.xml" Release="1.0" Revision="TEST-REVISION" Source="jknudstr@eso.org" Type="NGAMS-TEST-BASE-CONFIGURATION">
@@ -42,7 +42,7 @@
     </NoDiskSpaceNotification>
   </Notification>
   <Permissions AllowArchiveReq="1" AllowProcessingReq="1" AllowRemoveReq="1" AllowRetrieveReq="1" Id="Permissions-Test"/>
-  <Processing Id="Processing-Std" ProcessingDirectory="/tmp/ngamsTest/NGAS">
+  <Processing Id="Processing-Std" ProcessingDirectory=".">
     <PlugIn Name="ngamsEsoArchDppi" PlugInPars="-input-pars-ngamsEsoArchDppi-">
       <MimeType Name="image/x-fits"/>
       <MimeType Name="application/x-gfits"/>
@@ -66,7 +66,7 @@
       <MimeType Name="application/x-cfits"/>
     </PlugIn>
   </Register>
-  <Server ArchiveName="ESO-ARCHIVE" BlockSize="65536" Id="Server-Sim" IpAddress="127.0.0.1" MaxSimReqs="30" PortNo="8888" ProxyMode="1" RootDirectory="/tmp/ngamsTest/NGAS" Simulation="1" SwVersion=""/>
+  <Server ArchiveName="ESO-ARCHIVE" BlockSize="65536" Id="Server-Sim" IpAddress="127.0.0.1" MaxSimReqs="30" PortNo="8888" ProxyMode="1" RootDirectory="." Simulation="1" SwVersion=""/>
   <StorageSets Id="StorageSets-PATA-8-Dbl">
     <StorageSet DiskLabel="FITS" MainDiskSlotId="1" Mutex="0" RepDiskSlotId="2" StorageSetId="FitsStorage1" Synchronize="1"/>
     <StorageSet MainDiskSlotId="3" Mutex="0" RepDiskSlotId="4" StorageSetId="FitsStorage2" Synchronize="1"/>

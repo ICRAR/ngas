@@ -39,8 +39,7 @@ import subprocess
 from ngamsLib import ngamsConfig, ngamsHttpUtils
 from ngamsLib.ngamsCore import getHostName, \
     checkCreatePath, rmFile, NGAMS_SUCCESS, mvFile
-from ..ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
-    sendPclCmd, genTmpFilename, unzip
+from ..ngamsTestLib import ngamsTestSuite, sendPclCmd, genTmpFilename, unzip, tmp_path
 
 
 class ngamsRetrieveCmdTest(ngamsTestSuite):
@@ -95,8 +94,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         client.archive("src/SmallFile.fits")
 
         # Retrieve the file.
-        trgFile = "tmp/test_RetrieveCmd_1_1_tmp"
-        outFilePath = "tmp/SmallFile.fits"
+        trgFile = tmp_path("test_RetrieveCmd_1_1_tmp")
+        outFilePath = tmp_path("SmallFile.fits")
         self.assert_ngas_status(client.retrieve, "TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
         unzip(trgFile, outFilePath)
         self.checkFilesEq("src/SmallFile.fits", outFilePath, "Retrieved file incorrect")
@@ -130,17 +129,14 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         client.archive("src/SmallFile.fits")
 
         # Retrieve the file.
-        trgFile = "tmp/test_RetrieveCmd_1_1_tmp"
+        trgFile = tmp_path("test_RetrieveCmd_1_1_tmp")
         status = client.retrieve("TEST.2001-05-08T15:25:00.123",
                                  fileVersion=2, targetFile=trgFile)
 
         # Check reply.
         refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_2_1_ref"
-        tmpStatFile = "tmp/ngamsRetrieveCmdTest_test_RetrieveCmd_2_1_tmp"
-        saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status for RETRIEVE Command/Normal " +\
-                          "Execution")
+        msg = "Incorrect status for RETRIEVE Command/Normal Execution"
+        self.assert_status_ref_file(refStatFile, status, msg=msg, status_dump_args=(0, 1, 1))
 
 
     def test_RetrieveCmd_3(self):
@@ -174,10 +170,10 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         sendPclCmd(port=8011).archive("src/TinyTestFile.fits")
 
         # Retrieve a file.
-        trgFile = "tmp/test_RetrieveCmd_3_1_tmp"
+        trgFile = tmp_path("test_RetrieveCmd_3_1_tmp")
         client = sendPclCmd(port=8000)
         self.assert_ngas_status(client.retrieve, "NCU.2003-11-11T11:11:11.111", targetFile=trgFile)
-        outFilePath = 'tmp/test_RetrieveCmd_3_1_tmp_unzip'
+        outFilePath = tmp_path('test_RetrieveCmd_3_1_tmp_unzip')
         unzip(trgFile, outFilePath)
         refFile = "src/TinyTestFile.fits"
         self.checkFilesEq(outFilePath, refFile, "Retrieved file incorrect")
@@ -461,7 +457,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         ...
         """
         # Create basic structure.
-        ngasRootDir = "/tmp/ngamsTest/NGAS/"
+        ngasRootDir = tmp_path("NGAS")
         rmFile(ngasRootDir)
         checkCreatePath(ngasRootDir)
         subprocess.check_call(['tar', 'zxf', 'src/volumes_dir.tar.gz'])
@@ -480,16 +476,16 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # to the hard coded test results in the old file:
         # ngamsRetrieveCmdTest_test_VolumeDir_01_01_ref
 
-        #tmpStatFile = saveInFile(None, filterDbStatus1(stat.dumpBuf()))
+        #tmpStatFile = save_to_tmp(filterDbStatus1(stat.dumpBuf()))
         #refStatFile = "ref/ngamsRetrieveCmdTest_test_VolumeDir_01_01_ref"
         #self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
         #                  "message from NG/AMS Server")
 
         # Check that the target files have been archived in their
         # appropriate locations.
-        trgFile = "tmp/test_VolumeDir_01_tmp"
+        trgFile = tmp_path("test_VolumeDir_01_tmp")
         refFile = "src/SmallFile.fits"
-        outFilePath = "tmp/SmallFile.fits"
+        outFilePath = tmp_path("SmallFile.fits")
         stat = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
         self.assertEqual(NGAMS_SUCCESS, stat.getStatus(), stat.getMessage())
 
@@ -521,9 +517,9 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         self.prepExtSrv()
         client = sendPclCmd()
 
-        with open("tmp/source", 'wb') as f:
+        with open(tmp_path("source"), 'wb') as f:
             f.write(os.urandom(1024))
-        client.archive("tmp/source", mimeType='application/octet-stream')
+        client.archive(tmp_path("source"), mimeType='application/octet-stream')
 
         # Retrieve the file fully first into memory
         full = io.BytesIO()

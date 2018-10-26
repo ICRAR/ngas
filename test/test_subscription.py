@@ -45,7 +45,7 @@ from six.moves import socketserver  # @UnresolvedImport
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_SUCCESS
 from ngamsServer import ngamsServer
-from .ngamsTestLib import ngamsTestSuite, sendPclCmd, getNoCleanUp, setNoCleanUp
+from .ngamsTestLib import ngamsTestSuite, sendPclCmd, getNoCleanUp, setNoCleanUp, tmp_path
 
 
 # The plug-in that we configure the subscriber server with, so we know when
@@ -154,7 +154,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         # Version 2 of the file should only exist after
         # subscription transfer is successful.
         client = sendPclCmd(port = 8889)
-        self.assert_ngas_status(client.retrieve, 'SmallFile.fits', fileVersion=2, targetFile='tmp', expectedStatus='FAILURE')
+        self.assert_ngas_status(client.retrieve, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path(), expectedStatus='FAILURE')
 
         # Create listener that should get information when files get archives
         # in the second server (i.e., the one on the receiving end of the subscription)
@@ -179,7 +179,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         self.assertEqual(2, archive_evt.file_version)
         self.assertEqual('SmallFile.fits', archive_evt.file_id)
 
-        self.assert_ngas_status(client.retrieve, 'SmallFile.fits', fileVersion=2, targetFile='tmp')
+        self.assert_ngas_status(client.retrieve, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
 
 
     def test_basic_subscription_fail(self):
@@ -204,7 +204,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                 self.assertEqual(resp.status, 200)
 
         # Things haven't gone through tyet
-        retrieve = functools.partial(sendPclCmd(port = 8889).retrieve, targetFile='tmp')
+        retrieve = functools.partial(sendPclCmd(port = 8889).retrieve, targetFile=tmp_path())
         self.assert_ngas_status(retrieve, 'SmallFile.fits', fileVersion=2, expectedStatus='FAILURE')
 
         # Invalid number of concurrent threads
@@ -383,4 +383,4 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             self.assertIsNotNone(listener.wait_for_file(20))
 
         # Double-check that the file is in B
-        self.assert_ngas_status(sendPclCmd(port = 8889).retrieve, 'SmallFile.fits', targetFile='tmp')
+        self.assert_ngas_status(sendPclCmd(port = 8889).retrieve, 'SmallFile.fits', targetFile=tmp_path())

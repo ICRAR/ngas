@@ -173,7 +173,7 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
     def test_FileInfoReader(self):
 
         size = random.randint(10, 100)
-        fd, name = tempfile.mkstemp('.bin', dir='tmp')
+        fd, name = tempfile.mkstemp('.bin', dir=ngamsTestLib.tmp_root)
         with os.fdopen(fd, 'wb') as f:
             f.write(b' ' * size)
 

@@ -1,5 +1,5 @@
 FileStatus:
-DiskId:                             tmp-ngamsTest-NGAS-FitsStorage2-Main-3
+DiskId:                             %NGAS_ROOT_DISK_ID%-FitsStorage2-Main-3
 FileName:                           saf/2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.gz
 FileId:                             TEST.2001-05-08T15:25:00.123
 FileVersion:                        1

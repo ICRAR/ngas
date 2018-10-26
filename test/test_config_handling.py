@@ -40,7 +40,7 @@ import unittest
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsXmlMgr
 from .ngamsTestLib import delNgasTbls, ngamsTestSuite, \
-    saveInFile, sendPclCmd, filterDbStatus1, db_aware_cfg
+    save_to_tmp, sendPclCmd, db_aware_cfg
 
 
 dbIdAttr = 'Db-Test'
@@ -173,14 +173,13 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         cfgObj2.loadFromDb("test_Load_1", dbObj)
         refFile     = "ref/ngamsConfigHandlingTest_test_Load_1_1_ref"
         cleanXmlDoc = _cleanXmlDoc(cfgObj2.dumpXmlDic(), r'^NgamsCfg.Db\[1\]')
-        tmpStatFile = saveInFile(None, cleanXmlDoc)
-        self.checkFilesEq(refFile, tmpStatFile, "Incorrect contents of " +\
-                          "XML Dictionary of cfg. loaded from DB")
+        msg = "Incorrect contents of XML Dictionary of cfg. loaded from DB"
+        self.assert_ref_file(refFile, cleanXmlDoc, msg=msg)
         # Dump as XML Document.
         refFile     = "ref/ngamsConfigHandlingTest_test_Load_1_2_ref"
-        tmpStatFile = saveInFile(None, without_db_element(cfgObj2.genXmlDoc()))
-        self.checkFilesEq(refFile, tmpStatFile, "Incorrect contents of " +\
-                          "XML Document of cfg. loaded from DB")
+        data = without_db_element(cfgObj2.genXmlDoc())
+        msg = "Incorrect contents of XML Document of cfg. loaded from DB"
+        self.assert_ref_file(refFile, data, msg=msg)
 
 
     def test_ServerLoad_1(self):
@@ -208,15 +207,14 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         """
         cfgName = "test_ServerLoad_1"
         cfgObj, _ = self.loadCfg(cfgName)
-        cfgFile = saveInFile(None, str(cfgObj.genXmlDoc()))
+        cfgFile = save_to_tmp(str(cfgObj.genXmlDoc()))
         self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName, clearDb=0)
 
         # Archive a file, should be OK.
         statObj = sendPclCmd().archive("src/SmallFile.fits")
         refStatFile = "ref/ngamsConfigHandlingTest_test_ServerLoad_1_1_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Archive Push Request")
+        msg = "Incorrect status returned for Archive Push Request"
+        self.assert_status_ref_file(refStatFile, statObj, msg=msg)
 
 
     def test_ServerLoad_2(self):
@@ -252,17 +250,16 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         tmpCfg = db_aware_cfg("src/ngamsCfg.xml").\
                  storeVal("NgamsCfg.Permissions[1].AllowArchiveReq", "0",
                           "Permissions-Test")
-        cfgFile=saveInFile(None,tmpCfg.genXmlDoc(0))
+        cfgFile = save_to_tmp(tmpCfg.genXmlDoc(0))
         cfgObj, _ = self.loadCfg(cfgName, cfgFile=cfgFile)
-        cfgFile = saveInFile(None, str(cfgObj.genXmlDoc()))
+        cfgFile = save_to_tmp(str(cfgObj.genXmlDoc()))
         self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName, clearDb=0)
 
         # Archive a file, should be rejected.
         statObj = sendPclCmd().archive("src/SmallFile.fits")
         refStatFile = "ref/ngamsConfigHandlingTest_test_ServerLoad_2_1_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Archive Push Request")
+        msg = "Incorrect status returned for Archive Push Request"
+        self.assert_status_ref_file(refStatFile, statObj, msg=msg)
 
 
     def test_ServerLoad_3(self):
@@ -292,7 +289,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         """
         cfgName1 = "test_ServerLoad_1"
         cfgObj, _ = self.loadCfg(cfgName1)
-        cfgFile = saveInFile(None,cfgObj.genXmlDoc(0))
+        cfgFile = save_to_tmp(cfgObj.genXmlDoc(0))
 
         # For the second cfg. set all the DB Cfg. Group ID to a common value
         # + set all values to a non-sense value.
@@ -302,8 +299,8 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
             if ((cfgKey[-1] != "]") and (cfgKey.find("Db[1]") == -1)):
                 tmpCfg.storeVal(cfgKey, "0")
         tmpCfg.storeVal("NgamsCfg.Log[1].LocalLogFile",
-                        "/tmp/ngamsTest/NGAS/log/LogFile.nglog", "0")
-        tmpCfgFile = saveInFile(None,tmpCfg.genXmlDoc(0))
+                        "log/LogFile.nglog", "0")
+        tmpCfgFile = save_to_tmp(tmpCfg.genXmlDoc(0))
         self.loadCfg(cfgName2, cfgFile=tmpCfgFile, checkCfg=0, delDbTbls=0,
                 dbCfgGroupIds=[0], createDatabase=False)
 
@@ -311,9 +308,8 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName1, clearDb=0)
         statObj = sendPclCmd().archive("src/SmallFile.fits")
         refStatFile = "ref/ngamsConfigHandlingTest_test_ServerLoad_3_1_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Archive Push Request")
+        msg = "Incorrect status returned for Archive Push Request"
+        self.assert_status_ref_file(refStatFile, statObj, msg=msg)
 
 class XmlMgrTests(unittest.TestCase):
 

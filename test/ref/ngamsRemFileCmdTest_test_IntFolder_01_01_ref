@@ -5,7 +5,7 @@ Checksum:
 ChecksumPlugIn:                     
 ChecksumPlugIn:                     
 ChecksumPlugIn:                     
-Comment:                            Info about folder: /tmp/ngamsTest/NGAS/FitsStorage1-Main-1
+Comment:                            Info about folder: %NGAS_ROOT%/FitsStorage1-Main-1
 Compression:                        
 Compression:                        
 Compression:                        
@@ -16,9 +16,9 @@ FileId:
 FileId:                             
 FileId:                             
 FileList:
-FileName:                           /tmp/ngamsTest/NGAS/FitsStorage1-Main-1/NgasDiskInfo
-FileName:                           /tmp/ngamsTest/NGAS/FitsStorage1-Main-1/saf
-FileName:                           /tmp/ngamsTest/NGAS/FitsStorage1-Main-1/staging
+FileName:                           %NGAS_ROOT%/FitsStorage1-Main-1/NgasDiskInfo
+FileName:                           %NGAS_ROOT%/FitsStorage1-Main-1/saf
+FileName:                           %NGAS_ROOT%/FitsStorage1-Main-1/staging
 FileStatus:
 FileStatus:
 FileStatus:

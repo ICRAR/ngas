@@ -16,8 +16,8 @@ Number of Failed Files:     0
 
 Source File                                                            Target File                                                            Status 
 ---------------------------------------------------------------------- ---------------------------------------------------------------------- -------
-tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/4 tmp-ngamsTest-NGAS:8000-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/4 SUCCESS
-tmp-ngamsTest-NGAS:8011-FitsStorage1-Rep-2/NCU.2003-11-11T11:11:11.111/4 tmp-ngamsTest-NGAS:8000-FitsStorage2-Main-3/NCU.2003-11-11T11:11:11.111/4 SUCCESS
+%NGAS_ROOT_DISK_ID%:8011-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/4 tmp-ngamsTest-NGAS:8000-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/4 SUCCESS
+%NGAS_ROOT_DISK_ID%:8011-FitsStorage1-Rep-2/NCU.2003-11-11T11:11:11.111/4 tmp-ngamsTest-NGAS:8000-FitsStorage2-Main-3/NCU.2003-11-11T11:11:11.111/4 SUCCESS
 -----------------------------------------------------------------------------------------------------------------------------------------------------
 
 ==END

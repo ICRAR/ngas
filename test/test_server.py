@@ -43,14 +43,14 @@ import uuid
 
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_HTTP_SERVICE_NA
-from .ngamsTestLib import ngamsTestSuite, saveInFile, sendPclCmd, this_dir
+from .ngamsTestLib import ngamsTestSuite, save_to_tmp, sendPclCmd, this_dir, tmp_path
 
 
 # This module is used as a command by one of its own tests,
 # which expects that after running the command there will be a 0-bytes file
 # created with a given name
 def handleCmd(_, req, __):
-    open(os.path.join(this_dir, req['fname']), 'wb').close()
+    open(tmp_path(req['fname']), 'wb').close()
 
 
 class ngamsServerTest(ngamsTestSuite):
@@ -97,7 +97,7 @@ class ngamsServerTest(ngamsTestSuite):
 
     def test_too_many_requests(self):
 
-        saveInFile("tmp/handleHttpRequest_tmp", "handleHttpRequest_Block5secs")
+        save_to_tmp("handleHttpRequest_Block5secs", fname="handleHttpRequest_tmp")
         self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack",
                         cfgProps=(('NgamsCfg.Server[1].MaxSimReqs', '2'),))
 
@@ -129,12 +129,12 @@ class ngamsServerTest(ngamsTestSuite):
         self.prepExtSrv(cfgProps=cfg)
         client = sendPclCmd()
 
-        # Let the TEST command create a file under ./tmp
+        # Let the TEST command create a file under the tmp_root directory
         # There is no need to manually remove here, as ./tmp gets removed anyway
         # later during tearDown()
-        fname = os.path.join(this_dir, 'tmp', str(uuid.uuid4()))
+        fname = str(uuid.uuid4())
         self.assert_ngas_status(client.get_status, 'TEST', pars=[('fname', fname)])
-        self.assertTrue(os.path.isfile(os.path.join(this_dir, fname)))
+        self.assertTrue(os.path.isfile(tmp_path(fname)))
 
     def test_no_such_command(self):
         self.prepExtSrv()
@@ -170,9 +170,9 @@ class ngamsDaemonTest(ngamsTestSuite):
         self.assertEqual(0, self._run_daemon_status(self.extSrvInfo[-1].cfg_file))
 
     def test_daemon_status_no_server_running(self):
-        self.assertEqual(1, self._run_daemon_status(os.path.join(this_dir, 'src/ngamsCfg.xml')))
+        self.assertEqual(1, self._run_daemon_status(os.path.join(this_dir, self.point_to_ngas_root('src/ngamsCfg.xml'))))
 
     def test_daemon_double_start(self):
         # Try to start the daemon twice, it should fail
         self.prepExtSrv(daemon=True)
-        self.assertNotEqual(0, self._run_daemon_start(os.path.join(this_dir, 'src/ngamsCfg.xml')))
+        self.assertNotEqual(0, self._run_daemon_start(os.path.join(this_dir, self.point_to_ngas_root('src/ngamsCfg.xml'))))

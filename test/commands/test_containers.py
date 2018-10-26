@@ -26,7 +26,7 @@ import string
 
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE, toiso8601, cpFile
 from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
-from ..ngamsTestLib import sendPclCmd, ngamsTestSuite
+from ..ngamsTestLib import sendPclCmd, ngamsTestSuite, tmp_path
 
 
 class ngamsContainerTest(ngamsTestSuite):
@@ -316,8 +316,8 @@ class ngamsContainerTest(ngamsTestSuite):
         self._checkFilesAndContainerSize(client, containerName, len(self.myfiles), self._filesSize(), 1)
 
         # Retrieve it
-        self.assert_ngas_status(client.cretrieve, containerName, targetDir='tmp', as_tar=as_tar)
-        self._assertEqualsDir(containerName, os.path.join('tmp', containerName))
+        self.assert_ngas_status(client.cretrieve, containerName, targetDir=tmp_path(), as_tar=as_tar)
+        self._assertEqualsDir(containerName, tmp_path(containerName))
 
     def test_archive_receive(self):
         self._test_archive_receive(False)
@@ -330,10 +330,10 @@ class ngamsContainerTest(ngamsTestSuite):
         self.prepCluster((8888, 8889))
         client0, client1 = [sendPclCmd(p) for p in (8888, 8889)]
         container_name = 'toplevel'
-        tgt_root = 'tmp/' + container_name
+        tgt_root = tmp_path(container_name)
 
         # Create our own new "root" to easily use self._assertEqualsDir later
-        src_root = 'tmp/src/' + container_name
+        src_root = tmp_path('src', container_name)
         checkCreatePath(src_root)
         cp = lambda x: cpFile(x, os.path.join(src_root, os.path.basename(x)))
         cp(self.myfiles[0])
@@ -351,7 +351,7 @@ class ngamsContainerTest(ngamsTestSuite):
         # CRETRIEVE the container using both clients in turns,
         # both files should come back
         def retrieve_container(client):
-            self.assert_ngas_status(client.cretrieve, container_name, targetDir='tmp', as_tar=as_tar)
+            self.assert_ngas_status(client.cretrieve, container_name, targetDir=tmp_path(), as_tar=as_tar)
             self._assertEqualsDir(src_root, tgt_root)
             rmFile(tgt_root)
 

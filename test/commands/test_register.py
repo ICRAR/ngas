@@ -37,8 +37,7 @@ import time
 
 from ngamsLib import ngamsFileInfo
 from ngamsLib.ngamsCore import checkCreatePath, getHostName, NGAMS_REGISTER_CMD
-from ..ngamsTestLib import ngamsTestSuite, sendExtCmd, saveInFile, \
-    filterDbStatus1
+from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
 
 
 class ngamsRegisterCmdTest(ngamsTestSuite):
@@ -84,19 +83,16 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         """
         _, dbObj = self.prepExtSrv()
         srcFile = "src/SmallFile.fits"
-        tmpSrcFile = "/tmp/ngamsTest/NGAS/" +\
-                     "FitsStorage2-Main-3/saf/test/SmallFile.fits"
+        tmpSrcFile = self.ngas_path("FitsStorage2-Main-3/saf/test/SmallFile.fits")
         checkCreatePath(os.path.dirname(tmpSrcFile))
         shutil.copy(srcFile, tmpSrcFile)
-        tmpStatFile = sendExtCmd(8888, NGAMS_REGISTER_CMD,
-                                 [["path", tmpSrcFile]])
+        status = sendPclCmd().get_status(NGAMS_REGISTER_CMD, [["path", tmpSrcFile]])
+        msg = "Incorrect status returned for REGISTER command"
         refStatFile = "ref/ngamsRegisterCmdTest_test_RegisterCmd_1_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status returned for REGISTER command")
-        diskId = "tmp-ngamsTest-NGAS-FitsStorage2-Main-3"
+        self.assert_status_ref_file(refStatFile, status, msg=msg)
+        diskId = self.ngas_disk_id("FitsStorage2/Main/3")
         filePrefix = "ngamsRegisterCmdTest_test_RegisterCmd_1"
         fileInfoRef = "ref/" + filePrefix + "_FileInfo_ref"
-        fileInfoTmp = "tmp/" + filePrefix + "_FileInfo_tmp"
         fileId = "TEST.2001-05-08T15:25:00.123"
         startTime = time.time()
 
@@ -107,6 +103,5 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         if not tmpFileRes:
             self.fail("Couldn't get fileInfo result from database within 10 seconds")
         tmpFileObj = ngamsFileInfo.ngamsFileInfo().unpackSqlResult(tmpFileRes)
-        saveInFile(fileInfoTmp, filterDbStatus1(tmpFileObj.dumpBuf()))
-        self.checkFilesEq(fileInfoRef, fileInfoTmp,
-                          "Incorrect info in DB for registered file")
+        msg = "Incorrect info in DB for registered file"
+        self.assert_status_ref_file(fileInfoRef, tmpFileObj, msg=msg)

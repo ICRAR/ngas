@@ -48,9 +48,9 @@ from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCrea
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
     ngamsCore, ngamsHttpUtils
 from ..ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
-    saveInFile, filterDbStatus1, sendPclCmd, pollForFile, \
-    sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
-    copyFile, genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp
+    sendPclCmd, pollForFile, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
+    copyFile, genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp, \
+    save_to_tmp, tmp_path
 from ngamsServer import ngamsFileUtils
 
 
@@ -70,7 +70,7 @@ except ImportError:
     _test_checksums = False
 
 try:
-    _space_available_for_big_file_test = getDiskSpaceAvail('/tmp', format="GB") >= 4.1
+    _space_available_for_big_file_test = getDiskSpaceAvail(os.path.dirname(tmp_path()), format="GB") >= 4.1
 except:
     _space_available_for_big_file_test = False
 
@@ -187,8 +187,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         the form of file systems in files.
         """
         baseCfgFile = "src/ngamsCfg.xml"
-        tmpCfgFile = "tmp/ngamsArchiveCmdTest_test_" +\
-                     "NormalArchivePushReq_1_cfg_tmp.xml"
+        tmpCfgFile = genTmpFilename(prefix="ngamsArchiveCmdTest_test_", suffix='.xml')
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
         cfg = ngamsConfig.ngamsConfig().load(baseCfgFile)
         cfg.storeVal("NgamsCfg.Notification[1].Active", "1")
@@ -197,49 +196,38 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfg.storeVal("NgamsCfg.ArchiveHandling[1].FreeSpaceDiskChangeMb",
                      "10000000") # 10 TB, hopefully enough for most systems
         cfg.save(tmpCfgFile, 0)
-        cfgObj, dbObj = self.prepExtSrv(cfgFile=tmpCfgFile)
+        cfg, dbObj = self.prepExtSrv(cfgFile=tmpCfgFile)
         flushEmailQueue()
         sendPclCmd().archive("src/SmallFile.fits")
 
         # Check that Disk Change Notification message have been generated.
         if _checkMail:
             mailContClean = getEmailMsg()
-            tmpStatFile = "tmp/ngamsArchiveCmdTest_test_NormalArchivePushReq_1_tmp"
+            tmpStatFile = "ngamsArchiveCmdTest_test_NormalArchivePushReq_1_tmp"
             refStatFile = "ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_1_ref"
-            saveInFile(tmpStatFile, mailContClean)
+            save_to_tmp(tmpStatFile, mailContClean)
             self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
                               "Change Notification email msg")
 
         # Check that DB information is OK (completed=1).
-        mainDiskCompl = dbObj.getDiskCompleted("tmp-ngamsTest-NGAS-" +\
-                                               "FitsStorage1-Main-1")
+        mainDiskCompl = dbObj.getDiskCompleted(self.ngas_disk_id("FitsStorage1/Main/1"))
         self.checkEqual(1, mainDiskCompl,
                         "Disk completion flag not set for Main Disk")
-        repDiskCompl = dbObj.getDiskCompleted("tmp-ngamsTest-NGAS-" +\
-                                              "FitsStorage1-Rep-2")
+        repDiskCompl = dbObj.getDiskCompleted(self.ngas_disk_id("FitsStorage1/Rep/2"))
         self.checkEqual(1,repDiskCompl,
                         "Disk completion flag not set for Replication Disk")
 
         # Check that NgasDiskInfo file is OK (completed=1)
-        tmpStatFile = "tmp/ngamsArchiveCmdTest_test_" +\
-                      "NormalArchivePushReq_1_2_tmp"
-        refStatFile = "ref/ngamsArchiveCmdTest_test_" +\
-                      "NormalArchivePushReq_1_2_ref"
+        refStatFile = "ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_1_2_ref"
         statObj = ngamsStatus.ngamsStatus().\
-                  load("/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/NgasDiskInfo",
-                       1)
-        saveInFile(tmpStatFile, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect contents of " +\
-                          "NgasDiskInfo File/Main Disk")
-        tmpStatFile = "tmp/ngamsArchiveCmdTest_test_" +\
-                      "NormalArchivePushReq_1_3_tmp"
-        refStatFile = "ref/ngamsArchiveCmdTest_test_" +\
-                      "NormalArchivePushReq_1_3_ref"
+                  load(self.ngas_path("FitsStorage1-Main-1/NgasDiskInfo"),1)
+        msg = "Incorrect contents of NgasDiskInfo File/Main Disk"
+        self.assert_status_ref_file(refStatFile, statObj, msg=msg)
+        refStatFile = "ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_1_3_ref"
         statObj = ngamsStatus.ngamsStatus().\
-                  load("/tmp/ngamsTest/NGAS/FitsStorage1-Rep-2/NgasDiskInfo",1)
-        saveInFile(tmpStatFile, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect contents of "+\
-                          "NgasDiskInfo File/Rep.4 Disk")
+                  load(self.ngas_path("FitsStorage1-Rep-2/NgasDiskInfo"), 1)
+        msg = "Incorrect contents of NgasDiskInfo File/Rep.4 Disk"
+        self.assert_status_ref_file(refStatFile, statObj, msg=msg)
 
 
     def test_NormalArchivePushReq_2(self):
@@ -272,8 +260,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         the form of file systems in files.
         """
         baseCfgFile = "src/ngamsCfg.xml"
-        tmpCfgFile = "tmp/ngamsArchiveCmdTest_test_" +\
-                     "NormalArchivePushReq_2_cfg_tmp.xml"
+        tmpCfgFile = tmp_path("ngamsArchiveCmdTest_test_" +\
+                     "NormalArchivePushReq_2_cfg_tmp.xml")
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
         cfg = ngamsConfig.ngamsConfig().load(baseCfgFile)
         cfg.storeVal("NgamsCfg.Notification[1].Active", "1")
@@ -291,9 +279,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             mailContClean = getEmailMsg()
             idx = mailContClean.find("space (")
             mailContClean = mailContClean[0:mailContClean.find("space (")]
-            tmpStatFile = "tmp/ngamsArchiveCmdTest_test_NormalArchivePushReq_2_tmp"
             refStatFile = "ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_2_ref"
-            saveInFile(tmpStatFile, mailContClean)
+            tmpStatFile = save_to_tmp(mailContClean)
             self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
                               "Space Notification email msg")
 
@@ -392,17 +379,16 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                    ['NgamsCfg.Server[1].RequestDbBackend', 'memory']]
         self.prepExtSrv(cfgProps=cfgPars)
         statObj = sendPclCmd().archive("src/SmallFile.fits")
-        tmpFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         refFile = "ref/test_BackLogBuf_01_01_ref"
-        self.checkFilesEq(refFile, tmpFile, "Unexpected reply from server")
-        reqPropsFile = glob.glob("/tmp/ngamsTest/NGAS/back-log/*.pickle")[0]
+        msg = "Unexpected reply from server"
+        self.assert_status_ref_file(refFile, statObj, msg=msg)
+
+        reqPropsFile = glob.glob(self.ngas_path("back-log/*.pickle"))[0]
         with open(reqPropsFile, 'rb') as fo:
             tmpReqPropObj = cPickle.load(fo)
-        tmpFile = saveInFile(None, filterDbStatus1(tmpReqPropObj.dumpBuf(),
-                                                   filterTags=['RequestId']))
         refFile = "ref/test_BackLogBuf_01_02_ref"
-        self.checkFilesEq(refFile, tmpFile, "Unexpected contents of " +\
-                          "Back-Log Buffered Req. Prop. File")
+        msg = "Unexpected contents of Back-Log Buffered Req. Prop. File"
+        self.assert_status_ref_file(refFile, tmpReqPropObj, msg=msg, filters=['RequestId'])
         self.checkFilesEq("src/SmallFile.fits",
                           tmpReqPropObj.getStagingFilename(),
                           "Illegal Back-Log Buffered File: %s" %\
@@ -417,27 +403,21 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfgPars = [["NgamsCfg.Permissions[1].AllowArchiveReq", "1"],
                    ["NgamsCfg.ArchiveHandling[1].BackLogBuffering", "1"],
                    ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:05"]]
-        cfgObj, dbObj = self.prepExtSrv(delDirs=0, clearDb=0, cfgProps=cfgPars)
-        pollForFile("/tmp/ngamsTest/NGAS/back-log/*", 0, timeOut=30)
-        filePat = "/tmp/ngamsTest/NGAS/%s/saf/2001-05-08/1/" +\
-                  "TEST.2001-05-08T15:25:00.123.fits.gz"
+        _, dbObj = self.prepExtSrv(delDirs=0, clearDb=0, cfgProps=cfgPars)
+        pollForFile(self.ngas_path("back-log/*"), 0, timeOut=30)
+        filePat = self.ngas_path("%s/saf/2001-05-08/1/" +\
+                  "TEST.2001-05-08T15:25:00.123.fits.gz")
         pollForFile(filePat % "FitsStorage1-Main-1", 1)
         pollForFile(filePat % "FitsStorage1-Rep-2", 1)
         fileId = "TEST.2001-05-08T15:25:00.123"
-        mDiskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
-        rDiskId = "tmp-ngamsTest-NGAS-FitsStorage1-Rep-2"
-        mFileInfo = ngamsFileInfo.\
-                    ngamsFileInfo().read(getHostName(), dbObj, fileId, 1, mDiskId)
-        mFileInfoTmp = saveInFile(None, filterDbStatus1(mFileInfo.dumpBuf()))
-        mFileInfoRef = "ref/test_BackLogBuf_01_03_ref"
-        self.checkFilesEq(mFileInfoRef, mFileInfoTmp, "Incorrect info in DB "+\
-                          "for Main File archived")
-        rFileInfo = ngamsFileInfo.\
-                    ngamsFileInfo().read(getHostName(), dbObj, fileId, 1, rDiskId)
-        rFileInfoTmp = saveInFile(None, filterDbStatus1(rFileInfo.dumpBuf()))
-        rFileInfoRef = "ref/test_BackLogBuf_01_04_ref"
-        self.checkFilesEq(rFileInfoRef, rFileInfoTmp, "Incorrect info in DB "+\
-                          "for Replication File archived")
+
+        disk_paths = ("FitsStorage1/Main/1", "FitsStorage1/Rep/2")
+        for disk_path, file_type, ref_no in zip(disk_paths, ('Main', 'Replication'), (3, 4)):
+            disk_id = self.ngas_disk_id(disk_path)
+            file_info = ngamsFileInfo.ngamsFileInfo().read(getHostName(), dbObj, fileId, 1, disk_id)
+            ref_file = "ref/test_BackLogBuf_01_%02d_ref" % ref_no
+            msg = "Incorrect info in DB for %s File archived" % file_type
+            self.assert_status_ref_file(ref_file, file_info, msg=msg)
 
 
     def test_NoBackLogBuf_01(self):
@@ -477,12 +457,11 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                    ["NgamsCfg.ArchiveHandling[1].BackLogBuffering", "0"]]
         self.prepExtSrv(cfgProps=cfgPars)
         statObj = sendPclCmd().archive("src/SmallFile.fits")
-        tmpFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         refFile = "ref/test_NoBackLogBuf_01_01_ref"
-        self.checkFilesEq(refFile, tmpFile, "Unexpected reply from server")
-        pollForFile("/tmp/ngamsTest/NGAS/FitsStorage*-Main-*/staging/*", 0)
-        pollForFile("/tmp/ngamsTest/NGAS/back-log/*", 0)
-        pollForFile("/tmp/ngamsTest/NGAS/bad-files/*", 0)
+        self.assert_status_ref_file(refFile, statObj, msg="Unexpected reply from server")
+        pollForFile(self.ngas_path("FitsStorage*-Main-*/staging/*"), 0)
+        pollForFile(self.ngas_path("back-log/*"), 0)
+        pollForFile(self.ngas_path("bad-files/*"), 0)
 
 
     def test_ArchivePullReq_1(self):
@@ -544,13 +523,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileUri = "http://127.0.0.1:8011/RETRIEVE?file_id=" +\
                   "TEST.2001-05-08T15:25:00.123&file_version=1"
-        tmpStatFile = sendExtCmd(8000, NGAMS_ARCHIVE_CMD,
+        status = sendPclCmd(port=8000).get_status(NGAMS_ARCHIVE_CMD,
                                  [["filename", fileUri],
-                                  ["mime_type", "application/x-gfits"]],
-                                 filterTags = ["http://", "LogicalName:"])
+                                  ["mime_type", "application/x-gfits"]])
         refStatFile = "ref/ngamsArchiveCmdTest_test_ArchivePullReq_2_1_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Archive Push Request/HTTP")
+        msg = "Incorrect status returned for Archive Push Request/HTTP"
+        self.assert_status_ref_file(refStatFile, status, msg=msg, port=8000,
+                                    filters=["http://", "LogicalName:"])
 
 
     def test_ErrHandling_1(self):
@@ -601,13 +580,12 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ...
 
         """
-        stgAreaPat = "/tmp/ngamsTest/NGAS/FitsStorage*-Main-*/staging/*"
-        badFilesAreaPat = "/tmp/ngamsTest/NGAS/bad-files/*"
         self.prepExtSrv()
+        stgAreaPat = self.ngas_path("FitsStorage*-Main-*/staging/*")
+        badFilesAreaPat = self.ngas_path("bad-files/*")
 
         # Illegal size of FITS file (not a multiple of 2880).
-        illSizeFile = "tmp/IllegalSize.fits"
-        saveInFile(illSizeFile, "dsjhdjsadhaskjdhaskljdhaskjhd")
+        illSizeFile = save_to_tmp("dsjhdjsadhaskjdhaskljdhaskjhd", suffix='.fits')
         statObj = sendPclCmd().archive(illSizeFile)
         self.checkTags(statObj.getMessage(), ["NGAMS_ER_DAPI_BAD_FILE",
                                               "not a multiple of 2880 " +\
@@ -617,7 +595,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Missing CHECKSUM keyword.
         if _check_fits_checksums:
-            noChecksumFile = "tmp/NoChecksum.fits"
+            noChecksumFile = tmp_path("NoChecksum.fits")
             copyFile("src/SmallFile.fits", noChecksumFile)
             remFitsKey(noChecksumFile, "CHECKSUM")
             statObj = sendPclCmd().archive(noChecksumFile)
@@ -627,7 +605,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             pollForFile(badFilesAreaPat, 0)
 
             # Illegal checksum in FITS file.
-            illChecksumFile = "tmp/IllChecksum.fits"
+            illChecksumFile = tmp_path("IllChecksum.fits")
             copyFile("src/SmallFile.fits", illChecksumFile)
             writeFitsKey(illChecksumFile, "CHECKSUM", "BAD-CHECKSUM!", "TEST")
             statObj = sendPclCmd().archive(illChecksumFile)
@@ -637,24 +615,21 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             pollForFile(badFilesAreaPat, 0)
 
         # Unknown mime-type.
-        unknownMtFile = "tmp/UnknownMimeType.stif"
+        unknownMtFile = tmp_path("UnknownMimeType.stif")
         copyFile("src/SmallFile.fits", unknownMtFile)
         statObj = sendPclCmd().archive(unknownMtFile)
-        tmpStatFile = "tmp/ngamsArchiveCmdTest_test_ErrHandling_1_4_tmp"
         refStatFile = "ref/ngamsArchiveCmdTest_test_ErrHandling_1_4_ref"
-        saveInFile(tmpStatFile, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Archive Push Request/Unknown Mimetype")
+        msg = "Incorrect status returned for Archive Push Request/Unknown Mimetype"
+        self.assert_status_ref_file(refStatFile, statObj, msg=msg)
         pollForFile(stgAreaPat, 0)
         pollForFile(badFilesAreaPat, 0)
 
         # Illegal File URI at Archive Pull.
         illFileUri = "http://unknown.domain.com/NonExistingFile.fits"
-        tmpStatFile = sendExtCmd(8888, NGAMS_ARCHIVE_CMD,
-                                 [["file_uri", illFileUri]])
+        status = sendPclCmd().get_status(NGAMS_ARCHIVE_CMD, [["file_uri", illFileUri]])
         refStatFile = "ref/ngamsArchiveCmdTest_test_ErrHandling_1_5_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Archive Pull Request/Illegal URI")
+        msg = "Incorrect status returned for Archive Pull Request/Illegal URI"
+        self.assert_status_ref_file(refStatFile, status, msg=msg)
         pollForFile(stgAreaPat, 0)
         pollForFile(badFilesAreaPat, 0)
 
@@ -686,8 +661,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         the archiving failed, and can re-submit the file. The operator
         would need to intervene to rectify the problem.
         """
-        cfgObj, dbObj = self.prepExtSrv()
-        repDiskPath = "/tmp/ngamsTest/NGAS/FitsStorage1-Rep-2"
+        self.prepExtSrv()
+        repDiskPath = self.ngas_path("FitsStorage1-Rep-2")
 
         # TODO: Change these by python-based chmod
         subprocess.call(['chmod', '-R', 'a-rwx', repDiskPath], shell=False)
@@ -738,7 +713,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(port=8888)
+        _, dbObj = self.prepExtSrv(port=8888)
         host_id = getHostName() + ":8888"
         sqlQuery = "UPDATE ngas_disks SET completed=1 WHERE host_id={0}"
         dbObj.query2(sqlQuery, args=(host_id,))
@@ -746,12 +721,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         sqlQuery = "UPDATE ngas_disks SET completed=0 WHERE host_id={0}"
         dbObj.query2(sqlQuery, args=(host_id,))
         refStatFile = "ref/ngamsArchiveCmdTest_test_ErrHandling_3_1_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Archive Push Request/" +\
-                          "No Free Storage Sets")
-        pollForFile("/tmp/ngamsTest/NGAS/FitsStorage*-Main-*/staging/*", 0)
-        pollForFile("/tmp/ngamsTest/NGAS/bad-files/*", 0)
+        msg = "Incorrect status returned for Archive Push Request/No Free Storage Sets"
+        self.assert_status_ref_file(refStatFile, statObj, msg=msg)
+        pollForFile(self.ngas_path("FitsStorage*-Main-*/staging/*"), 0)
+        pollForFile(self.ngas_path("bad-files/*"), 0)
 
 
     @unittest.skip("Test case requires missing file under src/")
@@ -875,19 +848,18 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Check: Disk/Slot 1 is marked as completed.
         # Check: Disk/Slot 2 is not marked as completed.
         preFix = "ref/ngamsArchiveCmdTest_test_"
-        for diFiles in [["/tmp/ngamsTest/NGAS/Data1-Main-1/NgasDiskInfo",
+        for diFiles in [[self.ngas_path("Data1-Main-1/NgasDiskInfo"),
                          preFix + "MainDiskSmallerThanRep_1_1_ref"],
-                        ["/tmp/ngamsTest/NGAS/Data1-Rep-2/NgasDiskInfo",
+                        [self.ngas_path("Data1-Rep-2/NgasDiskInfo"),
                          preFix + "MainDiskSmallerThanRep_1_2_ref"]]:
             statObj = ngamsStatus.ngamsStatus().load(diFiles[0], 1)
-            tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-            self.checkFilesEq(diFiles[1], tmpStatFile, "Incorrect contents " +\
+            self.assert_status_ref_file(diFiles[1], statObj, msg="Incorrect contents " +\
                               "of NgasDiskInfo File/Main Disk (%s)"%diFiles[0])
         # Check: Email Notification Message is sent indicating to change
         #        only disk/Slot 1.
         if _checkMail:
             refStatFile = preFix + "MainDiskSmallerThanRep_1_3_ref"
-            tmpStatFile = saveInFile(None, getEmailMsg())
+            tmpStatFile = save_to_tmp(getEmailMsg())
             self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
                               "Change Notification Email Msg")
         #####################################################################
@@ -899,19 +871,18 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         sendPclCmd().archive(fitsFile[0:-3]) # #3
         # Check: That disk/Slot 3 is marked as completed + disk/Slot 4
         # is not marked as completed.
-        for diFiles in [["/tmp/ngamsTest/NGAS/Data2-Main-3/NgasDiskInfo",
+        for diFiles in [[self.ngas_path("Data2-Main-3/NgasDiskInfo"),
                          preFix + "MainDiskSmallerThanRep_1_4_ref"],
-                        ["/tmp/ngamsTest/NGAS/Data2-Rep-4/NgasDiskInfo",
+                        [self.ngas_path("Data2-Rep-4/NgasDiskInfo"),
                          preFix + "MainDiskSmallerThanRep_1_5_ref"]]:
             statObj = ngamsStatus.ngamsStatus().load(diFiles[0], 1)
-            tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-            self.checkFilesEq(diFiles[1], tmpStatFile, "Incorrect contents " +\
+            self.assert_status_ref_file(diFiles[1], statObj, msg="Incorrect contents " +\
                               "of NgasDiskInfo File/Main Disk (%s)"%diFiles[0])
         # Check: That Email Notification sent out indicating to change
         # disk/Slot 3.
         if _checkMail:
             refStatFile = preFix + "MainDiskSmallerThanRep_1_6_ref"
-            tmpStatFile = saveInFile(None, getEmailMsg())
+            tmpStatFile = save_to_tmp(getEmailMsg())
             self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
                               "Change Notification Email Msg")
         #####################################################################
@@ -947,20 +918,19 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Check: That disk/Slot 5 is marked as completed.
         # Check: That disk/Slot 6 is not marked as completed.
-        for diFiles in [["/tmp/ngamsTest/NGAS/Data3-Main-5/NgasDiskInfo",
+        for diFiles in [[self.ngas_disk_id("Data3-Main-5/NgasDiskInfo"),
                          preFix + "MainDiskSmallerThanRep_1_7_ref"],
-                        ["/tmp/ngamsTest/NGAS/Data3-Rep-6/NgasDiskInfo",
+                        [self.ngas_disk_id("Data3-Rep-6/NgasDiskInfo"),
                          preFix + "MainDiskSmallerThanRep_1_8_ref"]]:
             statObj = ngamsStatus.ngamsStatus().load(diFiles[0], 1)
-            tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
             msg = "Incorrect contents of NgasDiskInfo File/Main Disk (%s)/1"
-            self.checkFilesEq(diFiles[1], tmpStatFile, msg % diFiles[0])
+            self.assert_status_ref_file(diFiles[1], statObj, msg=msg % diFiles[0])
 
         # Check: That Email Notification sent out indicating to replace
         #        disk/Slot 5.
         if _checkMail:
             refStatFile = preFix + "MainDiskSmallerThanRep_1_9_ref"
-            tmpStatFile = saveInFile(None, getEmailMsg())
+            tmpStatFile = save_to_tmp(getEmailMsg())
             self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
                               "Change Notification Email Msg")
         #####################################################################
@@ -975,19 +945,18 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Check: That disk/Slot 1 is not marked as completed.
         # Check: That disk/Slot 2 is marked as completed.
-        for diFiles in [["/tmp/ngamsTest/NGAS/Data1-Main-1/NgasDiskInfo",
+        for diFiles in [[self.ngas_disk_id("Data1-Main-1/NgasDiskInfo"),
                          preFix + "MainDiskSmallerThanRep_1_10_ref"],
-                        ["/tmp/ngamsTest/NGAS/Data1-Rep-2/NgasDiskInfo",
+                        [self.ngas_disk_id("Data1-Rep-2/NgasDiskInfo"),
                          preFix + "MainDiskSmallerThanRep_1_11_ref"]]:
             statObj = ngamsStatus.ngamsStatus().load(diFiles[0], 1)
             msg = "Incorrect contents of NgasDiskInfo File/Main Disk (%s)/2"
-            tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-            self.checkFilesEq(diFiles[1], tmpStatFile, msg % diFiles[0])
+            self.assert_status_ref_file(diFiles[1], statObj, msg=msg % diFiles[0])
         # Check: That Email Notification sent out indicating to replace
         #        disk/Slot 2.
         if _checkMail:
             refStatFile = preFix + "MainDiskSmallerThanRep_1_12_ref"
-            tmpStatFile = saveInFile(None, getEmailMsg())
+            tmpStatFile = save_to_tmp(getEmailMsg())
             self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
                               "Change Notification Email Msg")
         #####################################################################
@@ -1016,8 +985,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepExtSrv()
-        stgPat = "/tmp/ngamsTest/NGAS/%s/staging/%s.fits"
+        cfg, _ = self.prepExtSrv()
+        stgPat = self.ngas_path("%s/staging/%s.fits")
         diskList = ["FitsStorage1-Main-1", "FitsStorage2-Main-3",
                     "FitsStorage3-Main-5", "PafStorage-Main-7",
                     "LogStorage-Main-9"]
@@ -1036,7 +1005,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         setNoCleanUp(old_cleanup)
 
         self.prepExtSrv(delDirs=0, clearDb=0)
-        badDirPat = "/tmp/ngamsTest/NGAS/bad-files/BAD-FILE-*-%s.fits"
+        badDirPat = self.ngas_path("bad-files/BAD-FILE-*-%s.fits")
         for diskName in diskList:
             badFile = badDirPat % diskName
             pollForFile(badFile, 1)
@@ -1071,12 +1040,11 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             sendPclCmd().archive("src/SmallFile.fits")
         except:
             pass
-        reqPropStgFile = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/staging/" +\
-                         "*-SmallFile.fits.pickle"
+        reqPropStgFile = self.ngas_path("FitsStorage1-Main-1/staging/" +\
+                         "*-SmallFile.fits.pickle")
         pollForFile(reqPropStgFile, 1)
         self.prepExtSrv(delDirs=0, clearDb=0, force=True)
-        reqPropBadFile = "/tmp/ngamsTest/NGAS/bad-files/BAD-FILE-*" +\
-                         "-SmallFile.fits.pickle"
+        reqPropBadFile = self.ngas_path("bad-files/BAD-FILE-*-SmallFile.fits.pickle", port=8888)
         pollForFile(reqPropBadFile, 1)
 
 
@@ -1110,15 +1078,14 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfgPars = [["NgamsCfg.Streams[1].Stream[2].PlugIn", "NonExistingDapi"]]
         self.prepExtSrv(cfgProps=cfgPars)
         stat = sendPclCmd().archive("src/SmallFile.fits")
-        tmpStatFile = saveInFile(None, filterDbStatus1(stat.dumpBuf()))
         refStatFile = "ref/test_NoDapi_01_01_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "message from NG/AMS Server")
-        pollForFile("/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/staging/*", 0)
-        arcFileNm = "/tmp/ngamsTest/NGAS/%s/saf/2001-05-08/1/*"
+        msg = "Incorrect status message from NG/AMS Server"
+        self.assert_status_ref_file(refStatFile, stat, msg=msg)
+        pollForFile(self.ngas_path("FitsStorage1-Main-1/staging/*"), 0)
+        arcFileNm = self.ngas_path("%s/saf/2001-05-08/1/*")
         pollForFile(arcFileNm % "FitsStorage1-Main-1", 0)
         pollForFile(arcFileNm % "FitsStorage1-Rep-2", 0)
-        pollForFile("/tmp/ngamsTest/NGAS/bad-files/*", 0)
+        pollForFile(self.ngas_path("bad-files/*"), 0)
 
 
     #########################################################################
@@ -1362,7 +1329,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ...
         """
         # Create basic structure.
-        ngasRootDir = "/tmp/ngamsTest/NGAS"
+        ngasRootDir = tmp_path('NGAS')
         rmFile(ngasRootDir)
         checkCreatePath(ngasRootDir)
         subprocess.check_call(['tar', 'zxf', 'src/volumes_dir.tar.gz'])
@@ -1373,10 +1340,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Archive a file.
         stat = sendPclCmd().archive("src/SmallFile.fits")
-        tmpStatFile = saveInFile(None, filterDbStatus1(stat.dumpBuf()))
         refStatFile = "ref/ngamsArchiveCmdTest_test_VolumeDir_01_01_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "message from NG/AMS Server")
+        msg = "Incorrect status message from NG/AMS Server"
+        self.assert_status_ref_file(refStatFile, stat, msg=msg)
 
         # Check that the target files have been archived in their
         # appropriate locations.
@@ -1400,14 +1366,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Test ARCHIVE
         self.prepExtSrv(cfgFile = 'src/ngamsCfg.xml')
 
-        open('tmp/zerofile.fits', 'a').close()
+        zerofile = tmp_path('zerofile.fits')
+        open(zerofile, 'a').close()
         client = sendPclCmd()
-        status = client.archive('tmp/zerofile.fits', 'application/octet-stream', cmd = 'ARCHIVE')
+        status = client.archive(zerofile, 'application/octet-stream', cmd = 'ARCHIVE')
         self.checkEqual(status.getStatus(), 'FAILURE', None)
         self.checkEqual('Content-Length is 0' in status.getMessage(), True, None)
 
         # Test QARCHIVE
-        status = client.archive('tmp/zerofile.fits', 'application/octet-stream', cmd = 'QARCHIVE')
+        status = client.archive(zerofile, 'application/octet-stream', cmd = 'QARCHIVE')
         self.checkEqual(status.getStatus(), 'FAILURE', None)
         self.checkEqual('Content-Length is 0' in status.getMessage(), True, None)
 
@@ -1439,7 +1406,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.checkEqual(b'NGAMS_ER_UNKNOWN_MIME_TYPE' in resp.read(), True, None)
 
         # File is zero-length
-        test_file = 'tmp/zerofile.fits'
+        test_file = tmp_path('zerofile.fits')
         open(test_file, 'a').close()
         params = {'filename': test_file,
                   'mime_type': 'application/octet-stream'}
@@ -1476,7 +1443,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
     @unittest.skipIf(not _space_available_for_big_file_test,
             "Not enough disk space available to run this test " + \
-            "(4 GB are required under /tmp)")
+            "(4 GB are required under %s)" % tmp_path())
     def test_QArchive_big_file(self):
 
         self.prepExtSrv()
@@ -1569,13 +1536,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
     def test_performance_of_parallel_crc32(self):
 
         # Try to use an in-memory filesystem if possible
-        root = '/dev/shm'
-        if not os.path.isdir(root):
-            root = '/tmp/ngas'
-
         size_mb = int(os.environ.get('NGAS_TESTS_CRC32_DATA_SIZE', 300))
         size = size_mb * 1024 * 1024
-        test_file = os.path.join(root, 'largefile')
+        test_file = tmp_path('largefile')
         file_uri = 'file://' + test_file
         with open(test_file, 'wb') as f:
             f.seek(size)
@@ -1586,8 +1549,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         for log_blockSize_kb in (2,3):
 
             blockSize = (2**log_blockSize_kb) * 1024
-            cfg = (("NgamsCfg.Server[1].RootDirectory", os.path.join(root, 'ngas')),
-                   ('NgamsCfg.Server[1].BlockSize', blockSize),
+            cfg = (('NgamsCfg.Server[1].BlockSize', blockSize),
                    ("NgamsCfg.Log[1].LocalLogLevel", "4"))
             self.prepExtSrv(cfgProps=cfg)
             for crc32_variant in (1, 0):
@@ -1629,8 +1591,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         def assert_retrieve(data, version=None):
             version = -1 if version is None else version
-            self.assert_ngas_status(client.retrieve, 'file1.txt', fileVersion=version, targetFile='tmp/')
-            with open('tmp/file1.txt', 'rb') as f:
+            self.assert_ngas_status(client.retrieve, 'file1.txt', fileVersion=version, targetFile=tmp_path())
+            with open(tmp_path('file1.txt'), 'rb') as f:
                 self.assertEqual(data, f.read())
 
         # Initial normal archiving of contents, should create versions 1 and 2

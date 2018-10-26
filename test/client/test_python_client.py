@@ -38,7 +38,8 @@ import sys
 
 from ngamsLib.ngamsCore import getHostName
 from ngamsPClient import ngamsPClient
-from ..ngamsTestLib import ngamsTestSuite, waitReqCompl, unzip
+from ..ngamsTestLib import ngamsTestSuite, waitReqCompl, unzip, genTmpFilename, \
+    tmp_path
 
 
 class ngamsPClientTest(ngamsTestSuite):
@@ -146,7 +147,7 @@ class ngamsPClientTest(ngamsTestSuite):
         client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
         statObj = client.clone("TEST.2001-05-08T15:25:00.123",
-                               "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
+                               self.ngas_disk_id("FitsStorage1/Main/1"), -1)
         refMsg = "Successfully handled command CLONE"
         self.checkEqual(refMsg, statObj.getMessage(), "Problem executing " +\
                         "Archive Pull Request")
@@ -179,7 +180,7 @@ class ngamsPClientTest(ngamsTestSuite):
         client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
         statObj = client.clone("TEST.2001-05-08T15:25:00.123",
-                               "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1,
+                               self.ngas_disk_id("FitsStorage1/Main/1"), -1,
                                asynchronous = 1)
         refMsg = "Accepted CLONE command for execution"
         self.checkEqual(refMsg, statObj.getMessage(), "Problem executing " +\
@@ -213,7 +214,7 @@ class ngamsPClientTest(ngamsTestSuite):
         client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
         statObj = client.clone("TEST.2001-05-08T15:25:00.123",
-                               "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1,
+                               self.ngas_disk_id("FitsStorage1/Main/1"), -1,
                                asynchronous = 0)
         refMsg = "Successfully handled command CLONE"
         self.checkEqual(refMsg, statObj.getMessage(), "Problem executing " +\
@@ -332,7 +333,7 @@ class ngamsPClientTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
-        trgFile = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/SmallFile.fits"
+        trgFile = self.ngas_path("FitsStorage1-Main-1/SmallFile.fits")
         shutil.copy("src/SmallFile.fits", trgFile)
         status = ngamsPClient.ngamsPClient(port=8888).\
                  register(trgFile)
@@ -368,8 +369,8 @@ class ngamsPClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepExtSrv()
-        trgFile = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/SmallFile.fits"
+        cfg, _ = self.prepExtSrv()
+        trgFile = self.ngas_path("FitsStorage1-Main-1/SmallFile.fits")
         shutil.copy("src/SmallFile.fits", trgFile)
         status = ngamsPClient.ngamsPClient(port=8888).\
                  register(trgFile)
@@ -401,11 +402,11 @@ class ngamsPClientTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
+        disk_id = self.ngas_disk_id("FitsStorage1/Main/1")
         status = ngamsPClient.ngamsPClient(port=8888).\
-                 remDisk("tmp-ngamsTest-NGAS-FitsStorage1-Main-1", 1)
+                 remDisk(disk_id, 1)
         refMsg = "NGAMS_INFO_DEL_DISK:4043:INFO: Successfully deleted " +\
-                 "info for disk. Disk ID: " +\
-                 "tmp-ngamsTest-NGAS-FitsStorage1-Main-1."
+                 "info for disk. Disk ID: %s." % disk_id
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "REMDISK Command")
 
@@ -434,12 +435,12 @@ class ngamsPClientTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
+        disk_id = self.ngas_disk_id("FitsStorage1/Main/1")
         client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
-        status = client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
+        status = client.clone("", disk_id, -1)
         waitReqCompl(client, status.getRequestId())
-        status = client.remFile("tmp-ngamsTest-NGAS-FitsStorage1-Main-1",
-                                "TEST.2001-05-08T15:25:00.123", -1)
+        status = client.remFile(disk_id, "TEST.2001-05-08T15:25:00.123", -1)
         refMsg = "NGAMS_INFO_FILE_DEL_STAT:4040:INFO: File deletion status. "+\
                  "Files Selected: 1, Files Deleted: 0, " +\
                  "Failed File Deletions: 0."
@@ -475,13 +476,12 @@ class ngamsPClientTest(ngamsTestSuite):
         self.prepExtSrv()
         client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
-        trgDir = "tmp"
-        status = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=trgDir)
+        status = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=tmp_path())
         refMsg = "Successfully handled request"
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "RETRIEVE Command")
-        tmpFile = "tmp/TEST.2001-05-08T15:25:00.123.fits.gz"
-        unzipedTmpFile = 'tmp/SmallFile.fits'
+        tmpFile = tmp_path("TEST.2001-05-08T15:25:00.123.fits.gz")
+        unzipedTmpFile = genTmpFilename()
         unzip(tmpFile, unzipedTmpFile)
         self.checkFilesEq("src/SmallFile.fits", unzipedTmpFile, "Retrieved file incorrect")
 
@@ -577,8 +577,8 @@ class CommandLineTest(ngamsTestSuite):
             if os.path.isfile(bname):
                 os.unlink(bname)
 
-        self.assert_client_succeeds('RETRIEVE', '--file-id', bname, '-o', 'tmp')
-        self.assertTrue(os.path.isfile(os.path.join('tmp', bname)))
+        self.assert_client_succeeds('RETRIEVE', '--file-id', bname, '-o', tmp_path())
+        self.assertTrue(os.path.isfile(tmp_path(bname)))
 
         self.assert_client_succeeds('RETRIEVE', '--file-id', bname, '-o', os.devnull)
 
@@ -603,13 +603,13 @@ class CommandLineTest(ngamsTestSuite):
         self.assert_client_fails('ARCHIVE', '--file-id', sys.executable)
 
         # Indicated file doesn't exist (but make really sure it doesn't before testing)
-        fname = 'tmp/doesnt_exist_at_all.bin'
+        fname = genTmpFilename()
         while os.path.isfile(fname):
             fname = '1' + fname
         self.assert_client_fails('ARCHIVE', '--file-uri', fname)
 
         # Exists, but cannot be read
-        fname = 'tmp/unreadable.txt'
+        fname = genTmpFilename(prefix='unreadable')
         open(fname, 'wb').write(b'text')
         os.chmod(fname, 0)
         self.assert_client_fails('ARCHIVE', '--file-uri', fname)

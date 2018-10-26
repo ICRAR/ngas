@@ -1,5 +1,5 @@
 NgamsCfg.ArchiveHandling[1].ArchiveUnits               : -----
-NgamsCfg.ArchiveHandling[1].BackLogBufferDirectory     : /tmp/ngamsTest/NGAS
+NgamsCfg.ArchiveHandling[1].BackLogBufferDirectory     : .
 NgamsCfg.ArchiveHandling[1].BackLogBuffering           : 1
 NgamsCfg.ArchiveHandling[1].FreeSpaceDiskChangeMb      : 20
 NgamsCfg.ArchiveHandling[1].Id                         : ArchiveHandling-Test
@@ -94,7 +94,7 @@ NgamsCfg.Processing[1].PlugIn[3].MimeType[1].Name      : image/x-fits
 NgamsCfg.Processing[1].PlugIn[3].MimeType[2].Name      : application/x-gfits
 NgamsCfg.Processing[1].PlugIn[3].MimeType[3].Name      : application/x-cfits
 NgamsCfg.Processing[1].PlugIn[3].Name                  : ngasWfiPreview
-NgamsCfg.Processing[1].ProcessingDirectory             : /tmp/ngamsTest/NGAS
+NgamsCfg.Processing[1].ProcessingDirectory             : .
 NgamsCfg.Register[1].Id                                : Register-Std
 NgamsCfg.Register[1].PlugIn[1].MimeType[1].Name        : image/x-fits
 NgamsCfg.Register[1].PlugIn[1].MimeType[2].Name        : application/x-gfits
@@ -108,7 +108,7 @@ NgamsCfg.Server[1].IpAddress                           : 127.0.0.1
 NgamsCfg.Server[1].MaxSimReqs                          : 30
 NgamsCfg.Server[1].PortNo                              : 8888
 NgamsCfg.Server[1].ProxyMode                           : 1
-NgamsCfg.Server[1].RootDirectory                       : /tmp/ngamsTest/NGAS
+NgamsCfg.Server[1].RootDirectory                       : .
 NgamsCfg.Server[1].Simulation                          : 1
 NgamsCfg.StorageSets[1].Id                             : StorageSets-PATA-8-Dbl
 NgamsCfg.StorageSets[1].StorageSet[1].DiskLabel        : FITS

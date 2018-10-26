@@ -31,14 +31,13 @@
 Child class of ngamsServer where the test case code can define how requests
 are handled.
 """
-
 import os
 import time
 
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, \
     NGAMS_STATUS_CMD, NGAMS_ARCHIVE_CMD
 from ngamsServer import ngamsServer
-from ngamsTestLib import loadFile
+from ngamsTestLib import tmp_path, loadFile
 
 
 class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
@@ -52,16 +51,18 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         Override ngamsServer.reqCallBack(). Simply load the name of the
         request handler to execute in the file written by the test case.
         """
-        if os.path.exists("tmp/reqCallBack_tmp"):
-            reqHandleCode = loadFile("tmp/reqCallBack_tmp")
+        fname = tmp_path("reqCallBack_tmp")
+        if os.path.isfile(fname):
+            reqHandleCode = loadFile(fname)
             reqHandleCode = getattr(self, reqHandleCode)
             reqHandleCode(*args, **kwargs)
         else:
             super(ngamsServerTestDynReqCallBack, self).reqCallBack(*args, **kwargs)
 
     def handleHttpRequest(self, *args, **kwargs):
-        if os.path.exists("tmp/handleHttpRequest_tmp"):
-            reqHandleCode = loadFile("tmp/handleHttpRequest_tmp")
+        fname = tmp_path("handleHttpRequest_tmp")
+        if os.path.isfile(fname):
+            reqHandleCode = loadFile(fname)
             reqHandleCode = getattr(self, reqHandleCode)
             reqHandleCode(*args, **kwargs)
         else:
@@ -120,7 +121,8 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         else:
             # Sending back illegal HTTP response
             time.sleep(0.500)
-            resp = loadFile("tmp/ngamsServerTestIllegalResp_tmp", mode='b')
+            fname = tmp_path("ngamsServerTestIllegalResp_tmp")
+            resp = loadFile(fname, mode='b')
             req_handler.wfile.write(resp)
 
 

@@ -1,24 +1,24 @@
 Status:
 Status:                             SUCCESS
-Message:                            Successfully handled Archive Pull Request for data file with URI: file:/tmp/ngamsTest/NGAS/SmallFile.fits
+Message:                            Successfully handled Archive Pull Request for data file with URI: file:%NGAS_ROOT%/SmallFile.fits
 State:                              ONLINE
 SubState:                           IDLE
 DiskStatus:
-DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+DiskId:                             %NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1
 Archive:                            ESO-ARCHIVE
 Type:                               TEST-TYPE
 Manufacturer:                       TEST-MANUFACTURER
 LogicalName:                        FITS-M-000001
 SlotId:                             1
 Mounted:                            1
-MountPoint:                         /tmp/ngamsTest/NGAS/FitsStorage1-Main-1
+MountPoint:                         %NGAS_ROOT%/FitsStorage1-Main-1
 NumberOfFiles:                      1
 BytesStored:                        45823
 Completed:                          0
 Checksum:                           
 LastCheck:                          
 FileStatus:
-DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+DiskId:                             %NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1
 FileName:                           saf/2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.gz
 FileId:                             TEST.2001-05-08T15:25:00.123
 FileVersion:                        1

@@ -40,11 +40,10 @@ import unittest
 
 from ngamsLib import ngamsStatus
 from ngamsLib.ngamsCore import terminate_or_kill
-from ..ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
-    has_program
+from ..ngamsTestLib import ngamsTestSuite, has_program, tmp_path
 
 
-arcCliDir = "/tmp/ngamsTest/NGAMS_ARCHIVE_CLIENT"
+arcCliDir = tmp_path("NGAMS_ARCHIVE_CLIENT")
 
 
 @unittest.skipUnless(has_program('ngamsArchiveClient'), "No Archive C client")
@@ -79,7 +78,7 @@ class ngamsArchiveClientTest(ngamsTestSuite):
     def startArchiveClient(self):
         cmd = ["ngamsArchiveClient",
                "-host", '127.0.0.1', "-port", "8888",
-               "-rootDir", "/tmp/ngamsTest", "-pollTime", "5",
+               "-rootDir", tmp_path(), "-pollTime", "5",
                "-checksum", "ngamsCrc32", "-cleanUpTimeOut", "10",
                "-logLevel", "3", "-logRotate", "0", "-logHistory", "2",
                "-v", "0"]
@@ -165,14 +164,8 @@ class ngamsArchiveClientTest(ngamsTestSuite):
         # Check the contents of one of the status documents.
         statObj = ngamsStatus.ngamsStatus().load(globFile1StatPat[0])
         refStatFile = "ref/ngamsArchiveClientTest_test_NormalOp_1_1_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf(),
-                                                       ["BytesStored:",
-                                                        "NumberOfFiles:",
-                                                        "FileName:",
-                                                        "FileVersion:"]))
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect info in Archive Command " +\
-                          "XML Status Document")
+        filters = ("BytesStored:", "NumberOfFiles:", "FileName:", "FileVersion:")
+        self.assert_status_ref_file(refStatFile, statObj, filters=filters)
 
         # Check that the status documents are removed within 10s.
         filesRemoved = 0

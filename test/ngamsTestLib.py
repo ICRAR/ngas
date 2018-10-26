@@ -51,7 +51,6 @@ import tempfile
 import threading
 import time
 import unittest
-import uuid
 import xml.dom.minidom
 
 import astropy.io.fits as pyfits
@@ -60,8 +59,8 @@ import psutil
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, ngamsStatus, utils
 from ngamsLib.ngamsCore import getHostName, rmFile, \
-    cpFile, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
-    execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601
+    NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
+    execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601, getDiskSpaceAvail
 from ngamsPClient import ngamsPClient
 
 
@@ -79,11 +78,6 @@ logging_levels = {
 
 # Pool used to start/shutdown servers in parallel
 srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
-
-# Constants.
-STD_DISK_STAT_FILT = ["AccessDate", "AvailableMb", "CreationDate", "Date",
-                      "HostId", "IngestionDate", "InstallationDate",
-                      "ModificationDate", "TotalDiskWriteTime", "Version"]
 
 # Almost all unit tests generate temporary files. These were originally stored
 # under 'tmp' relative to the cwd. We now instead try different approaches,
@@ -110,6 +104,20 @@ def tmp_path(*p):
 
 def as_ngas_disk_id(s):
     return s.strip('/').replace('/', '-')
+
+def filter_and_replace(s, filters=[], startswith_filters=[], replacements={}, split_by_newline=False):
+    '''filters lines in s through filters, startswith_fitlers, performing replacements through filtered lines'''
+    new_s = []
+    lines = s.split('\n') if split_by_newline else s.splitlines()
+    for line in lines:
+        if any(map(lambda f: f in line, filters)):
+            continue
+        if any(map(lambda sw: line.startswith(sw), startswith_filters)):
+            continue
+        for match, replacement in replacements.items():
+            line = line.replace(match, replacement)
+        new_s.append(line)
+    return '\n'.join(new_s)
 
 # this_dir, which we use in a few places to refer to files, etc
 this_dir = os.path.normpath(os.path.abspath(pkg_resources.resource_filename(__name__, '.')))  # @UndefinedVariable
@@ -431,32 +439,13 @@ def loadFile(filename, mode='t'):
         return f.read()
 
 
-def genTmpFilename(prefix = ""):
+def genTmpFilename(prefix="", suffix=""):
     """
-    Generate a unique, temporary filename.
+    Generate a unique, temporary filename under the temporal root directory.
 
     Returns:   Returns unique, temporary filename (string).
     """
-    return "tmp/%s%s_tmp" % (prefix, str(uuid.uuid4()))
-
-
-def saveInFile(filename,
-               buf):
-    """
-    Save the contents of a buffer in a file with the given name.
-
-    filename:   Target filename. If specified as None, a temporary filename
-                int ngamsTest/tmp is generated (string).
-
-    buf:        Buffer, which contents to store in the file (string).
-
-    Returns:    Name of file in which the data was stored (string).
-    """
-    if (not filename): filename = genTmpFilename()
-    fo = open(filename, "w")
-    fo.write(buf)
-    fo.close()
-    return filename
+    return tempfile.mktemp(suffix, prefix, tmp_root)
 
 
 def delNgasTbls(dbObj):
@@ -481,22 +470,6 @@ def delNgasTbls(dbObj):
     dbObj.query2("DELETE FROM ngas_cfg")
 
 
-def delNgamsDirs(cfgObj):
-    """
-    Delete directories used by NG/AMS.
-
-    cfgObj:   Configuration object (ngamsConfig).
-
-    Returns:  Void.
-    """
-    try:
-        for d in [cfgObj.getRootDirectory(), "/tmp/ngamsTest"]:
-            logger.debug("Removing directory: %s", d)
-            shutil.rmtree(d, True)
-    except Exception:
-        logger.exception("Error encountered removing NG/AMS directories")
-
-
 def sendPclCmd(port = 8888,
                auth = None,
                timeOut = 60.0):
@@ -516,96 +489,10 @@ def sendPclCmd(port = 8888,
     """
     return ngamsPClient.ngamsPClient('127.0.0.1', port, timeout=timeOut, auth=auth)
 
-def sendExtCmd(port,
-               cmd,
-               pars = [],
-               genStatFile = 1,
-               filterTags = [],
-               replaceLocalHost = 1):
-    """
-    Issue the command to an externally running NG/AMS Server and return
-    ngamsStatus object. Returns name of file containing a filtered ASCII dump
-    of the ngamsStatus object or the ngamsStatus object.
-
-    host:          Host ID where externally running server is located (string).
-
-    port:          Port number used by externally running server (integer).
-
-    cmd:           Command to issue (string).
-
-    pars:          List containing sub-lists with parameters and their
-                   values: [[<Par>, <Val>], [<Par>, <Val>], ...]    (list).
-
-    genStatFile:   If set to 1 a status file containing a filtered ASCII
-                   dump of the ngamsStatus object is generated and the name
-                   of this returned (integer/0|1).
-
-    filterTags:    Additional line contents to filter out (list).
-
-    Returns:       Filename of file containing filtered ASCII dump of status
-                   or ngamsStatus object (string|ngamsStatus).
-    """
-    statObj = sendPclCmd(port=port).get_status(cmd, pars=pars)
-    if (genStatFile):
-        tmpStatFile = "tmp/%s_CmdStatus_%s_tmp" %\
-                      (cmd, str(int(time.time())))
-        buf = statObj.dumpBuf().replace(getHostName(), "___LOCAL_HOST___")
-        saveInFile(tmpStatFile, filterDbStatus1(buf, filterTags))
-        return tmpStatFile
-    else:
-        return statObj
-
-
-def filterDbStatus1(statBuf,
-                    filterTags = []):
-    """
-    Filter a status buffer so that non-static information is removed.
-
-    statBuf:        Status ASCII buffer as generated by ngamsStatus.dumpBuf()
-                    (string)
-
-    filterTags:     Additional line contents to filter out (list).
-
-    Returns:        Filtered buffer (string).
-    """
-    # TODO: Use ngamsTestLib.filterOutLines().
-    statBufLines = statBuf.split("\n")
-    filteredBuf = ""
-    for line in statBufLines:
-        if ((line.find("Date:") == 0) or
-            (line.find("Version:") == 0) or
-            (line.find("InstallationDate:") == 0) or
-            (line.find("HostId:") == 0) or
-            (line.find("AvailableMb:") == 0) or
-            (line.find("TotalDiskWriteTime:") == 0) or
-            (line.find("IngestionDate:") == 0) or
-            (line.find("CompletionDate:") == 0) or
-            (line.find("CreationDate:") == 0) or
-            (line.find("RequestTime:") == 0) or
-            (line.find("CompletionTime:") == 0) or
-            (line.find("StagingFilename:") == 0) or
-            (line.find("ModificationDate:") == 0) or
-            (line.find("TotalIoTime") == 0) or
-            (line.find("IngestionRate") == 0) or
-            (line.find("ContainerId") == 0) or
-            (line.find("ModificationDate:") == 0) or
-            (line.find("BytesStored:") == 0) or
-            (line.find("FileSize:") == 0) or
-            (line.find("Checksum:") == 0) or
-            (line.find("AccessDate:") == 0)):
-            continue
-        skipLine = 0
-        for filterTag in filterTags:
-            if (line.find(filterTag) != -1):
-                skipLine = 1
-                break
-        if (skipLine): continue
-        if ((line.find("NG/AMS Server performing exit") != -1) or
-            (line.find("Successfully handled command") != -1)):
-            line = line.split(" (")[0]
-        filteredBuf += line + "\n"
-    return filteredBuf
-
+def _old_buf_style(s):
+    if s:
+        s += '\n'
+    return s
 
 def recvEmail(no):
     """
@@ -638,21 +525,11 @@ def filterOutLines(buf,
 
     Returns:        Filtered string buffer (string).
     """
-    lines = buf.split("\n")
-    filterBuf = ""
-    for line in lines:
-        discardLine = 0
-        for discardTag in discardTags:
-            if (matchStart):
-                if (line.find(discardTag) == 0):
-                    discardLine = 1
-                    break
-            else:
-                if (line.find(discardTag) != -1):
-                    discardLine = 1
-                    break
-        if (not discardLine): filterBuf += line + "\n"
-    return filterBuf
+    if matchStart:
+        s = filter_and_replace(buf, startswith_filters=discardTags, split_by_newline=True)
+    else:
+        s = filter_and_replace(buf, filters=discardTags, split_by_newline=True)
+    return _old_buf_style(s)
 
 
 def getEmailMsg(remTags = [],
@@ -759,7 +636,7 @@ def db_aware_cfg(cfg_filename, check=0, db_id_attr="Db-Test"):
 
         root.removeChild(n)
         root.appendChild(new_db.documentElement)
-        cfg_filename = saveInFile(genTmpFilename('CFG'), root.toprettyxml())
+        cfg_filename = save_to_tmp(root.toprettyxml(), prefix='db_aware_cfg_', suffix='.xml')
         return ngamsConfig.ngamsConfig().load(cfg_filename, check)
 
     raise Exception('Db element not found in original configuration')
@@ -905,6 +782,18 @@ class ngamsTestSuite(unittest.TestCase):
         self.assertStatus(stat)
         return stat
 
+    def point_to_ngas_root(self, cfg, root_dir=None):
+        if not isinstance(cfg, ngamsConfig.ngamsConfig):
+            cfg = ngamsConfig.ngamsConfig().load(cfg)
+        root_dir = root_dir or os.path.join(tmp_root, 'NGAS')
+        cfg.storeVal('NgamsCfg.Server[1].RootDirectory', root_dir)
+
+        # Dump configuration into the filesystem so the server can pick it up
+        cfg_fname = os.path.abspath(genTmpFilename("CFG_") + ".xml")
+        cfg.save(cfg_fname, 0)
+        return cfg_fname
+
+
     def prepExtSrv(self,
                    port = 8888,
                    delDirs = 1,
@@ -912,6 +801,7 @@ class ngamsTestSuite(unittest.TestCase):
                    autoOnline = 1,
                    cache = False,
                    cfgFile = "src/ngamsCfg.xml",
+                   root_dir=None,
                    cfgProps = [],
                    dbCfgName = None,
                    srvModule = None,
@@ -970,7 +860,7 @@ class ngamsTestSuite(unittest.TestCase):
             with contextlib.closing(ngamsDb.from_config(cfgObj, maxpool=1)) as db:
                 cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, db)
             logger.debug("Successfully read configuration from database, root dir is %s", cfgObj2.getRootDirectory())
-            cfgFile = saveInFile(None, cfgObj2.genXmlDoc(0))
+            cfgFile = save_to_tmp(cfgObj2.genXmlDoc(0))
 
         cfgObj = db_aware_cfg(cfgFile)
 
@@ -988,17 +878,16 @@ class ngamsTestSuite(unittest.TestCase):
 
         # Now connect to the database and perform any cleanups before we start
         # the server, like removing existing NGAS dirs and clearing tables
+        root_dir = root_dir or tmp_path('NGAS')
         dbObj = ngamsDb.from_config(cfgObj, maxpool=1)
-        if (delDirs):
-            logger.debug("Deleting NG/AMS directories ...")
-            delNgamsDirs(cfgObj)
+        if delDirs:
+            shutil.rmtree(root_dir, True)
         if (clearDb):
             logger.debug("Clearing NGAS DB ...")
             delNgasTbls(dbObj)
 
-        # Dump configuration into the filesystem so the server can pick it up
-        tmpCfg = os.path.abspath(genTmpFilename("CFG_") + ".xml")
-        cfgObj.save(tmpCfg, 0)
+        # Point the configuration to the root directory
+        tmpCfg = self.point_to_ngas_root(cfgObj, root_dir)
 
         # Execute the server as an external process.
         if daemon:
@@ -1210,10 +1099,13 @@ class ngamsTestSuite(unittest.TestCase):
         self.extSrvInfo = []
 
     def setUp(self):
-        # Make sure there is a 'tmp' directory here, since most of the tests
-        # depend on it
-        if not os.path.isdir('tmp'):
-            os.mkdir('tmp')
+        # Make sure there the temporary directory is there
+        # using the exist_ok kwarg in makedirs is not possible, as it was
+        # introduced in python3 only
+        try:
+            os.makedirs(tmp_root)
+        except OSError:
+            pass
 
     def tearDown(self):
         """
@@ -1227,9 +1119,9 @@ class ngamsTestSuite(unittest.TestCase):
 
         self.terminateAllServer()
 
-        # Remove temporary files in ngams/ngamsTest/tmp.
+        # Remove temporary files
         if (not getNoCleanUp()):
-            shutil.rmtree('tmp', True)
+            shutil.rmtree(tmp_root, True)
 
         # There's this file that gets generated by many tests, so we clean it up
         # generically here
@@ -1277,6 +1169,73 @@ class ngamsTestSuite(unittest.TestCase):
     def ngas_disk_id(self, *p, **kwargs):
         port = kwargs.pop('port', None)
         return as_ngas_disk_id(self.ngas_path(port=port, *p))
+
+    def _get_standard_replacements(self, cfg=None, port=None):
+        replacements = {'%HOSTNAME%': getHostName()}
+        ngas_root = None
+        if cfg is None:
+            ngas_root = self.ngas_root(port)
+        else:
+            ngas_root = cfg.getRootDirectory()
+        if ngas_root:
+            replacements['%NGAS_ROOT%'] = ngas_root
+            replacements['%NGAS_ROOT_DISK_ID%'] = ngas_root[1:].replace('/', '-')
+        return replacements
+
+    def assert_status_ref_file(self, ref_file, status, filters=(),
+                               startswith_filters=(), replacements={},
+                               msg='', status_dump_args=(), cfg=None,
+                               port=None):
+        data = status.dumpBuf(*status_dump_args)
+        self.assert_ref_file(ref_file, data, filters=filters,
+                             startswith_filters=startswith_filters,
+                             replacements=replacements, msg=msg, cfg=cfg,
+                             port=port)
+
+    _common_startswith_filters = (
+        "Date:", "Version:", "InstallationDate:", "HostId:", "AvailableMb:",
+        "TotalDiskWriteTime:", "IngestionDate:", "CompletionDate:", "CreationDate:",
+        "RequestTime:", "CompletionTime:", "StagingFilename:", "ModificationDate:",
+        "TotalIoTime", "IngestionRate", "ContainerId", "ModificationDate:",
+        "BytesStored:", "FileSize:", "Checksum:", "AccessDate:")
+    def assert_ref_file(self, ref_file, data, filters=(), startswith_filters=(),
+                        replacements={}, msg='', cfg=None, port=None):
+
+        # Users can override the standard replacements
+        user_replacements = replacements
+        replacements = self._get_standard_replacements(cfg, port)
+        replacements.update(user_replacements)
+
+        # Normalise data coming from the unit test execution
+        # This is slightly more complicated than the normalisation of data
+        # coming from the reference file because way more things are filtered out
+        # from the unit test data
+        data = filter_and_replace(data, filters=filters,
+                                  startswith_filters=tuple(startswith_filters) + self._common_startswith_filters,
+                                  replacements=replacements, split_by_newline=True)
+        new_buf = []
+        for line in _old_buf_style(data).splitlines():
+            if ((line.find("NG/AMS Server performing exit") != -1) or
+                (line.find("Successfully handled command") != -1)):
+                line = line.split(" (")[0]
+            new_buf.append(line)
+        data = _old_buf_style('\n'.join(new_buf))
+
+        # Clean up data coming from the reference file
+        ref = filter_and_replace(loadFile(ref_file), startswith_filters=startswith_filters,
+                                 replacements=replacements)
+
+        errors = []
+        for i, (refline, statline) in enumerate(zip(ref.splitlines(), data.splitlines()), 1):
+            if refline != statline:
+                errors.append((i, refline, statline))
+        if not errors:
+            return
+
+        msg += '\nRef File: ' + ref_file + '\n'
+        errors_as_msgs = map(lambda e: 'Line %d\n< %s\n> %s' % (e[0], e[1], e[2]), errors)
+        self.fail(msg + '\n'.join(errors_as_msgs))
+
 
     def checkFilesEq(self,
                      refFile,
@@ -1343,35 +1302,27 @@ class ngamsTestSuite(unittest.TestCase):
         # Set port number in configuration and allocate a mount root
         hostName = getHostName()
         srvId = "%s:%d" % (hostName, port)
-        if (multSrvs):
-            mtRtDir = "/tmp/ngamsTest/NGAS:%d" % port
-            rmFile("/tmp/ngamsTest/NGAS:%d" %(port,))
-        else:
-            mtRtDir = "/tmp/ngamsTest/NGAS"
+        mtRtDir = os.path.join(tmp_root, "NGAS:%d" % port if multSrvs else "NGAS")
         rmFile(mtRtDir)
 
         # Set up our server-specific configuration
         cfg = ngamsConfig.ngamsConfig().load(comCfgFile)
         cfg.storeVal("NgamsCfg.Header[1].Type", "TEST CONFIG: %s" % srvId)
         cfg.storeVal("NgamsCfg.Server[1].PortNo", port)
-        cfg.storeVal("NgamsCfg.Server[1].RootDirectory", mtRtDir)
 
         # Set special values if so specified.
         for cfgPar in cfg_pars:
             cfg.storeVal(cfgPar[0], cfgPar[1])
 
         # And dump it into our server-specific configuration file
-        tmpCfgFile = "tmp/%s_tmp.xml" % srvId
+        tmpCfgFile = genTmpFilename(prefix=srvId, suffix='xml')
         cfg.save(tmpCfgFile, 0)
 
         # Start server + add reference to server configuration object and
         # server DB object.
-        srvCfgObj, srvDbObj = self.prepExtSrv(port=port,
-                                              delDirs = 0,
-                                              clearDb = 0,
-                                              autoOnline = 1,
-                                              cfgFile = tmpCfgFile)
-        return [srvId, srvCfgObj, srvDbObj]
+        cfg, db = self.prepExtSrv(port=port, delDirs=0, clearDb=0, autoOnline=1,
+                                  cfgFile=tmpCfgFile, root_dir=mtRtDir)
+        return [srvId, cfg, db]
 
     def prepCluster(self, server_list, cfg_file='src/ngamsCfg.xml', createDatabase=True):
         """
@@ -1428,15 +1379,16 @@ class ngamsTestSuite(unittest.TestCase):
         # Exceptional handling for SQLite.
         if 'sqlite' in cfgObj.getDbInterface().lower():
 
+            sqlite_file = os.path.join(tmp_root, 'ngas.sqlite')
             if create:
-                rmFile('tmp/ngas.sqlite')
+                rmFile(sqlite_file)
                 import sqlite3
                 fname = 'ngamsCreateTables-SQLite.sql'
                 script = utils.b2s(pkg_resources.resource_string('ngamsSql', fname))  # @UndefinedVariable
-                with contextlib.closing(sqlite3.connect('tmp/ngas.sqlite')) as conn:  # @UndefinedVariable
+                with contextlib.closing(sqlite3.connect(sqlite_file)) as conn:  # @UndefinedVariable
                     conn.executescript(script)
 
-            # Make sure the 'database' attribute is an aboslute path
+            # Make sure the 'database' attribute is an absolute path
             # This is because there are tests that start the server
             # in daemon mode, in which case the process's cwd is /
             #
@@ -1445,7 +1397,7 @@ class ngamsTestSuite(unittest.TestCase):
             # by the unit tests, but in reality not really used much).
             params = cfgObj.getDbParameters()
             if 'database' in params and not params['database'].startswith('/'):
-                abspath = this_dir + '/' + params['database']
+                abspath = sqlite_file
                 cfgObj.storeVal("NgamsCfg.Db[1].database", abspath, cfgObj.getVal('NgamsCfg.Id'))
 
     def prepDiskCfg(self,
@@ -1542,7 +1494,8 @@ class ngamsTestSuite(unittest.TestCase):
                                                getNgamsVersion(), availMb,
                                                diskId, isoDate, dirInfo[1])
                 ngasDiskInfoFile = diskDir + "/NgasDiskInfo"
-                saveInFile(ngasDiskInfoFile, ngasDiskInfo)
+                with open(ngasDiskInfoFile, 'wt') as f:
+                    f.write(ngasDiskInfo)
                 # Delete possible entry in the DB for the disk.
                 try:
                     if (dbObj.getDiskInfoFromDiskId(diskId) != []):
@@ -1565,7 +1518,7 @@ class ngamsTestSuite(unittest.TestCase):
             else:
                 break
             streamElNo += 1
-        newCfgFileName = genTmpFilename() + ".xml"
+        newCfgFileName = genTmpFilename(suffix=".xml")
         cfgObj.save(newCfgFileName, hideCritInfo=0)
 
         del dbObj
@@ -1594,6 +1547,10 @@ class ngamsTestSuite(unittest.TestCase):
             queryVal = "_SKIP_"
         elif (queryVal == "[[]]"):
             queryVal = "[]"
+
+        for match, replacement in self._get_standard_replacements().items():
+            queryVal = queryVal.replace(match, replacement)
+
         return queryVal
 
 

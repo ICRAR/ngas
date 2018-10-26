@@ -37,10 +37,14 @@ import time
 import unittest
 
 from ngamsLib import ngamsStatus, utils
-from ngamsLib.ngamsCore import getHostName, rmFile, cpFile, execCmd
-from ..ngamsTestLib import ngamsTestSuite, saveInFile, loadFile, \
-    filterOutLines, sendPclCmd, STD_DISK_STAT_FILT, has_program
+from ngamsLib.ngamsCore import getHostName, cpFile, execCmd
+from ..ngamsTestLib import ngamsTestSuite, sendPclCmd, has_program, save_to_tmp, \
+    genTmpFilename
 
+
+STD_DISK_STAT_FILT = ["AccessDate", "AvailableMb", "CreationDate", "Date",
+                      "HostId", "IngestionDate", "InstallationDate",
+                      "ModificationDate", "TotalDiskWriteTime", "Version"]
 
 def _execCClient(unpackXmlStat = 1,
                  pars = []):
@@ -105,6 +109,9 @@ class ngamsCClientTest(ngamsTestSuite):
     NG/AMS C-Client are missing.
     """
 
+    def assert_client_ref_file(self, ref_file, data, msg):
+        self.assert_ref_file(ref_file, data, startswith_filters=['Host'], msg=msg)
+
     def test_StatusCmd_1(self):
         """
         Synopsis:
@@ -131,11 +138,8 @@ class ngamsCClientTest(ngamsTestSuite):
         statObj = _execCClient(pars=[["-port", "8000"],
                                      ["-cmd", "STATUS"]])[0]
         refStatFile = "ref/ngamsCClientTest_test_StatusCmd_1_1_ref"
-        refStatFile = saveInFile(None, loadFile(refStatFile) % (getHostName() + ":8000"))
-        tmpStatFile = saveInFile(None, filterOutLines(statObj.dumpBuf(),
-                                                      ["Date", "Version"]))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect info in " +\
-                          "STATUS Command XML Status Document")
+        msg = "Incorrect info in STATUS Command XML Status Document"
+        self.assert_status_ref_file(refStatFile, statObj, msg=msg)
 
 
     def test_StatusCmd_2(self):
@@ -263,16 +267,14 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
         """
         cfgObj, dbObj = self.prepExtSrv(port=8111)
-        diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
+        diskId = self.ngas_disk_id("FitsStorage1/Main/1")
         statObj = _execCClient(pars=[["-cmd", "STATUS"],
                                      ["-diskId", diskId],
                                      ["-port", "8111"]])[0]
-        tmpStatFile = "tmp/ngamsCClientTest_test_StatusCmd_5_1_tmp"
         refStatFile = "ref/ngamsCClientTest_test_StatusCmd_5_1_ref"
-        saveInFile(tmpStatFile, filterOutLines(statObj.dumpBuf(),
-                                               STD_DISK_STAT_FILT))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect info in " +\
-                          "STATUS Command XML Status Document/disk_id")
+        msg = "Incorrect info in STATUS Command XML Status Document/disk_id"
+        self.assert_status_ref_file(refStatFile, statObj, msg=msg,
+                                          startswith_filters=STD_DISK_STAT_FILT)
 
 
     def test_ArchiveCmd_Err_1(self):
@@ -298,18 +300,17 @@ class ngamsCClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        rmFile("tmp/reqCallBack_tmp")
-        saveInFile("tmp/reqCallBack_tmp", "reqCallBack_BlockCmds1")
+        save_to_tmp("reqCallBack_BlockCmds1", fname="reqCallBack_tmp")
         self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
                                    ["-fileUri", "src/SmallFile.fits"],
                                    ["-timeOut", "5"]])
-        tmpStatFile = saveInFile(None, filterOutLines(out, ["Host"]))
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_1_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling " +\
-                          "of timeout of Archive Request in C-Client/API")
+        msg = "Incorrect handling of timeout of Archive Request in C-Client/API"
+        self.assert_client_ref_file(refStatFile, out, msg=msg)
+
 
 
     def test_ArchiveCmd_Err_2(self):
@@ -338,17 +339,15 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
 
         """
-        rmFile("tmp/reqCallBack_tmp")
-        saveInFile("tmp/reqCallBack_tmp", "reqCallBack_SrvCrash1")
+        save_to_tmp("reqCallBack_SrvCrash1", fname="reqCallBack_tmp")
         self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
                                    ["-fileUri", "src/SmallFile.fits"]])
-        tmpStatFile = saveInFile(None, filterOutLines(out, ["Host"]))
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_2_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling " +\
-                          "of crash of server in C-Client/API")
+        msg = "Incorrect handling of crash of server in C-Client/API"
+        self.assert_client_ref_file(refStatFile, out, msg=msg)
 
 
     def test_ArchiveCmd_Err_3_1(self):
@@ -393,19 +392,16 @@ class ngamsCClientTest(ngamsTestSuite):
         #
         # This should be investigated and resolved.
 
-        rmFile("tmp/reqCallBack_tmp")
-        saveInFile("tmp/reqCallBack_tmp", "reqCallBack_IllegalResp")
-        rmFile("tmp/ngamsServerTestIllegalResp_tmp")
-        saveInFile("tmp/ngamsServerTestIllegalResp_tmp", "\015\012")
+        save_to_tmp("reqCallBack_IllegalResp", fname="reqCallBack_tmp")
+        save_to_tmp("\015\012", fname="ngamsServerTestIllegalResp_tmp")
         self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
                                    ["-fileUri", "src/SmallFile.fits"]])
-        tmpStatFile = saveInFile(None, filterOutLines(out, ["Host"]))
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_3_1_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling " +\
-                          "of corrupt server HTTP response in C-Client/API")
+        msg = "Incorrect handling of corrupt server HTTP response in C-Client/API"
+        self.assert_client_ref_file(refStatFile, out, msg=msg)
 
 
     def test_ArchiveCmd_Err_3_2(self):
@@ -432,19 +428,16 @@ class ngamsCClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        rmFile("tmp/reqCallBack_tmp")
-        saveInFile("tmp/reqCallBack_tmp", "reqCallBack_IllegalResp")
-        rmFile("tmp/ngamsServerTestIllegalResp_tmp")
-        saveInFile("tmp/ngamsServerTestIllegalResp_tmp", "")
+        save_to_tmp("reqCallBack_IllegalResp", fname="reqCallBack_tmp")
+        save_to_tmp("", fname="ngamsServerTestIllegalResp_tmp")
         self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
                                    ["-fileUri", "src/SmallFile.fits"]])
-        tmpStatFile = saveInFile(None, filterOutLines(out, ["Host"]))
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_3_2_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling " +\
-                          "of corrupt server HTTP response in C-Client/API")
+        msg = "Incorrect handling of corrupt server HTTP response in C-Client/API"
+        self.assert_client_ref_file(refStatFile, out, msg=msg)
 
 
     def test_ArchiveCmd_Err_3_3(self):
@@ -471,19 +464,16 @@ class ngamsCClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        rmFile("tmp/reqCallBack_tmp")
-        saveInFile("tmp/reqCallBack_tmp", "reqCallBack_IllegalResp")
-        rmFile("tmp/ngamsServerTestIllegalResp_tmp")
-        saveInFile("tmp/ngamsServerTestIllegalResp_tmp", "f-423hcqfe-0")
+        save_to_tmp("reqCallBack_IllegalResp", fname="reqCallBack_tmp")
+        save_to_tmp("f-423hcqfe-0", fname="ngamsServerTestIllegalResp_tmp")
         self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
                                    ["-fileUri", "src/SmallFile.fits"]])
-        tmpStatFile = saveInFile(None, filterOutLines(out, ["Host"]))
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_3_3_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling " +\
-                          "of corrupt server HTTP response in C-Client/API")
+        msg = "Incorrect handling of corrupt server HTTP response in C-Client/API"
+        self.assert_client_ref_file(refStatFile, out, msg=msg)
 
 
     def test_ArchiveCmd_Err_4_1(self):
@@ -527,8 +517,7 @@ class ngamsCClientTest(ngamsTestSuite):
         #
         # This should be investigated and resolved.
 
-        rmFile("tmp/reqCallBack_tmp")
-        saveInFile("tmp/reqCallBack_tmp", "reqCallBack_IllegalResp")
+        save_to_tmp("reqCallBack_IllegalResp", fname="reqCallBack_tmp")
         self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
         httpResp = "HTTP/1.0 200 OK\015\012" +\
                    "Server: NGAMS/v2.3/2004-07-12T11:39:39\015\012" +\
@@ -538,15 +527,14 @@ class ngamsCClientTest(ngamsTestSuite):
                    "Content-Length: 36\015\012" +\
                    "\015\012" +\
                    "COMPLETELY CORRUPT NG/AMS XML STATUS"
-        saveInFile("tmp/ngamsServerTestIllegalResp_tmp", httpResp)
+        save_to_tmp(httpResp, fname="ngamsServerTestIllegalResp_tmp")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
                                    ["-fileUri", "src/SmallFile.fits"]])
-        tmpStatFile = saveInFile(None, filterOutLines(out, ["Host"]))
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_4_1_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling " +\
-                          "of corrupt server HTTP response in C-Client/API")
+        msg = "Incorrect handling of corrupt server HTTP response in C-Client/API"
+        self.assert_client_ref_file(refStatFile, out, msg=msg)
 
 
     @unittest.skipUnless(has_program('uncompress'), 'external uncompress program unavailable')
@@ -573,20 +561,19 @@ class ngamsCClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        rmFile("tmp/reqCallBack_tmp")
-        saveInFile("tmp/reqCallBack_tmp", "reqCallBack_SrvCrash1")
+        save_to_tmp("reqCallBack_SrvCrash1", fname="reqCallBack_tmp")
         self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
-        cpFile("src/WFI-TEST.fits.Z", "tmp/WFI-TEST_tmp.fits.Z")
-        rmFile("tmp/WFI-TEST_tmp.fits")
-        subprocess.check_call(['uncompress', 'tmp/WFI-TEST_tmp.fits.Z'])
+        tmp_fname = genTmpFilename(prefix='WFI-TEST', suffix='.fits.Z')
+        cpFile("src/WFI-TEST.fits.Z", tmp_fname)
+        subprocess.check_call(['uncompress', tmp_fname])
+        tmp_fname = tmp_fname[:-2]
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
-                                   ["-fileUri","tmp/WFI-TEST_tmp.fits"]])
-        tmpStatFile = saveInFile(None, filterOutLines(out, ["Host"]))
+                                   ["-fileUri", tmp_fname]])
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_5_1_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling " +\
-                          "of broken write socket in C-Client/API")
+        msg = "Incorrect handling of broken write socket in C-Client/API"
+        self.assert_client_ref_file(refStatFile, out, msg=msg)
 
 
     def test_RetrieveCmd_Err_1_1(self):
@@ -612,8 +599,7 @@ class ngamsCClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        rmFile("tmp/reqCallBack_tmp")
-        saveInFile("tmp/reqCallBack_tmp", "reqCallBack_AccArchiveBlock2")
+        save_to_tmp("reqCallBack_AccArchiveBlock2", fname="reqCallBack_tmp")
         self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
         sendPclCmd(port=8888).archive("src/SmallFile.fits")
         out =\
@@ -622,10 +608,9 @@ class ngamsCClientTest(ngamsTestSuite):
                                  ["-cmd", "RETRIEVE"],
                                  ["-fileId", "TEST.2001-05-08T15:25:00.123"],
                                  ["-timeOut", "10"]])
-        tmpStatFile = saveInFile(None, filterOutLines(out, ["Host"]))
         refStatFile = "ref/ngamsCClientTest_test_RetrieveCmd_Err_1_1_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling " +\
-                          "of timeout of Retrieve Request in C-Client/API")
+        msg = "Incorrect handling of timeout of Retrieve Request in C-Client/API"
+        self.assert_client_ref_file(refStatFile, out, msg=msg)
 
 
     def test_RetrieveCmd_Err_1_2(self):
@@ -653,8 +638,7 @@ class ngamsCClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        rmFile("tmp/reqCallBack_tmp")
-        saveInFile("tmp/reqCallBack_tmp", "reqCallBack_SrvCrash2")
+        save_to_tmp("reqCallBack_SrvCrash2", fname="reqCallBack_tmp")
         self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
         out =\
             _execCClient(unpackXmlStat = 0,
@@ -662,10 +646,9 @@ class ngamsCClientTest(ngamsTestSuite):
                                  ["-cmd", "RETRIEVE"],
                                  ["-fileId", "TEST.2001-05-08T15:25:00.123"],
                                  ["-timeOut", "10"]])
-        tmpStatFile = saveInFile(None, filterOutLines(out, ["Host"]))
         refStatFile = "ref/ngamsCClientTest_test_RetrieveCmd_Err_1_2_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling " +\
-                          "of timeout of Retrieve Request in C-Client/API")
+        msg = "Incorrect handling of timeout of Retrieve Request in C-Client/API"
+        self.assert_client_ref_file(refStatFile, out, msg=msg)
 
 
     def test_RetrieveCmd_Err_1_3(self):
@@ -702,10 +685,9 @@ class ngamsCClientTest(ngamsTestSuite):
                                    ["-cmd", "RETRIEVE"],
                                    ["-fileId","TEST.2001-05-08T15:25:00.123"],
                                    ["-timeOut", "5"]])
-        tmpStatFile = saveInFile(None, filterOutLines(out, ["Host"]))
         refStatFile = "ref/ngamsCClientTest_test_RetrieveCmd_Err_1_3"
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling " +\
-                          "of broken read socket in C-Client/API")
+        msg = "Incorrect handling of broken read socket in C-Client/API"
+        self.assert_client_ref_file(refStatFile, out, msg=msg)
 
 
     def test_ServerMultiplexing_01(self):

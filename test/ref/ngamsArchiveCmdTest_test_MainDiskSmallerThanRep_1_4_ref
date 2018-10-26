@@ -4,7 +4,7 @@ Message:                            Disk status file
 State:                              
 SubState:                           
 DiskStatus:
-DiskId:                             tmp-ngamsTest-NGAS-Data2-Main-3
+DiskId:                             %NGAS_ROOT_DISK_ID%-Data2-Main-3
 Archive:                            ESO-ARCHIVE
 Type:                               SIMULATED DISK
 Manufacturer:                       TEST-DISK
