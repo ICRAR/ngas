@@ -156,7 +156,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
                  "NCU.2003-11-11T11:11:11.111/Version: 1, is available on " +\
                  "NGAS Host with Host ID: %s." % getNcu11()
         if (statObj.getMessage().find(refMsg) == -1):
-            self.checkEqual(refMsg, statObj.getMessage(), "Illegal status " +\
+            self.assertEqual(refMsg, statObj.getMessage(), "Illegal status " +\
                             "returned for STATUS/File Access Command")
 
     def test_filelist(self):

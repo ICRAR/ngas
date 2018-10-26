@@ -538,7 +538,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
 
         finalStatObj = waitReqCompl(client, statObj.getRequestId())
         complPer = str(finalStatObj.getCompletionPercent())
-        self.checkEqual("100.0", complPer,
+        self.assertEqual("100.0", complPer,
                         genErrMsgVals("Incorrect Request Status for CLONE " +\
                                       "Command/Completion Percent", "100.0",
                                       complPer))

@@ -124,7 +124,7 @@ class ngamsArchiveStressTest(ngamsTestSuite):
         self.prepExtSrv()
         for n in range(20):
             statObj = sendPclCmd().archive("src/TinyTestFile.fits")
-            self.checkEqual(statObj.getMessage(), testStr,
+            self.assertEqual(statObj.getMessage(), testStr,
                             "Archive Request failed")
 
 

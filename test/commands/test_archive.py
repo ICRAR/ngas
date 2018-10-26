@@ -211,10 +211,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Check that DB information is OK (completed=1).
         mainDiskCompl = dbObj.getDiskCompleted(self.ngas_disk_id("FitsStorage1/Main/1"))
-        self.checkEqual(1, mainDiskCompl,
+        self.assertEqual(1, mainDiskCompl,
                         "Disk completion flag not set for Main Disk")
         repDiskCompl = dbObj.getDiskCompleted(self.ngas_disk_id("FitsStorage1/Rep/2"))
-        self.checkEqual(1,repDiskCompl,
+        self.assertEqual(1,repDiskCompl,
                         "Disk completion flag not set for Replication Disk")
 
         # Check that NgasDiskInfo file is OK (completed=1)
@@ -1370,13 +1370,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         open(zerofile, 'a').close()
         client = sendPclCmd()
         status = client.archive(zerofile, 'application/octet-stream', cmd = 'ARCHIVE')
-        self.checkEqual(status.getStatus(), 'FAILURE', None)
-        self.checkEqual('Content-Length is 0' in status.getMessage(), True, None)
+        self.assertEqual(status.getStatus(), 'FAILURE', None)
+        self.assertEqual('Content-Length is 0' in status.getMessage(), True)
 
         # Test QARCHIVE
         status = client.archive(zerofile, 'application/octet-stream', cmd = 'QARCHIVE')
-        self.checkEqual(status.getStatus(), 'FAILURE', None)
-        self.checkEqual('Content-Length is 0' in status.getMessage(), True, None)
+        self.assertEqual(status.getStatus(), 'FAILURE', None)
+        self.assertEqual('Content-Length is 0' in status.getMessage(), True)
 
 
     def test_QArchive(self):
@@ -1395,15 +1395,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         params = {'filename': '',
                   'mime_type': 'application/octet-stream'}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
-            self.checkEqual(resp.status, 400, None)
-            self.checkEqual(b'NGAMS_ER_MISSING_URI' in resp.read(), True, None)
+            self.assertEqual(resp.status, 400)
+            self.assertEqual(b'NGAMS_ER_MISSING_URI' in resp.read(), True)
 
         # No mime-type given
         params = {'filename': 'test',
                   'mime_type': ''}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
-            self.checkEqual(resp.status, 400, None)
-            self.checkEqual(b'NGAMS_ER_UNKNOWN_MIME_TYPE' in resp.read(), True, None)
+            self.assertEqual(resp.status, 400)
+            self.assertEqual(b'NGAMS_ER_UNKNOWN_MIME_TYPE' in resp.read(), True)
 
         # File is zero-length
         test_file = tmp_path('zerofile.fits')
@@ -1411,14 +1411,14 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         params = {'filename': test_file,
                   'mime_type': 'application/octet-stream'}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
-            self.checkEqual(resp.status, 400, None)
-            self.checkEqual(b'Content-Length is 0' in resp.read(), True, None)
+            self.assertEqual(resp.status, 400)
+            self.assertEqual(b'Content-Length is 0' in resp.read(), True)
 
         # All is fine
         params = {'filename': 'src/SmallFile.fits',
                   'mime_type': 'application/octet-stream'}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
-            self.checkEqual(resp.status, 200, None)
+            self.assertEqual(resp.status, 200)
 
 
     def test_long_archive_quick_fail(self):
@@ -1460,7 +1460,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                                                generated_file((2**32)+12),
                                                mimeType='application/octet-stream',
                                                pars=params, timeout=120)
-        self.checkEqual(status, 200, None)
+        self.assertEqual(status, 200)
 
     def test_filename_with_colons(self):
 

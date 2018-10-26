@@ -1129,27 +1129,6 @@ class ngamsTestSuite(unittest.TestCase):
         if os.path.exists(fname):
             os.unlink(fname)
 
-    def checkEqual(self,
-                   refValue,
-                   tstValue,
-                   msg):
-        """
-        Test that the two values given are equal, if not generate an error.
-
-        refValue:    Reference value (all types).
-
-        tstValue:    Value to be tested (all types).
-
-        msg:         Message to give out in connection with error
-                     message (string).
-
-        Returns:     Void.
-        """
-        msg = "\nRef. Value: %s\n" +\
-              "Test Value: %s"
-        msg = msg % (str(refValue), str(tstValue))
-        self.assertEqual(refValue, tstValue, msg)
-
     def ngas_root(self, port=None):
         '''Get the NGAS root directory for the running server. If more than one
         server is running a port must be given'''

@@ -130,7 +130,7 @@ def _checkContDbSnapshot(testSuiteObj,
         while ((not os.path.exists(complName)) and
                ((time.time() - startTime) < 10)):
             time.sleep(0.200)
-        testSuiteObj.checkEqual(1, os.path.exists(complName),
+        testSuiteObj.assertTrue(os.path.exists(complName),
                                 "DB Snapshot missing: " + complName)
         out = utils.b2s(subprocess.check_output(['ngamsDumpDbSnapshot', complName]))
         if (filterContents):

@@ -84,7 +84,7 @@ class ngamsPClientTest(ngamsTestSuite):
         status = client.archive("src/SmallFile.fits")
         refMsg = "Successfully handled Archive Push Request for data " +\
                  "file with URI: SmallFile.fits"
-        self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "Archive Push Request")
 
 
@@ -116,7 +116,7 @@ class ngamsPClientTest(ngamsTestSuite):
         status = client.archive(srcFileUri)
         refMsg = "Successfully handled Archive Pull Request for data file " +\
                  "with URI: " + srcFileUri
-        self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "Archive Pull Request")
 
 
@@ -149,7 +149,7 @@ class ngamsPClientTest(ngamsTestSuite):
         statObj = client.clone("TEST.2001-05-08T15:25:00.123",
                                self.ngas_disk_id("FitsStorage1/Main/1"), -1)
         refMsg = "Successfully handled command CLONE"
-        self.checkEqual(refMsg, statObj.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, statObj.getMessage(), "Problem executing " +\
                         "Archive Pull Request")
 
 
@@ -183,7 +183,7 @@ class ngamsPClientTest(ngamsTestSuite):
                                self.ngas_disk_id("FitsStorage1/Main/1"), -1,
                                asynchronous = 1)
         refMsg = "Accepted CLONE command for execution"
-        self.checkEqual(refMsg, statObj.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, statObj.getMessage(), "Problem executing " +\
                         "Archive Pull Request")
 
 
@@ -217,7 +217,7 @@ class ngamsPClientTest(ngamsTestSuite):
                                self.ngas_disk_id("FitsStorage1/Main/1"), -1,
                                asynchronous = 0)
         refMsg = "Successfully handled command CLONE"
-        self.checkEqual(refMsg, statObj.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, statObj.getMessage(), "Problem executing " +\
                         "Archive Pull Request")
 
 
@@ -246,7 +246,7 @@ class ngamsPClientTest(ngamsTestSuite):
         self.prepExtSrv()
         status = ngamsPClient.ngamsPClient(port=8888).init()
         refMsg = "Successfully handled command INIT"
-        self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "INIT Command")
 
 
@@ -273,7 +273,7 @@ class ngamsPClientTest(ngamsTestSuite):
         status = ngamsPClient.ngamsPClient(port=8888).\
                  label("1", getHostName() + ":8888")
         refMsg = "Successfully handled command LABEL"
-        self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "LABEL Command")
 
 
@@ -300,7 +300,7 @@ class ngamsPClientTest(ngamsTestSuite):
         self.prepExtSrv(autoOnline=0)
         status = ngamsPClient.ngamsPClient(port=8888).online()
         refMsg = "Successfully handled command ONLINE"
-        self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "ONLINE Command")
 
 
@@ -338,7 +338,7 @@ class ngamsPClientTest(ngamsTestSuite):
         status = ngamsPClient.ngamsPClient(port=8888).\
                  register(trgFile)
         refMsg = "Successfully handled command REGISTER"
-        self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "REGISTER Command")
 
 
@@ -375,7 +375,7 @@ class ngamsPClientTest(ngamsTestSuite):
         status = ngamsPClient.ngamsPClient(port=8888).\
                  register(trgFile)
         refMsg = "Successfully handled command REGISTER"
-        self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "REGISTER Command")
 
 
@@ -407,7 +407,7 @@ class ngamsPClientTest(ngamsTestSuite):
                  remDisk(disk_id, 1)
         refMsg = "NGAMS_INFO_DEL_DISK:4043:INFO: Successfully deleted " +\
                  "info for disk. Disk ID: %s." % disk_id
-        self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "REMDISK Command")
 
 
@@ -444,7 +444,7 @@ class ngamsPClientTest(ngamsTestSuite):
         refMsg = "NGAMS_INFO_FILE_DEL_STAT:4040:INFO: File deletion status. "+\
                  "Files Selected: 1, Files Deleted: 0, " +\
                  "Failed File Deletions: 0."
-        self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "REMFILE Command")
 
 
@@ -478,7 +478,7 @@ class ngamsPClientTest(ngamsTestSuite):
         client.archive("src/SmallFile.fits")
         status = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=tmp_path())
         refMsg = "Successfully handled request"
-        self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
+        self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "RETRIEVE Command")
         tmpFile = tmp_path("TEST.2001-05-08T15:25:00.123.fits.gz")
         unzipedTmpFile = genTmpFilename()
