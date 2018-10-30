@@ -1225,16 +1225,21 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     logger.debug("Removing Request Properties File: %s", reqPropsFilename)
     if (reqPropsFilename): rmFile(reqPropsFilename)
 
+    finish_archive_request(srvObj, reqPropsObj, httpRef, plugin_result, diskInfo)
+
+def finish_archive_request(srv, req, http_ref, plugin_result, disk_info):
+    """Standard procedure after a successful file archival"""
+
     # Request after-math
-    srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
+    srv.setSubState(NGAMS_IDLE_SUBSTATE)
     msg = "Successfully handled Archive %s Request for data file with URI: %s"
-    msg = msg % ('Pull' if reqPropsObj.is_GET() else 'Push', reqPropsObj.getSafeFileUri())
+    msg = msg % ('Pull' if req.is_GET() else 'Push', req.getSafeFileUri())
     logger.info(msg)
 
-    httpRef.send_ingest_status(msg, diskInfo)
+    http_ref.send_ingest_status(msg, disk_info)
 
     # After a successful archiving we notify the archive event subscribers
-    srvObj.fire_archive_event(plugin_result.getFileId(), plugin_result.getFileVersion())
+    srv.fire_archive_event(plugin_result.getFileId(), plugin_result.getFileVersion())
 
 def findTargetNode(srvObj, mimeType):
     """
