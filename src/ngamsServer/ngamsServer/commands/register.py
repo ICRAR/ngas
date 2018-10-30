@@ -48,7 +48,7 @@ from ngamsLib.ngamsCore import rmFile, NGAMS_HTTP_GET, \
 from ngamsLib import ngamsDbm, ngamsReqProps, ngamsFileInfo, ngamsDbCore, \
     ngamsHighLevelLib, ngamsDiskUtils, ngamsLib, ngamsFileList, \
     ngamsNotification, ngamsDiskInfo, ngamsPlugInApi, ngamsCore
-from .. import ngamsArchiveUtils, ngamsCacheControlThread
+from .. import ngamsArchiveUtils, ngamsCacheControlThread, ngamsFileUtils
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,6 @@ def _registerExec(srvObj,
     # Go through each file in the list, check if the mime-type is among the
     # ones, which apply for registration. If yes try to register the file
     # by invoking the corresponding DAPI on the file.
-    checksumPlugIn  = srvObj.getCfg().getChecksumPlugIn().strip()
     fileRegCount    = 0
     fileFailCount   = 0
     fileRejectCount = 0
@@ -237,19 +236,17 @@ def _registerExec(srvObj,
                 fileCount += 1
                 continue
 
-            # Calculate checksum (if plug-in specified).
-            if (checksumPlugIn != ""):
-                logger.debug("Invoking Checksum Plug-In: %s to handle file: %s",
-                             checksumPlugIn, filename)
-                plugInMethod = loadPlugInEntryPoint(checksumPlugIn)
-                checksum = plugInMethod(srvObj, filename, 0)
-            else:
-                checksum = ""
+            # Calculate checksum. We maintain the old name for backwards
+            # compatibility
+            crc_variant = srvObj.cfg.getCRCVariant()
+            if crc_variant == ngamsFileUtils.CHECKSUM_CRC32_INCONSISTENT:
+                crc_variant = 'ngamsGenCrc32'
+            checksum = ngamsFileUtils.get_checksum(65536, filename, crc_variant) or ''
 
             # Move file and update information about file in the NGAS DB.
             mvFile(filename, piRes.getCompleteFilename())
             ngamsArchiveUtils.updateFileInfoDb(srvObj, piRes, checksum,
-                                               checksumPlugIn)
+                                               crc_variant)
             ngamsDiskUtils.updateDiskStatusDb(srvObj.getDb(), piRes)
             ngamsLib.makeFileReadOnly(piRes.getCompleteFilename())
 
@@ -269,7 +266,7 @@ def _registerExec(srvObj,
                              setIngestionDate(ingestDate).\
                              setIgnore(0).\
                              setChecksum(checksum).\
-                             setChecksumPlugIn(checksumPlugIn).\
+                             setChecksumPlugIn(crc_variant).\
                              setFileStatus(NGAMS_FILE_STATUS_OK).\
                              setCreationDate(creDateSecs).\
                              setTag("REGISTERED")
