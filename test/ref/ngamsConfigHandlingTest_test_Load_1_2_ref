@@ -4,7 +4,7 @@
 <NgamsCfg Id="ngamsCfg-Test">
   <ArchiveHandling ArchiveUnits="-----" BackLogBufferDirectory="." BackLogBuffering="1" FreeSpaceDiskChangeMb="20" Id="ArchiveHandling-Test" MinFreeSpaceWarningMb="0" PathPrefix="saf" Replication="1"/>
   <Authorization Enable="0" Id="Authorization-Test"/>
-  <DataCheckThread Active="0" ChecksumPlugIn="ngamsGenCrc32" ChecksumPlugInPars="" DiskSeq="SEQUENTIAL" FileSeq="SEQUENTIAL" ForceNotif="1" Id="DataCheckThread-Test" LogSummary="1" MaxProcs="4" MinCycle="00T00:03:00" Prio="25" Scan="0"/>
+  <DataCheckThread Active="0" DiskSeq="SEQUENTIAL" FileSeq="SEQUENTIAL" ForceNotif="1" Id="DataCheckThread-Test" LogSummary="1" MaxProcs="4" MinCycle="00T00:03:00" Prio="25" Scan="0"/>
   <Header Context="NG/AMS" Name="ngamsCfg.xml" Release="1.0" Revision="TEST-REVISION" Source="jknudstr@eso.org" Type="NGAMS-TEST-BASE-CONFIGURATION">
     <Description/>
   </Header>

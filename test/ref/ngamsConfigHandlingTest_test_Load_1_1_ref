@@ -9,7 +9,6 @@ NgamsCfg.ArchiveHandling[1].Replication                : 1
 NgamsCfg.Authorization[1].Enable                       : 0
 NgamsCfg.Authorization[1].Id                           : Authorization-Test
 NgamsCfg.DataCheckThread[1].Active                     : 0
-NgamsCfg.DataCheckThread[1].ChecksumPlugIn             : ngamsGenCrc32
 NgamsCfg.DataCheckThread[1].DiskSeq                    : SEQUENTIAL
 NgamsCfg.DataCheckThread[1].FileSeq                    : SEQUENTIAL
 NgamsCfg.DataCheckThread[1].ForceNotif                 : 1

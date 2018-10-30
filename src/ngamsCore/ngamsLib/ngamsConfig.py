@@ -1310,23 +1310,6 @@ class ngamsConfig:
         """
         return self.getVal("NGASJobMAN[1].host")
 
-    def getChecksumPlugIn(self):
-        """
-        Return Checksum Plug-In.
-
-        Returns:     Checksum Plug-In (string).
-        """
-        return self.getVal("DataCheckThread[1].ChecksumPlugIn")
-
-
-    def getChecksumPlugInPars(self):
-        """
-        Return the Checksum Plug-In input parameters.
-
-        Returns:     Checksum Plug-In parameters(string).
-        """
-        return self.getVal("DataCheckThread[1].ChecksumPlugInPars")
-
 
     def getDataCheckActive(self):
         """
@@ -2221,8 +2204,6 @@ class ngamsConfig:
         checkIfZeroOrOne("DataCheckThread.DataCheckActive",
                          self.getDataCheckActive(), self.getCheckRep())
         if (self.getDataCheckActive()):
-            checkIfSetStr("DataCheckThread.ChecksumPlugIn",
-                          self.getChecksumPlugIn(), self.getCheckRep())
             checkIfZeroOrOne("DataCheckThread.DataCheckForceNotif",
                              self.getDataCheckForceNotif(), self.getCheckRep())
             checkIfSetInt("DataCheckThread.DataCheckMaxProcs",

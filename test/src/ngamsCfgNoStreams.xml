@@ -176,8 +176,6 @@
 
   <DataCheckThread Id="DataCheckThread-Test"
                    Active="0" 
-                   ChecksumPlugIn="ngamsGenCrc32"  
-                   ChecksumPlugInPars="" 
 		   DiskSeq="SEQUENTIAL" 
                    FileSeq="SEQUENTIAL" 
                    ForceNotif="1" 

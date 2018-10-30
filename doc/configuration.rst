@@ -233,12 +233,6 @@ The following attributes are available:
 The following attributes are present in old configuration files
 but are not used anymore: *FileSeq*, *DiskSeq*, *LogSummary*, *Prio*.
 
-Finally, the *ChecksumPlugIn* is maintained only for backward-compatibility reasons
-(it used to name a plug-in calculating checksums on files).
-Users instead should use the ``ArchiveHandling.CRCVariant`` attribute
-(see :ref:`config.archivehandling`)
-to specify the checksuming algorithm to use for incoming data.
-
 .. _config.log:
 
 Log

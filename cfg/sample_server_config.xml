@@ -333,13 +333,8 @@ passwords will be expressed literally.
 	    The data checker thread can also be configured to perform a simple file
 	    scanning check (if Scan is "1") instead of a full checksum calculation
 	    and comparison.
-
-	    The ChecksumPlugIn and ChecksumPlugInPars attributes should be ignored,
-	    as they are superseeded by the ArchiveHandling.CRCVariant configuration
-	    variable. They will be removed in future releases.
 	-->
 	<DataCheckThread Id="DataCheckThread" Active="0" Scan="0"
-	                 ChecksumPlugIn="ngamsGenCrc32" ChecksumPlugInPars=""
 	                 ForceNotif="1" MaxProcs="4" MinCycle="01T00:00:00"/>
 
 	<!--
