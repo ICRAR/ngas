@@ -797,6 +797,8 @@ class ngamsTestSuite(unittest.TestCase):
         cfg.save(cfg_fname, 0)
         return cfg_fname
 
+    def get_client(self, port=8888, auth=None, timeout=60.0):
+        return ngamsPClient.ngamsPClient(port=port, auth=auth, timeout=timeout)
 
     def prepExtSrv(self,
                    port = 8888,
