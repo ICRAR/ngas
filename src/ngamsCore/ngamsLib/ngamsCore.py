@@ -342,13 +342,14 @@ def ngamsGetChildNodes(parentNode,
             childNodes.append(childNode)
     return childNodes
 
+_hostname = socket.gethostname()
 def getHostName():
     """
     Return the host name of this system
 
     Returns:   Host name for this NGAS System (string).
     """
-    return socket.gethostname()
+    return _hostname
 
 
 def ignoreValue(ignoreEmptyField,
