@@ -373,29 +373,8 @@ def ignoreValue(ignoreEmptyField,
     return 0
 
 
-def getFileSize(filename):
-    """
-    Get size of file referred.
-
-    filename:   Filename - complete path (string).
-
-    Returns:    File size (integer).
-    """
-    #return int(os.stat(filename)[6])
-    return os.path.getsize(filename)
-
-
-def getFileCreationTime(filename):
-    """
-    Get creation time of file referred.
-
-    filename:   Filename - complete path (string).
-
-    Returns:    Creation time (seconds since epoch) (integer).
-    """
-    # TODO: Use this: return os.path.getctime(filename)
-    return int(os.stat(filename)[9])
-
+getFileSize = os.path.getsize
+getFileCreationTime = os.path.getctime
 
 def genUniqueId():
     """
