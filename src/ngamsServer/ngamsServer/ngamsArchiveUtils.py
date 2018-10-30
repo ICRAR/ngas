@@ -747,8 +747,9 @@ def archiveFromFile(srvObj,
         plugInMethod = loadPlugInEntryPoint(plugIn)
         resMain = plugInMethod(srvObj, reqPropsObjLoc)
         # Move the file to final destination.
-        mvFile(reqPropsObjLoc.getStagingFilename(),
-               resMain.getCompleteFilename())
+        mv_time = mvFile(reqPropsObjLoc.getStagingFilename(),
+                         resMain.getCompleteFilename())
+        reqPropsObjLoc.incIoTime(mv_time)
 
         postFileRecepHandling(srvObj, reqPropsObjLoc, resMain, trgDiskInfo)
     except Exception as e:
@@ -759,7 +760,7 @@ def archiveFromFile(srvObj,
             logger.warning("Tried to archive local file: " + filename +\
                    ". Attempt failed with following error: " + str(e) +\
                    ". Keeping original file.")
-            return NGAMS_FAILURE
+            return NGAMS_FAILURE, str(e)
         else:
             logger.exception("Tried to archive local file: %s" +\
                   ". Attempt failed with following error", filename)
@@ -771,7 +772,7 @@ def archiveFromFile(srvObj,
             if (os.path.exists(pickleObjFile)):
                 logger.info("Removing Back-Log Buffer Pickle File: %s", pickleObjFile)
                 rmFile(pickleObjFile)
-            return NGAMS_FAILURE
+            return NGAMS_FAILURE, str(e)
 
     # If the file was handled successfully, we remove it from the
     # Back-Log Buffer Directory unless the local file was a log-file
@@ -784,7 +785,7 @@ def archiveFromFile(srvObj,
         rmFile(filename + "." + NGAMS_PICKLE_FILE_EXT)
 
     logger.debug("Archived local file: %s. Time (s): %.3f", filename, time.time() - archiving_start)
-    return NGAMS_SUCCESS
+    return resMain, trgDiskInfo
 
 
 def backLogBufferFiles(srvObj,
@@ -878,8 +879,8 @@ def checkBackLogBuffer(srvObj):
                     reqPropsObj = None
                 else:
                     raise Exception(errMsg)
-            if (archiveFromFile(srvObj, file, 0, None,
-                                reqPropsObj) == NGAMS_SUCCESS):
+            res = archiveFromFile(srvObj, file, 0, None, reqPropsObj)
+            if res[0] != NGAMS_FAILURE:
                 rmFile(pickleObjFile)
 
 
