@@ -1935,7 +1935,6 @@ class ngamsConfig:
         report = self.__checkRep
         del report[:]
 
-        logger.debug("Check Server Element ...")
         self._check_str("Server.ArchiveName", self.getArchiveName())
         self._check_int("Server.MaxSimReqs", self.getMaxSimReqs())
         self._check_int("Server.PortNo", self.getPortNo())
@@ -1945,27 +1944,19 @@ class ngamsConfig:
         self._check_str("Server.RootDirectory",
                       self.getRootDirectory())
         self._check_0_1("Server.ProxyMode", self.getProxyMode())
-        logger.debug("Checked Server Element")
 
-        logger.debug("Check SystemPlugIns Element ...")
         self._check_str("SystemPlugIns.OnlinePlugIn",
                       self.getOnlinePlugIn())
         self._check_str("SystemPlugIns.OfflinePlugIn", self.getOfflinePlugIn())
-        logger.debug("Checked SystemPlugIns Element")
 
-        logger.debug("Check Permissions Element ...")
         self._check_0_1("Permissions.AllowArchiveReq", self.getAllowArchiveReq())
         self._check_0_1("Permissions.AllowRetrieveReq", self.getAllowRetrieveReq())
         self._check_0_1("Permissions.AllowProcessingReq", self.getAllowProcessingReq())
         self._check_0_1("Permissions.AllowRemoveReq", self.getAllowRemoveReq())
-        logger.debug("Checked Permissions Element")
 
-        logger.debug("Check JanitorThread Element ...")
         self._check_str("JanitorThread.SuspensionTime",
                       self.getJanitorSuspensionTime())
-        logger.debug("Checked JanitorThread Element")
 
-        logger.debug("Check ArchiveHandling Element ...")
         if (self.getAllowArchiveReq()):
             self._check_str("ArchiveHandling.PathPrefix", self.getPathPrefix())
             self._check_0_1("ArchiveHandling.BackLogBuffering", self.getBackLogBuffering())
@@ -1975,14 +1966,10 @@ class ngamsConfig:
                             self.getMinFreeSpaceWarningMb())
             self._check_int("ArchiveHandling.FreeSpaceDiskChangeMb",
                             self.getFreeSpaceDiskChangeMb())
-        logger.debug("Checked ArchiveHandling Element")
 
-        logger.debug("Check Db Element ...")
         self._check_0_1("Db.Snapshot", self.getDbSnapshot())
         self._check_str("Db.Interface",self.getDbInterface())
-        logger.debug("Checked Db Element")
 
-        logger.debug("Check MimeTypes Element ...")
         if (len(self.getMimeTypeMappings()) == 0):
             errMsg = genLog("NGAMS_ER_NO_MIME_TYPES", [self.getCfg()])
             logger.error(errMsg)
@@ -1991,9 +1978,7 @@ class ngamsConfig:
             for k, v in self.getMimeTypeMappings():
                 self._check_str("MimeTypeMap.MimeType", k)
                 self._check_str("MimeTypeMap.Extension", v)
-        logger.debug("Checked MimeTypes Element")
 
-        logger.debug("Check Storage Sets ...")
         storageSetDic = {}
         mainDiskMtPtDic = {}
         repDiskMtPtDic = {}
@@ -2009,9 +1994,7 @@ class ngamsConfig:
                 self._check_duplicate(repDiskMtPtDic, "StorageSet.RepDiskSlotId",
                                       set.getRepDiskSlotId())
             self._check_0_1("StorageSet.Mutex", set.getMutex())
-        logger.debug("Checked Storage Sets")
 
-        logger.debug("Check Stream Definitions ...")
         if (self.getAllowArchiveReq()):
             mimeTypeDic = {}
             for stream in self.getStreamList():
@@ -2034,9 +2017,7 @@ class ngamsConfig:
                         errMsg = genLog("NGAMS_ER_CONF_FILE", [errMsg])
                         logger.error(errMsg)
                         report.append(errMsg)
-        logger.debug("Checked Stream Definitions")
 
-        logger.debug("Check Processing Element ...")
         if (self.getAllowProcessingReq()):
             self._check_str("Processing.ProcessingDirectory",
                             self.getProcessingDirectory())
@@ -2044,14 +2025,10 @@ class ngamsConfig:
             self._check_str("Processing.PlugIn.Name", dppi_plugin.name)
             for mimeType in dppi_plugin.mime_types:
                 self._check_str("Processing.PlugIn.MimeType.Name", mimeType)
-        logger.debug("Checked Processing Element")
 
-        logger.debug("Check Register Element ...")
         for reg_plugin in self.register_plugins.values():
             self._check_str("Register.PlugIn.Name", reg_plugin.name)
-        logger.debug("Checked Register Element")
 
-        logger.debug("Check DataCheckThread Element ...")
         self._check_0_1("DataCheckThread.DataCheckActive",
                         self.getDataCheckActive())
         if (self.getDataCheckActive()):
@@ -2062,18 +2039,14 @@ class ngamsConfig:
             self._check_0_1("DataCheckThread.DataCheckScan", self.getDataCheckScan())
             self._check_str("DataCheckThread.DataCheckMinCycle",
                           self.getDataCheckMinCycle())
-        logger.debug("Checked DataCheckThread Element")
 
-        logger.debug("Check Log Element ...")
         self._check_0_1("Log.SysLog", self.getSysLog())
         self._check_str("Log.SysLogPrefix", self.getSysLogPrefix())
         self._check_str("Log.LocalLogFile", self.getLocalLogFile())
         self._check_int("Log.LocalLogLevel", self.getLocalLogLevel())
         self._check_str("Log.LogRotateInt/ISO 8601", self.getLogRotateInt())
         self._check_int("Log.LogRotateCache", self.getLogRotateCache())
-        logger.debug("Checked Log Element")
 
-        logger.debug("Check Notification Element ...")
         self._check_str("Notification.SmtpHost", self.getNotifSmtpHost())
         self._check_str("Notification.Sender", self.getSender())
         self._check_0_1("Notification.Active", self.getNotifActive())
@@ -2081,9 +2054,7 @@ class ngamsConfig:
                         self.getMaxRetentionTime())
         self._check_int("Notification.MaxRetentionSize",
                         self.getMaxRetentionSize())
-        logger.debug("Checked Notification Element")
 
-        logger.debug("Check HostSuspension Element ...")
         self._check_0_1("HostSuspension.IdleSuspension", self.getIdleSuspension())
         self._check_int("HostSuspension.IdleSuspensionTime",
                         self.getIdleSuspensionTime())
@@ -2098,9 +2069,7 @@ class ngamsConfig:
         if (self.getIdleSuspension()):
             self._check_str("HostSuspension.WakeUpServerHost",
                           self.getWakeUpServerHost())
-        logger.debug("Checked HostSuspension Element")
 
-        logger.debug("Check SubscriptionDef Element ...")
         self._check_0_1("SubscriptionDef.AutoUnsubscribe",
                         self.getAutoUnsubscribe())
         self._check_str("SubscriptionDef.SuspensionTime",
@@ -2108,20 +2077,12 @@ class ngamsConfig:
         self._check_str("SubscriptionDef.BackLogExpTime",
                       self.getBackLogExpTime())
         self._check_0_1("SubscriptionDef.Enable", self.getSubscrEnable())
-        logger.debug("Checked SubscriptionDef Element")
 
-        logger.debug("Check Mirroring Element ...")
-        # TODO: Implement.
-        logger.debug("Checked Mirroring Element")
-
-        logger.debug("Check Caching Element ...")
         # Cannot have Remove Requests disabled and Cahcing
         if ((not self.getAllowRemoveReq()) and (self.getCachingActive())):
             msg = "Permission to execute Remove Requests must be switched " +\
                   "on in order to enable the Caching Service"
             raise Exception(msg)
-        # TODO: More checks.
-        logger.debug("Checked Caching Element")
 
         # Any errors found?
         if report:
