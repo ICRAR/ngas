@@ -754,7 +754,7 @@ class ngamsConfig:
 
         Returns:   Processing directory (string).
         """
-        return self.getVal("Processing[1].ProcessingDirectory")
+        return os.path.join(self.getVal("Processing[1].ProcessingDirectory"), 'processing')
 
 
     def getPortNo(self):
