@@ -853,15 +853,6 @@ class ngamsConfig:
         return self.getVal("SystemPlugIns[1].DiskSyncPlugIn")
 
 
-    def getDiskSyncPlugInPars(self):
-        """
-        Get input parameters for Disk Sync Plug-In.
-
-        Returns:  Input parameters for Disk Sync Plug-In (string).
-        """
-        return self.getVal("SystemPlugIns[1].DiskSyncPlugInPars")
-
-
     def getReplication(self):
         """
         Return File Replication on/off flag.
@@ -893,22 +884,6 @@ class ngamsConfig:
         """
         par = "Server[1].BlockSize"
         return getInt(par, self.getVal(par))
-
-    def getArchiveRcvBufSize(self):
-        """
-        Get TCP receive buffer size, which
-        sets the upper limit of the TCP window size
-        """
-        par = "Server[1].ArchiveRcvBufSize"
-        return getInt(par, self.getVal(par), retValOnFailure = None)
-
-    def getArchiveSndBufSize(self):
-        """
-        Get TCP send buffer size, which
-        sets the upper limit of the TCP window size
-        """
-        par = "Server[1].ArchiveSndBufSize"
-        return getInt(par, self.getVal(par), retValOnFailure = None)
 
     def getMaxSimReqs(self):
         """
@@ -1143,21 +1118,6 @@ class ngamsConfig:
         """
         try:
             return self.__mimeType2ExtDic[mimeType]
-        except:
-            return NGAMS_UNKNOWN_MT
-
-
-    def getMimeTypeFromExt(self,
-                           extension):
-        """
-        Get the mime-type  corresponding to the given file extension.
-
-        extension:    Extension of file (string).
-
-        Returns:      Mime-type corresponding to extension (string).
-        """
-        try:
-            return self.__ext2MimeTypeDic[extension]
         except:
             return NGAMS_UNKNOWN_MT
 
@@ -1787,14 +1747,6 @@ class ngamsConfig:
         if (not strVal):
             return 0
         return getInt(par, strVal)
-
-    def getFileStagingPlugInHost(self):
-        par = "FileStagingDef[1].Host"
-        return self.getVal(par)
-
-    def getFileStagingPlugInPort(self):
-        par = "FileStagingDef[1].Port"
-        return self.getVal(par)
 
     def getFileStagingPlugIn(self):
         """
