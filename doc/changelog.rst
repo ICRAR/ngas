@@ -1,6 +1,11 @@
 Changelog
 =========
 
+.. rubric:: 11.0.1
+
+* Fixed an important bug that was causing data to be removed
+  from the NGAS root directory.
+
 .. rubric:: 11.0
 
 * Initial python 3 support.
