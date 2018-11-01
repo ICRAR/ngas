@@ -682,7 +682,7 @@ def _deliveryThread(srvObj,
             # But if the target is an NGAS server and the authentication is on, the target must have set a user named "ngas-int"
             authHdr = None
             if srvObj.getCfg().getAuthUserInfo(NGAMS_HTTP_INT_AUTH_USER) is not None:
-                authHdr = srvObj.getCfg().getAuthHttpHdrVal(user = NGAMS_HTTP_INT_AUTH_USER)
+                authHdr = srvObj.getCfg().getAuthHttpHdrVal(NGAMS_HTTP_INT_AUTH_USER)
             fileInfoObjHdr = None
             urlList = subscrObj.getUrlList()
             urlListLen = len(urlList)

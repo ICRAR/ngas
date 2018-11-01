@@ -1656,15 +1656,6 @@ class ngamsConfig:
         return getInt(par, self.getVal(par))
 
 
-    def getAuthUsers(self):
-        """
-        Return the defined users.
-
-        Returns:   List with user names (list).
-        """
-        return self.__authUserDic.keys()
-
-
     def addAuthUser(self,
                     user,
                     password):
@@ -1739,8 +1730,7 @@ class ngamsConfig:
             return self.__authUserCommandsDic[user]
 
 
-    def getAuthHttpHdrVal(self,
-                          user = None):
+    def getAuthHttpHdrVal(self, user):
         """
         Generate the value to be sent with the HTTP Autorization Header.
         If no specific user is given, an arbitrary user is chosen.
@@ -1749,7 +1739,6 @@ class ngamsConfig:
 
         Returns:     Authorization HTTP Header value (string).
         """
-        if (not user): user = self.getAuthUsers()[0]
         if user not in self.__authUserDic:
             raise Exception("Undefined user referenced: %s" % user)
         pwd = base64.b64decode(self.getAuthUserInfo(user))
