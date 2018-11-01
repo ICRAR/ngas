@@ -89,127 +89,6 @@ def getInt(property,
         return retValOnFailure
 
 
-def checkIfSetStr(property,
-                  value,
-                  checkRep = None):
-    """
-    Check if the value given is of type string, and is different from "".
-
-    property:  Name of property being tested (string).
-
-    value:     Value of property (string).
-
-    checkRep:  List, which will contain the errors encountered (list).
-
-    Returns:   1 is returned if string checked is OK. 0 is returned
-               if the string was not properly formatted (integer/0|1).
-    """
-    logging.debug("Checking if property: %s is properly set ...", property)
-    if ((not isinstance(value, six.string_types))):
-        errMsg = "Must define a proper string value for property: " + property
-        errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
-        logger.error(errMsg)
-        if (checkRep != None):
-            checkRep.append(errMsg)
-            return 0
-        else:
-            raise Exception(errMsg)
-    elif value == "":
-        logger.warning("Value of property %s is an empty string", property)
-    else:
-        return 1
-
-
-def checkIfSetInt(property,
-                  value,
-                  checkRep = None):
-    """
-    Check if the value given is of type integer, and is different from -1.
-
-    property:  Name of property being tested (string).
-
-    value:     Value of property (integer).
-
-    checkRep:  List, which will contain the errors encountered (list).
-
-    Returns:   1 is returned if value checked is OK. 0 is returned
-               if the value was not properly formatted (integer/0|1).
-    """
-    logger.debug("Checking if property: %s is properly set ...", property)
-    value = int(value)
-    if ((not isinstance(value, six.integer_types)) or (value == -1)):
-        errMsg = "Must define a proper integer value for property: " + property
-        errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
-        logger.error(errMsg)
-        if (checkRep != None):
-            checkRep.append(errMsg)
-            return 0
-        else:
-            raise Exception(errMsg)
-    else:
-        return 1
-
-
-def checkIfZeroOrOne(property,
-                     value,
-                     checkRep = None):
-    """
-    Check if value for a property is 0 or 1. If not throw exception.
-
-    property:   Name of property being tested (string).
-
-    value:      Value of property (integer).
-
-    checkRep:   List, which will contain the errors encountered (list).
-
-    Returns:    1 is returned if value checked is OK. 0 is returned
-                if the value was not properly formatted (integer/0|1).
-    """
-    logger.debug("Checking if property: %s is properly set ...", property)
-    if ((not isinstance(value, six.integer_types)) or
-        ((value != 0) and (value != 1))):
-        errMsg = "Value must be 0 or 1 (integer) for property: " + property
-        errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
-        logger.error(errMsg)
-        if (checkRep != None):
-            checkRep.append(errMsg)
-            return 0
-        else:
-            raise Exception(errMsg)
-    else:
-        return 1
-
-
-def checkDuplicateValue(checkDic,
-                        property,
-                        value,
-                        checkRep = None):
-    """
-    Check if the given propery was already registered as key in the
-    dictionary referenced.
-
-    checkDic:    Dictionary containing the property names as keys (dictionary).
-
-    property:    Name of property being tested (string).
-
-    value:       Value of property (*).
-
-    checkRep:    List, which will contain the errors encountered (list).
-
-    Returns:     Void.
-    """
-    if value in checkDic:
-        errMsg = "Duplicate value for property: " + property + ". Value: " +\
-                 str(value)
-        errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
-        logger.error(errMsg)
-        if (checkRep != None):
-            checkRep.append(errMsg)
-        else:
-            raise Exception(errMsg)
-    else:
-        checkDic[value] = 1
-
 class ngamsConfigException(Exception): pass
 
 # A simple plug-in definition contains a name and some parameters
@@ -2008,6 +1887,52 @@ class ngamsConfig:
             return 0
 
 
+    def _check_str(self, prop, value):
+        """Check that ``value`` is of type string, and is not empty"""
+        if not isinstance(value, six.string_types):
+            errMsg = "Must define a proper string value for property: %s" % (prop,)
+            errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
+            logger.error(errMsg)
+            self.__checkRep.append(errMsg)
+            return False
+        elif value == "":
+            logger.warning("Value of property %s is an empty string", property)
+            return False
+        return True
+
+
+    def _check_int(self, prop, value):
+        """Check that ``value`` given is integer and different from -1"""
+        if not isinstance(value, six.integer_types) or value == -1:
+            errMsg = "Must define a proper integer value for property: %s" (prop,)
+            errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
+            logger.error(errMsg)
+            self.__checkRep.append(errMsg)
+            return False
+        return True
+
+    def _check_0_1(self, prop, value):
+        """Check that ``value`` is either 0 or 1"""
+        if value not in (0, 1):
+            errMsg = "Value must be 0 or 1 (integer) for property: %s" % (prop,)
+            errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
+            logger.error(errMsg)
+            self.__checkRep.append(errMsg)
+            return False
+        return True
+
+    def _check_duplicate(self, checkDic, prop, value):
+        """Checks if ``prop`` is duplicated in the configuration by testing if
+        it has already been registered in the given dictionary"""
+        if value in checkDic:
+            errMsg = "Duplicate value for property: %s. Value: %r" (prop, value)
+            errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
+            logger.error(errMsg)
+            self.__checkRep.append(errMsg)
+        else:
+            checkDic[value] = 1
+
+
     def _check(self):
         """
         Check some parameters in the configuration.
@@ -2017,75 +1942,66 @@ class ngamsConfig:
 
         Returns:  Void.
         """
+
+        report = self.__checkRep
+        del report[:]
+
         logger.debug("Check Server Element ...")
-        checkIfSetStr("Server.ArchiveName", self.getArchiveName(),
-                      self.getCheckRep())
-        checkIfSetInt("Server.MaxSimReqs", self.getMaxSimReqs(),
-                      self.getCheckRep())
-        checkIfSetInt("Server.PortNo", self.getPortNo(), self.getCheckRep())
+        self._check_str("Server.ArchiveName", self.getArchiveName())
+        self._check_int("Server.MaxSimReqs", self.getMaxSimReqs())
+        self._check_int("Server.PortNo", self.getPortNo())
         if (self.getAllowArchiveReq()):
-            checkIfZeroOrOne("Server.Replication", self.getReplication(),
-                             self.getCheckRep())
-        checkIfSetInt("Server.BlockSize", self.getBlockSize(),
-                      self.getCheckRep())
-        checkIfSetStr("Server.RootDirectory",
-                      self.getRootDirectory(), self.getCheckRep())
-        checkIfZeroOrOne("Server.ProxyMode", self.getProxyMode(),
-                         self.getCheckRep())
+            self._check_0_1("Server.Replication", self.getReplication())
+        self._check_int("Server.BlockSize", self.getBlockSize())
+        self._check_str("Server.RootDirectory",
+                      self.getRootDirectory())
+        self._check_0_1("Server.ProxyMode", self.getProxyMode())
         logger.debug("Checked Server Element")
 
         logger.debug("Check SystemPlugIns Element ...")
-        checkIfSetStr("SystemPlugIns.OnlinePlugIn",
-                      self.getOnlinePlugIn(), self.getCheckRep())
-        checkIfSetStr("SystemPlugIns.OfflinePlugIn", self.getOfflinePlugIn(),
-                      self.getCheckRep())
+        self._check_str("SystemPlugIns.OnlinePlugIn",
+                      self.getOnlinePlugIn())
+        self._check_str("SystemPlugIns.OfflinePlugIn", self.getOfflinePlugIn())
         logger.debug("Checked SystemPlugIns Element")
 
         logger.debug("Check Permissions Element ...")
-        checkIfZeroOrOne("Permissions.AllowArchiveReq",
-                         self.getAllowArchiveReq(), self.getCheckRep())
-        checkIfZeroOrOne("Permissions.AllowRetrieveReq",
-                         self.getAllowRetrieveReq(), self.getCheckRep())
-        checkIfZeroOrOne("Permissions.AllowProcessingReq",
-                         self.getAllowProcessingReq(), self.getCheckRep())
-        checkIfZeroOrOne("Permissions.AllowRemoveReq",
-                         self.getAllowRemoveReq(), self.getCheckRep())
+        self._check_0_1("Permissions.AllowArchiveReq", self.getAllowArchiveReq())
+        self._check_0_1("Permissions.AllowRetrieveReq", self.getAllowRetrieveReq())
+        self._check_0_1("Permissions.AllowProcessingReq", self.getAllowProcessingReq())
+        self._check_0_1("Permissions.AllowRemoveReq", self.getAllowRemoveReq())
         logger.debug("Checked Permissions Element")
 
         logger.debug("Check JanitorThread Element ...")
-        checkIfSetStr("JanitorThread.SuspensionTime",
-                      self.getJanitorSuspensionTime(), self.getCheckRep())
+        self._check_str("JanitorThread.SuspensionTime",
+                      self.getJanitorSuspensionTime())
         logger.debug("Checked JanitorThread Element")
 
         logger.debug("Check ArchiveHandling Element ...")
         if (self.getAllowArchiveReq()):
-            checkIfSetStr("ArchiveHandling.PathPrefix", self.getPathPrefix(),
-                          self.getCheckRep())
-            checkIfZeroOrOne("ArchiveHandling.BackLogBuffering",
-                             self.getBackLogBuffering(), self.getCheckRep())
-            checkIfSetStr("ArchiveHandling.BackLogBufferDirectory",
-                          self.getBackLogBufferDirectory(), self.getCheckRep())
-            checkIfSetInt("ArchiveHandling.MinFreeSpaceWarningMb",
-                          self.getMinFreeSpaceWarningMb(), self.getCheckRep())
-            checkIfSetInt("ArchiveHandling.FreeSpaceDiskChangeMb",
-                          self.getFreeSpaceDiskChangeMb(), self.getCheckRep())
+            self._check_str("ArchiveHandling.PathPrefix", self.getPathPrefix())
+            self._check_0_1("ArchiveHandling.BackLogBuffering", self.getBackLogBuffering())
+            self._check_str("ArchiveHandling.BackLogBufferDirectory",
+                            self.getBackLogBufferDirectory())
+            self._check_int("ArchiveHandling.MinFreeSpaceWarningMb",
+                            self.getMinFreeSpaceWarningMb())
+            self._check_int("ArchiveHandling.FreeSpaceDiskChangeMb",
+                            self.getFreeSpaceDiskChangeMb())
         logger.debug("Checked ArchiveHandling Element")
 
         logger.debug("Check Db Element ...")
-        checkIfZeroOrOne("Db.Snapshot",self.getDbSnapshot(),self.getCheckRep())
-        checkIfSetStr("Db.Interface",self.getDbInterface(), self.getCheckRep())
+        self._check_0_1("Db.Snapshot", self.getDbSnapshot())
+        self._check_str("Db.Interface",self.getDbInterface())
         logger.debug("Checked Db Element")
 
         logger.debug("Check MimeTypes Element ...")
         if (len(self.getMimeTypeMappings()) == 0):
             errMsg = genLog("NGAMS_ER_NO_MIME_TYPES", [self.getCfg()])
             logger.error(errMsg)
-            self.getCheckRep().append(errMsg)
+            report.append(errMsg)
         else:
-            for map in self.getMimeTypeMappings():
-                checkIfSetStr("MimeTypeMap.MimeType",map[0],self.getCheckRep())
-                checkIfSetStr("MimeTypeMap.Extension", map[1],
-                              self.getCheckRep())
+            for k, v in self.getMimeTypeMappings():
+                self._check_str("MimeTypeMap.MimeType", k)
+                self._check_str("MimeTypeMap.Extension", v)
         logger.debug("Checked MimeTypes Element")
 
         logger.debug("Check Storage Sets ...")
@@ -2093,37 +2009,33 @@ class ngamsConfig:
         mainDiskMtPtDic = {}
         repDiskMtPtDic = {}
         for set in self.getStorageSetList():
-            checkIfSetStr("StorageSet.StorageSetId", set.getStorageSetId(),
-                          self.getCheckRep())
-            checkDuplicateValue(storageSetDic, "StorageSet.StorageSetId",
-                                set.getStorageSetId(), self.getCheckRep())
-            checkIfSetStr("StorageSet.MainDiskSlotId",
-                          set.getMainDiskSlotId(), self.getCheckRep())
-            checkDuplicateValue(mainDiskMtPtDic, "StorageSet.MainDiskSlotId",
-                                set.getMainDiskSlotId(),self.getCheckRep())
+            self._check_str("StorageSet.StorageSetId", set.getStorageSetId())
+            self._check_duplicate(storageSetDic, "StorageSet.StorageSetId",
+                                set.getStorageSetId())
+            self._check_str("StorageSet.MainDiskSlotId",
+                            set.getMainDiskSlotId())
+            self._check_duplicate(mainDiskMtPtDic, "StorageSet.MainDiskSlotId",
+                                set.getMainDiskSlotId())
             if (set.getRepDiskSlotId() != ""):
-                checkDuplicateValue(repDiskMtPtDic, "StorageSet.RepDiskSlotId",
-                                    set.getRepDiskSlotId(),
-                                    self.getCheckRep())
-            checkIfZeroOrOne("StorageSet.Mutex", set.getMutex(),
-                             self.getCheckRep())
+                self._check_duplicate(repDiskMtPtDic, "StorageSet.RepDiskSlotId",
+                                      set.getRepDiskSlotId())
+            self._check_0_1("StorageSet.Mutex", set.getMutex())
         logger.debug("Checked Storage Sets")
 
         logger.debug("Check Stream Definitions ...")
         if (self.getAllowArchiveReq()):
             mimeTypeDic = {}
             for stream in self.getStreamList():
-                checkIfSetStr("Stream.MimeType", stream.getMimeType(),
-                              self.getCheckRep())
-                checkDuplicateValue(mimeTypeDic, "Stream.MimeType",
-                                    stream.getMimeType(), self.getCheckRep())
+                self._check_str("Stream.MimeType", stream.getMimeType())
+                self._check_duplicate(mimeTypeDic, "Stream.MimeType",
+                                      stream.getMimeType())
                 if ((len(stream.getStorageSetIdList()) == 0) and
                     (len(stream.getHostIdList()) == 0)):
                     errMsg = "Must specify at least one Target Storage Set " +\
                              "or Archiving Unit for each Stream!"
                     errMsg = genLog("NGAMS_ER_CONF_FILE", [errMsg])
                     logger.error(errMsg)
-                    self.getCheckRep().append(errMsg)
+                    report.append(errMsg)
                 for setId in stream.getStorageSetIdList():
                     if setId not in storageSetDic:
                         errMsg = "Undefined Storage Set Id: "+str(setId)+" " +\
@@ -2132,94 +2044,81 @@ class ngamsConfig:
                                  stream.getMimeType()
                         errMsg = genLog("NGAMS_ER_CONF_FILE", [errMsg])
                         logger.error(errMsg)
-                        self.getCheckRep().append(errMsg)
+                        report.append(errMsg)
         logger.debug("Checked Stream Definitions")
 
         logger.debug("Check Processing Element ...")
         if (self.getAllowProcessingReq()):
-            checkIfSetStr("Processing.ProcessingDirectory",
-                          self.getProcessingDirectory(), self.getCheckRep())
+            self._check_str("Processing.ProcessingDirectory",
+                            self.getProcessingDirectory())
         for dppi_plugin in self.dppi_plugins.values():
-            checkIfSetStr("Processing.PlugIn.Name", dppi_plugin.name,
-                          self.getCheckRep())
+            self._check_str("Processing.PlugIn.Name", dppi_plugin.name)
             for mimeType in dppi_plugin.mime_types:
-                checkIfSetStr("Processing.PlugIn.MimeType.Name", mimeType,
-                              self.getCheckRep())
+                self._check_str("Processing.PlugIn.MimeType.Name", mimeType)
         logger.debug("Checked Processing Element")
 
         logger.debug("Check Register Element ...")
         for reg_plugin in self.register_plugins.values():
-            checkIfSetStr("Register.PlugIn.Name", reg_plugin.name, self.getCheckRep())
+            self._check_str("Register.PlugIn.Name", reg_plugin.name)
         logger.debug("Checked Register Element")
 
         logger.debug("Check DataCheckThread Element ...")
-        checkIfZeroOrOne("DataCheckThread.DataCheckActive",
-                         self.getDataCheckActive(), self.getCheckRep())
+        self._check_0_1("DataCheckThread.DataCheckActive",
+                        self.getDataCheckActive())
         if (self.getDataCheckActive()):
-            checkIfZeroOrOne("DataCheckThread.DataCheckForceNotif",
-                             self.getDataCheckForceNotif(), self.getCheckRep())
-            checkIfSetInt("DataCheckThread.DataCheckMaxProcs",
-                          self.getDataCheckMaxProcs(), self.getCheckRep())
-            checkIfZeroOrOne("DataCheckThread.DataCheckScan",
-                             self.getDataCheckScan(), self.getCheckRep())
-            checkIfSetStr("DataCheckThread.DataCheckMinCycle",
-                          self.getDataCheckMinCycle(), self.getCheckRep())
+            self._check_0_1("DataCheckThread.DataCheckForceNotif",
+                            self.getDataCheckForceNotif())
+            self._check_int("DataCheckThread.DataCheckMaxProcs",
+                            self.getDataCheckMaxProcs())
+            self._check_0_1("DataCheckThread.DataCheckScan", self.getDataCheckScan())
+            self._check_str("DataCheckThread.DataCheckMinCycle",
+                          self.getDataCheckMinCycle())
         logger.debug("Checked DataCheckThread Element")
 
         logger.debug("Check Log Element ...")
-        checkIfZeroOrOne("Log.SysLog", self.getSysLog(), self.getCheckRep())
-        checkIfSetStr("Log.SysLogPrefix", self.getSysLogPrefix(),
-                      self.getCheckRep())
-        checkIfSetStr("Log.LocalLogFile", self.getLocalLogFile(),
-                      self.getCheckRep())
-        checkIfSetInt("Log.LocalLogLevel", self.getLocalLogLevel(),
-                      self.getCheckRep())
-        checkIfSetStr("Log.LogRotateInt/ISO 8601", self.getLogRotateInt(),
-                      self.getCheckRep())
-        checkIfSetInt("Log.LogRotateCache", self.getLogRotateCache(),
-                      self.getCheckRep())
+        self._check_0_1("Log.SysLog", self.getSysLog())
+        self._check_str("Log.SysLogPrefix", self.getSysLogPrefix())
+        self._check_str("Log.LocalLogFile", self.getLocalLogFile())
+        self._check_int("Log.LocalLogLevel", self.getLocalLogLevel())
+        self._check_str("Log.LogRotateInt/ISO 8601", self.getLogRotateInt())
+        self._check_int("Log.LogRotateCache", self.getLogRotateCache())
         logger.debug("Checked Log Element")
 
         logger.debug("Check Notification Element ...")
-        checkIfSetStr("Notification.SmtpHost", self.getNotifSmtpHost(),
-                      self.getCheckRep())
-        checkIfSetStr("Notification.Sender", self.getSender(),
-                      self.getCheckRep())
-        checkIfZeroOrOne("Notification.Active", self.getNotifActive(),
-                         self.getCheckRep())
-        checkIfSetStr("Notification.MaxRetentionTime",
-                      self.getMaxRetentionTime(), self.getCheckRep())
-        checkIfSetInt("Notification.MaxRetentionSize",
-                      self.getMaxRetentionSize(), self.getCheckRep())
+        self._check_str("Notification.SmtpHost", self.getNotifSmtpHost())
+        self._check_str("Notification.Sender", self.getSender())
+        self._check_0_1("Notification.Active", self.getNotifActive())
+        self._check_str("Notification.MaxRetentionTime",
+                        self.getMaxRetentionTime())
+        self._check_int("Notification.MaxRetentionSize",
+                        self.getMaxRetentionSize())
         logger.debug("Checked Notification Element")
 
         logger.debug("Check HostSuspension Element ...")
-        checkIfZeroOrOne("HostSuspension.IdleSuspension",
-                         self.getIdleSuspension(), self.getCheckRep())
-        checkIfSetInt("HostSuspension.IdleSuspensionTime",
-                      self.getIdleSuspensionTime(), self.getCheckRep())
-        checkIfSetStr("HostSuspension.SuspensionPlugIn",
-                      self.getSuspensionPlugIn(), self.getCheckRep())
-        checkIfSetStr("HostSuspension.SuspensionPlugInPars",
-                      self.getSuspensionPlugInPars(), self.getCheckRep())
-        checkIfSetInt("HostSuspension.WakeUpCallTimeOut",
-                      self.getWakeUpCallTimeOut(), self.getCheckRep())
-        checkIfSetStr("HostSuspension.WakeUpPlugIn",
-                      self.getWakeUpPlugIn(), self.getCheckRep())
+        self._check_0_1("HostSuspension.IdleSuspension", self.getIdleSuspension())
+        self._check_int("HostSuspension.IdleSuspensionTime",
+                        self.getIdleSuspensionTime())
+        self._check_str("HostSuspension.SuspensionPlugIn",
+                      self.getSuspensionPlugIn())
+        self._check_str("HostSuspension.SuspensionPlugInPars",
+                      self.getSuspensionPlugInPars())
+        self._check_int("HostSuspension.WakeUpCallTimeOut",
+                        self.getWakeUpCallTimeOut())
+        self._check_str("HostSuspension.WakeUpPlugIn",
+                      self.getWakeUpPlugIn())
         if (self.getIdleSuspension()):
-            checkIfSetStr("HostSuspension.WakeUpServerHost",
-                          self.getWakeUpServerHost(), self.getCheckRep())
+            self._check_str("HostSuspension.WakeUpServerHost",
+                          self.getWakeUpServerHost())
         logger.debug("Checked HostSuspension Element")
 
         logger.debug("Check SubscriptionDef Element ...")
-        checkIfZeroOrOne("SubscriptionDef.AutoUnsubscribe",
-                         self.getAutoUnsubscribe(), self.getCheckRep())
-        checkIfSetStr("SubscriptionDef.SuspensionTime",
-                      self.getSubscrSuspTime(), self.getCheckRep())
-        checkIfSetStr("SubscriptionDef.BackLogExpTime",
-                      self.getBackLogExpTime(), self.getCheckRep())
-        checkIfZeroOrOne("SubscriptionDef.Enable", self.getSubscrEnable(),
-                         self.getCheckRep())
+        self._check_0_1("SubscriptionDef.AutoUnsubscribe",
+                        self.getAutoUnsubscribe())
+        self._check_str("SubscriptionDef.SuspensionTime",
+                      self.getSubscrSuspTime())
+        self._check_str("SubscriptionDef.BackLogExpTime",
+                      self.getBackLogExpTime())
+        self._check_0_1("SubscriptionDef.Enable", self.getSubscrEnable())
         logger.debug("Checked SubscriptionDef Element")
 
         logger.debug("Check Mirroring Element ...")
@@ -2236,9 +2135,11 @@ class ngamsConfig:
         logger.debug("Checked Caching Element")
 
         # Any errors found?
-        if (len(self.getCheckRep()) > 0):
-            testRep = self.genCheckRep()
-            raise Exception(testRep)
+        if report:
+            _report = ["CHECK REPORT FOR NG/AMS CONFIGURATION",
+                       "Configuration Filename: " + str(self.getCfg())]
+            _report += report
+            raise Exception('; '.join(_report))
 
         return self
 
@@ -2285,33 +2186,6 @@ class ngamsConfig:
         Returns:    XML document (string).
         """
         return self.__cfgMgr.genXmlDoc(hideCritInfo)
-
-
-    def getCheckRep(self):
-        """
-        Return reference to Check Report (list with errors found in
-        configuration file).
-
-        Returns:   Reference to Check Report (list).
-        """
-        return self.__checkRep
-
-
-    def genCheckRep(self,
-                    sep = "; "):
-        """
-        Generate a Check Report from the errors stored in the object.
-
-        sep:       Sepator used to separate each item in the report (string).
-
-        Returns:   Check Report (string).
-        """
-        testRep = "CHECK REPORT FOR NG/AMS CONFIGURATION" + sep
-        testRep += "Configuration Filename: " + str(self.getCfg()) + sep
-        for err in self.getCheckRep():
-            testRep += err + sep
-        testRep = testRep[0:-2]
-        return testRep
 
 
     def getBackLogDir(self):
