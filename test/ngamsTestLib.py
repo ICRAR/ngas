@@ -240,13 +240,6 @@ def execCmd(cmd,
     return (exitCode, out)
 
 
-def getNmu():
-    """
-    Return the name of the Main Node for the simulated cluster.
-    """
-    return "%s:8000" % getHostName()
-
-
 def getNcu11():
     """
     Return the name of the Cluster Node for the test.
