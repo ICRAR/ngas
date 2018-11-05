@@ -464,16 +464,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         self.prepExtSrv(delDirs=0, cfgFile=configFile)
 
         # Archive a file.
-        self.archive("src/SmallFile.fits")
-
-        # dpallot: this will always fail on the mac as the tar sizes are different
-        # to the hard coded test results in the old file:
-        # ngamsRetrieveCmdTest_test_VolumeDir_01_01_ref
-
-        #tmpStatFile = save_to_tmp(filterDbStatus1(stat.dumpBuf()))
-        #refStatFile = "ref/ngamsRetrieveCmdTest_test_VolumeDir_01_01_ref"
-        #self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-        #                  "message from NG/AMS Server")
+        stat = self.archive("src/SmallFile.fits")
+        self.assert_status_ref_file("ref/ngamsRetrieveCmdTest_test_VolumeDir_01_01_ref", stat)
 
         # Check that the target files have been archived in their
         # appropriate locations.

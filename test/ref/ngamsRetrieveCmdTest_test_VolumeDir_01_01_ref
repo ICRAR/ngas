@@ -13,9 +13,7 @@ SlotId:                             Volume001
 Mounted:                            1
 MountPoint:                         %NGAS_ROOT%/volumes/Volume001
 NumberOfFiles:                      1
-BytesStored:                        45823
 Completed:                          0
-Checksum:                           
 LastCheck:                          
 FileStatus:
 DiskId:                             d8dbcece4572c9e31c9ef00dbc38751e
@@ -23,11 +21,9 @@ FileName:                           saf/2001-05-08/1/TEST.2001-05-08T15:25:00.12
 FileId:                             TEST.2001-05-08T15:25:00.123
 FileVersion:                        1
 Format:                             application/x-gfits
-FileSize:                           45823
 UncompressedFileSize:               69120
 Compression:                        gzip --no-name
 Ignore:                             0
-Checksum:                           1379947874
 ChecksumPlugIn:                     ngamsGenCrc32
 FileStatus:                         00000000
 Tag:                                
