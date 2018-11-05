@@ -512,7 +512,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
 
         # Check that expected log entries found in the Master Node Log File.
         refStatFile="ref/ngamsIdleSuspensionTest_test_WakeUpCheckfile_1_2_ref"
-        testTags = loadFile(refStatFile) % (subNode1,)
+        testTags = [loadFile(refStatFile) % (subNode1,)]
         sendPclCmd(port=8000).status()
         masterLogBuf = loadFile(masterNodeLog)
         self.checkTags(masterLogBuf, testTags, showBuf=0)
