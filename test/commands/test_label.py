@@ -87,7 +87,7 @@ class ngamsLabelCmdTest(ngamsTestSuite):
             return
 
         self.prepExtSrv()
-        status = self.client.get_status(NGAMS_LABEL_CMD,
+        status = self.get_status(NGAMS_LABEL_CMD,
                                  pars = [["slot_id", "1"],
                                          ["host_id", getHostName()]])
         refStatFile = "ref/ngamsLabelCmdTest_test_LabelCmd_1_1_ref"

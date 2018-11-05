@@ -87,4 +87,4 @@ class ngamsOnlineCmdTest(ngamsTestSuite):
         TODO: Check that the server is Online (DB + STATUS Command).
         """
         self.prepExtSrv(autoOnline=0)
-        self.assert_ngas_status(self.client.online)
+        self.online()

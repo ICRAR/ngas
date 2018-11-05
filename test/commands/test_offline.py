@@ -73,4 +73,4 @@ class ngamsOfflineCmdTest(ngamsTestSuite):
         TODO: Check that the server is in Offline State.
         """
         self.prepExtSrv()
-        self.assert_ngas_status(self.client.offline)
+        self.offline()

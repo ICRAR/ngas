@@ -31,6 +31,7 @@
 This module contains the Test Suite for the CLONE Command.
 """
 
+import functools
 import getpass
 import traceback
 
@@ -131,14 +132,19 @@ def _execCloneTest(testObj,
     subNode = testData[4]
     if (subNode):
         testObj.prepCluster((8000, 8011))
-        clNcu = testObj.client(8011)
-        clMnu = testObj.client(8000)
+        main_archive = functools.partial(testObj.archive, 8000)
+        node_archive = functools.partial(testObj.archive, 8011)
+        main_client = testObj.client(8000)
     else:
         testObj.prepExtSrv(port=8000)
-        clMnu = testObj.client
+        main_archive = testObj.archive
+        main_client = testObj.client
+
     for n in range(5):
-        clMnu.archive("src/SmallFile.fits")
-        if (subNode): clNcu.archive("src/TinyTestFile.fits")
+        main_archive("src/SmallFile.fits")
+        if (subNode):
+            node_archive("src/TinyTestFile.fits")
+
     cmdPars = []
     if (diskId):  cmdPars.append(["disk_id", diskId])
     if (fileId):  cmdPars.append(["file_id", fileId])
@@ -148,7 +154,7 @@ def _execCloneTest(testObj,
     cmdPars.append(["notif_email", getpass.getuser() + "@" +\
                     ngamsLib.getCompleteHostName()])
     flushEmailQueue()
-    statObj = clMnu.get_status(NGAMS_CLONE_CMD, pars = cmdPars)
+    statObj = main_client.get_status(NGAMS_CLONE_CMD, pars = cmdPars)
 
     # Check returned status.
     errMsg = "Executed CLONE Command: Disk ID: %s, File ID: %s, " +\
@@ -527,7 +533,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
             self.archive(srcFile)
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
-        statObj = self.client.get_status(NGAMS_CLONE_CMD,
+        statObj = self.get_status(NGAMS_CLONE_CMD,
                                     pars = [["disk_id", srcDiskId],
                                             ["file_id", nmuFileId],
                                             ["file_version", "1"],
@@ -537,7 +543,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         msg = "Incorrect status for CLONE command/successfull cloning"
         self.assert_status_ref_file(refStatFile, statObj, msg=msg)
 
-        finalStatObj = waitReqCompl(self.client, statObj.getRequestId())
+        finalStatObj = waitReqCompl(self, statObj.getRequestId())
         complPer = str(finalStatObj.getCompletionPercent())
         self.assertEqual("100.0", complPer,
                         genErrMsgVals("Incorrect Request Status for CLONE " +\
@@ -601,11 +607,11 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
         diskId = self.ngas_disk_id("FitsStorage1/Main/1")
-        statObj = self.client.get_status(NGAMS_CLONE_CMD,
+        statObj = self.get_status(NGAMS_CLONE_CMD,
                                     pars = [["disk_id", diskId],
                                             ["async", "1"],
                                             ["notif_email", testUserEmail]])
-        waitReqCompl(self.client, statObj.getRequestId(), 20)
+        waitReqCompl(self, statObj.getRequestId(), 20)
 
         if _checkMail:
             mailCont = getEmailMsg(["NGAS Host:", "Total proc", "Handling time"])

@@ -37,8 +37,7 @@ import os
 import subprocess
 
 from ngamsLib import ngamsHttpUtils
-from ngamsLib.ngamsCore import getHostName, \
-    checkCreatePath, rmFile, NGAMS_SUCCESS, mvFile
+from ngamsLib.ngamsCore import getHostName, checkCreatePath, rmFile, mvFile
 from ..ngamsTestLib import ngamsTestSuite, genTmpFilename, unzip, tmp_path
 
 
@@ -95,7 +94,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # Retrieve the file.
         trgFile = tmp_path("test_RetrieveCmd_1_1_tmp")
         outFilePath = tmp_path("SmallFile.fits")
-        self.assert_ngas_status(self.client.retrieve, "TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
+        self.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
         unzip(trgFile, outFilePath)
         self.checkFilesEq("src/SmallFile.fits", outFilePath, "Retrieved file incorrect")
 
@@ -128,7 +127,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Retrieve the file.
         trgFile = tmp_path("test_RetrieveCmd_1_1_tmp")
-        status = self.client.retrieve("TEST.2001-05-08T15:25:00.123",
+        status = self.retrieve_fail("TEST.2001-05-08T15:25:00.123",
                                  fileVersion=2, targetFile=trgFile)
 
         # Check reply.
@@ -169,7 +168,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Retrieve a file.
         trgFile = tmp_path("test_RetrieveCmd_3_1_tmp")
-        self.assert_ngas_status(self.client(8000).retrieve, "NCU.2003-11-11T11:11:11.111", targetFile=trgFile)
+        self.retrieve(8000, "NCU.2003-11-11T11:11:11.111", targetFile=trgFile)
         outFilePath = tmp_path('test_RetrieveCmd_3_1_tmp_unzip')
         unzip(trgFile, outFilePath)
         refFile = "src/TinyTestFile.fits"
@@ -218,16 +217,15 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         for portNo in [8000, 8001, 8002]:
             for n in range(3):
                 self.archive(portNo, "src/SmallFile.fits")
-        self.client(8001).offline()
-        self.client(8001).exit()
+        self.offline(8001)
+        self.exit(8001)
         subNode2 = nodes[2]
         self.waitTillSuspended(envDic[subNode2][1], subNode2, 45, nodes)
 
         # Retrieve file (File ID).
-        client = self.client(8000)
         fileId = "TEST.2001-05-08T15:25:00.123"
-        self.assert_ngas_status(client.retrieve, fileId)
-        self.assert_ngas_status(client.retrieve, fileId, fileVersion=2)
+        self.retrieve(8000, fileId)
+        self.retrieve(8000, fileId, fileVersion=2)
 
 
     def test_HttpRedirection_01(self):
@@ -315,10 +313,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         outFile = genTmpFilename("test_DppiProc_01")
         pars = [["test_suite", "ngamsRetrieveCmdTest"],
                 ["test_case", "test_DppiProc_01"]]
-        stat = self.client.retrieve("TEST.2001-05-08T15:25:00.123",
-                               targetFile=outFile,
-                               processing="test.support.ngamsTestDppi1",
-                               pars=pars)
+        self.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=outFile,
+                      processing="test.support.ngamsTestDppi1", pars=pars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_01_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, result in file")
@@ -360,10 +356,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         outFile = genTmpFilename("test_DppiProc_02")
         pars = [["test_suite", "ngamsRetrieveCmdTest"],
                 ["test_case", "test_DppiProc_02"]]
-        stat = self.client.retrieve("TEST.2001-05-08T15:25:00.123",
-                               targetFile=outFile,
-                               processing="test.support.ngamsTestDppi1",
-                               pars=pars)
+        self.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=outFile,
+                      processing="test.support.ngamsTestDppi1", pars=pars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_02_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, result in buffer")
@@ -407,10 +401,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         outFile = genTmpFilename("test_DppiProc_03")
         pars = [["test_suite", "ngamsRetrieveCmdTest"],
                 ["test_case", "test_DppiProc_03"]]
-        stat = self.client(8000).retrieve("TEST.2001-05-08T15:25:00.123",
-                                              targetFile=outFile,
-                                              processing="test.support.ngamsTestDppi1",
-                                              pars=pars)
+        self.retrieve(8000, "TEST.2001-05-08T15:25:00.123", targetFile=outFile,
+                      processing="test.support.ngamsTestDppi1", pars=pars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_03_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, Proxy Mode, " +\
@@ -464,8 +456,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         trgFile = tmp_path("test_VolumeDir_01_tmp")
         refFile = "src/SmallFile.fits"
         outFilePath = tmp_path("SmallFile.fits")
-        stat = self.client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
-        self.assertEqual(NGAMS_SUCCESS, stat.getStatus(), stat.getMessage())
+        stat = self.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
 
         # unzip the the file and diff against original
         unzip(trgFile, outFilePath)
@@ -485,8 +476,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         for r in ranges:
             hdrs = {'Range': 'bytes=' + r}
-            status = self.client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile='tmp', hdrs=hdrs)
-            self.assertEqual('FAILURE', status.getStatus())
+            status = self.retrieve_fail("TEST.2001-05-08T15:25:00.123", targetFile='tmp', hdrs=hdrs)
             self.assertIn('Invalid Range header', status.getMessage())
 
     def test_partial_retrieval(self):

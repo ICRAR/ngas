@@ -66,7 +66,7 @@ class ngamsCacheThreadTest(ngamsTestSuite):
 
         # Only a few bytes! anything that gets archived should quickly disappear
         _, db = self.start_cache_server('0T00:00:01', max_cache_size=10, check=check)
-        self.archive('src/SmallFile.fits', mimeType='application/octet-stream', cmd='QARCHIVE')
+        self.qarchive('src/SmallFile.fits', mimeType='application/octet-stream')
         time.sleep(3)
 
         expected = 1 if check else 0

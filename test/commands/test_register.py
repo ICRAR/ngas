@@ -85,7 +85,7 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         tmpSrcFile = self.ngas_path("FitsStorage2-Main-3/saf/test/SmallFile.fits")
         checkCreatePath(os.path.dirname(tmpSrcFile))
         self.cp(srcFile, tmpSrcFile)
-        status = self.client.get_status(NGAMS_REGISTER_CMD, [["path", tmpSrcFile]])
+        status = self.get_status(NGAMS_REGISTER_CMD, [["path", tmpSrcFile]])
         msg = "Incorrect status returned for REGISTER command"
         refStatFile = "ref/ngamsRegisterCmdTest_test_RegisterCmd_1_ref"
         self.assert_status_ref_file(refStatFile, status, msg=msg)

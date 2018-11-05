@@ -25,8 +25,7 @@ from ..ngamsTestLib import ngamsTestSuite
 class ngamsQueryCmdTest(ngamsTestSuite):
 
     def assert_query(self, pars=(), expectedStatus='SUCCESS'):
-        return self.assert_ngas_status(self.client.get_status, "QUERY", pars=pars,
-                                       expectedStatus=expectedStatus)
+        return self.get_status("QUERY", pars=pars, expectedStatus=expectedStatus)
 
     def test_invalid_requests(self):
 

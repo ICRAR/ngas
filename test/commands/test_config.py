@@ -73,4 +73,4 @@ class ngamsConfigCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         pars = [["log_local_log_level", "4"]]
-        self.assert_ngas_status(self.client.get_status, NGAMS_CONFIG_CMD, pars=pars)
+        self.get_status(NGAMS_CONFIG_CMD, pars=pars)

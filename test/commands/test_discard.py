@@ -260,7 +260,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         self.archive("src/SmallFile.fits")
         mDiskId = self.ngas_disk_id("FitsStorage1/Main/1")
         fileId  = "TEST.2001-05-08T15:25:00.123"
-        self.client.clone(fileId, mDiskId, 1)
+        self.clone(fileId, mDiskId, 1)
         ref_file = "ref/ngamsDiscardCmdTest_test_NormalExec_3_%d_ref"
         pars = [["disk_id", mDiskId], ["file_id", fileId], ["file_version", "1"]]
         self._assert_discard(ref_file, pars)
@@ -309,7 +309,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         ]
         ref_file = "ref/ngamsDiscardCmdTest_test_IllegalPars_1_%d_ref"
         for i, pars in enumerate(invalid_params, start=1):
-            status = self.client.get_status(NGAMS_DISCARD_CMD, pars)
+            status = self.get_status_fail(NGAMS_DISCARD_CMD, pars)
             self.assert_status_ref_file(ref_file % i, status, msg=illStatDoc)
 
 

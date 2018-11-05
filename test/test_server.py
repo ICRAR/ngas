@@ -66,10 +66,10 @@ class ngamsServerTest(ngamsTestSuite):
         spaces = " " * amount_of_data
         self.prepExtSrv(cfgProps=[["NgamsCfg.Server[1].TimeOut",str(timeout)]])
 
-        self.assert_ngas_status(self.client.archive_data, spaces, 'some-file.data', 'application/octet-stream')
+        self.archive_data(spaces, 'some-file.data', 'application/octet-stream')
 
         # Normal retrieval works fine
-        self.assert_ngas_status(self.client.retrieve, fileId='some-file.data', targetFile=tmp_path())
+        self.retrieve(fileId='some-file.data', targetFile=tmp_path())
 
         # Now retrieve the data, but sloooooooooooowly and check that the server
         # times out and closes the connection, which in turn makes our receiving
@@ -115,8 +115,8 @@ class ngamsServerTest(ngamsTestSuite):
     def test_reload_command(self):
         """Checks that commands can be reloaded successfully"""
         self.prepExtSrv()
-        self.assert_ngas_status(self.client.status)
-        self.assert_ngas_status(self.client.status, pars=[('reload', '1')])
+        self.status()
+        self.status(pars=[('reload', '1')])
 
     def test_user_command_plugin(self):
 
@@ -129,7 +129,7 @@ class ngamsServerTest(ngamsTestSuite):
         # There is no need to manually remove here, as ./tmp gets removed anyway
         # later during tearDown()
         fname = str(uuid.uuid4())
-        self.assert_ngas_status(self.client.get_status, 'TEST', pars=[('fname', fname)])
+        self.get_status('TEST', pars=[('fname', fname)])
         self.assertTrue(os.path.isfile(tmp_path(fname)))
 
     def test_no_such_command(self):

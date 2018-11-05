@@ -43,7 +43,6 @@ import time
 from six.moves import socketserver  # @UnresolvedImport
 
 from ngamsLib import ngamsHttpUtils
-from ngamsLib.ngamsCore import NGAMS_SUCCESS
 from ngamsServer import ngamsServer
 from .ngamsTestLib import ngamsTestSuite, getNoCleanUp, setNoCleanUp, tmp_path
 
@@ -142,19 +141,14 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'test.test_subscription.SenderHandler'),)
         self._prep_subscription_cluster((8888, (8889, cfg)))
 
-        qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
 
         # Initial archiving
-        params = {'filename': 'src/SmallFile.fits',
-                  'mime_type': 'application/octet-stream'}
-        with contextlib.closing(qarchive(pars=params)) as resp:
-            self.assertEqual(resp.status, 200)
+        self.qarchive(8888, 'src/SmallFile.fits', mimeType='application/octet-stream')
 
         # Version 2 of the file should only exist after
         # subscription transfer is successful.
-        client = self.client(8889)
-        self.assert_ngas_status(client.retrieve, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path(), expectedStatus='FAILURE')
+        self.retrieve_fail(8889, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
 
         # Create listener that should get information when files get archives
         # in the second server (i.e., the one on the receiving end of the subscription)
@@ -179,7 +173,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         self.assertEqual(2, archive_evt.file_version)
         self.assertEqual('SmallFile.fits', archive_evt.file_id)
 
-        self.assert_ngas_status(client.retrieve, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
+        self.retrieve(8889, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
 
 
     def test_basic_subscription_fail(self):
@@ -188,7 +182,6 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         tgt_cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'test.test_subscription.SenderHandler'),)
         self._prep_subscription_cluster(((8888, src_cfg), (8889, tgt_cfg)))
 
-        qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
         usubscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'USUBSCRIBE', timeout=5)
         unsubscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'UNSUBSCRIBE', timeout=5)
@@ -198,14 +191,11 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # Archive these two
         for test_file in ('src/SmallFile.fits', 'src/TinyTestFile.fits'):
-            params = {'filename': test_file,
-                      'mime_type': 'application/octet-stream'}
-            with contextlib.closing(qarchive(pars=params)) as resp:
-                self.assertEqual(resp.status, 200)
+            self.qarchive(8888, test_file, mimeType='application/octet-stream')
 
         # Things haven't gone through tyet
-        retrieve = functools.partial(self.client(8889).retrieve, targetFile=tmp_path())
-        self.assert_ngas_status(retrieve, 'SmallFile.fits', fileVersion=2, expectedStatus='FAILURE')
+        retrieve = functools.partial(self.retrieve, 8889, targetFile=tmp_path())
+        retrieve('SmallFile.fits', fileVersion=2, expectedStatus='FAILURE')
 
         # Invalid number of concurrent threads
         params = {'url': 'http://localhost:8889/QARCHIVE',
@@ -264,7 +254,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         time.sleep(7)
 
         # Check after all the failed subscriptions we don't have the file
-        self.assert_ngas_status(retrieve, 'SmallFile.fits', fileVersion=2, expectedStatus='FAILURE')
+        retrieve('SmallFile.fits', fileVersion=2, expectedStatus='FAILURE')
 
         # USUBSCRIBE updates the subscription to valid values
         # After this update the two files should go through
@@ -287,7 +277,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         self.assertSetEqual({'SmallFile.fits', 'TinyTestFile.fits'}, set([x.file_id for x in archive_evts]))
 
         for f in ('SmallFile.fits', 'TinyTestFile.fits'):
-            self.assert_ngas_status(retrieve, f, fileVersion=2)
+            retrieve(f, fileVersion=2)
 
         # UNSUBSCRIBE and check the newly archived file is not transfered
         subscription_listener = notification_listener()
@@ -295,23 +285,18 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         with contextlib.closing(unsubscribe(pars=params)) as resp:
             self.assertEqual(resp.status, 200)
 
-        test_file = 'src/SmallBadFile.fits'
-        params = {'filename': test_file,
-                  'mime_type': 'application/octet-stream'}
-        with contextlib.closing(qarchive(pars=params)) as resp:
-            self.assertEqual(resp.status, 200)
-
+        self.qarchive(8888, 'src/SmallBadFile.fits', mimeType='application/octet-stream')
         with contextlib.closing(subscription_listener):
             self.assertIsNone(subscription_listener.wait_for_file(5))
 
         # Check after all the failed subscriptions we don't have the file
-        self.assert_ngas_status(retrieve, 'SmallBadFile.fits', fileVersion=1)
-        self.assert_ngas_status(retrieve, 'SmallBadFile.fits', fileVersion=2, expectedStatus='FAILURE')
+        retrieve('SmallBadFile.fits', fileVersion=1)
+        retrieve('SmallBadFile.fits', fileVersion=2, expectedStatus='FAILURE')
 
     def test_server_starts_after_subscription_added(self):
 
         self.prepExtSrv()
-        self.assert_ngas_status(self.client.subscribe, 'http://somewhere/SOMETHING')
+        self.subscribe('http://somewhere/SOMETHING')
 
         # Cleanly shut down the server, and wait until it's completely down
         old_cleanup = getNoCleanUp()
@@ -325,24 +310,20 @@ class ngamsSubscriptionTest(ngamsTestSuite):
     def test_url_values(self):
 
         self.prepExtSrv()
-        client = self.client
 
         # empty url
-        status = client.subscribe('        ')
-        self.assertEqual('FAILURE', status.getStatus())
+        status = self.subscribe_fail('        ')
         self.assertIn('empty', status.getMessage())
 
         # Missing scheme
-        status = client.subscribe('some/path')
-        self.assertEqual('FAILURE', status.getStatus())
+        status = self.subscribe_fail('some/path')
         self.assertIn('no scheme found', status.getMessage().lower())
 
         # Missing network location
         # These are all interpreted as <scheme>:<path>,
         # even if it looks like a network location to the eye
         for url in ('scheme:some/path', 'host:80/path', 'file:///tmp/file'):
-            status = client.subscribe(url)
-            self.assertEqual('FAILURE', status.getStatus())
+            status = self.subscribe_fail(url)
             self.assertIn('no netloc found', status.getMessage().lower())
 
         # Scheme is actually not http
@@ -351,8 +332,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             "https://host/path", # https not allowed
             "file://hostname:port/somewhere/over/the/rainbow" # file not allowed
             ):
-            status = client.subscribe(url)
-            self.assertEqual('FAILURE', status.getStatus())
+            status = self.subscribe_fail(url)
             self.assertIn('only http:// scheme allowed', status.getMessage().lower())
 
     def test_create_remote_subscriptions(self):
@@ -381,4 +361,4 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             self.assertIsNotNone(listener.wait_for_file(20))
 
         # Double-check that the file is in B
-        self.assert_ngas_status(self.client(8889).retrieve, 'SmallFile.fits', targetFile=tmp_path())
+        self.retrieve(8889, 'SmallFile.fits', targetFile=tmp_path())

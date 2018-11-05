@@ -71,7 +71,7 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         implemented.
         """
         self.prepExtSrv(autoOnline=0)
-        status = self.client.get_status(NGAMS_HELP_CMD)
+        status = self.get_status_fail(NGAMS_HELP_CMD)
         refStatFile = "ref/ngamsHelpCmdTest_test_NoPars_1_1_ref"
         self.assert_status_ref_file(refStatFile, status)
 
@@ -99,6 +99,6 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         implemented.
         """
         self.prepExtSrv()
-        status = self.client.get_status(NGAMS_HELP_CMD)
+        status = self.get_status_fail(NGAMS_HELP_CMD)
         refStatFile = "ref/ngamsHelpCmdTest_test_NoPars_2_1_ref"
         self.assert_status_ref_file(refStatFile, status)

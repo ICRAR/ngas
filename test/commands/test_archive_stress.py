@@ -75,7 +75,7 @@ def archiveThread(testObj,
             THREAD_STAT[no] = "STOPPED"
             break
         if (inc): incArcfile(filename)
-        statObj = testObj.client.archive(filename)
+        statObj = testObj.archive(filename)
         if (statObj.getMessage() != testStr):
             THREAD_STAT[no] = "FAILURE: Archive Request failed"
     THREAD_STAT[no] = "SUCCESS"
@@ -119,12 +119,9 @@ class ngamsArchiveStressTest(ngamsTestSuite):
         higher quantity of files to test also the stability of handling
         1000s requests over a long period of time.
         """
-        testStr = TST_STR1 % "TinyTestFile.fits"
         self.prepExtSrv()
-        for n in range(20):
-            statObj = self.client.archive("src/TinyTestFile.fits")
-            self.assertEqual(statObj.getMessage(), testStr,
-                            "Archive Request failed")
+        for _ in range(20):
+            self.archive("src/TinyTestFile.fits")
 
 
     def _scheduleTest(self,

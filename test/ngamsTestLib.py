@@ -57,7 +57,7 @@ import astropy.io.fits as pyfits
 import pkg_resources
 import psutil
 
-from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, ngamsStatus, utils
+from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, utils
 from ngamsLib.ngamsCore import getHostName, rmFile, \
     NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
     execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601, getDiskSpaceAvail
@@ -274,19 +274,13 @@ def waitReqCompl(clientObj,
     """
     startTime = time.time()
     while ((time.time() - startTime) < timeOut):
-        res, host, port = clientObj._get("STATUS", pars=[["request_id", str(requestId)]])
-        res = res.read()
-        res = ngamsStatus.ngamsStatus().unpackXmlDoc(res, 1)
-        if res.getStatus() != NGAMS_SUCCESS:
-            raise Exception("unsuccessfull STATUS command in %s:%d with request_id: %s" % (host, port, res.getMessage()))
-        if (res.getCompletionPercent() != None):
-            if (float(res.getCompletionPercent()) >= 99.9):
-                break
+        status = clientObj.status(pars=[["request_id", str(requestId)]])
+        if (status.getCompletionPercent() != None):
+            if (float(status.getCompletionPercent()) >= 99.9):
+                return status
         time.sleep(0.100)
-    if ((time.time() - startTime) > timeOut):
-        errMsg = "Timeout waiting for request: %s (%s/%s) to finish"
-        raise Exception(errMsg % (requestId, host, port))
-    return res
+    errMsg = "Timeout waiting for request: %s to finish"
+    raise Exception(errMsg % (requestId,))
 
 
 _noCleanUp   = int(os.environ.get('NGAS_TESTS_NO_CLEANUP', 0))
@@ -768,14 +762,12 @@ class ngamsTestSuite(unittest.TestCase):
         else:
             self.client = None
 
-    def assertStatus(self, status, expectedStatus='SUCCESS'):
+    def assert_ngas_status(self, method, *args, **kwargs):
+        expectedStatus = kwargs.pop('expectedStatus', 'SUCCESS')
+        status = method(*args, **kwargs)
         self.assertIsNotNone(status)
         self.assertEqual(expectedStatus, status.getStatus())
         return status
-
-    def assert_ngas_status(self, method, *args, **kwargs):
-        expectedStatus = kwargs.pop('expectedStatus', 'SUCCESS')
-        return self.assertStatus(method(*args, **kwargs), expectedStatus=expectedStatus)
 
     def point_to_ngas_root(self, cfg, root_dir=None):
         if not isinstance(cfg, ngamsConfig.ngamsConfig):
@@ -791,13 +783,32 @@ class ngamsTestSuite(unittest.TestCase):
     def get_client(self, port=8888, auth=None, timeout=60.0):
         return ngamsPClient.ngamsPClient(port=port, auth=auth, timeout=timeout)
 
-    def archive(self, *args, **kwargs):
-        '''Archives a file and asserts that the archival was successful.
-        When using against a cluster of servers, the first argument must be
-        the port number of the server that should receive the file.'''
-        if callable(self.client):
-            return self.assert_ngas_status(self.client(args[0]).archive, *args[1:], **kwargs)
-        return self.assert_ngas_status(self.client.archive, *args, **kwargs)
+    def _assert_client_call(self, method, *args, **kwargs):
+        '''Generic assertion on the NGAS status returned by clients'''
+        client = self.client
+        if callable(client):
+            client = client(args[0])
+            args = args[1:]
+
+        # We concede this hack for the simplicity of test writing: relative
+        # paths for archive/qarchive are relative to the test/ package
+        if (method in ('archive', 'qarchive') and
+            not os.path.isabs(args[0]) and
+            not ngamsPClient.is_known_pull_url(args[0])):
+            args = (_to_abs(args[0]),) + args[1:]
+
+        return self.assert_ngas_status(getattr(client, method), *args, **kwargs)
+
+    def __getattr__(self, name):
+        '''Catch-all for client-like calls that assert the returned status'''
+        expected_status = 'SUCCESS'
+        if name.endswith("_fail"):
+            name = name[:-5]
+            expected_status = 'FAILURE'
+        if hasattr(ngamsPClient.ngamsPClient, name):
+            return functools.partial(self._assert_client_call, name,
+                                     expectedStatus=expected_status)
+        raise AttributeError
 
     def prepExtSrv(self,
                    port = 8888,

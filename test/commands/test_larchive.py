@@ -34,4 +34,4 @@ class LarchiveTest(ngamsTestSuite):
 
         # Check that it exists in the database (duplicated) and that it can be retrieved
         self.assertEqual(2, db.query2('SELECT count(*) FROM ngas_files')[0][0])
-        self.assert_ngas_status(self.client.retrieve, 'cp_cp', targetFile=tmp_path())
+        self.retrieve('cp_cp', targetFile=tmp_path())

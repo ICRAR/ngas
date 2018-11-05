@@ -71,4 +71,4 @@ class ngamsInitCmdTest(ngamsTestSuite):
               actually re-loaded.
         """
         self.prepExtSrv()
-        self.assert_ngas_status(self.client.init)
+        self.init()

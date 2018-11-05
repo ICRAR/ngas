@@ -79,10 +79,8 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
-        status = self.client.status()
-        if (status.getMessage().\
-            find("Successfully handled command STATUS") == -1):
-            self.fail("Illegal status returned for STATUS Command")
+        status = self.status()
+        self.assertIn("Successfully handled command STATUS", status.getMessage())
 
 
     def test_StatusCmd_2(self):
@@ -109,12 +107,10 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         ...
         """
         self.prepCluster((8000, 8011))
-        statObj = self.client(8000).\
-                  get_status("STATUS", pars=[["host_id", getNcu11()]])
+        status = self.status(8000, pars=[["host_id", getNcu11()]])
         refMsg = "Successfully handled command STATUS"
-        if ((statObj.getMessage().find(refMsg) == -1) or
-            (statObj.getHostId() != getNcu11())):
-            self.fail("Illegal status returned for STATUS Command")
+        self.assertIn(refMsg, status.getMessage())
+        self.assertEqual(status.getHostId(), getNcu11())
 
 
     def test_StatusCmd_3(self):
@@ -147,15 +143,13 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         self.prepCluster((8000, 8011))
         srcFile = "src/TinyTestFile.fits"
         self.archive(8011, srcFile)
-        statObj = self.client(8011).get_status("STATUS",
+        statObj = self.status(8011,
                              pars=[["file_access", "NCU.2003-11-11T11:11:11.111"],
                                    ["file_version", "1"]])
         refMsg = "NGAMS_INFO_FILE_AVAIL:4029:INFO: File with File ID: " +\
                  "NCU.2003-11-11T11:11:11.111/Version: 1, is available on " +\
                  "NGAS Host with Host ID: %s." % getNcu11()
-        if (statObj.getMessage().find(refMsg) == -1):
-            self.assertEqual(refMsg, statObj.getMessage(), "Illegal status " +\
-                            "returned for STATUS/File Access Command")
+        self.assertIn(refMsg, statObj.getMessage())
 
     def test_filelist(self):
         """Checks that the STATUS command handles the file_list option correctly"""
@@ -165,9 +159,9 @@ class ngamsStatusCmdTest(ngamsTestSuite):
 
         def run_checks():
             fname = genTmpFilename(suffix='.xml.gz')
-            self.assert_ngas_status(self.client.status, output=fname, pars=(('file_list', 1),))
-            self.assert_ngas_status(self.client.status, output=fname, pars=(('file_list', 1), ('from_ingestion_date', start)))
-            self.assert_ngas_status(self.client.status, output=fname, pars=(('file_list', 1), ('from_ingestion_date', start), ('unique', 1)))
+            self.status(output=fname, pars=(('file_list', 1),))
+            self.status(output=fname, pars=(('file_list', 1), ('from_ingestion_date', start)))
+            self.status(output=fname, pars=(('file_list', 1), ('from_ingestion_date', start), ('unique', 1)))
 
         # Checks should be scucessfull with and wihtout files archived
         run_checks()

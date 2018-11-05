@@ -88,17 +88,17 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         self.archive("src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
         diskId = self.ngas_disk_id("FitsStorage1/Main/1")
-        status = self.client.clone(fileId, diskId, 1)
-        waitReqCompl(self.client, status.getRequestId())
+        status = self.clone(fileId, diskId, 1)
+        waitReqCompl(self, status.getRequestId())
 
         # Remove the cloned file (execute=0), should be successfull.
-        status = self.client.remFile(diskId, fileId, 1, 0)
+        status = self.remFile(diskId, fileId, 1, 0)
         refStatFile = "ref/ngamsRemFileCmdTest_test_RemFileCmd_1_1_ref"
         msg = "Incorrect status for REMFILE Command/no execution"
         self.assert_status_ref_file(refStatFile, status, msg=msg, status_dump_args=(0, 1, 1))
 
         # Remove the cloned file (execute=1), should be successfull.
-        status = self.client.remFile(diskId, fileId, 1, 1)
+        status = self.remFile(diskId, fileId, 1, 1)
         refStatFile = "ref/ngamsRemFileCmdTest_test_RemFileCmd_1_2_ref"
         msg = "Incorrect status for REMFILE Command/execution"
         self.assert_status_ref_file(refStatFile, status, msg=msg, status_dump_args=(0, 1, 1))
@@ -142,13 +142,13 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         # Remove the archived file (execute=0), should fail.
         fileId = "TEST.2001-05-08T15:25:00.123"
         diskId = self.ngas_disk_id("FitsStorage1/Main/1")
-        status = self.client.remFile(diskId, fileId, 1, 0)
+        status = self.remFile_fail(diskId, fileId, 1, 0)
         refStatFile = "ref/ngamsRemFileCmdTest_test_RemFileCmd_2_1_ref"
         msg = "Incorrect status for REMFILE Command/no execution"
         self.assert_status_ref_file(refStatFile, status, msg=msg, status_dump_args=(0, 1, 1))
 
         # Remove the cloned file (execute=1), should fail.
-        status = self.client.remFile(diskId, fileId, 1, 1)
+        status = self.remFile_fail(diskId, fileId, 1, 1)
         refStatFile = "ref/ngamsRemFileCmdTest_test_RemFileCmd_2_2_ref"
         msg = "Incorrect status for REMFILE Command/execution"
         self.assert_status_ref_file(refStatFile, status, msg=msg, status_dump_args=(0, 1, 1))
@@ -193,11 +193,11 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         diskId  = self.ngas_disk_id("FitsStorage1/Main/1", port=8011)
         fileId  = "TEST.2001-05-08T15:25:00.123"
         fileVer = 2
-        self.client(8011).clone(fileId, diskId, fileVer)
+        self.clone(8011, fileId, diskId, fileVer)
         for execute in [0, 1]:
             httpPars=[["disk_id", diskId], ["file_id", fileId],
                       ["file_version", fileVer], ["execute", execute]]
-            status = self.client(8000).get_status(NGAMS_REMFILE_CMD, pars=httpPars)
+            status = self.get_status(8000, NGAMS_REMFILE_CMD, pars=httpPars)
             refStatFile = "ref/ngamsRemFileCmdTest_test_ProxyMode_01_01_ref"
             msg = "Incorrect handling of REMFILE Command detected"
             self.assert_status_ref_file(refStatFile, status, msg=msg)
@@ -235,7 +235,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         diskId1 = self.ngas_disk_id("FitsStorage1/Main/1")
         fileId  = "TEST.2001-05-08T15:25:00.123"
         fileVer = 2
-        self.assert_ngas_status(self.client.get_status, NGAMS_CLONE_CMD, pars=[["disk_id", diskId1]])
+        self.get_status(NGAMS_CLONE_CMD, pars=[["disk_id", diskId1]])
 
         diskId2 = self.ngas_disk_id("FitsStorage2/Main/3")
         filePath = self.ngas_path("FitsStorage2-Main-3/saf/" +\
@@ -243,7 +243,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         for execute in [0, 1]:
             httpPars=[["disk_id", diskId2], ["file_id", fileId],
                       ["file_version", fileVer], ["execute", execute]]
-            self.assert_ngas_status(self.client.get_status, NGAMS_REMFILE_CMD, pars=httpPars)
+            self.get_status(NGAMS_REMFILE_CMD, pars=httpPars)
 
             fileInfo = ngamsFileInfo.ngamsFileInfo()
             try:

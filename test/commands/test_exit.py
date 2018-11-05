@@ -31,7 +31,6 @@
 This module contains the Test Suite for the EXIT Command.
 """
 
-from ngamsLib import ngamsCore
 from ..ngamsTestLib import ngamsTestSuite
 
 
@@ -101,8 +100,7 @@ class ngamsExitCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv(autoOnline=1)
         client = self.get_client(timeout=10)
-        stat = client.exit()
-        self.assertStatus(stat, ngamsCore.NGAMS_FAILURE)
+        stat = self.assert_ngas_status(client.exit, expectedStatus='FAILURE')
         self.assertEqual(4015, int(stat.getMessage().split(":")[1])) # NGAMS_ER_IMPROPER_STATE
 
         # The server is still running

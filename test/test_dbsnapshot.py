@@ -274,9 +274,9 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         for _ in range(3):
             self.archive("src/SmallFile.fits")
         diskId = self.ngas_disk_id("FitsStorage1/Main/1")
-        self.client.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
+        self.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
         fileId = "TEST.2001-05-08T15:25:00.123"
-        self.client.get_status(NGAMS_REMFILE_CMD,
+        self.get_status(NGAMS_REMFILE_CMD,
                           pars = [["disk_id", diskId],
                                   ["file_id", fileId],
                                   ["file_version", "2"],
@@ -313,8 +313,8 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         for _ in range(3):
             self.archive("src/SmallFile.fits")
         diskId = self.ngas_disk_id("FitsStorage1/Main/1")
-        self.client.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
-        self.client.get_status(NGAMS_REMDISK_CMD, pars = [["disk_id", diskId], ["execute", "1"]])
+        self.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
+        self.get_status(NGAMS_REMDISK_CMD, pars = [["disk_id", diskId], ["execute", "1"]])
         time.sleep(2)
         _checkContDbSnapshot(self, 4, ["FitsStorage1-Main-1"])
 
@@ -347,7 +347,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         for _ in range(3):
             self.archive("src/SmallFile.fits")
         diskId = self.ngas_disk_id("FitsStorage1/Main/1")
-        self.client.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
+        self.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
         time.sleep(5)
         _checkContDbSnapshot(self, 5, ["FitsStorage2-Main-3"])
 
@@ -381,7 +381,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         checkCreatePath(regTestDir)
         for n in range(3):
             self.cp('src/SmallFile.fits', os.path.join(regTestDir, "%d.fits" % n))
-        self.client.get_status(NGAMS_REGISTER_CMD, pars = [["path", regTestDir]])
+        self.get_status(NGAMS_REGISTER_CMD, pars = [["path", regTestDir]])
         _checkContDbSnapshot(self, 6, ["FitsStorage1-Main-1"], 1, 1)
 
 
@@ -417,13 +417,9 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         for _ in range(3):
             self.archive("src/SmallFile.fits")
 
-        # Bring server Offline.
-        self.client.offline()
-
-        # Remove the file entries from the DB.
+        # Remove the file entries from the DB while offline
+        self.offline()
         dbObj.query2("DELETE FROM ngas_files")
-
-        # Bring server Online.
-        self.client.online()
+        self.online()
 
         # TODO: Check that the file entries are now in the DB.

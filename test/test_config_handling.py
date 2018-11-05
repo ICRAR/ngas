@@ -253,7 +253,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName, clearDb=0)
 
         # Archive a file, should be rejected.
-        status = self.archive("src/SmallFile.fits", expectedStatus='FAILURE')
+        status = self.archive_fail("src/SmallFile.fits")
         self.assertIn('This NG/AMS is not configured for accepting Archive Requests',
                       status.getMessage())
 

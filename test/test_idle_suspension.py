@@ -198,10 +198,10 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
 
         # 1. Send STATUS Command to sub-node using master as proxy.
-        self.assert_ngas_status(self.client(8000).status, pars=[["host_id", subNode1]])
+        self.status(8000, pars=[["host_id", subNode1]])
 
         # 2. Double-check that sub-node is no longer suspended.
-        self.assert_ngas_status(self.client(8001).status)
+        self.status(8001)
 
         # Clean up.
         self.markNodesAsUnsusp(dbConObj, susp_nodes)
@@ -248,7 +248,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
 
         # Retrieve information about the file on the suspended sub-node.
         fileId = "TEST.2001-05-08T15:25:00.123"
-        statObj = self.client(8000).status(pars=[["file_access", fileId]])
+        statObj = self.status(8000, pars=[["file_access", fileId]])
         refStatFile = "ref/ngamsIdleSuspensionTest_test_WakeUpStatus_2_1_ref"
         msg = "Unexpected reply to STATUS?file_access request"
         self.assert_status_ref_file(refStatFile, statObj, msg=msg)
@@ -299,8 +299,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
             tmpRetFile = genTmpFilename("original_")
             unzippedRetFile = genTmpFilename("unzip_")
 
-            self.assert_ngas_status(self.client(8000).retrieve,
-                                    fileId, fileVersion=version, targetFile=tmpRetFile)
+            self.retrieve(8000, fileId, fileVersion=version, targetFile=tmpRetFile)
             unzip(tmpRetFile, unzippedRetFile)
             self.checkFilesEq("src/SmallFile.fits", unzippedRetFile, "File retrieved incorrect")
 
@@ -500,7 +499,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         file_id = "TEST.2001-05-08T15:25:00.123"
         cmdPars = [["file_id", file_id],
                    ["file_version", "1"]]
-        statObj = self.client(8000).get_status(NGAMS_CHECKFILE_CMD, pars=cmdPars)
+        statObj = self.get_status(8000, NGAMS_CHECKFILE_CMD, pars=cmdPars)
         refStatFile="ref/ngamsIdleSuspensionTest_test_WakeUpCheckfile_1_1_ref"
         msg = "CHECKFILE Command not executed on sub-node as expected"
         self.assert_status_ref_file(refStatFile, statObj, msg=msg, cfg=subnode1_cfg)
@@ -513,7 +512,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         # Check that expected log entries found in the Master Node Log File.
         refStatFile="ref/ngamsIdleSuspensionTest_test_WakeUpCheckfile_1_2_ref"
         testTags = [loadFile(refStatFile) % (subNode1,)]
-        self.client(8000).status()
+        self.status(8000)
         masterLogBuf = loadFile(masterNodeLog)
         self.checkTags(masterLogBuf, testTags, showBuf=0)
         # Check that expected log entries found in the Sub-Node Log File.
@@ -601,7 +600,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         testTags = [tagFormat % (subNode1,)]
         self.checkTags(loadFile(masterNodeLog), testTags, showBuf=0)
         # Check log output in Sub-Node Log File.
-        self.client(8001).status()  # Flush log cache.
+        self.status(8001)  # Flush log cache.
         time.sleep(2) # and wait a bit
         testTags = ["NGAS Node: %s woken up after" % subNode1]
         self.checkTags(loadFile(subNode1Log), testTags, showBuf=0)

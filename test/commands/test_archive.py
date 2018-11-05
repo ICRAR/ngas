@@ -44,9 +44,8 @@ from multiprocessing.pool import ThreadPool
 from six.moves import cPickle # @UnresolvedImport
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
-    NGAMS_SUCCESS, getDiskSpaceAvail, mvFile, NGAMS_FAILURE
-from ngamsLib import ngamsLib, ngamsStatus, ngamsFileInfo,\
-    ngamsCore, ngamsHttpUtils
+    NGAMS_SUCCESS, getDiskSpaceAvail, mvFile
+from ngamsLib import ngamsLib, ngamsStatus, ngamsFileInfo, ngamsHttpUtils
 from ..ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     pollForFile, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
     genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp, \
@@ -370,7 +369,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                    ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:05:00"],
                    ['NgamsCfg.Server[1].RequestDbBackend', 'memory']]
         self.prepExtSrv(cfgProps=cfgPars)
-        statObj = self.client.archive("src/SmallFile.fits")
+        statObj = self.archive_fail("src/SmallFile.fits")
         refFile = "ref/test_BackLogBuf_01_01_ref"
         msg = "Unexpected reply from server"
         self.assert_status_ref_file(refFile, statObj, msg=msg)
@@ -448,7 +447,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                    ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:05:00"],
                    ["NgamsCfg.ArchiveHandling[1].BackLogBuffering", "0"]]
         self.prepExtSrv(cfgProps=cfgPars)
-        statObj = self.client.archive("src/SmallFile.fits")
+        statObj = self.archive_fail("src/SmallFile.fits")
         refFile = "ref/test_NoBackLogBuf_01_01_ref"
         self.assert_status_ref_file(refFile, statObj, msg="Unexpected reply from server")
         pollForFile(self.ngas_path("FitsStorage*-Main-*/staging/*"), 0)
@@ -515,7 +514,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         self.archive(8011, "src/SmallFile.fits")
         fileUri = "http://127.0.0.1:8011/RETRIEVE?file_id=" +\
                   "TEST.2001-05-08T15:25:00.123&file_version=1"
-        status = self.client(8000).get_status(NGAMS_ARCHIVE_CMD,
+        status = self.get_status(8000, NGAMS_ARCHIVE_CMD,
                                  [["filename", fileUri],
                                   ["mime_type", "application/x-gfits"]])
         refStatFile = "ref/ngamsArchiveCmdTest_test_ArchivePullReq_2_1_ref"
@@ -578,7 +577,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Illegal size of FITS file (not a multiple of 2880).
         illSizeFile = save_to_tmp("dsjhdjsadhaskjdhaskljdhaskjhd", suffix='.fits')
-        statObj = self.client.archive(illSizeFile)
+        statObj = self.archive_fail(illSizeFile)
         self.checkTags(statObj.getMessage(), ["NGAMS_ER_DAPI_BAD_FILE",
                                               "not a multiple of 2880 " +\
                                               "(size: 29)"])
@@ -590,7 +589,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             noChecksumFile = tmp_path("NoChecksum.fits")
             self.cp("src/SmallFile.fits", noChecksumFile)
             remFitsKey(noChecksumFile, "CHECKSUM")
-            statObj = self.client.archive(noChecksumFile)
+            statObj = self.archive_fail(noChecksumFile)
             self.checkTags(statObj.getMessage(), ["NGAMS_ER_DAPI_BAD_FILE",
                                                   "Illegal CHECKSUM/DATASUM"])
             pollForFile(stgAreaPat, 0)
@@ -600,7 +599,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             illChecksumFile = tmp_path("IllChecksum.fits")
             self.cp("src/SmallFile.fits", illChecksumFile)
             writeFitsKey(illChecksumFile, "CHECKSUM", "BAD-CHECKSUM!", "TEST")
-            statObj = self.client.archive(illChecksumFile)
+            statObj = self.archive_fail(illChecksumFile)
             self.checkTags(statObj.getMessage(), ["NGAMS_ER_DAPI_BAD_FILE",
                                                   "Illegal CHECKSUM/DATASU"])
             pollForFile(stgAreaPat, 0)
@@ -609,7 +608,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Unknown mime-type.
         unknownMtFile = tmp_path("UnknownMimeType.stif")
         self.cp("src/SmallFile.fits", unknownMtFile)
-        statObj = self.client.archive(unknownMtFile)
+        statObj = self.archive_fail(unknownMtFile)
         refStatFile = "ref/ngamsArchiveCmdTest_test_ErrHandling_1_4_ref"
         msg = "Incorrect status returned for Archive Push Request/Unknown Mimetype"
         self.assert_status_ref_file(refStatFile, statObj, msg=msg)
@@ -618,7 +617,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Illegal File URI at Archive Pull.
         illFileUri = "http://unknown.domain.com/NonExistingFile.fits"
-        status = self.client.get_status(NGAMS_ARCHIVE_CMD, [["file_uri", illFileUri]])
+        status = self.get_status_fail(NGAMS_ARCHIVE_CMD, [["file_uri", illFileUri]])
         refStatFile = "ref/ngamsArchiveCmdTest_test_ErrHandling_1_5_ref"
         msg = "Incorrect status returned for Archive Pull Request/Illegal URI"
         self.assert_status_ref_file(refStatFile, status, msg=msg)
@@ -674,11 +673,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             return
 
         # We should fail now
-        statObj = self.client.archive("src/SmallFile.fits")
+        status = self.archive_fail("src/SmallFile.fits")
         subprocess.call(['chmod', '-R', 'a+rwx', repDiskPath], shell=False)
-        self.assertEqual(ngamsCore.NGAMS_FAILURE, statObj.getStatus())
         msg = "Incorrect status returned for Archive Push Request/Replication Disk read-only"
-        self.assertEqual(3025, int(statObj.getMessage().split(":")[1]), msg) # NGAMS_AL_CP_FILE:3025
+        self.assertEqual(3025, int(status.getMessage().split(":")[1]), msg) # NGAMS_AL_CP_FILE:3025
 
 
     def test_ErrHandling_3(self):
@@ -709,7 +707,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         host_id = getHostName() + ":8888"
         sqlQuery = "UPDATE ngas_disks SET completed=1 WHERE host_id={0}"
         dbObj.query2(sqlQuery, args=(host_id,))
-        statObj = self.client.archive("src/SmallFile.fits")
+        statObj = self.archive_fail("src/SmallFile.fits")
         sqlQuery = "UPDATE ngas_disks SET completed=0 WHERE host_id={0}"
         dbObj.query2(sqlQuery, args=(host_id,))
         refStatFile = "ref/ngamsArchiveCmdTest_test_ErrHandling_3_1_ref"
@@ -885,7 +883,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Phase 3: Bring server Offline + 'replace' disks in Slot 1/3 +
         #          continue to archive until disk/Slot 5 fills up.
         #####################################################################
-        self.client.offline()
+        self.offline()
         self.prepDiskCfg([{"DiskLabel":      None,
                            "MainDiskSlotId": "1",
                            "RepDiskSlotId":  None,
@@ -904,12 +902,12 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                            "_SIZE_MAIN_":    "16MB",
                            "_SIZE_REP_":     None}],
                          cfgFile = tmpCfgFile)
-        self.client.online()
+        self.online()
 
         for n in range(8):
             self.archive(fitsFile[0:-3])  # #4
         # Re-init the server to ensure the NgasDiskInfo file has been updated.
-        self.client.init()
+        self.init()
 
         # Check: That disk/Slot 5 is marked as completed.
         # Check: That disk/Slot 6 is not marked as completed.
@@ -937,7 +935,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.archive(fitsFile[0:-3])  # #5
 
         # Re-init the server to ensure the NgasDiskInfo file has been updated.
-        self.client.init()
+        self.init()
 
         # Check: That disk/Slot 1 is not marked as completed.
         # Check: That disk/Slot 2 is marked as completed.
@@ -1033,7 +1031,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv(srvModule="test.support.ngamsSrvTestKillBeforeArchCleanUp")
         try:
-            self.client.archive("src/SmallFile.fits")
+            self.archive("src/SmallFile.fits")
         except:
             pass
         reqPropStgFile = self.ngas_path("FitsStorage1-Main-1/staging/" +\
@@ -1073,7 +1071,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         cfgPars = [["NgamsCfg.Streams[1].Stream[2].PlugIn", "NonExistingDapi"]]
         self.prepExtSrv(cfgProps=cfgPars)
-        stat = self.client.archive("src/SmallFile.fits")
+        stat = self.archive_fail("src/SmallFile.fits")
         refStatFile = "ref/test_NoDapi_01_01_ref"
         msg = "Incorrect status message from NG/AMS Server"
         self.assert_status_ref_file(refStatFile, stat, msg=msg)
@@ -1256,7 +1254,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Set all Disks in unit <Host>:8002 to completed.
         dbObj.query2("UPDATE ngas_disks SET completed=1 WHERE host_id={0}", args=("%s:8002" % getHostName(),))
         # Set <Host>:8004 to Offline.
-        stat = self.client(8004).offline()
+        stat = self.offline(8004)
 
         counts = {8001: 0, 8003: 0}
         noOfNodes = len(counts)
@@ -1311,14 +1309,14 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ngasRootDir = tmp_path('NGAS')
         rmFile(ngasRootDir)
         checkCreatePath(ngasRootDir)
-        subprocess.check_call(['tar', 'zxf', 'src/volumes_dir.tar.gz'])
+        subprocess.check_call(['tar', 'zxf', self.get_resource_fname('src/volumes_dir.tar.gz')])
         mvFile('volumes', ngasRootDir)
 
         # Create configuration, start server.
         self.prepExtSrv(delDirs=0, cfgFile="src/ngamsCfg_VolumeDirectory.xml")
 
         # Archive a file.
-        stat = self.client.archive("src/SmallFile.fits")
+        stat = self.archive("src/SmallFile.fits")
         refStatFile = "ref/ngamsArchiveCmdTest_test_VolumeDir_01_01_ref"
         msg = "Incorrect status message from NG/AMS Server"
         self.assert_status_ref_file(refStatFile, stat, msg=msg)
@@ -1342,19 +1340,12 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             As above
         """
 
-        # Test ARCHIVE
         self.prepExtSrv(cfgFile = 'src/ngamsCfg.xml')
-
         zerofile = tmp_path('zerofile.fits')
         open(zerofile, 'a').close()
-        status = self.client.archive(zerofile, 'application/octet-stream', cmd = 'ARCHIVE')
-        self.assertEqual(status.getStatus(), 'FAILURE', None)
-        self.assertEqual('Content-Length is 0' in status.getMessage(), True)
-
-        # Test QARCHIVE
-        status = self.client.archive(zerofile, 'application/octet-stream', cmd = 'QARCHIVE')
-        self.assertEqual(status.getStatus(), 'FAILURE', None)
-        self.assertEqual('Content-Length is 0' in status.getMessage(), True)
+        for method in ('archive_fail', 'qarchive_fail'):
+            status = getattr(self, method)(zerofile, 'application/octet-stream')
+            self.assertIn('Content-Length is 0', status.getMessage())
 
 
     def test_QArchive(self):
@@ -1406,17 +1397,11 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # The server fails quickly due to an unknown exception, so no content
         # is actually read by the server other than the headers
+        client = self.get_client(timeout=2)
         test_file = 'dummy_name.unknown_ext'
-        params = {'filename': test_file}
-
-        status, _, _, data = ngamsHttpUtils.httpPost('localhost', 8888, 'ARCHIVE',
-                                               generated_file((2**32)+12),
-                                               mimeType='ngas/archive-request',
-                                               pars=params, timeout=120)
-
-        self.assertNotEqual(status, 200)
-        status = ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
-        self.assertStatus(status, expectedStatus=NGAMS_FAILURE)
+        self.assert_ngas_status(client.archive_data, generated_file(2**32 + 12),
+                                test_file, mimeType='ngas/archive-request',
+                                expectedStatus='FAILURE')
 
 
     @unittest.skipIf(not _space_available_for_big_file_test,
@@ -1426,19 +1411,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         self.prepExtSrv()
 
-        test_file = 'dummy_name.fits'
-        params = {'filename': test_file,
-                  'mime_type': 'application/octet-stream'}
-
         # For a quicker test
+        pars = []
         if _crc32c_available:
-            params['crc_variant'] = 'crc32c'
+            pars.append(('crc_variant', 'crc32c'))
+        self.archive_data(generated_file(2**32 + 12), 'dummy_name.fits', pars=pars,
+                          mimeType='application/octet-stream', cmd='QARCHIVE')
 
-        status,_,_,_ = ngamsHttpUtils.httpPost('localhost', 8888, 'QARCHIVE',
-                                               generated_file((2**32)+12),
-                                               mimeType='application/octet-stream',
-                                               pars=params, timeout=120)
-        self.assertEqual(status, 200)
 
     def test_filename_with_colons(self):
 
@@ -1500,7 +1479,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # In the case we asked for no checksum (file_version==5)
         # we check that the checksum is now calculated
         for version in range(1, 7):
-            stat = self.assert_ngas_status(self.client.get_status, 'CHECKFILE', pars=[("file_id", file_id), ("file_version", version)])
+            stat = self.get_status('CHECKFILE', pars=[("file_id", file_id), ("file_version", version)])
             if version == 5:
                 self.assertIn('NGAMS_ER_FILE_NOK', stat.getMessage())
             else:
@@ -1529,8 +1508,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             for crc32_variant in (1, 0):
                 params = [('crc_variant', crc32_variant)]
                 def submit_file(_):
-                    return self.archive(file_uri, mimeType='application/octet-stream',
-                                        pars=params, cmd='QARCHIVE')
+                    return self.qarchive(file_uri, mimeType='application/octet-stream',
+                                        pars=params)
 
                 for stat in tp.map(submit_file, range(n_clients)):
                     self.assertEqual(NGAMS_SUCCESS, stat.getStatus())
@@ -1558,13 +1537,12 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             elif versioning_param == 'versioning':
                 pars.append(('versioning', 0))
 
-            self.assert_ngas_status(self.client.archive_data, data, 'file1.txt',
-                                    'application/octet-stream', cmd=cmd, pars=pars,
-                                    expectedStatus=expected_status)
+            self.archive_data(data, 'file1.txt', 'application/octet-stream',
+                              cmd=cmd, pars=pars, expectedStatus=expected_status)
 
         def assert_retrieve(data, version=None):
             version = -1 if version is None else version
-            self.assert_ngas_status(self.client.retrieve, 'file1.txt', fileVersion=version, targetFile=tmp_path())
+            self.retrieve('file1.txt', fileVersion=version, targetFile=tmp_path())
             with open(tmp_path('file1.txt'), 'rb') as f:
                 self.assertEqual(data, f.read())
 

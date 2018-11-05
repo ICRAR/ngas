@@ -74,7 +74,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         self.archive("src/SmallFile.fits")
         diskId = self.ngas_disk_id("FitsStorage1/Main/1")
         fileId = "TEST.2001-05-08T15:25:00.123"
-        statObj = self.client.get_status(NGAMS_CHECKFILE_CMD,
+        statObj = self.get_status(NGAMS_CHECKFILE_CMD,
                                           pars = [["disk_id", diskId],
                                                   ["file_id", fileId],
                                                   ["file_version", "1"]])
@@ -134,7 +134,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
                          "100",
                          "ref/ngamsCheckFileCmdTest_test_ErrHandling_1_3_ref"]]
         for testData in testDataList:
-            statObj = self.client.get_status(NGAMS_CHECKFILE_CMD,
+            statObj = self.get_status_fail(NGAMS_CHECKFILE_CMD,
                                        pars = [["disk_id", testData[1]],
                                                ["file_id", testData[2]],
                                                ["file_version", testData[3]]])
@@ -185,7 +185,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         httpPars=[["disk_id", diskId], ["file_id", fileId],
                   ["file_version", fileVer]]
 
-        status = self.client(8000).get_status(NGAMS_CHECKFILE_CMD, pars=httpPars)
+        status = self.get_status(8000, NGAMS_CHECKFILE_CMD, pars=httpPars)
         refStatFile = "ref/ngamsCheckFileCmdTest_test_ProxyMode_01_01_ref"
         msg = "Incorrect handling of CHECKFILE Command detected"
         self.assert_status_ref_file(refStatFile, status, msg=msg, port=8011)
