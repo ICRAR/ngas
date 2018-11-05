@@ -828,6 +828,14 @@ class ngamsTestSuite(unittest.TestCase):
     def get_client(self, port=8888, auth=None, timeout=60.0):
         return ngamsPClient.ngamsPClient(port=port, auth=auth, timeout=timeout)
 
+    def archive(self, *args, **kwargs):
+        '''Archives a file and asserts that the archival was successful.
+        When using against a cluster of servers, the first argument must be
+        the port number of the server that should receive the file.'''
+        if callable(self.client):
+            return self.assert_ngas_status(self.client(args[0]).archive, *args[1:], **kwargs)
+        return self.assert_ngas_status(self.client.archive, *args, **kwargs)
+
     def prepExtSrv(self,
                    port = 8888,
                    delDirs = 1,
