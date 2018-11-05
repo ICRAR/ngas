@@ -803,10 +803,11 @@ class ngamsTestSuite(unittest.TestCase):
     def assertStatus(self, status, expectedStatus='SUCCESS'):
         self.assertIsNotNone(status)
         self.assertEqual(expectedStatus, status.getStatus())
+        return status
 
     def assert_ngas_status(self, method, *args, **kwargs):
         expectedStatus = kwargs.pop('expectedStatus', 'SUCCESS')
-        self.assertStatus(method(*args, **kwargs), expectedStatus=expectedStatus)
+        return self.assertStatus(method(*args, **kwargs), expectedStatus=expectedStatus)
 
     def assertArchive(self, fname, mimeType=None, port=8888, timeout=5, pars=[], cmd='ARCHIVE'):
         stat = sendPclCmd(port, timeOut=timeout).archive(fname, mimeType=mimeType, pars=pars, cmd=cmd)
