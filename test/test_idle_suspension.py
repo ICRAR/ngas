@@ -38,7 +38,7 @@ import time
 from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_CHECKFILE_CMD, rmFile
-from .ngamsTestLib import ngamsTestSuite, sendPclCmd, loadFile, genTmpFilename, unzip, tmp_path
+from .ngamsTestLib import ngamsTestSuite, loadFile, genTmpFilename, unzip, tmp_path
 
 
 SUSP_EL = "NgamsCfg.HostSuspension[1]"
@@ -198,10 +198,10 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
 
         # 1. Send STATUS Command to sub-node using master as proxy.
-        self.assert_ngas_status(sendPclCmd(port=8000).status, pars=[["host_id", subNode1]])
+        self.assert_ngas_status(self.client(8000).status, pars=[["host_id", subNode1]])
 
         # 2. Double-check that sub-node is no longer suspended.
-        self.assert_ngas_status(sendPclCmd(port=8001).status)
+        self.assert_ngas_status(self.client(8001).status)
 
         # Clean up.
         self.markNodesAsUnsusp(dbConObj, susp_nodes)
@@ -241,14 +241,14 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
 
         # Archive some files on the two nodes and wait till sub-node
         # has suspended itself.
-        sendPclCmd(port=8000).archive("src/TinyTestFile.fits")
-        sendPclCmd(port=8000).archive("src/SmallFile.fits")
-        sendPclCmd(port=8001).archive("src/SmallFile.fits")
+        self.archive(8000, "src/TinyTestFile.fits")
+        self.archive(8000, "src/SmallFile.fits")
+        self.archive(8001, "src/SmallFile.fits")
         self.waitTillSuspended(dbConObj, subNode1, 20, susp_nodes)
 
         # Retrieve information about the file on the suspended sub-node.
         fileId = "TEST.2001-05-08T15:25:00.123"
-        statObj = sendPclCmd(port=8000).status(pars=[["file_access", fileId]])
+        statObj = self.client(8000).status(pars=[["file_access", fileId]])
         refStatFile = "ref/ngamsIdleSuspensionTest_test_WakeUpStatus_2_1_ref"
         msg = "Unexpected reply to STATUS?file_access request"
         self.assert_status_ref_file(refStatFile, statObj, msg=msg)
@@ -288,7 +288,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         subNode1 = susp_nodes[0]
         dbConObj = prepSimCluster(self)[masterNode][1]
         for n in range(3):
-            sendPclCmd(port=8001).archive("src/SmallFile.fits")
+            self.archive(8001, "src/SmallFile.fits")
         # Retrieve the file as file_id, file_id/file_version.
         testParsList = [["TEST.2001-05-08T15:25:00.123", -1],
                         ["TEST.2001-05-08T15:25:00.123", 2]]
@@ -299,7 +299,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
             tmpRetFile = genTmpFilename("original_")
             unzippedRetFile = genTmpFilename("unzip_")
 
-            self.assert_ngas_status(sendPclCmd(port=8000).retrieve,
+            self.assert_ngas_status(self.client(8000).retrieve,
                                     fileId, fileVersion=version, targetFile=tmpRetFile)
             unzip(tmpRetFile, unzippedRetFile)
             self.checkFilesEq("src/SmallFile.fits", unzippedRetFile, "File retrieved incorrect")
@@ -490,17 +490,17 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         cluster_info = prepSimCluster(self)
         dbConObj = cluster_info[masterNode][1]
         subnode1_cfg = cluster_info[subNode1][0]
-        sendPclCmd(port=8001).archive("src/TinyTestFile.fits")
-        sendPclCmd(port=8001).archive("src/SmallFile.fits")
-        sendPclCmd(port=8000).archive("src/TinyTestFile.fits")
-        sendPclCmd(port=8000).archive("src/SmallFile.fits")
+        self.archive(8001, "src/TinyTestFile.fits")
+        self.archive(8001, "src/SmallFile.fits")
+        self.archive(8000, "src/TinyTestFile.fits")
+        self.archive(8000, "src/SmallFile.fits")
         self.waitTillSuspended(dbConObj, subNode1, 10, susp_nodes)
 
         # Execute CHECKFILE Command on a file on the suspended sub-node.
         file_id = "TEST.2001-05-08T15:25:00.123"
         cmdPars = [["file_id", file_id],
                    ["file_version", "1"]]
-        statObj = sendPclCmd(port=8000).get_status(NGAMS_CHECKFILE_CMD, pars=cmdPars)
+        statObj = self.client(8000).get_status(NGAMS_CHECKFILE_CMD, pars=cmdPars)
         refStatFile="ref/ngamsIdleSuspensionTest_test_WakeUpCheckfile_1_1_ref"
         msg = "CHECKFILE Command not executed on sub-node as expected"
         self.assert_status_ref_file(refStatFile, statObj, msg=msg, cfg=subnode1_cfg)
@@ -513,7 +513,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         # Check that expected log entries found in the Master Node Log File.
         refStatFile="ref/ngamsIdleSuspensionTest_test_WakeUpCheckfile_1_2_ref"
         testTags = [loadFile(refStatFile) % (subNode1,)]
-        sendPclCmd(port=8000).status()
+        self.client(8000).status()
         masterLogBuf = loadFile(masterNodeLog)
         self.checkTags(masterLogBuf, testTags, showBuf=0)
         # Check that expected log entries found in the Sub-Node Log File.
@@ -574,11 +574,10 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         cfgParDic = {8001: (("NgamsCfg.DataCheckThread[1].Active", "1"),
                             ("NgamsCfg.DataCheckThread[1].MinCycle", "00T00:00:%d" % datacheck_period))}
         dbConObj = prepSimCluster(self, cfgParDic=cfgParDic)[masterNode][1]
-        cli8001 = sendPclCmd(port=8001)
 
         # Archive two files into subnode 8001 and wait for it to go to suspended state
-        self.assert_ngas_status(cli8001.archive, "src/TinyTestFile.fits")
-        self.assert_ngas_status(cli8001.archive, "src/SmallFile.fits")
+        self.archive(8001, "src/TinyTestFile.fits")
+        self.archive(8001, "src/SmallFile.fits")
         self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
 
         # Get timestamp for the log indicating that the node suspended itself.
@@ -602,7 +601,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         testTags = [tagFormat % (subNode1,)]
         self.checkTags(loadFile(masterNodeLog), testTags, showBuf=0)
         # Check log output in Sub-Node Log File.
-        sendPclCmd(port=8001).status()  # Flush log cache.
+        self.client(8001).status()  # Flush log cache.
         time.sleep(2) # and wait a bit
         testTags = ["NGAS Node: %s woken up after" % subNode1]
         self.checkTags(loadFile(subNode1Log), testTags, showBuf=0)

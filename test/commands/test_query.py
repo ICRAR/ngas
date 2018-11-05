@@ -19,46 +19,42 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-from ..ngamsTestLib import sendPclCmd, ngamsTestSuite
+from ..ngamsTestLib import ngamsTestSuite
 
 
 class ngamsQueryCmdTest(ngamsTestSuite):
 
+    def assert_query(self, pars=(), expectedStatus='SUCCESS'):
+        return self.assert_ngas_status(self.client.get_status, "QUERY", pars=pars,
+                                       expectedStatus=expectedStatus)
+
     def test_invalid_requests(self):
 
         self.prepExtSrv()
-        client = sendPclCmd()
 
         # No query
-        self.assertStatus(client.get_status('QUERY'), 'FAILURE')
+        self.assert_query(expectedStatus='FAILURE')
 
         # Invalid queries
-        self.assertStatus(client.get_status('QUERY', pars=(('query', 'file_list'),)), 'FAILURE')
-        self.assertStatus(client.get_status('QUERY', pars=(('query', 'file_listss'),)), 'FAILURE')
-        self.assertStatus(client.get_status('QUERY', pars=(('query', ''),)), 'FAILURE')
+        self.assert_query(pars=(('query', 'file_list'),), expectedStatus='FAILURE')
+        self.assert_query(pars=(('query', 'file_listss'),), expectedStatus='FAILURE')
+        self.assert_query(pars=(('query', ''),), expectedStatus='FAILURE')
 
     def test_files_list(self):
 
         self.prepExtSrv()
-        client = sendPclCmd()
 
         # No files archived, there was an error on the previous implementation
-        stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
-        self.assertStatus(stat)
+        self.assert_query(pars=[['query', 'files_list'], ['format', 'list']])
 
         # One file archived, let's see what happens now
-        stat = client.archive("src/SmallFile.fits")
-        self.assertStatus(stat)
-        stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
-        self.assertStatus(stat)
+        self.archive("src/SmallFile.fits")
+        self.assert_query(pars=[['query', 'files_list'], ['format', 'list']])
 
         # Make sure that the other formats work as well
-        stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'text']])
-        self.assertStatus(stat)
-        stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'json']])
-        self.assertStatus(stat)
-        stat = client.get_status("QUERY", pars = [['query', 'files_list']])
-        self.assertStatus(stat)
+        self.assert_query(pars=[['query', 'files_list'], ['format', 'text']])
+        self.assert_query(pars=[['query', 'files_list'], ['format', 'json']])
+        stat = self.assert_query(pars=[['query', 'files_list']])
 
         # Check that the archived file is listed
         data = stat.getData()
@@ -66,6 +62,5 @@ class ngamsQueryCmdTest(ngamsTestSuite):
 
         # Try again getting with format=list. There was a bug previously with
         # python 3 that prevents results from showing up
-        stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
-        self.assertStatus(stat)
+        stat = self.assert_query(pars=[['query', 'files_list'], ['format', 'list']])
         self.assertTrue(b"TEST.2001-05-08T15:25:00.123" in stat.getData())

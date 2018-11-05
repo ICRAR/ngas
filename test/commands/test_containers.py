@@ -26,7 +26,7 @@ import string
 
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE, toiso8601, cpFile
 from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
-from ..ngamsTestLib import sendPclCmd, ngamsTestSuite, tmp_path
+from ..ngamsTestLib import ngamsTestSuite, tmp_path
 
 
 class ngamsContainerTest(ngamsTestSuite):
@@ -78,7 +78,7 @@ class ngamsContainerTest(ngamsTestSuite):
 
         # Server and client
         self.prepExtSrv()
-        client = sendPclCmd()
+        client = self.client
 
         #------------------------------------------------------------------
         # We start testing with a single container creation/deletion,
@@ -87,8 +87,7 @@ class ngamsContainerTest(ngamsTestSuite):
         containerName = "testing"
 
         # Create a container, shouldn't be a problem
-        status = client.ccreate(containerName)
-        self.assertStatus(status)
+        status = self.assert_ngas_status(client.ccreate, containerName)
         self.assertEqual(1, len(status.getContainerList()))
         self.assertEqual(containerName, status.getContainerList()[0].getContainerName())
 
@@ -100,8 +99,7 @@ class ngamsContainerTest(ngamsTestSuite):
         #------------------------------------------------------------------
 
         # Create a simple container first
-        status = client.ccreate(containerName)
-        self.assertStatus(status)
+        status = self.assert_ngas_status(client.ccreate, containerName)
         self.assertEqual(1, len(status.getContainerList()))
         self.assertEqual(containerName, status.getContainerList()[0].getContainerName())
 
@@ -146,7 +144,7 @@ class ngamsContainerTest(ngamsTestSuite):
 
         # Server and client
         self.prepExtSrv()
-        client = sendPclCmd()
+        client = self.client
 
         # Create a container, shouldn't be a problem
         containerName = "testing"
@@ -262,8 +260,7 @@ class ngamsContainerTest(ngamsTestSuite):
 
 
     def _checkFilesAndContainerSize(self, client, containerName, nFiles, filesSizeInDisk, fileVersion=1):
-        status = client.clist(containerName)
-        self.assertStatus(status)
+        status = self.assert_ngas_status(client.clist, containerName)
         self.assertEqual(1, len(status.getContainerList()))
         container = status.getContainerList()[0]
         self.assertEqual(containerName, container.getContainerName())
@@ -295,8 +292,7 @@ class ngamsContainerTest(ngamsTestSuite):
         self.assertEqual(filesSizeInDisk, totalContSize)
 
     def _checkContainerClosed(self, client, containerName, isClosed):
-        status = client.clist(containerName)
-        self.assertStatus(status)
+        status = self.assert_ngas_status(client.clist, containerName)
         self.assertEqual(1, len(status.getContainerList()))
         container = status.getContainerList()[0]
         self.assertEqual(containerName, container.getContainerName())
@@ -308,7 +304,7 @@ class ngamsContainerTest(ngamsTestSuite):
 
         # Server and client
         self.prepExtSrv()
-        client = sendPclCmd()
+        client = self.client
         containerName = "toplevel"
 
         # Archive the top-level directory
@@ -328,7 +324,7 @@ class ngamsContainerTest(ngamsTestSuite):
     def _test_archive_retrieve_in_cluster(self, as_tar):
 
         self.prepCluster((8888, 8889))
-        client0, client1 = [sendPclCmd(p) for p in (8888, 8889)]
+        client0, client1 = [self.client(p) for p in (8888, 8889)]
         container_name = 'toplevel'
         tgt_root = tmp_path(container_name)
 

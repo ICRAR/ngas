@@ -32,7 +32,7 @@ This module contains the Test Suite for the EXIT Command.
 """
 
 from ngamsLib import ngamsCore
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite
 
 
 class ngamsExitCmdTest(ngamsTestSuite):
@@ -72,7 +72,7 @@ class ngamsExitCmdTest(ngamsTestSuite):
         TODO!: Test that the server is no longer running.
         """
         self.prepExtSrv(autoOnline=0)
-        client = sendPclCmd(timeOut=10)
+        client = self.get_client(timeout=10)
         self.assert_ngas_status(client.exit)
         # TODO: Check that NG/AMS Server has terminated
 
@@ -100,7 +100,7 @@ class ngamsExitCmdTest(ngamsTestSuite):
         TODO!: Check that the server is still running after the EXIT Command.
         """
         self.prepExtSrv(autoOnline=1)
-        client = sendPclCmd(timeOut=10)
+        client = self.get_client(timeout=10)
         stat = client.exit()
         self.assertStatus(stat, ngamsCore.NGAMS_FAILURE)
         self.assertEqual(4015, int(stat.getMessage().split(":")[1])) # NGAMS_ER_IMPROPER_STATE

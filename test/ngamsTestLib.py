@@ -959,7 +959,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         # We have to wait until the server is serving.
         server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory(), tmpCfg, daemon)
-        pCl = sendPclCmd(port=port, timeOut=5)
+        client = self.get_client(port=port, timeout=5)
 
         def give_up():
             try:
@@ -991,7 +991,7 @@ class ngamsTestSuite(unittest.TestCase):
 
             # "ping" the server and check that the status is what we expect
             try:
-                stat = pCl.status()
+                stat = client.status()
                 state = "ONLINE" if autoOnline else "OFFLINE"
                 logger.debug("Test server running - State: %s", state)
                 if stat.getState() == state:
@@ -1078,11 +1078,11 @@ class ngamsTestSuite(unittest.TestCase):
 
         logger.debug("Killing externally running NG/AMS Server. PID: %d, Port: %d ", srvProcess.pid, port)
         try:
-            pCl = sendPclCmd(port=port, auth=auth, timeOut=10)
-            stat = pCl.status()
+            client = self.get_client(port=port, auth=auth, timeout=10)
+            stat = client.status()
             if stat.getState() != "OFFLINE":
                 logger.info("Sending OFFLINE command to external server ...")
-                stat = pCl.offline(1)
+                stat = client.offline(1)
             status = stat.getStatus()
         except Exception as e:
             logger.info("Error encountered sending OFFLINE command: %s", str(e))
@@ -1095,7 +1095,7 @@ class ngamsTestSuite(unittest.TestCase):
         if (status == NGAMS_SUCCESS):
             logger.info("External server in Offline State - sending EXIT command ...")
             try:
-                stat = pCl.exit()
+                stat = client.exit()
             except Exception as e:
                 logger.info("Error encountered sending EXIT command: %s", str(e))
             else:

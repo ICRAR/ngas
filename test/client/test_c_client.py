@@ -38,7 +38,7 @@ import unittest
 
 from ngamsLib import ngamsStatus, utils
 from ngamsLib.ngamsCore import getHostName, cpFile, execCmd
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd, has_program, save_to_tmp, \
+from ..ngamsTestLib import ngamsTestSuite, has_program, save_to_tmp, \
     genTmpFilename
 
 
@@ -199,7 +199,8 @@ class ngamsCClientTest(ngamsTestSuite):
 
         """
         self.prepCluster((8000, 8011))
-        for n in range(2): sendPclCmd(port=8011).archive("src/SmallFile.fits")
+        for n in range(2):
+            self.archive(8011, "src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = _execCClient(pars=[["-port", "8000"],
                                      ["-cmd", "STATUS"],
@@ -234,7 +235,8 @@ class ngamsCClientTest(ngamsTestSuite):
 
         """
         self.prepCluster((8000, 8011))
-        for n in range(2): sendPclCmd(port=8011).archive("src/SmallFile.fits")
+        for n in range(2):
+            self.archive(8011, "src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = _execCClient(pars=[["-port", "8000"],
                                      ["-cmd", "STATUS"],
@@ -601,7 +603,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         save_to_tmp("reqCallBack_AccArchiveBlock2", fname="reqCallBack_tmp")
         self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
-        sendPclCmd(port=8888).archive("src/SmallFile.fits")
+        self.archive("src/SmallFile.fits")
         out =\
             _execCClient(unpackXmlStat = 0,
                          pars = [["-port", "8888"],
@@ -679,7 +681,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(srvModule="support.ngamsSrvTestBrokSockRetrieve")
-        sendPclCmd().archive("src/SmallFile.fits")
+        self.archive("src/SmallFile.fits")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "RETRIEVE"],

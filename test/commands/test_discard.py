@@ -32,7 +32,7 @@ This module contains the Test Suite for the SUBSCRIBE Command.
 """
 
 from ngamsLib.ngamsCore import NGAMS_DISCARD_CMD, cpFile
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite
 
 
 illStatDoc  = "Incorrect info in DISCARD Command XML Status Document/%d."
@@ -54,7 +54,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
     """
 
     def _assert_discard(self, ref_file, pars, client=None, port=None):
-        client = client or sendPclCmd()
+        client = client or self.client
         for execute in (0, 1):
             status = client.get_status(NGAMS_DISCARD_CMD, pars + [["execute", str(execute)]])
             if '%d' in ref_file:
@@ -166,7 +166,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
-        self.assert_ngas_status(sendPclCmd().archive, "src/SmallFile.fits")
+        self.archive("src/SmallFile.fits")
         mDiskId = self.ngas_disk_id("FitsStorage1/Main/1")
         pars = [["disk_id", mDiskId],
                 ["file_id", "TEST.2001-05-08T15:25:00.123"],
@@ -254,11 +254,10 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
-        client = sendPclCmd()
-        self.assert_ngas_status(client.archive, "src/SmallFile.fits")
+        self.archive("src/SmallFile.fits")
         mDiskId = self.ngas_disk_id("FitsStorage1/Main/1")
         fileId  = "TEST.2001-05-08T15:25:00.123"
-        client.clone(fileId, mDiskId, 1)
+        self.client.clone(fileId, mDiskId, 1)
         ref_file = "ref/ngamsDiscardCmdTest_test_NormalExec_3_%d_ref"
         pars = [["disk_id", mDiskId], ["file_id", fileId], ["file_version", "1"]]
         self._assert_discard(ref_file, pars)
@@ -298,7 +297,6 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
-        client = sendPclCmd()
 
         # disk ID, file ID and file version are missing on each corresopnding row
         invalid_params = [
@@ -308,7 +306,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         ]
         ref_file = "ref/ngamsDiscardCmdTest_test_IllegalPars_1_%d_ref"
         for i, pars in enumerate(invalid_params, start=1):
-            status = client.get_status(NGAMS_DISCARD_CMD, pars)
+            status = self.client.get_status(NGAMS_DISCARD_CMD, pars)
             self.assert_status_ref_file(ref_file % i, status, msg=illStatDoc)
 
 
@@ -345,11 +343,10 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         ...
         """
         self.prepCluster((8000, 8011))
-        client8000 = sendPclCmd(port=8000)
-        self.assert_ngas_status(client8000.archive, "src/SmallFile.fits")
-        self.assert_ngas_status(sendPclCmd(port=8011).archive, "src/SmallFile.fits")
+        self.archive(8000, "src/SmallFile.fits")
+        self.archive(8011, "src/SmallFile.fits")
 
         diskId  = self.ngas_disk_id("FitsStorage1/Main/1", port=8011)
         ref_file = "ref/ngamsDiscardCmdTest_test_ProxyMode_01_01_ref"
         pars = [["disk_id", diskId], ["file_id", "TEST.2001-05-08T15:25:00.123"], ["file_version", 2]]
-        self._assert_discard(ref_file, pars, client=client8000)
+        self._assert_discard(ref_file, pars, client=self.client(8000))

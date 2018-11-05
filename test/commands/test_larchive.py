@@ -28,12 +28,11 @@ class LarchiveTest(ngamsTestSuite):
     def test_simple(self):
 
         _, db = self.prepExtSrv()
-        client = self.get_client()
         copy_of_copy = tmp_path('cp_cp')
         cpFile('/bin/cp', copy_of_copy)
         pars = [['fileUri', copy_of_copy]]
-        self.assert_ngas_status(client.archive, 'file:' + copy_of_copy, 'application/octet-stream', pars=pars, cmd='LARCHIVE')
+        self.archive('file:' + copy_of_copy, 'application/octet-stream', pars=pars, cmd='LARCHIVE')
 
         # Check that it exists in the database (duplicated) and that it can be retrieved
         self.assertEqual(2, db.query2('SELECT count(*) FROM ngas_files')[0][0])
-        self.assert_ngas_status(client.retrieve, 'cp_cp', targetFile=tmp_path())
+        self.assert_ngas_status(self.client.retrieve, 'cp_cp', targetFile=tmp_path())

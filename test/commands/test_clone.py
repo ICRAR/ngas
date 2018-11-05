@@ -38,7 +38,7 @@ from ngamsLib.ngamsCore import getHostName, NGAMS_CLONE_CMD
 from ngamsLib import ngamsFileInfo, ngamsLib
 from ..ngamsTestLib import flushEmailQueue, save_to_tmp, \
     getEmailMsg, ngamsTestSuite, waitReqCompl, genErrMsgVals, \
-    sendPclCmd, unzip, genTmpFilename, tmp_path, as_ngas_disk_id
+    unzip, genTmpFilename, tmp_path, as_ngas_disk_id
 
 # TODO: See how we can actually set this dynamically in the future
 _checkMail = False
@@ -131,10 +131,11 @@ def _execCloneTest(testObj,
     subNode = testData[4]
     if (subNode):
         testObj.prepCluster((8000, 8011))
-        clNcu = sendPclCmd(port=8011)
+        clNcu = testObj.client(8011)
+        clMnu = testObj.client(8000)
     else:
         testObj.prepExtSrv(port=8000)
-    clMnu = sendPclCmd(port=8000)
+        clMnu = testObj.client
     for n in range(5):
         clMnu.archive("src/SmallFile.fits")
         if (subNode): clNcu.archive("src/TinyTestFile.fits")
@@ -522,11 +523,11 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         """
         srcFile = "src/SmallFile.fits"
         cfgObj, dbObj = self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
-        client = sendPclCmd()
-        for n in range(2): client.archive(srcFile)
+        for n in range(2):
+            self.archive(srcFile)
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
-        statObj = client.get_status(NGAMS_CLONE_CMD,
+        statObj = self.client.get_status(NGAMS_CLONE_CMD,
                                     pars = [["disk_id", srcDiskId],
                                             ["file_id", nmuFileId],
                                             ["file_version", "1"],
@@ -536,7 +537,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         msg = "Incorrect status for CLONE command/successfull cloning"
         self.assert_status_ref_file(refStatFile, statObj, msg=msg)
 
-        finalStatObj = waitReqCompl(client, statObj.getRequestId())
+        finalStatObj = waitReqCompl(self.client, statObj.getRequestId())
         complPer = str(finalStatObj.getCompletionPercent())
         self.assertEqual("100.0", complPer,
                         genErrMsgVals("Incorrect Request Status for CLONE " +\
@@ -595,16 +596,16 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         """
         srcFile = "src/SmallFile.fits"
         self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
-        client = sendPclCmd()
-        for n in range(10): client.archive(srcFile)
+        for n in range(10):
+            self.archive(srcFile)
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
         diskId = self.ngas_disk_id("FitsStorage1/Main/1")
-        statObj = client.get_status(NGAMS_CLONE_CMD,
+        statObj = self.client.get_status(NGAMS_CLONE_CMD,
                                     pars = [["disk_id", diskId],
                                             ["async", "1"],
                                             ["notif_email", testUserEmail]])
-        waitReqCompl(client, statObj.getRequestId(), 20)
+        waitReqCompl(self.client, statObj.getRequestId(), 20)
 
         if _checkMail:
             mailCont = getEmailMsg(["NGAS Host:", "Total proc", "Handling time"])

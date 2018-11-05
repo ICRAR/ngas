@@ -31,7 +31,7 @@
 This module contains the Test Suite for the INIT Command.
 """
 
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite
 
 
 class ngamsInitCmdTest(ngamsTestSuite):
@@ -71,4 +71,4 @@ class ngamsInitCmdTest(ngamsTestSuite):
               actually re-loaded.
         """
         self.prepExtSrv()
-        self.assert_ngas_status(sendPclCmd().init)
+        self.assert_ngas_status(self.client.init)

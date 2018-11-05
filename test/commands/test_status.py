@@ -32,7 +32,7 @@ This module contains the Test Suite for the STATUS Command.
 """
 
 from ngamsLib.ngamsCore import toiso8601
-from ..ngamsTestLib import ngamsTestSuite, getNcu11, sendPclCmd, genTmpFilename
+from ..ngamsTestLib import ngamsTestSuite, getNcu11, genTmpFilename
 
 
 class ngamsStatusCmdTest(ngamsTestSuite):
@@ -79,8 +79,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
-        client = sendPclCmd(port=8888)
-        status = client.status()
+        status = self.client.status()
         if (status.getMessage().\
             find("Successfully handled command STATUS") == -1):
             self.fail("Illegal status returned for STATUS Command")
@@ -110,7 +109,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         ...
         """
         self.prepCluster((8000, 8011))
-        statObj = sendPclCmd(port=8000).\
+        statObj = self.client(8000).\
                   get_status("STATUS", pars=[["host_id", getNcu11()]])
         refMsg = "Successfully handled command STATUS"
         if ((statObj.getMessage().find(refMsg) == -1) or
@@ -147,9 +146,8 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         """
         self.prepCluster((8000, 8011))
         srcFile = "src/TinyTestFile.fits"
-        client = sendPclCmd(port=8011)
-        client.archive(srcFile)
-        statObj = client.get_status("STATUS",
+        self.archive(8011, srcFile)
+        statObj = self.client(8011).get_status("STATUS",
                              pars=[["file_access", "NCU.2003-11-11T11:11:11.111"],
                                    ["file_version", "1"]])
         refMsg = "NGAMS_INFO_FILE_AVAIL:4029:INFO: File with File ID: " +\
@@ -163,16 +161,15 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         """Checks that the STATUS command handles the file_list option correctly"""
 
         self.prepExtSrv()
-        client = sendPclCmd()
         start = toiso8601()
 
         def run_checks():
             fname = genTmpFilename(suffix='.xml.gz')
-            self.assertStatus(client.status(output=fname, pars=(('file_list', 1),)))
-            self.assertStatus(client.status(output=fname, pars=(('file_list', 1), ('from_ingestion_date', start))))
-            self.assertStatus(client.status(output=fname, pars=(('file_list', 1), ('from_ingestion_date', start), ('unique', 1))))
+            self.assert_ngas_status(self.client.status, output=fname, pars=(('file_list', 1),))
+            self.assert_ngas_status(self.client.status, output=fname, pars=(('file_list', 1), ('from_ingestion_date', start)))
+            self.assert_ngas_status(self.client.status, output=fname, pars=(('file_list', 1), ('from_ingestion_date', start), ('unique', 1)))
 
         # Checks should be scucessfull with and wihtout files archived
         run_checks()
-        self.assertArchive('src/SmallFile.fits', 'application/octet-stream')
+        self.archive('src/SmallFile.fits', 'application/octet-stream')
         run_checks()

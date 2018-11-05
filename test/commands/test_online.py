@@ -31,7 +31,7 @@
 This module contains the Test Suite for the ONLINE Command.
 """
 
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite
 
 
 class ngamsOnlineCmdTest(ngamsTestSuite):
@@ -87,4 +87,4 @@ class ngamsOnlineCmdTest(ngamsTestSuite):
         TODO: Check that the server is Online (DB + STATUS Command).
         """
         self.prepExtSrv(autoOnline=0)
-        self.assert_ngas_status(sendPclCmd().online)
+        self.assert_ngas_status(self.client.online)

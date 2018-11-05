@@ -32,7 +32,7 @@ This module contains the Test Suite for the LABEL Command.
 """
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_LABEL_CMD
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite
 
 
 class ngamsLabelCmdTest(ngamsTestSuite):
@@ -87,7 +87,7 @@ class ngamsLabelCmdTest(ngamsTestSuite):
             return
 
         self.prepExtSrv()
-        status = sendPclCmd().get_status(NGAMS_LABEL_CMD,
+        status = self.client.get_status(NGAMS_LABEL_CMD,
                                  pars = [["slot_id", "1"],
                                          ["host_id", getHostName()]])
         refStatFile = "ref/ngamsLabelCmdTest_test_LabelCmd_1_1_ref"

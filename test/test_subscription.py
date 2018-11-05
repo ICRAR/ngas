@@ -45,7 +45,7 @@ from six.moves import socketserver  # @UnresolvedImport
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_SUCCESS
 from ngamsServer import ngamsServer
-from .ngamsTestLib import ngamsTestSuite, sendPclCmd, getNoCleanUp, setNoCleanUp, tmp_path
+from .ngamsTestLib import ngamsTestSuite, getNoCleanUp, setNoCleanUp, tmp_path
 
 
 # The plug-in that we configure the subscriber server with, so we know when
@@ -153,7 +153,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # Version 2 of the file should only exist after
         # subscription transfer is successful.
-        client = sendPclCmd(port = 8889)
+        client = self.client(8889)
         self.assert_ngas_status(client.retrieve, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path(), expectedStatus='FAILURE')
 
         # Create listener that should get information when files get archives
@@ -204,7 +204,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                 self.assertEqual(resp.status, 200)
 
         # Things haven't gone through tyet
-        retrieve = functools.partial(sendPclCmd(port = 8889).retrieve, targetFile=tmp_path())
+        retrieve = functools.partial(self.client(8889).retrieve, targetFile=tmp_path())
         self.assert_ngas_status(retrieve, 'SmallFile.fits', fileVersion=2, expectedStatus='FAILURE')
 
         # Invalid number of concurrent threads
@@ -311,8 +311,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
     def test_server_starts_after_subscription_added(self):
 
         self.prepExtSrv()
-        client = sendPclCmd()
-        self.assert_ngas_status(client.subscribe, 'http://somewhere/SOMETHING')
+        self.assert_ngas_status(self.client.subscribe, 'http://somewhere/SOMETHING')
 
         # Cleanly shut down the server, and wait until it's completely down
         old_cleanup = getNoCleanUp()
@@ -326,7 +325,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
     def test_url_values(self):
 
         self.prepExtSrv()
-        client = sendPclCmd()
+        client = self.client
 
         # empty url
         status = client.subscribe('        ')
@@ -374,8 +373,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         listener = notification_listener()
 
         # File archived onto server A
-        stat = sendPclCmd(port=8888).archive('src/SmallFile.fits', mimeType='application/octet-stream')
-        self.assertEqual(NGAMS_SUCCESS, stat.getStatus())
+        self.archive(8888, 'src/SmallFile.fits', mimeType='application/octet-stream')
         with contextlib.closing(listener):
             # The built-in retry period is 10 seconds, so let's wait at maximum
             # for twice that, in case the first attempt fails because the servers
@@ -383,4 +381,4 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             self.assertIsNotNone(listener.wait_for_file(20))
 
         # Double-check that the file is in B
-        self.assert_ngas_status(sendPclCmd(port = 8889).retrieve, 'SmallFile.fits', targetFile=tmp_path())
+        self.assert_ngas_status(self.client(8889).retrieve, 'SmallFile.fits', targetFile=tmp_path())

@@ -32,7 +32,7 @@ This module contains the Test Suite for the CONFIG Command.
 """
 
 from ngamsLib.ngamsCore import NGAMS_CONFIG_CMD
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite
 
 
 class ngamsConfigCmdTest(ngamsTestSuite):
@@ -72,6 +72,5 @@ class ngamsConfigCmdTest(ngamsTestSuite):
         TODO: Check in Log File that low level logs are produced.
         """
         self.prepExtSrv()
-        client = sendPclCmd()
         pars = [["log_local_log_level", "4"]]
-        self.assert_ngas_status(client.get_status, NGAMS_CONFIG_CMD, pars=pars)
+        self.assert_ngas_status(self.client.get_status, NGAMS_CONFIG_CMD, pars=pars)

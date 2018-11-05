@@ -32,7 +32,7 @@ This module contains the Test Suite for the HELP Command.
 """
 
 from ngamsLib.ngamsCore import NGAMS_HELP_CMD
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite
 
 
 class ngamsHelpCmdTest(ngamsTestSuite):
@@ -71,7 +71,7 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         implemented.
         """
         self.prepExtSrv(autoOnline=0)
-        status = sendPclCmd().get_status(NGAMS_HELP_CMD)
+        status = self.client.get_status(NGAMS_HELP_CMD)
         refStatFile = "ref/ngamsHelpCmdTest_test_NoPars_1_1_ref"
         self.assert_status_ref_file(refStatFile, status)
 
@@ -99,6 +99,6 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         implemented.
         """
         self.prepExtSrv()
-        status = sendPclCmd().get_status(NGAMS_HELP_CMD)
+        status = self.client.get_status(NGAMS_HELP_CMD)
         refStatFile = "ref/ngamsHelpCmdTest_test_NoPars_2_1_ref"
         self.assert_status_ref_file(refStatFile, status)

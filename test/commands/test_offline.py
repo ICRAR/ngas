@@ -31,7 +31,7 @@
 This module contains the Test Suite for the OFFLINE Command.
 """
 
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite
 
 
 class ngamsOfflineCmdTest(ngamsTestSuite):
@@ -73,4 +73,4 @@ class ngamsOfflineCmdTest(ngamsTestSuite):
         TODO: Check that the server is in Offline State.
         """
         self.prepExtSrv()
-        self.assert_ngas_status(sendPclCmd().offline)
+        self.assert_ngas_status(self.client.offline)

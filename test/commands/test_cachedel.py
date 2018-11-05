@@ -40,7 +40,7 @@ class ngamsCacheDelTest(ngamsTestSuite):
     def test_cache_delete(self):
         self.prepExtSrv(cache=True)
 
-        status = self.assertArchive('src/SmallFile.fits')
+        status = self.archive('src/SmallFile.fits')
         status = delete_ngas_file('localhost', 8888, 'TEST.2001-05-08T15:25:00.123', 1,
                                   status.getDiskStatusList()[0].getDiskId())
         self.assertEqual(status, 200)

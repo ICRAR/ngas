@@ -43,7 +43,7 @@ import uuid
 
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_HTTP_SERVICE_NA
-from .ngamsTestLib import ngamsTestSuite, save_to_tmp, sendPclCmd, this_dir, tmp_path
+from .ngamsTestLib import ngamsTestSuite, save_to_tmp, this_dir, tmp_path
 
 
 # This module is used as a command by one of its own tests,
@@ -66,12 +66,10 @@ class ngamsServerTest(ngamsTestSuite):
         spaces = " " * amount_of_data
         self.prepExtSrv(cfgProps=[["NgamsCfg.Server[1].TimeOut",str(timeout)]])
 
-        client = sendPclCmd()
-        self.assert_ngas_status(client.archive_data, spaces, 'some-file.data', 'application/octet-stream')
+        self.assert_ngas_status(self.client.archive_data, spaces, 'some-file.data', 'application/octet-stream')
 
         # Normal retrieval works fine
-        self.assert_ngas_status(client.retrieve, fileId='some-file.data')
-        os.unlink('some-file.data')
+        self.assert_ngas_status(self.client.retrieve, fileId='some-file.data', targetFile=tmp_path())
 
         # Now retrieve the data, but sloooooooooooowly and check that the server
         # times out and closes the connection, which in turn makes our receiving
@@ -102,7 +100,7 @@ class ngamsServerTest(ngamsTestSuite):
                         cfgProps=(('NgamsCfg.Server[1].MaxSimReqs', '2'),))
 
         # Fire off two clients, each takes 5 seconds to finish
-        cl1, cl2 =  sendPclCmd(), sendPclCmd()
+        cl1, cl2 =  self.get_client(), self.get_client()
         threading.Thread(target=cl1.online).start()
         threading.Thread(target=cl2.online).start()
 
@@ -117,9 +115,8 @@ class ngamsServerTest(ngamsTestSuite):
     def test_reload_command(self):
         """Checks that commands can be reloaded successfully"""
         self.prepExtSrv()
-        client = sendPclCmd()
-        self.assert_ngas_status(client.status)
-        self.assert_ngas_status(client.status, pars=[('reload', '1')])
+        self.assert_ngas_status(self.client.status)
+        self.assert_ngas_status(self.client.status, pars=[('reload', '1')])
 
     def test_user_command_plugin(self):
 
@@ -127,18 +124,17 @@ class ngamsServerTest(ngamsTestSuite):
         cfg = (('NgamsCfg.Commands[1].Command[1].Name', 'TEST'),
                ('NgamsCfg.Commands[1].Command[1].Module', 'test.test_server'))
         self.prepExtSrv(cfgProps=cfg)
-        client = sendPclCmd()
 
         # Let the TEST command create a file under the tmp_root directory
         # There is no need to manually remove here, as ./tmp gets removed anyway
         # later during tearDown()
         fname = str(uuid.uuid4())
-        self.assert_ngas_status(client.get_status, 'TEST', pars=[('fname', fname)])
+        self.assert_ngas_status(self.client.get_status, 'TEST', pars=[('fname', fname)])
         self.assertTrue(os.path.isfile(tmp_path(fname)))
 
     def test_no_such_command(self):
         self.prepExtSrv()
-        resp, _, _ = sendPclCmd()._get('UNKNOWN_CMD')
+        resp, _, _ = self.client._get('UNKNOWN_CMD')
         self.assertEqual(404, resp.status)
 
     @unittest.skipUnless('NGAS_MANY_STARTS_TEST' in os.environ, 'skipped by default')

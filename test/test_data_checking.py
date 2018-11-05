@@ -36,7 +36,7 @@ import shutil
 import time
 
 from ngamsLib.ngamsCore import checkCreatePath
-from .ngamsTestLib import ngamsTestSuite, sendPclCmd, getNoCleanUp, setNoCleanUp, \
+from .ngamsTestLib import ngamsTestSuite, getNoCleanUp, setNoCleanUp, \
     tmp_path
 
 
@@ -103,9 +103,8 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         # and perform some archives. Turn off snapshoting also,
         # it messes up with the database updates in one of the tests
         cfg, db = self.prepExtSrv(cfgProps=(("NgamsCfg.Db[1].Snapshot", "0"),))
-        client = sendPclCmd()
         for _ in range(3):
-            client.archive("src/SmallFile.fits")
+            self.archive("src/SmallFile.fits")
 
         # Cleanly shut down the server, and wait until it's completely down
         old_cleanup = getNoCleanUp()

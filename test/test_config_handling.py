@@ -40,7 +40,7 @@ import unittest
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsXmlMgr
 from .ngamsTestLib import delNgasTbls, ngamsTestSuite, \
-    save_to_tmp, sendPclCmd, db_aware_cfg
+    save_to_tmp, db_aware_cfg
 
 
 dbIdAttr = 'Db-Test'
@@ -211,7 +211,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName, clearDb=0)
 
         # Archive a file, should be OK.
-        statObj = sendPclCmd().archive("src/SmallFile.fits")
+        statObj = self.client.archive("src/SmallFile.fits")
         refStatFile = "ref/ngamsConfigHandlingTest_test_ServerLoad_1_1_ref"
         msg = "Incorrect status returned for Archive Push Request"
         self.assert_status_ref_file(refStatFile, statObj, msg=msg)
@@ -256,7 +256,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName, clearDb=0)
 
         # Archive a file, should be rejected.
-        statObj = sendPclCmd().archive("src/SmallFile.fits")
+        statObj = self.client.archive("src/SmallFile.fits")
         refStatFile = "ref/ngamsConfigHandlingTest_test_ServerLoad_2_1_ref"
         msg = "Incorrect status returned for Archive Push Request"
         self.assert_status_ref_file(refStatFile, statObj, msg=msg)
@@ -306,7 +306,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
 
         # Start server specifying 1st DB cfg.
         self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName1, clearDb=0)
-        statObj = sendPclCmd().archive("src/SmallFile.fits")
+        statObj = self.client.archive("src/SmallFile.fits")
         refStatFile = "ref/ngamsConfigHandlingTest_test_ServerLoad_3_1_ref"
         msg = "Incorrect status returned for Archive Push Request"
         self.assert_status_ref_file(refStatFile, statObj, msg=msg)

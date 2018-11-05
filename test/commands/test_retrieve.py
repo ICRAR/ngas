@@ -39,7 +39,7 @@ import subprocess
 from ngamsLib import ngamsConfig, ngamsHttpUtils
 from ngamsLib.ngamsCore import getHostName, \
     checkCreatePath, rmFile, NGAMS_SUCCESS, mvFile
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd, genTmpFilename, unzip, tmp_path
+from ..ngamsTestLib import ngamsTestSuite, genTmpFilename, unzip, tmp_path
 
 
 class ngamsRetrieveCmdTest(ngamsTestSuite):
@@ -90,13 +90,12 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
-        client = sendPclCmd()
-        client.archive("src/SmallFile.fits")
+        self.archive("src/SmallFile.fits")
 
         # Retrieve the file.
         trgFile = tmp_path("test_RetrieveCmd_1_1_tmp")
         outFilePath = tmp_path("SmallFile.fits")
-        self.assert_ngas_status(client.retrieve, "TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
+        self.assert_ngas_status(self.client.retrieve, "TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
         unzip(trgFile, outFilePath)
         self.checkFilesEq("src/SmallFile.fits", outFilePath, "Retrieved file incorrect")
 
@@ -125,12 +124,11 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
-        client = sendPclCmd()
-        client.archive("src/SmallFile.fits")
+        self.archive("src/SmallFile.fits")
 
         # Retrieve the file.
         trgFile = tmp_path("test_RetrieveCmd_1_1_tmp")
-        status = client.retrieve("TEST.2001-05-08T15:25:00.123",
+        status = self.client.retrieve("TEST.2001-05-08T15:25:00.123",
                                  fileVersion=2, targetFile=trgFile)
 
         # Check reply.
@@ -167,12 +165,11 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         """
         self.prepCluster((8000, 8011))
         # Archive file into sub-node (port=8011).
-        sendPclCmd(port=8011).archive("src/TinyTestFile.fits")
+        self.archive(8011, "src/TinyTestFile.fits")
 
         # Retrieve a file.
         trgFile = tmp_path("test_RetrieveCmd_3_1_tmp")
-        client = sendPclCmd(port=8000)
-        self.assert_ngas_status(client.retrieve, "NCU.2003-11-11T11:11:11.111", targetFile=trgFile)
+        self.assert_ngas_status(self.client(8000).retrieve, "NCU.2003-11-11T11:11:11.111", targetFile=trgFile)
         outFilePath = tmp_path('test_RetrieveCmd_3_1_tmp_unzip')
         unzip(trgFile, outFilePath)
         refFile = "src/TinyTestFile.fits"
@@ -220,14 +217,14 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         envDic = self.prepCluster((8000, 8001, (8002, suspPars)))
         for portNo in [8000, 8001, 8002]:
             for n in range(3):
-                sendPclCmd(port=portNo).archive("src/SmallFile.fits")
-        sendPclCmd(port=8001).offline()
-        sendPclCmd(port=8001).exit()
+                self.archive(portNo, "src/SmallFile.fits")
+        self.client(8001).offline()
+        self.client(8001).exit()
         subNode2 = nodes[2]
         self.waitTillSuspended(envDic[subNode2][1], subNode2, 45, nodes)
-        client = sendPclCmd(port=8000)
 
         # Retrieve file (File ID).
+        client = self.client(8000)
         fileId = "TEST.2001-05-08T15:25:00.123"
         self.assert_ngas_status(client.retrieve, fileId)
         self.assert_ngas_status(client.retrieve, fileId, fileVersion=2)
@@ -264,8 +261,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         nmuCfgPars = [["NgamsCfg.Server[1].ProxyMode", "0"],
                       ["NgamsCfg.Log[1].LocalLogLevel", "4"]]
         self.prepCluster(((8000, nmuCfgPars), 8011))
-        self.assertStatus(sendPclCmd(port=8000).archive("src/SmallFile.fits"))
-        self.assertStatus(sendPclCmd(port=8011).archive("src/SmallFile.fits"))
+        self.archive(8000, "src/SmallFile.fits")
+        self.archive(8011, "src/SmallFile.fits")
 
         # The ngamsPClient handles redirects automatically,
         # but we want to manually check here that things are right
@@ -316,14 +313,13 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                      "TAG=test_DppiProc_01,TARGET=FILE")
         cfg.save(tmpCfgFile, 0)
         self.prepExtSrv(cfgFile=tmpCfgFile)
-        client = sendPclCmd()
 
-        self.assertArchive("src/SmallFile.fits")
+        self.archive("src/SmallFile.fits")
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_01")
         pars = [["test_suite", "ngamsRetrieveCmdTest"],
                 ["test_case", "test_DppiProc_01"]]
-        stat = client.retrieve("TEST.2001-05-08T15:25:00.123",
+        stat = self.client.retrieve("TEST.2001-05-08T15:25:00.123",
                                targetFile=outFile,
                                processing="test.support.ngamsTestDppi1",
                                pars=pars)
@@ -366,14 +362,13 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                      "TAG=test_DppiProc_02,TARGET=BUFFER")
         cfg.save(tmpCfgFile, 0)
         self.prepExtSrv(cfgFile=tmpCfgFile)
-        client = sendPclCmd()
 
-        client.archive("src/SmallFile.fits")
+        self.archive("src/SmallFile.fits")
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_02")
         pars = [["test_suite", "ngamsRetrieveCmdTest"],
                 ["test_case", "test_DppiProc_02"]]
-        stat = client.retrieve("TEST.2001-05-08T15:25:00.123",
+        stat = self.client.retrieve("TEST.2001-05-08T15:25:00.123",
                                targetFile=outFile,
                                processing="test.support.ngamsTestDppi1",
                                pars=pars)
@@ -415,12 +410,12 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                       ["NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
                        "TAG=test_DppiProc_02,TARGET=FILE"]]
         self.prepCluster((8000, (8011, ncuCfgPars)))
-        self.assertArchive("src/SmallFile.fits", port=8011)
+        self.archive(8011, "src/SmallFile.fits")
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_03")
         pars = [["test_suite", "ngamsRetrieveCmdTest"],
                 ["test_case", "test_DppiProc_03"]]
-        stat = sendPclCmd(port=8000).retrieve("TEST.2001-05-08T15:25:00.123",
+        stat = self.client(8000).retrieve("TEST.2001-05-08T15:25:00.123",
                                               targetFile=outFile,
                                               processing="test.support.ngamsTestDppi1",
                                               pars=pars)
@@ -467,10 +462,9 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         cwd = os.getcwd()
         configFile = os.path.normpath(cwd+"/src/ngamsCfg_VolumeDirectory.xml")
         self.prepExtSrv(delDirs=0, cfgFile=configFile)
-        client = sendPclCmd()
 
         # Archive a file.
-        self.assert_ngas_status(client.archive, "src/SmallFile.fits")
+        self.archive("src/SmallFile.fits")
 
         # dpallot: this will always fail on the mac as the tar sizes are different
         # to the hard coded test results in the old file:
@@ -486,7 +480,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         trgFile = tmp_path("test_VolumeDir_01_tmp")
         refFile = "src/SmallFile.fits"
         outFilePath = tmp_path("SmallFile.fits")
-        stat = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
+        stat = self.client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
         self.assertEqual(NGAMS_SUCCESS, stat.getStatus(), stat.getMessage())
 
         # unzip the the file and diff against original
@@ -496,8 +490,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
     def test_invalid_partial_retrievals(self):
 
         self.prepExtSrv()
-        client = sendPclCmd()
-        client.archive("src/SmallFile.fits")
+        self.archive("src/SmallFile.fits")
 
         # Partial retrieval only supports a start offset, so using only
         # a suffix length or a begin/end range should fail
@@ -508,18 +501,17 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         for r in ranges:
             hdrs = {'Range': 'bytes=' + r}
-            status = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile='tmp', hdrs=hdrs)
+            status = self.client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile='tmp', hdrs=hdrs)
             self.assertEqual('FAILURE', status.getStatus())
             self.assertIn('Invalid Range header', status.getMessage())
 
     def test_partial_retrieval(self):
 
         self.prepExtSrv()
-        client = sendPclCmd()
 
         with open(tmp_path("source"), 'wb') as f:
             f.write(os.urandom(1024))
-        client.archive(tmp_path("source"), mimeType='application/octet-stream')
+        self.archive(tmp_path("source"), mimeType='application/octet-stream')
 
         # Retrieve the file fully first into memory
         full = io.BytesIO()

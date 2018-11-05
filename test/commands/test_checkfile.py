@@ -32,7 +32,7 @@ This module contains the Test Suite for the CHECKFILE Command.
 """
 
 from ngamsLib.ngamsCore import NGAMS_CHECKFILE_CMD
-from ..ngamsTestLib import ngamsTestSuite, sendPclCmd
+from ..ngamsTestLib import ngamsTestSuite
 
 
 class ngamsCheckFileCmdTest(ngamsTestSuite):
@@ -71,10 +71,10 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
-        sendPclCmd().archive("src/SmallFile.fits")
+        self.archive("src/SmallFile.fits")
         diskId = self.ngas_disk_id("FitsStorage1/Main/1")
         fileId = "TEST.2001-05-08T15:25:00.123"
-        statObj = sendPclCmd(port=8888).get_status(NGAMS_CHECKFILE_CMD,
+        statObj = self.client.get_status(NGAMS_CHECKFILE_CMD,
                                           pars = [["disk_id", diskId],
                                                   ["file_id", fileId],
                                                   ["file_version", "1"]])
@@ -114,7 +114,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv()
-        sendPclCmd().archive("src/SmallFile.fits")
+        self.archive("src/SmallFile.fits")
 
         # 1) Disk not existing, 2) File not existing, 3) File Version
         # not existing.
@@ -133,9 +133,8 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
                          "TEST.2001-05-08T15:25:00.123",
                          "100",
                          "ref/ngamsCheckFileCmdTest_test_ErrHandling_1_3_ref"]]
-        client = sendPclCmd(port=8888)
         for testData in testDataList:
-            statObj = client.get_status(NGAMS_CHECKFILE_CMD,
+            statObj = self.client.get_status(NGAMS_CHECKFILE_CMD,
                                        pars = [["disk_id", testData[1]],
                                                ["file_id", testData[2]],
                                                ["file_version", testData[3]]])
@@ -178,16 +177,15 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         ...
         """
         self.prepCluster((8000, 8011))
-        client8000 = sendPclCmd(port=8000)
-        self.assert_ngas_status(client8000.archive, "src/SmallFile.fits")
-        self.assert_ngas_status(sendPclCmd(port=8011).archive, "src/SmallFile.fits")
+        self.archive(8000, "src/SmallFile.fits")
+        self.archive(8011, "src/SmallFile.fits")
         diskId  = self.ngas_disk_id("FitsStorage1/Main/1", port=8011)
         fileId  = "TEST.2001-05-08T15:25:00.123"
         fileVer = 2
         httpPars=[["disk_id", diskId], ["file_id", fileId],
                   ["file_version", fileVer]]
 
-        status = client8000.get_status(NGAMS_CHECKFILE_CMD, pars=httpPars)
+        status = self.client(8000).get_status(NGAMS_CHECKFILE_CMD, pars=httpPars)
         refStatFile = "ref/ngamsCheckFileCmdTest_test_ProxyMode_01_01_ref"
         msg = "Incorrect handling of CHECKFILE Command detected"
         self.assert_status_ref_file(refStatFile, status, msg=msg, port=8011)
