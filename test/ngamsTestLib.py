@@ -474,25 +474,6 @@ def delNgasTbls(dbObj):
     dbObj.query2("DELETE FROM ngas_cfg")
 
 
-def sendPclCmd(port = 8888,
-               auth = None,
-               timeOut = 60.0):
-    """
-    Create an instance of the Python Client with the given host ID + port
-    number and return this to the caller.
-
-    host:          Host ID where externally running server is located (string).
-
-    port:          Port number used by externally running server (integer).
-
-    auth:          Authorization Code (string).
-
-    timeOut:       Timeout in seconds (float).
-
-    Returns:       Created instance of Python Client (ngamsPClient).
-    """
-    return ngamsPClient.ngamsPClient('127.0.0.1', port, timeout=timeOut, auth=auth)
-
 def _old_buf_style(s):
     if s:
         s += '\n'
@@ -808,11 +789,6 @@ class ngamsTestSuite(unittest.TestCase):
     def assert_ngas_status(self, method, *args, **kwargs):
         expectedStatus = kwargs.pop('expectedStatus', 'SUCCESS')
         return self.assertStatus(method(*args, **kwargs), expectedStatus=expectedStatus)
-
-    def assertArchive(self, fname, mimeType=None, port=8888, timeout=5, pars=[], cmd='ARCHIVE'):
-        stat = sendPclCmd(port, timeOut=timeout).archive(fname, mimeType=mimeType, pars=pars, cmd=cmd)
-        self.assertStatus(stat)
-        return stat
 
     def point_to_ngas_root(self, cfg, root_dir=None):
         if not isinstance(cfg, ngamsConfig.ngamsConfig):
