@@ -772,6 +772,33 @@ class ngamsTestSuite(unittest.TestCase):
         logger.info("Starting test %s" % (methodName,))
         self.extSrvInfo    = []
         self.__mountedDirs   = []
+        self.client = None
+        self._clients = None
+
+    def _add_client(self, port):
+        # We overwrite any client that we may have created on that port already
+        if self.client is None:
+            self.client = self.get_client(port)
+            return
+        if self._clients is None:
+            old_port = self.client.servers[0][1]
+            if old_port == port:
+                self.client = self.get_client(port)
+                return
+            self._clients = {self.client.servers[0][1]: self.client,
+                             port: self.get_client(port)}
+            self.client = lambda x: self._clients[x]
+        else:
+            self._clients[port] = self.get_client(port)
+
+    def _remove_client(self, port):
+        if self._clients is not None:
+            del self._clients[port]
+            if len(self._clients) == 1:
+                _, self.client = self._clients.popitem()
+                self._clients = None
+        else:
+            self.client = None
 
     def assertStatus(self, status, expectedStatus='SUCCESS'):
         self.assertIsNotNone(status)
@@ -1004,7 +1031,7 @@ class ngamsTestSuite(unittest.TestCase):
                 raise
 
         self.extSrvInfo.append(server_info)
-
+        self._add_client(port)
         return (cfgObj, dbObj)
 
 
@@ -1102,6 +1129,8 @@ class ngamsTestSuite(unittest.TestCase):
 
     def terminateAllServer(self):
         srv_mgr_pool.map(self.termExtSrv, self.extSrvInfo)
+        for srv_info in self.extSrvInfo:
+            self._remove_client(srv_info.port)
         self.extSrvInfo = []
 
     def setUp(self):
@@ -1307,7 +1336,7 @@ class ngamsTestSuite(unittest.TestCase):
         # server DB object.
         cfg, db = self.prepExtSrv(port=port, delDirs=0, clearDb=0, autoOnline=1,
                                   cfgFile=tmpCfgFile, root_dir=mtRtDir)
-        return [srvId, cfg, db]
+        return [srvId, port, cfg, db]
 
     def prepCluster(self, server_list, cfg_file='src/ngamsCfg.xml', createDatabase=True):
         """
@@ -1357,7 +1386,9 @@ class ngamsTestSuite(unittest.TestCase):
         # srvId: (cfgObj, dbObj), in same input order
         d = collections.OrderedDict()
         for r in res:
-            d[r[0]] = (r[1], r[2])
+            d[r[0]] = (r[2], r[3])
+            self._add_client(r[1])
+
         return d
 
     def point_to_sqlite_database(self, cfgObj, create):
