@@ -1031,7 +1031,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepExtSrv(srvModule="support.ngamsSrvTestKillBeforeArchCleanUp")
+        self.prepExtSrv(srvModule="test.support.ngamsSrvTestKillBeforeArchCleanUp")
         try:
             self.client.archive("src/SmallFile.fits")
         except:

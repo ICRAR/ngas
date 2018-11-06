@@ -303,7 +303,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
         """
         save_to_tmp("reqCallBack_BlockCmds1", fname="reqCallBack_tmp")
-        self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
+        self.prepExtSrv(srvModule="test.support.ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
@@ -342,7 +342,7 @@ class ngamsCClientTest(ngamsTestSuite):
 
         """
         save_to_tmp("reqCallBack_SrvCrash1", fname="reqCallBack_tmp")
-        self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
+        self.prepExtSrv(srvModule="test.support.ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
@@ -396,7 +396,7 @@ class ngamsCClientTest(ngamsTestSuite):
 
         save_to_tmp("reqCallBack_IllegalResp", fname="reqCallBack_tmp")
         save_to_tmp("\015\012", fname="ngamsServerTestIllegalResp_tmp")
-        self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
+        self.prepExtSrv(srvModule="test.support.ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
@@ -432,7 +432,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         save_to_tmp("reqCallBack_IllegalResp", fname="reqCallBack_tmp")
         save_to_tmp("", fname="ngamsServerTestIllegalResp_tmp")
-        self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
+        self.prepExtSrv(srvModule="test.support.ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
@@ -468,7 +468,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         save_to_tmp("reqCallBack_IllegalResp", fname="reqCallBack_tmp")
         save_to_tmp("f-423hcqfe-0", fname="ngamsServerTestIllegalResp_tmp")
-        self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
+        self.prepExtSrv(srvModule="test.support.ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
@@ -520,7 +520,7 @@ class ngamsCClientTest(ngamsTestSuite):
         # This should be investigated and resolved.
 
         save_to_tmp("reqCallBack_IllegalResp", fname="reqCallBack_tmp")
-        self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
+        self.prepExtSrv(srvModule="test.support.ngamsSrvTestDynReqCallBack")
         httpResp = "HTTP/1.0 200 OK\015\012" +\
                    "Server: NGAMS/v2.3/2004-07-12T11:39:39\015\012" +\
                    "Date: Thu, 7 Oct 2004 16:20:28 GMT\015\012" +\
@@ -564,7 +564,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
         """
         save_to_tmp("reqCallBack_SrvCrash1", fname="reqCallBack_tmp")
-        self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
+        self.prepExtSrv(srvModule="test.support.ngamsSrvTestDynReqCallBack")
         tmp_fname = genTmpFilename(prefix='WFI-TEST', suffix='.fits.Z')
         self.cp("src/WFI-TEST.fits.Z", tmp_fname)
         subprocess.check_call(['uncompress', tmp_fname])
@@ -602,7 +602,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
         """
         save_to_tmp("reqCallBack_AccArchiveBlock2", fname="reqCallBack_tmp")
-        self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
+        self.prepExtSrv(srvModule="test.support.ngamsSrvTestDynReqCallBack")
         self.archive("src/SmallFile.fits")
         out =\
             _execCClient(unpackXmlStat = 0,
@@ -641,7 +641,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
         """
         save_to_tmp("reqCallBack_SrvCrash2", fname="reqCallBack_tmp")
-        self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
+        self.prepExtSrv(srvModule="test.support.ngamsSrvTestDynReqCallBack")
         out =\
             _execCClient(unpackXmlStat = 0,
                          pars = [["-port", "8888"],
@@ -680,7 +680,7 @@ class ngamsCClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepExtSrv(srvModule="support.ngamsSrvTestBrokSockRetrieve")
+        self.prepExtSrv(srvModule="test.support.ngamsSrvTestBrokSockRetrieve")
         self.archive("src/SmallFile.fits")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
