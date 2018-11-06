@@ -577,7 +577,7 @@ def cinfo_from_filesystem(path, file_mimetype):
     """
 
     if not os.path.isdir(path):
-        raise ValueError("%s is not a directory, cannot traverse it")
+        raise ValueError("%s is not a directory, cannot traverse it" % path)
 
     abs_dirname = os.path.abspath(path)
     dirname = os.path.basename(abs_dirname)
