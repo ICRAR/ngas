@@ -123,6 +123,14 @@ def filter_and_replace(s, filters=[], startswith_filters=[], replacements={}, sp
         new_s.append(line)
     return '\n'.join(new_s)
 
+def _to_abs(path):
+    '''Return ``path`` as an absolute path. If ``path`` is relative, it is
+    interpreted as relative to the test/ package'''
+    if not os.path.isabs(path):
+        path = pkg_resources.resource_filename('test', path)
+        path = os.path.abspath(path)
+    return path
+
 # this_dir, which we use in a few places to refer to files, etc
 this_dir = os.path.normpath(os.path.abspath(pkg_resources.resource_filename(__name__, '.')))  # @UndefinedVariable
 
@@ -1141,6 +1149,10 @@ class ngamsTestSuite(unittest.TestCase):
         fname = 'TEST.2001-05-08T15:25:00.123.fits.gz'
         if os.path.exists(fname):
             os.unlink(fname)
+
+    def resource(self, filename):
+        '''Returns the actual filename for a given test resource'''
+        return _to_abs(filename)
 
     def ngas_root(self, port=None):
         '''Get the NGAS root directory for the running server. If more than one
