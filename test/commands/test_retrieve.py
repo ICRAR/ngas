@@ -173,7 +173,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         outFilePath = tmp_path('test_RetrieveCmd_3_1_tmp_unzip')
         unzip(trgFile, outFilePath)
         refFile = "src/TinyTestFile.fits"
-        self.checkFilesEq(outFilePath, refFile, "Retrieved file incorrect")
+        self.checkFilesEq(refFile, outFilePath, "Retrieved file incorrect")
 
 
     def test_RetrieveCmd_7(self):
@@ -469,7 +469,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # unzip the the file and diff against original
         unzip(trgFile, outFilePath)
-        self.checkFilesEq(outFilePath, refFile, "Retrieved file incorrect")
+        self.checkFilesEq(refFile, outFilePath, "Retrieved file incorrect")
 
     def test_invalid_partial_retrievals(self):
 

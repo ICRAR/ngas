@@ -1241,11 +1241,7 @@ class ngamsTestSuite(unittest.TestCase):
         self.fail(msg + '\n'.join(errors_as_msgs))
 
 
-    def checkFilesEq(self,
-                     refFile,
-                     tmpFile,
-                     msg,
-                     sort = 0):
+    def checkFilesEq(self, refFile, tmpFile, msg, sort = 0):
         """
         Check if two files are identical. Give out the given message if
         they are not.
@@ -1261,7 +1257,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:    Void.
         """
-        self.assertTrue(not cmpFiles(refFile, tmpFile, sort),
+        self.assertTrue(not cmpFiles(_to_abs(refFile), tmpFile, sort),
                         genErrMsg(msg, refFile, tmpFile))
 
 
