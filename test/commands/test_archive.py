@@ -45,7 +45,7 @@ from six.moves import cPickle # @UnresolvedImport
 
 from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
     NGAMS_SUCCESS, getDiskSpaceAvail, mvFile, NGAMS_FAILURE
-from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
+from ngamsLib import ngamsLib, ngamsStatus, ngamsFileInfo,\
     ngamsCore, ngamsHttpUtils
 from ..ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     pollForFile, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
@@ -186,17 +186,14 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Consider to re-implement this Text Case, using the simulated disks in
         the form of file systems in files.
         """
-        baseCfgFile = "src/ngamsCfg.xml"
-        tmpCfgFile = genTmpFilename(prefix="ngamsArchiveCmdTest_test_", suffix='.xml')
-        testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
-        cfg = ngamsConfig.ngamsConfig().load(baseCfgFile)
-        cfg.storeVal("NgamsCfg.Notification[1].Active", "1")
-        cfg.storeVal("NgamsCfg.Notification[1].SmtpHost", "localhost")
-        cfg.setDiskChangeNotifList([testUserEmail])
-        cfg.storeVal("NgamsCfg.ArchiveHandling[1].FreeSpaceDiskChangeMb",
-                     "10000000") # 10 TB, hopefully enough for most systems
-        cfg.save(tmpCfgFile, 0)
-        cfg, dbObj = self.prepExtSrv(cfgFile=tmpCfgFile)
+        testUserEmail = getpass.getuser() + "@" + ngamsLib.getCompleteHostName()
+        cfg = (
+            ("NgamsCfg.Notification[1].Active", "1"),
+            ("NgamsCfg.Notification[1].SmtpHost", "localhost"),
+            ("NgamsCfg.Notification[1].DiskChangeNotification[1].EmailRecipient[1].Address", testUserEmail),
+            ("NgamsCfg.ArchiveHandling[1].FreeSpaceDiskChangeMb", "10000000")
+        )
+        _, dbObj = self.prepExtSrv(cfgProps=cfg)
         flushEmailQueue()
         self.archive("src/SmallFile.fits")
 
@@ -259,18 +256,14 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Consider to re-implement this Text Case, using the simulated disks in
         the form of file systems in files.
         """
-        baseCfgFile = "src/ngamsCfg.xml"
-        tmpCfgFile = tmp_path("ngamsArchiveCmdTest_test_" +\
-                     "NormalArchivePushReq_2_cfg_tmp.xml")
-        testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
-        cfg = ngamsConfig.ngamsConfig().load(baseCfgFile)
-        cfg.storeVal("NgamsCfg.Notification[1].Active", "1")
-        cfg.storeVal("NgamsCfg.Notification[1].SmtpHost", "localhost")
-        cfg.setDiskSpaceNotifList([testUserEmail])
-        cfg.storeVal("NgamsCfg.ArchiveHandling[1].MinFreeSpaceWarningMb",
-                     "100000")
-        cfg.save(tmpCfgFile, 0)
-        cfgObj, dbObj = self.prepExtSrv(cfgFile=tmpCfgFile)
+        testUserEmail = getpass.getuser() + "@" + ngamsLib.getCompleteHostName()
+        cfg = (
+            ("NgamsCfg.Notification[1].Active", "1"),
+            ("NgamsCfg.Notification[1].SmtpHost", "localhost"),
+            ("NgamsCfg.Notification[1].DiskSpaceNotification[1].EmailRecipient[1].Address", testUserEmail),
+            ("NgamsCfg.ArchiveHandling[1].MinFreeSpaceWarningMb", "100000")
+        )
+        self.prepExtSrv(cfgProps=cfg)
         flushEmailQueue()
         self.archive("src/SmallFile.fits")
 
@@ -1103,27 +1096,22 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                          "skip_checksum=," +\
                          "checksum_result=0/0000000000000000"]]]
 
-    def _genArchProxyCfg(self,
-                         streamElList,
-                         ports):
+    def _genArchProxyCfg(self, ports):
         """
         Generate a cfg. file.
         """
-        baseCfgFile = "src/ngamsCfgNoStreams.xml"
-        tmpCfgFile = genTmpFilename("test_cfg_") + ".xml"
-        cfg = ngamsConfig.ngamsConfig().load(baseCfgFile)
-        for idx,streamEl in enumerate(streamElList,1):
+        cfg = []
+        for idx,streamEl in enumerate(self.__STREAM_LIST, 1):
             strEl = self.__STR_EL % idx
             for strAttrEl, attrVal in streamEl:
                 nextAttr = strAttrEl % strEl
-                cfg.storeVal(nextAttr, attrVal)
+                cfg.append((nextAttr, attrVal))
             for hostIdx, port in enumerate(ports, 1):
                 nauAttr = self.__ARCH_UNIT_ATR % (strEl, hostIdx)
-                cfg.storeVal(nauAttr, "%s:%d" % (getHostName(), port))
+                cfg.append((nauAttr, "%s:%d" % (getHostName(), port)))
                 hostIdx += 1
             idx += 1
-        cfg.save(tmpCfgFile, 0)
-        return tmpCfgFile
+        return "src/ngamsCfgNoStreams.xml", cfg
     #########################################################################
 
 
@@ -1160,10 +1148,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ...
         """
         ports = range(8001, 8005)
-        nmuCfg = self._genArchProxyCfg(self.__STREAM_LIST, ports)
-        #extProps = [["NgamsCfg.Log[1].LocalLogLevel", "5"]]
-        extProps = []
-        self.prepExtSrv(port=8000, cfgFile=nmuCfg, cfgProps=extProps)
+        cfg_file, cfg_props = self._genArchProxyCfg(ports)
+        self.prepExtSrv(port=8000, cfgFile=cfg_file, cfgProps=cfg_props)
         self.prepCluster(ports, createDatabase = False)
         noOfNodes = len(ports)
         nodeCount = 0
@@ -1213,17 +1199,11 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ...
         """
         ports = range(8000, 8004)
-        baseCfgFile = "src/ngamsCfg.xml"
-        tmpCfgFile = genTmpFilename("test_cfg_") + ".xml"
-        cfg = ngamsConfig.ngamsConfig().load(baseCfgFile)
-        idx = 1
-        for port in ports:
-            attr = "NgamsCfg.Streams[1].Stream[2].ArchivingUnit[%d].HostId" %\
-                   (idx)
-            cfg.storeVal(attr, "%s:%d" % (getHostName(), port))
-            idx += 1
-        cfg.save(tmpCfgFile, 0)
-        self.prepCluster(ports, cfg_file=tmpCfgFile)
+        cfg = []
+        for i, port in enumerate(ports, 1):
+            attr = "NgamsCfg.Streams[1].Stream[2].ArchivingUnit[%d].HostId" % i
+            cfg.append((attr, "%s:%d" % (getHostName(), port)))
+        self.prepCluster(ports, cfg_props=cfg)
 
         noOfNodes = len(ports)
         nodeCount = 0
@@ -1270,8 +1250,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ...
         """
         ports = range(8001, 8005)
-        ncuCfg = self._genArchProxyCfg(self.__STREAM_LIST, ports)
-        _, dbObj = self.prepExtSrv(port=8000, cfgFile=ncuCfg)
+        cfg_file, cfg_props = self._genArchProxyCfg(ports)
+        _, dbObj = self.prepExtSrv(port=8000, cfgFile=cfg_file, cfgProps=cfg_props)
         self.prepCluster(ports, createDatabase = False)
         # Set all Disks in unit <Host>:8002 to completed.
         dbObj.query2("UPDATE ngas_disks SET completed=1 WHERE host_id={0}", args=("%s:8002" % getHostName(),))

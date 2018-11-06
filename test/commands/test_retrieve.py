@@ -36,7 +36,7 @@ import io
 import os
 import subprocess
 
-from ngamsLib import ngamsConfig, ngamsHttpUtils
+from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import getHostName, \
     checkCreatePath, rmFile, NGAMS_SUCCESS, mvFile
 from ..ngamsTestLib import ngamsTestSuite, genTmpFilename, unzip, tmp_path
@@ -306,13 +306,9 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        tmpCfgFile = genTmpFilename("ngamsRetrieveCmdTest")
-        cfg = ngamsConfig.ngamsConfig().load("src/ngamsCfg.xml")
-        cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].Name", "test.support.ngamsTestDppi1")
-        cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
-                     "TAG=test_DppiProc_01,TARGET=FILE")
-        cfg.save(tmpCfgFile, 0)
-        self.prepExtSrv(cfgFile=tmpCfgFile)
+        cfg = (("NgamsCfg.Processing[1].PlugIn[1].Name", "test.support.ngamsTestDppi1"),
+               ("NgamsCfg.Processing[1].PlugIn[1].PlugInPars", "TAG=test_DppiProc_01,TARGET=FILE"))
+        self.prepExtSrv(cfgProps=cfg)
 
         self.archive("src/SmallFile.fits")
         # Retrieve the file specifying to apply the DPPI.
@@ -355,13 +351,9 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        tmpCfgFile = genTmpFilename("ngamsRetrieveCmdTest")
-        cfg = ngamsConfig.ngamsConfig().load("src/ngamsCfg.xml")
-        cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].Name", "test.support.ngamsTestDppi1")
-        cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
-                     "TAG=test_DppiProc_02,TARGET=BUFFER")
-        cfg.save(tmpCfgFile, 0)
-        self.prepExtSrv(cfgFile=tmpCfgFile)
+        cfg = (("NgamsCfg.Processing[1].PlugIn[1].Name", "test.support.ngamsTestDppi1"),
+               ("NgamsCfg.Processing[1].PlugIn[1].PlugInPars", "TAG=test_DppiProc_02,TARGET=BUFFER"))
+        self.prepExtSrv(cfgProps=cfg)
 
         self.archive("src/SmallFile.fits")
         # Retrieve the file specifying to apply the DPPI.

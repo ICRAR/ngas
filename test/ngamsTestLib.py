@@ -1316,7 +1316,8 @@ class ngamsTestSuite(unittest.TestCase):
                                   cfgFile=tmpCfgFile, root_dir=mtRtDir)
         return [srvId, port, cfg, db]
 
-    def prepCluster(self, server_list, cfg_file='src/ngamsCfg.xml', createDatabase=True):
+    def prepCluster(self, server_list, cfg_file='src/ngamsCfg.xml', createDatabase=True,
+                    cfg_props=()):
         """
         Prepare a common, simulated cluster. This consists of 1 to N
         servers running on the same node. It is ensured that each of
@@ -1349,12 +1350,15 @@ class ngamsTestSuite(unittest.TestCase):
                                                                  (dictionary).
         """
 
-        # Create the shared database first of all
+        # Create the shared database first of all and generate a new config file
         tmpCfg = db_aware_cfg(cfg_file)
         self.point_to_sqlite_database(tmpCfg, createDatabase)
         if createDatabase:
             with contextlib.closing(ngamsDb.from_config(tmpCfg, maxpool=1)) as db:
                 delNgasTbls(db)
+        cfg_file = genTmpFilename(suffix='.xml')
+        tmpCfg.save(cfg_file, 0)
+        cfg_file = prepCfg(cfg_file, cfg_props)
 
         multSrvs = len(server_list) > 1
 
