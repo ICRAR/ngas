@@ -170,6 +170,11 @@ class ngamsPClient:
         pars.append(("filename", os.path.basename(filename)))
         return self._post(cmd, mimeType, data, pars=pars)
 
+    def qarchive(self, *args, **kwargs):
+        '''Like `archive` but using `QARCHIVE`'''
+        kwargs['cmd'] = 'QARCHIVE'
+        return self.archive(*args, **kwargs)
+
     def rearchive(self,
                   fileUri,
                   fileInfoXml,
