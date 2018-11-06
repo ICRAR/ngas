@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-from ngamsLib.ngamsCore import cpFile
 
 from ..ngamsTestLib import ngamsTestSuite, tmp_path
 
@@ -29,7 +28,7 @@ class LarchiveTest(ngamsTestSuite):
 
         _, db = self.prepExtSrv()
         copy_of_copy = tmp_path('cp_cp')
-        cpFile('/bin/cp', copy_of_copy)
+        self.cp('/bin/cp', copy_of_copy)
         pars = [['fileUri', copy_of_copy]]
         self.archive('file:' + copy_of_copy, 'application/octet-stream', pars=pars, cmd='LARCHIVE')
 

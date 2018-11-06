@@ -418,20 +418,6 @@ def genErrMsgVals(msg,
     return msg + "\nRef Val: " + str(refVal) + "\nAct Val: " + str(actVal)
 
 
-def copyFile(srcFile,
-             trgFile):
-    """
-    Make of copy of referenced source file.
-
-    srcFile:         Source file to copy (string).
-
-    trgFile:         Target file (string).
-
-    Returns:         Void.
-    """
-    shutil.copy(srcFile, trgFile)
-
-
 def loadFile(filename, mode='t'):
     """
     Read contents from file and return this.
@@ -1153,6 +1139,10 @@ class ngamsTestSuite(unittest.TestCase):
     def resource(self, filename):
         '''Returns the actual filename for a given test resource'''
         return _to_abs(filename)
+
+    def cp(self, fname, tgt):
+        '''Copies ``fname`` (a test resource) to ``tgt``'''
+        return shutil.copy(_to_abs(fname), tgt)
 
     def ngas_root(self, port=None):
         '''Get the NGAS root directory for the running server. If more than one

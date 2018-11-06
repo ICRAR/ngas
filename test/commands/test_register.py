@@ -32,7 +32,6 @@ This module contains the Test Suite for the REGISTER Command.
 """
 
 import os
-import shutil
 import time
 
 from ngamsLib import ngamsFileInfo
@@ -85,7 +84,7 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         srcFile = "src/SmallFile.fits"
         tmpSrcFile = self.ngas_path("FitsStorage2-Main-3/saf/test/SmallFile.fits")
         checkCreatePath(os.path.dirname(tmpSrcFile))
-        shutil.copy(srcFile, tmpSrcFile)
+        self.cp(srcFile, tmpSrcFile)
         status = self.client.get_status(NGAMS_REGISTER_CMD, [["path", tmpSrcFile]])
         msg = "Incorrect status returned for REGISTER command"
         refStatFile = "ref/ngamsRegisterCmdTest_test_RegisterCmd_1_ref"

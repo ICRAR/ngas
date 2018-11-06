@@ -43,13 +43,13 @@ from multiprocessing.pool import ThreadPool
 
 from six.moves import cPickle # @UnresolvedImport
 
-from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
+from ngamsLib.ngamsCore import getHostName, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
     NGAMS_SUCCESS, getDiskSpaceAvail, mvFile, NGAMS_FAILURE
 from ngamsLib import ngamsLib, ngamsStatus, ngamsFileInfo,\
     ngamsCore, ngamsHttpUtils
 from ..ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     pollForFile, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
-    copyFile, genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp, \
+    genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp, \
     save_to_tmp, tmp_path
 from ngamsServer import ngamsFileUtils
 
@@ -334,7 +334,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         tmpFile = genTmpFilename(prefix="Tmp=Fits=File", suffix='.fits')
-        cpFile("src/SmallFile.fits", tmpFile)
+        self.cp("src/SmallFile.fits", tmpFile)
         self.archive(tmpFile)
 
 
@@ -588,7 +588,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Missing CHECKSUM keyword.
         if _check_fits_checksums:
             noChecksumFile = tmp_path("NoChecksum.fits")
-            copyFile("src/SmallFile.fits", noChecksumFile)
+            self.cp("src/SmallFile.fits", noChecksumFile)
             remFitsKey(noChecksumFile, "CHECKSUM")
             statObj = self.client.archive(noChecksumFile)
             self.checkTags(statObj.getMessage(), ["NGAMS_ER_DAPI_BAD_FILE",
@@ -598,7 +598,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
             # Illegal checksum in FITS file.
             illChecksumFile = tmp_path("IllChecksum.fits")
-            copyFile("src/SmallFile.fits", illChecksumFile)
+            self.cp("src/SmallFile.fits", illChecksumFile)
             writeFitsKey(illChecksumFile, "CHECKSUM", "BAD-CHECKSUM!", "TEST")
             statObj = self.client.archive(illChecksumFile)
             self.checkTags(statObj.getMessage(), ["NGAMS_ER_DAPI_BAD_FILE",
@@ -608,7 +608,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Unknown mime-type.
         unknownMtFile = tmp_path("UnknownMimeType.stif")
-        copyFile("src/SmallFile.fits", unknownMtFile)
+        self.cp("src/SmallFile.fits", unknownMtFile)
         statObj = self.client.archive(unknownMtFile)
         refStatFile = "ref/ngamsArchiveCmdTest_test_ErrHandling_1_4_ref"
         msg = "Incorrect status returned for Archive Push Request/Unknown Mimetype"
@@ -834,7 +834,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                                       cfgFile = tmpCfgFile)
         self.prepExtSrv(cfgFile = newCfgFile, delDirs=0)
         fitsFile = genTmpFilename() + ".fits.gz"
-        cpFile("src/1MB-2MB-TEST.fits.gz", fitsFile)
+        self.cp("src/1MB-2MB-TEST.fits.gz", fitsFile)
         execCmd("gunzip %s" % fitsFile)
         for n in range(3):
             self.archive(fitsFile[0:-3])  # #1
@@ -989,7 +989,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         for diskName in diskList:
             stgFile = stgPat % (diskName, diskName)
             checkCreatePath(os.path.dirname(stgFile))
-            cpFile("src/SmallFile.fits", stgFile)
+            self.cp("src/SmallFile.fits", stgFile)
             fo = open("%s.%s" % (stgFile, NGAMS_PICKLE_FILE_EXT), "w")
             fo.write("TEST/DUMMY REQUEST PROPERTIES FILE: %s" % diskName)
             fo.close()

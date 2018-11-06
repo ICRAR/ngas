@@ -24,7 +24,7 @@ import os
 import random
 import string
 
-from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE, toiso8601, cpFile
+from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE, toiso8601
 from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
 from ..ngamsTestLib import ngamsTestSuite, tmp_path
 
@@ -331,7 +331,7 @@ class ngamsContainerTest(ngamsTestSuite):
         # Create our own new "root" to easily use self._assertEqualsDir later
         src_root = tmp_path('src', container_name)
         checkCreatePath(src_root)
-        cp = lambda x: cpFile(x, os.path.join(src_root, os.path.basename(x)))
+        cp = lambda x: self.cp(x, os.path.join(src_root, os.path.basename(x)))
         cp(self.myfiles[0])
         cp(self.myfiles[1])
 

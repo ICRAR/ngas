@@ -33,7 +33,6 @@ This module contains the Test Suite for the Python Client.
 
 import os
 import subprocess
-import shutil
 import sys
 
 from ngamsLib.ngamsCore import getHostName
@@ -334,7 +333,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         trgFile = self.ngas_path("FitsStorage1-Main-1/SmallFile.fits")
-        shutil.copy("src/SmallFile.fits", trgFile)
+        self.cp("src/SmallFile.fits", trgFile)
         status = ngamsPClient.ngamsPClient(port=8888).\
                  register(trgFile)
         refMsg = "Successfully handled command REGISTER"
@@ -369,9 +368,9 @@ class ngamsPClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfg, _ = self.prepExtSrv()
+        self.prepExtSrv()
         trgFile = self.ngas_path("FitsStorage1-Main-1/SmallFile.fits")
-        shutil.copy("src/SmallFile.fits", trgFile)
+        self.cp("src/SmallFile.fits", trgFile)
         status = ngamsPClient.ngamsPClient(port=8888).\
                  register(trgFile)
         refMsg = "Successfully handled command REGISTER"

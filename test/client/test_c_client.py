@@ -37,7 +37,7 @@ import time
 import unittest
 
 from ngamsLib import ngamsStatus, utils
-from ngamsLib.ngamsCore import getHostName, cpFile, execCmd
+from ngamsLib.ngamsCore import getHostName, execCmd
 from ..ngamsTestLib import ngamsTestSuite, has_program, save_to_tmp, \
     genTmpFilename
 
@@ -566,7 +566,7 @@ class ngamsCClientTest(ngamsTestSuite):
         save_to_tmp("reqCallBack_SrvCrash1", fname="reqCallBack_tmp")
         self.prepExtSrv(srvModule="support.ngamsSrvTestDynReqCallBack")
         tmp_fname = genTmpFilename(prefix='WFI-TEST', suffix='.fits.Z')
-        cpFile("src/WFI-TEST.fits.Z", tmp_fname)
+        self.cp("src/WFI-TEST.fits.Z", tmp_fname)
         subprocess.check_call(['uncompress', tmp_fname])
         tmp_fname = tmp_fname[:-2]
         out = _execCClient(unpackXmlStat = 0,

@@ -33,7 +33,6 @@ This module contains the Test Suite for the NG/AMS Archive Client.
 
 import glob
 import os
-import shutil
 import subprocess
 import time
 import unittest
@@ -128,8 +127,8 @@ class ngamsArchiveClientTest(ngamsTestSuite):
 
         # Archive a file as copy and link.
         # Make sure at least the quee dir is already created
-        srcFile = os.path.abspath("src/SmallFile.fits")
-        shutil.copy(srcFile, os.path.join(arcCliDir, 'queue'))
+        srcFile = self.get_resource_fname("src/SmallFile.fits")
+        self.cp(srcFile, os.path.join(arcCliDir, 'queue'))
         os.symlink(srcFile, os.path.join(arcCliDir, 'queue', 'Test.fits'))
 
         # Check that files are being archived (within 20s) + NG/AMS Status

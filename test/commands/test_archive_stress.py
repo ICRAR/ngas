@@ -36,7 +36,6 @@ import os
 import threading
 import time
 
-from ngamsLib.ngamsCore import cpFile
 from ..ngamsTestLib import incArcfile, ngamsTestSuite, genTmpFilename
 
 
@@ -65,7 +64,7 @@ def archiveThread(testObj,
     """
     if (inc):
         filename = genTmpFilename(prefix='ngamsArchiveStressTest_%d' % no, suffix='.fits')
-        cpFile("src/TinyTestFile.fits", filename)
+        testObj.cp("src/TinyTestFile.fits", filename)
         incArcfile(filename, step=(100 * no))
     else:
         filename = "src/TinyTestFile.fits"

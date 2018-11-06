@@ -30,8 +30,10 @@
 """
 This module contains the Test Suite for the SUBSCRIBE Command.
 """
+import os
 
-from ngamsLib.ngamsCore import NGAMS_DISCARD_CMD, cpFile
+from ngamsLib.ngamsCore import NGAMS_DISCARD_CMD, checkCreatePath
+
 from ..ngamsTestLib import ngamsTestSuite
 
 
@@ -213,7 +215,8 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         trgFile = self.ngas_path("FitsStorage3-Main-5/saf/SmallFile.fits")
-        cpFile('src/SmallFile.fits', trgFile)
+        checkCreatePath(os.path.dirname(trgFile))
+        self.cp('src/SmallFile.fits', trgFile)
         pars = [["path", trgFile]]
         ref_file = "ref/ngamsDiscardCmdTest_test_NormalExec_2_%d_ref"
         self._assert_discard(ref_file, pars)

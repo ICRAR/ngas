@@ -32,7 +32,6 @@ This module contains the Test Suite for the Data Consistency Checking Thread.
 """
 
 import os
-import shutil
 import time
 
 from ngamsLib.ngamsCore import checkCreatePath
@@ -128,7 +127,7 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         # Manually copy a file into the disk
         trgFile = tmp_path("NGAS/FitsStorage1-Main-1/SmallFile.fits")
         checkCreatePath(os.path.dirname(trgFile))
-        shutil.copy("src/SmallFile.fits", trgFile)
+        self.cp("src/SmallFile.fits", trgFile)
 
         # It should appear as unregistered when the server checks it
         cfg, db = self.start_srv(delDirs=False)

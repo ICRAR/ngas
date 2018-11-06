@@ -38,7 +38,7 @@ import time
 
 from ngamsLib import utils
 from ngamsLib.ngamsCore import NGAMS_CLONE_CMD, NGAMS_REMFILE_CMD, \
-    NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD, cpFile
+    NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD
 from .ngamsTestLib import ngamsTestSuite
 
 
@@ -380,7 +380,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         regTestDir = self.ngas_path("FitsStorage1-Main-1/reg_test")
         checkCreatePath(regTestDir)
         for n in range(3):
-            cpFile('src/SmallFile.fits', os.path.join(regTestDir, "%d.fits" % n))
+            self.cp('src/SmallFile.fits', os.path.join(regTestDir, "%d.fits" % n))
         self.client.get_status(NGAMS_REGISTER_CMD, pars = [["path", regTestDir]])
         _checkContDbSnapshot(self, 6, ["FitsStorage1-Main-1"], 1, 1)
 
