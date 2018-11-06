@@ -211,10 +211,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName, clearDb=0)
 
         # Archive a file, should be OK.
-        statObj = self.client.archive("src/SmallFile.fits")
-        refStatFile = "ref/ngamsConfigHandlingTest_test_ServerLoad_1_1_ref"
-        msg = "Incorrect status returned for Archive Push Request"
-        self.assert_status_ref_file(refStatFile, statObj, msg=msg)
+        self.archive("src/SmallFile.fits")
 
 
     def test_ServerLoad_2(self):
@@ -256,10 +253,9 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName, clearDb=0)
 
         # Archive a file, should be rejected.
-        statObj = self.client.archive("src/SmallFile.fits")
-        refStatFile = "ref/ngamsConfigHandlingTest_test_ServerLoad_2_1_ref"
-        msg = "Incorrect status returned for Archive Push Request"
-        self.assert_status_ref_file(refStatFile, statObj, msg=msg)
+        status = self.archive("src/SmallFile.fits", expectedStatus='FAILURE')
+        self.assertIn('This NG/AMS is not configured for accepting Archive Requests',
+                      status.getMessage())
 
 
     def test_ServerLoad_3(self):
@@ -306,10 +302,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
 
         # Start server specifying 1st DB cfg.
         self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName1, clearDb=0)
-        statObj = self.client.archive("src/SmallFile.fits")
-        refStatFile = "ref/ngamsConfigHandlingTest_test_ServerLoad_3_1_ref"
-        msg = "Incorrect status returned for Archive Push Request"
-        self.assert_status_ref_file(refStatFile, statObj, msg=msg)
+        self.archive("src/SmallFile.fits")
 
 class XmlMgrTests(unittest.TestCase):
 
