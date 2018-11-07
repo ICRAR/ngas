@@ -37,7 +37,7 @@ import time
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, \
     NGAMS_STATUS_CMD, NGAMS_ARCHIVE_CMD
 from ngamsServer import ngamsServer
-from ngamsTestLib import tmp_path, loadFile
+from ..ngamsTestLib import tmp_path, loadFile
 
 
 class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
