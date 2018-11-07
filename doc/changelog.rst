@@ -1,6 +1,13 @@
 Changelog
 =========
 
+.. rubric:: Development version
+
+* Unit tests don't need to be run from within the ``test`` directory anymore.
+  This makes using unit test tools
+  like ``pytest`` or the built-in ``unittest`` module
+  easier to use.
+
 .. rubric:: 11.0.2
 
 * Fixed an important bug that was preventing the ``STATUS`` command

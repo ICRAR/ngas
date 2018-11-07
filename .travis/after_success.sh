@@ -29,8 +29,6 @@
 # TRAVIS_OS_NAME    the OS under which we are running (linux, osx)
 #
 
-cd ${TRAVIS_BUILD_DIR}/test
-
 # In OSX we create our own virtualenv, see run_build.sh
 if [ "${TRAVIS_OS_NAME}" = "osx" ]
 then

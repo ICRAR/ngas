@@ -174,8 +174,18 @@ You can use any unittest runner to execute the tests.
 In particular, we tend to use pytest, like this::
 
   $> pip install pytest
-  $> cd ngas_src_directory/test
   $> pytest
+
+.. note::
+
+ Previous versions of NGAS had the restriction
+ that one had to be **inside** the test/ directory
+ to run the tests.
+ This restriction does not exist anymore,
+ although one can *still* run the tests from within the directory.
+ Tools ``pytest`` or the ``unittest`` built-in module
+ should also be able to automatically discover and execute
+ unit tests.
 
 
 .. _post_inst.run_tests.tmp_dir:

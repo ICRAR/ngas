@@ -46,5 +46,4 @@ fi
 export NGAS_TESTDB
 
 pip install psutil pytest-cov coveralls
-cd ${TRAVIS_BUILD_DIR}/test
 py.test --cov

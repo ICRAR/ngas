@@ -25,14 +25,14 @@
 # We currently exclude the deploy directory because it's not
 # part of the core software
 [run]
-source = ../src/ngamsCore
-         ../src/ngamsPClient
-         ../src/ngamsPlugIns
-         ../src/ngamsServer
-omit = ../src/ngamsPlugIns/ngamsPlugIns/alma/*
-       ../src/ngamsPlugIns/ngamsPlugIns/gleam/*
-       ../src/ngamsPlugIns/ngamsPlugIns/mwa/*
-       ../src/ngamsPlugIns/ngamsPlugIns/eso/*
+source = src/ngamsCore
+         src/ngamsPClient
+         src/ngamsPlugIns
+         src/ngamsServer
+omit = src/ngamsPlugIns/ngamsPlugIns/alma/*
+       src/ngamsPlugIns/ngamsPlugIns/gleam/*
+       src/ngamsPlugIns/ngamsPlugIns/mwa/*
+       src/ngamsPlugIns/ngamsPlugIns/eso/*
        */setup.py
 
 # When coveralls combines the information from different runs
@@ -40,6 +40,6 @@ omit = ../src/ngamsPlugIns/ngamsPlugIns/alma/*
 # (because the filesystems are different in Linux v/s OSX builds).
 # We thus need to tell coverage how to combine files
 [paths]
-source = ../
+source = .
          /Users/travis/build/ICRAR/ngas/
          /home/travis/build/ICRAR/ngas/
