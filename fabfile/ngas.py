@@ -212,7 +212,7 @@ def virtualenv_setup():
             pversion = 2
         else:
             pversion = 3
-        run("./create_venv.sh -p {0} -{1} {2}".format(ppath, pversion, ngasInstallDir))
+        run("./create_venv.sh -p {0} -{1} {2}".format(ppath, pversion, ngasInstallDir), pty=False)
 
     # Download this particular certifcate; otherwise pip complains
     # in some platforms
@@ -231,7 +231,7 @@ def virtualenv_setup():
     #       https://pagure.io/python-daemon/issue/3).
     #       When this problem is fixed we'll fix our dependency on python-daemo
     #       to avoid this issue entirely
-    virtualenv('pip install -U pip wheel setuptools python-daemon')
+    virtualenv('pip install -U pip wheel setuptools python-daemon', pty=False)
 
     success("Virtualenv setup completed")
 
@@ -311,12 +311,12 @@ def build_ngas():
     with cd(ngas_source_dir()):
         extra_pkgs = extra_python_packages()
         if extra_pkgs:
-            virtualenv('pip install %s' % ' '.join(extra_pkgs))
+            virtualenv('pip install %s' % ' '.join(extra_pkgs), pty=False)
         no_client = ngas_no_client()
         develop = ngas_develop()
         no_doc_dependencies = ngas_doc_dependencies()
         build_cmd = ngas_build_cmd(no_client, develop, no_doc_dependencies)
-        virtualenv(build_cmd)
+        virtualenv(build_cmd, pty=False)
     success("NGAS built and installed")
 
 def prepare_ngas_data_dir():
