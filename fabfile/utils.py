@@ -33,7 +33,7 @@ from six.moves.urllib import request as urlrequest # @UnresolvedImport
 
 from fabric.colors import green, red, yellow, blue
 from fabric.context_managers import settings, hide
-from fabric.decorators import task, parallel
+from fabric.decorators import task
 from fabric.exceptions import NetworkError
 from fabric.operations import run as frun, sudo as fsudo
 from fabric.state import env
