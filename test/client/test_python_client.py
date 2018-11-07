@@ -80,7 +80,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         client = ngamsPClient.ngamsPClient(port=8888)
-        status = client.archive("src/SmallFile.fits")
+        status = client.archive(self.resource("src/SmallFile.fits"))
         refMsg = "Successfully handled Archive Push Request for data " +\
                  "file with URI: SmallFile.fits"
         self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\
@@ -111,7 +111,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         client = ngamsPClient.ngamsPClient(port=8888)
-        srcFileUri = "file:" + os.path.abspath("src/SmallFile.fits")
+        srcFileUri = "file:" + self.resource("src/SmallFile.fits")
         status = client.archive(srcFileUri)
         refMsg = "Successfully handled Archive Pull Request for data file " +\
                  "with URI: " + srcFileUri
@@ -144,7 +144,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         client = ngamsPClient.ngamsPClient(port=8888)
-        client.archive("src/SmallFile.fits")
+        client.archive(self.resource("src/SmallFile.fits"))
         statObj = client.clone("TEST.2001-05-08T15:25:00.123",
                                self.ngas_disk_id("FitsStorage1/Main/1"), -1)
         refMsg = "Successfully handled command CLONE"
@@ -177,7 +177,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         client = ngamsPClient.ngamsPClient(port=8888)
-        client.archive("src/SmallFile.fits")
+        client.archive(self.resource("src/SmallFile.fits"))
         statObj = client.clone("TEST.2001-05-08T15:25:00.123",
                                self.ngas_disk_id("FitsStorage1/Main/1"), -1,
                                asynchronous = 1)
@@ -211,7 +211,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         client = ngamsPClient.ngamsPClient(port=8888)
-        client.archive("src/SmallFile.fits")
+        client.archive(self.resource("src/SmallFile.fits"))
         statObj = client.clone("TEST.2001-05-08T15:25:00.123",
                                self.ngas_disk_id("FitsStorage1/Main/1"), -1,
                                asynchronous = 0)
@@ -436,7 +436,7 @@ class ngamsPClientTest(ngamsTestSuite):
         self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
         disk_id = self.ngas_disk_id("FitsStorage1/Main/1")
         client = ngamsPClient.ngamsPClient(port=8888)
-        client.archive("src/SmallFile.fits")
+        client.archive(self.resource("src/SmallFile.fits"))
         status = client.clone("", disk_id, -1)
         waitReqCompl(client, status.getRequestId())
         status = client.remFile(disk_id, "TEST.2001-05-08T15:25:00.123", -1)
@@ -474,7 +474,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         client = ngamsPClient.ngamsPClient(port=8888)
-        client.archive("src/SmallFile.fits")
+        client.archive(self.resource("src/SmallFile.fits"))
         status = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=tmp_path())
         refMsg = "Successfully handled request"
         self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\

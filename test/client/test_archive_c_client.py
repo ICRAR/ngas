@@ -127,7 +127,7 @@ class ngamsArchiveClientTest(ngamsTestSuite):
 
         # Archive a file as copy and link.
         # Make sure at least the quee dir is already created
-        srcFile = self.get_resource_fname("src/SmallFile.fits")
+        srcFile = self.resource("src/SmallFile.fits")
         self.cp(srcFile, os.path.join(arcCliDir, 'queue'))
         os.symlink(srcFile, os.path.join(arcCliDir, 'queue', 'Test.fits'))
 

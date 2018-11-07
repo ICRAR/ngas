@@ -439,7 +439,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         ngasRootDir = tmp_path("NGAS")
         rmFile(ngasRootDir)
         checkCreatePath(ngasRootDir)
-        subprocess.check_call(['tar', 'zxf', 'src/volumes_dir.tar.gz'])
+        subprocess.check_call(['tar', 'zxf', self.resource('src/volumes_dir.tar.gz')])
         mvFile('volumes', ngasRootDir)
 
         # Create configuration, start server.

@@ -480,7 +480,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         srcFile = "src/SmallFile.fits"
-        srcFileUrl = "file:" + os.path.abspath(srcFile)
+        srcFileUrl = "file:" + self.resource(srcFile)
         self.archive(srcFileUrl)
 
 
@@ -1309,7 +1309,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ngasRootDir = tmp_path('NGAS')
         rmFile(ngasRootDir)
         checkCreatePath(ngasRootDir)
-        subprocess.check_call(['tar', 'zxf', self.get_resource_fname('src/volumes_dir.tar.gz')])
+        subprocess.check_call(['tar', 'zxf', self.resource('src/volumes_dir.tar.gz')])
         mvFile('volumes', ngasRootDir)
 
         # Create configuration, start server.
@@ -1384,7 +1384,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.assertEqual(b'Content-Length is 0' in resp.read(), True)
 
         # All is fine
-        params = {'filename': 'src/SmallFile.fits',
+        params = {'filename': self.resource('src/SmallFile.fits'),
                   'mime_type': 'application/octet-stream'}
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.assertEqual(resp.status, 200)
@@ -1444,8 +1444,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         file_id = "SmallFile.fits"
         filename = "src/SmallFile.fits"
         _, db = self.prepExtSrv()
-        expected_checksum_crc32 = ngamsFileUtils.get_checksum(4096, "src/SmallFile.fits", 'crc32')
-        expected_checksum_crc32c = ngamsFileUtils.get_checksum(4096, "src/SmallFile.fits", 'crc32c')
+        expected_checksum_crc32 = ngamsFileUtils.get_checksum(4096, self.resource("src/SmallFile.fits"), 'crc32')
+        expected_checksum_crc32c = ngamsFileUtils.get_checksum(4096, self.resource("src/SmallFile.fits"), 'crc32c')
 
         # By default the server is configured to do CRC32
         self.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream')

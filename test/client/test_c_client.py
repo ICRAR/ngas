@@ -307,7 +307,7 @@ class ngamsCClientTest(ngamsTestSuite):
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
-                                   ["-fileUri", "src/SmallFile.fits"],
+                                   ["-fileUri", self.resource("src/SmallFile.fits")],
                                    ["-timeOut", "5"]])
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_1_ref"
         msg = "Incorrect handling of timeout of Archive Request in C-Client/API"
@@ -346,7 +346,7 @@ class ngamsCClientTest(ngamsTestSuite):
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
-                                   ["-fileUri", "src/SmallFile.fits"]])
+                                   ["-fileUri", self.resource("src/SmallFile.fits")]])
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_2_ref"
         msg = "Incorrect handling of crash of server in C-Client/API"
         self.assert_client_ref_file(refStatFile, out, msg=msg)
@@ -400,7 +400,7 @@ class ngamsCClientTest(ngamsTestSuite):
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
-                                   ["-fileUri", "src/SmallFile.fits"]])
+                                   ["-fileUri", self.resource("src/SmallFile.fits")]])
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_3_1_ref"
         msg = "Incorrect handling of corrupt server HTTP response in C-Client/API"
         self.assert_client_ref_file(refStatFile, out, msg=msg)
@@ -436,7 +436,7 @@ class ngamsCClientTest(ngamsTestSuite):
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
-                                   ["-fileUri", "src/SmallFile.fits"]])
+                                   ["-fileUri", self.resource("src/SmallFile.fits")]])
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_3_2_ref"
         msg = "Incorrect handling of corrupt server HTTP response in C-Client/API"
         self.assert_client_ref_file(refStatFile, out, msg=msg)
@@ -472,7 +472,7 @@ class ngamsCClientTest(ngamsTestSuite):
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
-                                   ["-fileUri", "src/SmallFile.fits"]])
+                                   ["-fileUri", self.resource("src/SmallFile.fits")]])
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_3_3_ref"
         msg = "Incorrect handling of corrupt server HTTP response in C-Client/API"
         self.assert_client_ref_file(refStatFile, out, msg=msg)
@@ -533,7 +533,7 @@ class ngamsCClientTest(ngamsTestSuite):
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
-                                   ["-fileUri", "src/SmallFile.fits"]])
+                                   ["-fileUri", self.resource("src/SmallFile.fits")]])
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_4_1_ref"
         msg = "Incorrect handling of corrupt server HTTP response in C-Client/API"
         self.assert_client_ref_file(refStatFile, out, msg=msg)

@@ -43,7 +43,7 @@ import uuid
 
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_HTTP_SERVICE_NA
-from .ngamsTestLib import ngamsTestSuite, save_to_tmp, this_dir, tmp_path
+from .ngamsTestLib import ngamsTestSuite, save_to_tmp, tmp_path
 
 
 # This module is used as a command by one of its own tests,
@@ -166,9 +166,11 @@ class ngamsDaemonTest(ngamsTestSuite):
         self.assertEqual(0, self._run_daemon_status(self.extSrvInfo[-1].cfg_file))
 
     def test_daemon_status_no_server_running(self):
-        self.assertEqual(1, self._run_daemon_status(os.path.join(this_dir, self.point_to_ngas_root('src/ngamsCfg.xml'))))
+        cfg_file = self.resource('src/ngamsCfg.xml')
+        self.assertEqual(1, self._run_daemon_status(self.point_to_ngas_root(cfg_file)))
 
     def test_daemon_double_start(self):
         # Try to start the daemon twice, it should fail
         self.prepExtSrv(daemon=True)
-        self.assertNotEqual(0, self._run_daemon_start(os.path.join(this_dir, self.point_to_ngas_root('src/ngamsCfg.xml'))))
+        cfg_file = self.resource('src/ngamsCfg.xml')
+        self.assertNotEqual(0, self._run_daemon_start(self.point_to_ngas_root(cfg_file)))
