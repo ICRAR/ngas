@@ -443,9 +443,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         mvFile('volumes', ngasRootDir)
 
         # Create configuration, start server.
-        cwd = os.getcwd()
-        configFile = os.path.normpath(cwd+"/src/ngamsCfg_VolumeDirectory.xml")
-        self.prepExtSrv(delDirs=0, cfgFile=configFile)
+        self.prepExtSrv(delDirs=0, cfgFile='src/ngamsCfg_VolumeDirectory.xml')
 
         # Archive a file.
         stat = self.archive("src/SmallFile.fits")
