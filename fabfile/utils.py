@@ -156,20 +156,16 @@ def key_filename(key_name):
     return os.path.join(os.path.expanduser('~/.ssh/'), '{0}.pem'.format(key_name))
 
 def get_public_key(key_filename):
-
-    from Crypto.PublicKey import RSA
-
-    with open(key_filename) as f:
-        okey = RSA.importKey(f.read())
-        return okey.exportKey('OpenSSH')
+    from paramiko.rsakey import RSAKey
+    key = RSAKey.from_private_key_file(filename=key_filename)
+    public_key = key.get_base64()
+    return 'ssh-rsa ' + public_key
 
 def generate_key_pair():
-
-    from Crypto.PublicKey import RSA
-
-    key = RSA.generate(2048)
-    pubkey = key.publickey()
-    return key, pubkey
+    from paramiko.rsakey import RSAKey
+    key = RSAKey.generate(2048)
+    pubkey = key.get_base64()
+    return key, 'ssh-rsa ' + pubkey
 
 def repo_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))

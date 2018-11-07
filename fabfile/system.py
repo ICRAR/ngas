@@ -267,7 +267,7 @@ def get_fab_public_key():
     """
 
     # If the user specified a private key via "fab -i" we use that one;
-    # otherwise we use the default RSA key.
+    # otherwise we use the default ssh key.
     # env.key_filename can be a list, so make sure we handle it correctly
     if 'key_filename' in env and env.key_filename:
         k_fname = env.key_filename
