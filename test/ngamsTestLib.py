@@ -131,9 +131,6 @@ def _to_abs(path):
         path = os.path.abspath(path)
     return path
 
-# this_dir, which we use in a few places to refer to files, etc
-this_dir = os.path.normpath(os.path.abspath(pkg_resources.resource_filename(__name__, '.')))  # @UndefinedVariable
-
 ###########################################################################
 
 ###########################################################################
@@ -915,12 +912,11 @@ class ngamsTestSuite(unittest.TestCase):
         else:
             srvModule = srvModule or 'ngamsServer.ngamsServer'
 
-        parent_dir = os.path.dirname(this_dir)
         execCmd  = [sys.executable, '-m', srvModule]
         if daemon:
             execCmd += ['start']
         execCmd += ["-cfg", tmpCfg, "-v", str(verbose)]
-        execCmd += ['-path', parent_dir]
+        execCmd += ['-path', os.path.dirname(_to_abs('.'))]
         if force:        execCmd.append('-force')
         if autoOnline:   execCmd.append("-autoonline")
         if dbCfgName:    execCmd.extend(["-dbcfgid", dbCfgName])
