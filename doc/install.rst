@@ -224,7 +224,7 @@ Docker Image
 
 .. note::
 
- The ``docker-py`` module is required for use of this install option.
+ The ``docker`` module is required for use of this install option.
 
 .. note::
 
