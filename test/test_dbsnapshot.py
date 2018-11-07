@@ -312,7 +312,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         self._prepSrv()
         for _ in range(3):
             self.archive("src/SmallFile.fits")
-        diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
+        diskId = self.ngas_disk_id("FitsStorage1/Main/1")
         self.client.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
         self.client.get_status(NGAMS_REMDISK_CMD, pars = [["disk_id", diskId], ["execute", "1"]])
         time.sleep(2)
