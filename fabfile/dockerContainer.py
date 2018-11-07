@@ -34,6 +34,7 @@ from fabric.context_managers import settings
 from fabric.state import env
 from fabric.tasks import execute
 from fabric.utils import puts
+import six
 
 from .ngas import ngas_root_dir, ngas_user, ngas_source_dir
 from .system import get_fab_public_key
@@ -73,7 +74,7 @@ def add_public_ssh_key(cont):
     tarinfo.size = len(public_key)
     tarinfo.mtime = time.time()
     with tarfile.TarFile(fileobj=tar_data, mode='w') as tar:
-        tar.addfile(tarinfo, io.BytesIO(public_key))
+        tar.addfile(tarinfo, io.BytesIO(six.b(public_key)))
 
     tar_data.seek(0)
     cont.put_archive(path='/root/', data=tar_data)
