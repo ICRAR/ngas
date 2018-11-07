@@ -29,35 +29,38 @@ from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
 from ..ngamsTestLib import ngamsTestSuite, tmp_path
 
 
+mydirs = [
+    ".",
+    "./1",
+    "./2",
+    "./3",
+    "./3/subdir",
+    "./3/subdir/anotherSubdir"
+]
+
+# Mind you that they all have different basenames
+myfiles = [
+    "./file1",
+    "./file2",
+    "./1/musicFile",
+    "./2/fitsFile.fits",
+    "./3/subdir/apple",
+    "./3/subdir/anotherSubdir/orange"
+]
+
 class ngamsContainerTest(ngamsTestSuite):
-
-    mydirs = [
-        "toplevel",
-        "toplevel/1",
-        "toplevel/2",
-        "toplevel/3",
-        "toplevel/3/subdir",
-        "toplevel/3/subdir/anotherSubdir"
-    ]
-
-    # Mind you that they all have different basenames
-    myfiles = [
-        "toplevel/file1",
-        "toplevel/file2",
-        "toplevel/1/musicFile",
-        "toplevel/2/fitsFile.fits",
-        "toplevel/3/subdir/apple",
-        "toplevel/3/subdir/anotherSubdir/orange"
-    ]
 
     def setUp(self):
         ngamsTestSuite.setUp(self)
+        self.toplevel = tmp_path('toplevel')
+        self.mydirs = [os.path.normpath(os.path.join(self.toplevel, d)) for d in mydirs]
+        self.myfiles = [os.path.normpath(os.path.join(self.toplevel, f)) for f in myfiles]
         self._createDirectories()
         self._createFiles()
 
     def tearDown(self):
         ngamsTestSuite.tearDown(self)
-        rmFile("toplevel")
+        rmFile(self.toplevel)
 
     def _createDirectories(self):
         for mydir in self.mydirs:
@@ -304,12 +307,12 @@ class ngamsContainerTest(ngamsTestSuite):
         containerName = "toplevel"
 
         # Archive the top-level directory
-        self.carchive(containerName, 'application/octet-stream')
+        self.carchive(self.toplevel, 'application/octet-stream')
         self._checkFilesAndContainerSize(containerName, len(self.myfiles), self._filesSize(), 1)
 
         # Retrieve it
         self.cretrieve(containerName, targetDir=tmp_path(), as_tar=as_tar)
-        self._assertEqualsDir(containerName, tmp_path(containerName))
+        self._assertEqualsDir(self.toplevel, tmp_path(containerName))
 
     def test_archive_receive(self):
         self._test_archive_receive(False)
@@ -321,7 +324,6 @@ class ngamsContainerTest(ngamsTestSuite):
 
         self.prepCluster((8888, 8889))
         container_name = 'toplevel'
-        tgt_root = tmp_path(container_name)
 
         # Create our own new "root" to easily use self._assertEqualsDir later
         src_root = tmp_path('src', container_name)
@@ -342,9 +344,10 @@ class ngamsContainerTest(ngamsTestSuite):
         # CRETRIEVE the container using both clients in turns,
         # both files should come back
         def retrieve_container(port):
-            self.cretrieve(port, container_name, targetDir=tmp_path(), as_tar=as_tar)
-            self._assertEqualsDir(src_root, tgt_root)
-            rmFile(tgt_root)
+            tgt_dir = tmp_path('tgt')
+            self.cretrieve(port, container_name, targetDir=tgt_dir, as_tar=as_tar)
+            self._assertEqualsDir(src_root, os.path.join(tgt_dir, 'toplevel'))
+            rmFile(tgt_dir)
 
         retrieve_container(8888)
         retrieve_container(8889)

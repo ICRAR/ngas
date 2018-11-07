@@ -1423,7 +1423,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         self.prepExtSrv()
 
-        test_file = 'name:with:colons'
+        test_file = tmp_path('name:with:colons')
         with open(test_file, 'wb') as f:
             f.write(b'   ')
 
