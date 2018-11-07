@@ -56,7 +56,8 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data = {
-        'ngamsServer'  : ['README', '*.txt'],
+        'ngamsServer'  : ['README'],
+        'ngamsServer.commands': ['*.txt']
     },
     install_requires=install_requires,
     # No spaces allowed between the '='s
