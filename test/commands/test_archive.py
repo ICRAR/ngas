@@ -63,7 +63,7 @@ _check_fits_checksums = False
 _crc32c_available = False
 _test_checksums = True
 try:
-    import crc32c
+    import crc32c  # @UnusedImport
     _crc32c_available = True
 except ImportError:
     _test_checksums = False
@@ -269,7 +269,6 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Check that Disk Change Notification message have been generated.
         if _checkMail:
             mailContClean = getEmailMsg()
-            idx = mailContClean.find("space (")
             mailContClean = mailContClean[0:mailContClean.find("space (")]
             refStatFile = "ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_2_ref"
             tmpStatFile = save_to_tmp(mailContClean)
@@ -834,7 +833,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         fitsFile = genTmpFilename() + ".fits.gz"
         self.cp("src/1MB-2MB-TEST.fits.gz", fitsFile)
         execCmd("gunzip %s" % fitsFile)
-        for n in range(3):
+        for _ in range(3):
             self.archive(fitsFile[0:-3])  # #1
         # Check: Disk/Slot 1 is marked as completed.
         # Check: Disk/Slot 2 is not marked as completed.
@@ -858,7 +857,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         #####################################################################
         # Phase 2: Continue to archive data until disk/Slot 3 fills up.
         #####################################################################
-        for n in range(3):
+        for _ in range(3):
             self.archive(fitsFile[0:-3])  # #2
         self.archive(fitsFile[0:-3]) # #3
         # Check: That disk/Slot 3 is marked as completed + disk/Slot 4
@@ -904,7 +903,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                          cfgFile = tmpCfgFile)
         self.online()
 
-        for n in range(8):
+        for _ in range(8):
             self.archive(fitsFile[0:-3])  # #4
         # Re-init the server to ensure the NgasDiskInfo file has been updated.
         self.init()
@@ -931,7 +930,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         #####################################################################
         # Phase 4: Continue to archive until disk/Slot 2 fills up.
         #####################################################################
-        for n in range(2):
+        for _ in range(2):
             self.archive(fitsFile[0:-3])  # #5
 
         # Re-init the server to ensure the NgasDiskInfo file has been updated.
@@ -979,7 +978,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfg, _ = self.prepExtSrv()
+        self.prepExtSrv()
         stgPat = self.ngas_path("%s/staging/%s.fits")
         diskList = ["FitsStorage1-Main-1", "FitsStorage2-Main-3",
                     "FitsStorage3-Main-5", "PafStorage-Main-7",

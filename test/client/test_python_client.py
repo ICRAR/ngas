@@ -525,7 +525,7 @@ class ngamsPClientTest(ngamsTestSuite):
         nodeDic = {"%s:%d" % (hostname, p): 0 for p in ports}
         noOfNodes = len(nodeDic.keys())
         nodeCount = 0
-        for n in range(100):
+        for _ in range(100):
             status = client.status()
             if (nodeDic[status.getHostId()] == 0):
                 nodeDic[status.getHostId()] = 1

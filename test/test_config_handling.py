@@ -165,7 +165,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj1, dbObj = self.loadCfg("test_Load_1")
+        _, dbObj = self.loadCfg("test_Load_1")
 
         # Load + check the configuration from the DB.
         cfgObj2 = ngamsConfig.ngamsConfig()

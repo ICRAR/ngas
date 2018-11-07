@@ -229,7 +229,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         ...
         """
         _, dbObj = self.prepExtSrv(cfgProps=(('NgamsCfg.Db[1].Snapshot', "0"),))
-        for n in range(3):
+        for _ in range(3):
             self.archive("src/SmallFile.fits")
 
         diskId1 = self.ngas_disk_id("FitsStorage1/Main/1")

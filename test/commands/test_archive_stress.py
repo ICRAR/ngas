@@ -70,7 +70,7 @@ def archiveThread(testObj,
         filename = "src/TinyTestFile.fits"
     testStr = TST_STR1 % os.path.basename(filename)
 
-    for n in range(5):
+    for _ in range(5):
         if (not RUN_TEST):
             THREAD_STAT[no] = "STOPPED"
             break

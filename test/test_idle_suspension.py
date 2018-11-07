@@ -287,7 +287,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         masterNode, susp_nodes = get_nodes()
         subNode1 = susp_nodes[0]
         dbConObj = prepSimCluster(self)[masterNode][1]
-        for n in range(3):
+        for _ in range(3):
             self.archive(8001, "src/SmallFile.fits")
         # Retrieve the file as file_id, file_id/file_version.
         testParsList = [["TEST.2001-05-08T15:25:00.123", -1],

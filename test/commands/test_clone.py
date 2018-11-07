@@ -140,7 +140,7 @@ def _execCloneTest(testObj,
         main_archive = testObj.archive
         main_client = testObj.client
 
-    for n in range(5):
+    for _ in range(5):
         main_archive("src/SmallFile.fits")
         if (subNode):
             node_archive("src/TinyTestFile.fits")
@@ -528,8 +528,8 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         TODO: Re-implement using _execCloneTest().
         """
         srcFile = "src/SmallFile.fits"
-        cfgObj, dbObj = self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
-        for n in range(2):
+        _, dbObj = self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
+        for _ in range(2):
             self.archive(srcFile)
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
@@ -602,7 +602,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         """
         srcFile = "src/SmallFile.fits"
         self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
-        for n in range(10):
+        for _ in range(10):
             self.archive(srcFile)
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()

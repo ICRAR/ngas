@@ -215,7 +215,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                     ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:05"]]
         envDic = self.prepCluster((8000, 8001, (8002, suspPars)))
         for portNo in [8000, 8001, 8002]:
-            for n in range(3):
+            for _ in range(3):
                 self.archive(portNo, "src/SmallFile.fits")
         self.offline(8001)
         self.exit(8001)

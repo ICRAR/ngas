@@ -134,7 +134,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
 
         """
-        cfgObj, dbObj = self.prepExtSrv(port=8000)
+        self.prepExtSrv(port=8000)
         statObj = _execCClient(pars=[["-port", "8000"],
                                      ["-cmd", "STATUS"]])[0]
         refStatFile = "ref/ngamsCClientTest_test_StatusCmd_1_1_ref"
@@ -199,7 +199,7 @@ class ngamsCClientTest(ngamsTestSuite):
 
         """
         self.prepCluster((8000, 8011))
-        for n in range(2):
+        for _ in range(2):
             self.archive(8011, "src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = _execCClient(pars=[["-port", "8000"],
@@ -235,7 +235,7 @@ class ngamsCClientTest(ngamsTestSuite):
 
         """
         self.prepCluster((8000, 8011))
-        for n in range(2):
+        for _ in range(2):
             self.archive(8011, "src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = _execCClient(pars=[["-port", "8000"],
@@ -268,7 +268,7 @@ class ngamsCClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(port=8111)
+        self.prepExtSrv(port=8111)
         diskId = self.ngas_disk_id("FitsStorage1/Main/1")
         statObj = _execCClient(pars=[["-cmd", "STATUS"],
                                      ["-diskId", diskId],
