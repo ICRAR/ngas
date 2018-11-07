@@ -181,7 +181,7 @@ def create_final_image(state):
     cont.exec_run('rm -rf /var/log')
     cont.exec_run('rm -rf /var/lib/yum')
 
-    conf = {'Cmd': ["/usr/bin/su", "-", "ngas", "-c", "/home/ngas/ngas_rt/bin/ngamsServer -cfg /home/ngas/NGAS/cfg/ngamsServer.conf -autoOnline -force -v 4"]}
+    conf = {'Cmd': ["/usr/bin/su", "-", "ngas", "-c", "/home/ngas/ngas_rt/bin/ngamsServer -cfg /home/ngas/NGAS/cfg/ngamsServer.conf -autoonline -force -v 4"]}
     image_repo = docker_image_repository()
 
     try:
