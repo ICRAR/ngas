@@ -590,6 +590,8 @@ def db_aware_cfg(cfg_filename, check=0, db_id_attr="Db-Test"):
     with whatever is in the NGAS_DB_CONF environment variable, if present
     """
 
+    cfg_filename = _to_abs(cfg_filename)
+
     if 'NGAS_TESTDB' not in os.environ or not os.environ['NGAS_TESTDB']:
         return ngamsConfig.ngamsConfig().load(cfg_filename, check)
 
@@ -865,6 +867,8 @@ class ngamsTestSuite(unittest.TestCase):
         """
         if srvModule and daemon:
             raise ValueError("srvModule cannot be used in daemon mode")
+
+        cfgFile = _to_abs(cfgFile)
 
         verbose = logging_levels[logger.getEffectiveLevel()] + 1
 
@@ -1227,7 +1231,7 @@ class ngamsTestSuite(unittest.TestCase):
         data = _old_buf_style('\n'.join(new_buf))
 
         # Clean up data coming from the reference file
-        ref = filter_and_replace(loadFile(ref_file), startswith_filters=startswith_filters,
+        ref = filter_and_replace(loadFile(_to_abs(ref_file)), startswith_filters=startswith_filters,
                                  replacements=replacements)
 
         errors = []
@@ -1494,7 +1498,7 @@ class ngamsTestSuite(unittest.TestCase):
 
                 # Generate NgasDiskInfo XML documents for the slot to simulate
                 # that the disk is already registered as an NGAS Disk.
-                ngasDiskInfo = loadFile("src/NgasDiskInfoTemplate")
+                ngasDiskInfo = _to_abs("src/NgasDiskInfoTemplate")
                 isoDate = toiso8601()
                 diskId = diskDir[1:].replace("/", "-")
                 ngasDiskInfo = ngasDiskInfo % (isoDate, getHostName(),
@@ -1613,7 +1617,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:        Void.
         """
-        refQueryPlanLines = list(filter(None, loadFile(refQueryPlan).split("\n")))
+        refQueryPlanLines = list(filter(None, loadFile(_to_abs(refQueryPlan)).splitlines()))
         self.assertEqual(len(refQueryPlanLines), len(queryPlanLines))
         for i, (query, refQuery) in enumerate(zip(queryPlanLines, refQueryPlanLines), 1):
             self._checkQuery(query, refQuery, refQueryPlan, i)
