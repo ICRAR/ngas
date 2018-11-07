@@ -1,6 +1,11 @@
 Changelog
 =========
 
+.. rubric:: 11.0.2
+
+* Fixed an important bug that was preventing the ``STATUS`` command
+  from being imported correctly in normal NGAS installations.
+
 .. rubric:: 11.0.1
 
 * Fixed an important bug that was causing data to be removed
