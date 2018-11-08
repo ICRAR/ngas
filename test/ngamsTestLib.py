@@ -975,7 +975,7 @@ class ngamsTestSuite(unittest.TestCase):
                 # Not up yet, try again later
                 if isinstance(e, socket.error) and e.errno == errno.ECONNREFUSED:
                     logger.debug("Polled server - not yet running ...")
-                    time.sleep(0.2)
+                    time.sleep(0.1)
                     continue
 
                 # We are having this funny situation in MacOS builds, when
@@ -1075,12 +1075,12 @@ class ngamsTestSuite(unittest.TestCase):
             else:
                 # Wait for the server to be definitively terminated.
                 waitLoops = 0
-                while srvProcess.poll() is None and waitLoops < 20:
-                    time.sleep(0.5)
+                while srvProcess.poll() is None and waitLoops < 100:
+                    time.sleep(0.1)
                     waitLoops += 1
 
                 # ... or force it to die
-                kill9 = waitLoops == 20
+                kill9 = waitLoops == 100
 
         try:
             if kill9:
