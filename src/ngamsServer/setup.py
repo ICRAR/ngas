@@ -20,7 +20,6 @@
 #    MA 02111-1307  USA
 #
 import os
-import sys
 
 from setuptools import setup, find_packages
 
@@ -32,10 +31,6 @@ with open('../../VERSION') as vfile:
 
 
 install_requires = ['ngamsCore', 'python-daemon', 'netifaces>=0.10.6']
-
-# In python 3.3+ we use os.sendfile, otherwise we require pysendfile.sendfile
-if sys.version_info[0:2] < (3, 3):
-    install_requires.append('pysendfile')
 
 # Users might opt out from depending on crc32c
 # Our code is able to cope with that situation already

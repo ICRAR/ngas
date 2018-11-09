@@ -67,7 +67,7 @@ from ngamsLib.ngamsCore import genLog, getNgamsVersion, \
     toiso8601
 from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils,\
     utils
-from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps
+from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps, pysendfile
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 from . import janitor
 from . import InvalidParameter, NoSuchCommand
@@ -77,7 +77,6 @@ from . import ngamsUserServiceThread
 from . import ngamsMirroringControlThread
 from . import ngamsCacheControlThread
 from . import request_db
-from . import pysendfile
 
 
 logger = logging.getLogger(__name__)

@@ -19,6 +19,8 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+import sys
+
 from setuptools import setup, find_packages
 
 with open('../../VERSION') as vfile:
@@ -29,6 +31,10 @@ with open('../../VERSION') as vfile:
 
 # We definitely require this one
 install_requires = ['DBUtils', 'six>=1.10']
+
+# In python 3.3+ we use os.sendfile, otherwise we require pysendfile.sendfile
+if sys.version_info[0:2] < (3, 3):
+    install_requires.append('pysendfile')
 
 # If there's neither bsddb nor bsddb3 we need to install the latter
 try:
