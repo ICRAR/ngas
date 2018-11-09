@@ -35,6 +35,8 @@ import sys
 from six.moves import http_client as httplib  # @UnresolvedImport
 from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 
+from . import pysendfile
+
 logger = logging.getLogger(__name__)
 
 
@@ -91,6 +93,10 @@ def _http_response(host, port, method, cmd,
     #
     # In several places throughout the code we trusted on the pre-3.6 rules,
     # so here we exercise them manually for 3.6+
+    #
+    # We also the os.fstat below to recognize when we're sending a file, in
+    # which case we actually sendfile(2) it.
+    is_file = False
     if (data is not None and
         sys.version_info >= (3, 6, 0) and
         'content-length' not in hdrs and
@@ -100,6 +106,7 @@ def _http_response(host, port, method, cmd,
         except (TypeError, AttributeError):
             try:
                 thelen = os.fstat(data.fileno()).st_size
+                is_file = True
             except (AttributeError, OSError):
                 thelen = None
         if thelen is not None:
@@ -119,7 +126,11 @@ def _http_response(host, port, method, cmd,
     _connect(conn)
 
     try:
-        conn.request(method, url, body=data, headers=hdrs)
+        if is_file:
+            conn.request(method, url, headers=hdrs)
+            pysendfile.sendfile(conn.sock, data)
+        else:
+            conn.request(method, url, body=data, headers=hdrs)
         logger.debug("%s request sent to, waiting for a response", method)
     except socket.error as e:
 

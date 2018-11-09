@@ -3,6 +3,10 @@ Changelog
 
 .. rubric:: Development version
 
+* Using ``sendfile(2)`` when POSTing files through HTTP connections.
+  This should lower the overhead of using python to perform the transfer,
+  bringing benefits to ``ngamsPClient`` class and command-line tool,
+  and to the subscription thread.
 * Unit tests don't need to be run from within the ``test`` directory anymore.
   This makes using unit test tools
   like ``pytest`` or the built-in ``unittest`` module
