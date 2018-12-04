@@ -60,10 +60,10 @@ env.APP_ROOT_DIR_NAME = env.APP_NAME.upper()
 env.APP_INSTALL_DIR_NAME = env.APP_NAME.lower() + '_rt'
 
 # Version of Python required for the Application
-env.APP_PYTHON_VERSION = '2.7'
+env.APP_PYTHON_VERSION = '3.6'
 
 # URL to download the correct Python version
-env.APP_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.14/Python-2.7.14.tgz'
+env.APP_PYTHON_URL = 'https://www.python.org/ftp/python/3.6.7/Python-3.6.7.tgz'
 
 env.APP_DATAFILES = ['NGAS']
 
@@ -125,7 +125,7 @@ env.pkgs = {
                 'patch',
                 'postfix',
                 'postgresql-devel',
-                'python27-devel',
+                'python36-devel',
                 'python-devel',
                 'readline-devel',
                 'sqlite-devel',
