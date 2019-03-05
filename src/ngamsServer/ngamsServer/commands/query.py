@@ -53,10 +53,15 @@ NGAMS_PYTHON_PICKLE_MT = "application/python-pickle"
 NGAMS_JSON_MT = "application/json"
 
 # Dirty trick to get the simple columnnames from these tables
-NGAMS_FILES_COLS = list(map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasFilesDef))
-NGAMS_DISKS_COLS = list(map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasDisksDef))
-NGAMS_SUBSCR_COLS = list(map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasSubscribersDef))
-NGAMS_HOST_COLS = list(map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasHostsDef))
+class columns(object):
+    def __init__(self, definitions):
+        self.as_list = list(map(lambda x: x[0].split('.')[1], definitions))
+        self.as_sql = ', '.join(self.as_list)
+
+NGAMS_FILES_COLS = columns(ngamsDbCore._ngasFilesDef)
+NGAMS_DISKS_COLS = columns(ngamsDbCore._ngasDisksDef)
+NGAMS_SUBSCR_COLS = columns(ngamsDbCore._ngasSubscribersDef)
+NGAMS_HOST_COLS = columns(ngamsDbCore._ngasHostsDef)
 
 #creation_date could be different from ingestion_date if it is a mirrored archive
 # ingestion_date is when the original copy was ingested in the system,
@@ -74,36 +79,23 @@ _LASTVER_LOCATION_SQL = ("SELECT a.host_id, a.mount_point || '/' || b.file_name 
                          "ORDER BY b.file_id")
 
 # query_name: (column_list, SQL statement)
+_query = lambda sql, cols: (cols.as_list, sql % cols.as_sql)
 queries = {
-    "files_list":
-        (NGAMS_FILES_COLS,
-        "select * from ngas_files"),
-    "subscribers_list":
-        (NGAMS_SUBSCR_COLS,
-        "select * from ngas_subscribers"),
-    "subscribers_like":
-        (NGAMS_SUBSCR_COLS,
-        "select * from ngas_subscribers where host_id like {0}"),
-    "disks_list":
-        (NGAMS_DISKS_COLS,
-        "select * from ngas_disks"),
-    "hosts_list":
-        (NGAMS_HOST_COLS,
-        "select * from ngas_hosts"),
-    "files_like":
-        (NGAMS_FILES_COLS,
-        "select * from ngas_files where file_id like {0}"),
-    "files_location":
-        (_LOCATION_COLS,
-         _FILES_LOCATION_SQL),
-    "lastver_location":  (
-        _LOCATION_COLS,
-        _LASTVER_LOCATION_SQL),
-    "files_between":
-        (NGAMS_FILES_COLS,
-         "select * from ngas_files where ingestion_date between {0} and {1}"),
-    "files_stats":
-        (('Number of files', 'Total volume [MB]'),
+    "files_list": _query("select %s from ngas_files", NGAMS_FILES_COLS),
+    "subscribers_list": _query("select %s from ngas_subscribers", NGAMS_SUBSCR_COLS),
+    "subscribers_like": _query("select %s from ngas_subscribers where host_id like {0}", NGAMS_SUBSCR_COLS),
+    "disks_list": _query("select %s from ngas_disks", NGAMS_DISKS_COLS),
+    "hosts_list": _query("select %s from ngas_hosts", NGAMS_HOST_COLS),
+    "files_like": _query("select %s from ngas_files where file_id like {0}", NGAMS_FILES_COLS),
+    "files_location": (_LOCATION_COLS, _FILES_LOCATION_SQL),
+    "lastver_location":  (_LOCATION_COLS, _LASTVER_LOCATION_SQL),
+    "files_between": _query(
+        "select %s from ngas_files where ingestion_date between {0} and {1}",
+        NGAMS_FILES_COLS),
+    "files_greater": _query(
+        "select %s from ngas_files where ingestion_date > {0}",
+        NGAMS_FILES_COLS),
+    "files_stats": (('Number of files', 'Total volume [MB]'),
          "select count(*),sum(uncompressed_file_size)/1048576. as MB from ngas_files"),
     "files_list_recent":
         (('file_id', 'file_name', 'file_size', 'ingestion_date'),
@@ -224,7 +216,7 @@ def handleCmd(srvObj,
         if param1 and param2:
             args = (param1, param2)
         elif param1:
-            sql = 'select * from ngas_files where ingestion_date >= {0}'
+            sql = queries['files_greater']
             args = (param1,)
         else:
             sql = queries['files_list']
