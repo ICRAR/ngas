@@ -137,7 +137,7 @@ class _atomic_counter(object):
             val = self.val
             self.val += 1
             return val
-
+            
 class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
     Class used to handle an HTTP request. The various ``send_*`` methods

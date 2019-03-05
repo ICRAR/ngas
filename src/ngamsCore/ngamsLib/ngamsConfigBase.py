@@ -184,7 +184,7 @@ class ngamsConfigBase:
             critInfoNameList = ["Password"]
         else:
             critInfoNameList = []
-        xmlDomObj = self.__xmlMgr._genXml("NgamsCfg", critInfoNameList)
+        xmlDomObj = self.__xmlMgr.genXml(critInfoNameList)
         return xmlDomObj
 
 

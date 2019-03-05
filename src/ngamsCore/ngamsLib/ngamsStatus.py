@@ -748,7 +748,13 @@ class ngamsStatus:
 
         Returns:    XML document (string).
         """
-        return self.genXml(0, 1, 1, 1, 0).toprettyxml('  ', '\n')[:-1]
+        return self.genXml(
+            genCfgStatus,
+            genDiskStatus,
+            genFileStatus,
+            genStatesStatus,
+            genLimDiskStatus
+        ).toprettyxml('  ', '\n')[:-1]
 
 
     def genXml(self,
@@ -808,11 +814,13 @@ class ngamsStatus:
             statusEl.setAttribute("LastRequestStatUpdate", toiso8601(self.__lastRequestStatUpdate))
         if self.__completionTime is not None:
             statusEl.setAttribute("CompletionTime", toiso8601(self.__completionTime))
-
+        if (genCfgStatus):
+            statusEl.setAttribute("GenCfgStatus", "1")
         ngamsStatusEl.appendChild(statusEl)
 
         # NgamsCfg Element.
         if (genCfgStatus):
+            logger.debug("Generating ngamsCfg XML element")
             ngamsCfgEl = self.__ngamsCfg.genXml()
             ngamsStatusEl.appendChild(ngamsCfgEl)
 

@@ -535,7 +535,7 @@ def handleCmd(srvObj,
             raise Exception(errMsg)
         genRequestStatus = 1
     elif (configurationFile):
-        msg = "configuration_file=" + srvObj.getCfg().getCfg()
+        msg = "configuration_file=" + srvObj.cfg_fname
         genCfgStatus = 1
         status.setNgamsCfgObj(srvObj.getCfg())
     elif (fileAccess):
@@ -560,6 +560,8 @@ def handleCmd(srvObj,
         status.setReqStatFromReqPropsObj(reqPropsObjRef)
 
         # Generate XML reply.
+        logger.debug("Status requests: " + str([genCfgStatus, genDiskStatus, genFileStatus,
+                                                genStatesStatus]))
         xmlStat = status.genXmlDoc(genCfgStatus, genDiskStatus, genFileStatus,
                                    genStatesStatus)
         xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
