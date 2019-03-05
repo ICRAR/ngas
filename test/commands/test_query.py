@@ -22,6 +22,7 @@
 import json
 
 from ..ngamsTestLib import sendPclCmd, ngamsTestSuite
+from ngamsLib import utils
 
 
 class ngamsQueryCmdTest(ngamsTestSuite):
@@ -83,6 +84,6 @@ class ngamsQueryCmdTest(ngamsTestSuite):
 
         stat = client.get_status('QUERY', pars=[['query', 'disks_list'], ['format', 'json']])
         self.assertStatus(stat)
-        results = json.loads(stat.getData())
+        results = json.loads(utils.b2s(stat.getData()))
         self.assertEqual(0, int(results[0]['number_of_files']))
         self.assertEqual(cfg.getArchiveName(), results[0]['archive'])
