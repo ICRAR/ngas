@@ -19,6 +19,8 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+import json
+
 from ..ngamsTestLib import sendPclCmd, ngamsTestSuite
 
 
@@ -69,3 +71,18 @@ class ngamsQueryCmdTest(ngamsTestSuite):
         stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
         self.assertStatus(stat)
         self.assertTrue(b"TEST.2001-05-08T15:25:00.123" in stat.getData())
+
+    def test_column_names(self):
+        """Check that column names are correctly bound to data by reading some
+        of the cells and making sure they make sense. If column names are not
+        correclty bound to columns then data might not be convertible and might
+        not make sense"""
+
+        cfg, _ = self.prepExtSrv()
+        client = sendPclCmd()
+
+        stat = client.get_status('QUERY', pars=[['query', 'disks_list'], ['format', 'json']])
+        self.assertStatus(stat)
+        results = json.loads(stat.getData())
+        self.assertEqual(0, int(results[0]['number_of_files']))
+        self.assertEqual(cfg.getArchiveName(), results[0]['archive'])
