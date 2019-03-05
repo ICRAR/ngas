@@ -22,6 +22,7 @@
 import json
 
 from ..ngamsTestLib import ngamsTestSuite
+from ngamsLib import utils
 
 
 class ngamsQueryCmdTest(ngamsTestSuite):
@@ -75,6 +76,6 @@ class ngamsQueryCmdTest(ngamsTestSuite):
         cfg, _ = self.prepExtSrv()
 
         stat = self.assert_query(pars=[['query', 'disks_list'], ['format', 'json']])
-        results = json.loads(stat.getData())
+        results = json.loads(utils.b2s(stat.getData()))
         self.assertEqual(0, int(results[0]['number_of_files']))
         self.assertEqual(cfg.getArchiveName(), results[0]['archive'])
