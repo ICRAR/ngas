@@ -11,6 +11,9 @@ Changelog
   This makes using unit test tools
   like ``pytest`` or the built-in ``unittest`` module
   easier to use.
+* Fixed small issue in ``QUERY`` command
+  where column names where not correctly aligned
+  with the underlying column data.
 
 .. rubric:: 11.0.2
 
