@@ -685,6 +685,12 @@ class ngamsStatus:
             tolerant = 1
             self.__ngamsCfg.unpackFromRootNode(ngamsCfgRootNode[0], tolerant)
 
+        # Unpack the NG/AMS Configuration File information.
+        ngamsCfgFileNode = dom.getElementsByTagName("NgamsCfgFile")
+        if (len(ngamsCfgFileNode) > 0):
+            self.configFileName = getAttribValue(ngamsCfgFileNode[0],
+                                               "ConfigFileName", 1)
+
         # Unpack Disk Status Elements and File Status Elements.
         diskNodes = dom.getElementsByTagName("DiskStatus")
         for diskNode in diskNodes:
