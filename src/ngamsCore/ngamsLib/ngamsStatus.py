@@ -815,14 +815,19 @@ class ngamsStatus:
         if self.__completionTime is not None:
             statusEl.setAttribute("CompletionTime", toiso8601(self.__completionTime))
         if (genCfgStatus):
-            statusEl.setAttribute("GenCfgStatus", "1")
+            statusEl.setAttribute("ConfigFileName", self.__ngamsCfg.getCfg())
         ngamsStatusEl.appendChild(statusEl)
 
         # NgamsCfg Element.
         if (genCfgStatus):
             logger.debug("Generating ngamsCfg XML element")
-            ngamsCfgEl = self.__ngamsCfg.genXml()
-            ngamsStatusEl.appendChild(ngamsCfgEl)
+            if (genCfgStatus == 1):
+                ngamsStatusEl = doc.createElement("NgamsCfg")
+                ngamsCfgEl.setAttribute("ConfigFileName", self.__ngamsCfg.getCfg())
+            # Hidden feature to return complete Cfg!!
+            if (genCfgStatus == -1):
+                ngamsCfgEl = self.__ngamsCfg.genXml()
+                ngamsStatusEl.appendChild(ngamsCfgEl)
 
         # DiskStatus Elements.
         if (genDiskStatus):
