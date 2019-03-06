@@ -433,7 +433,8 @@ def handleCmd(srvObj,
     if (reqPropsObj.hasHttpPar("file_version")):
         fileVersion = int(reqPropsObj.getHttpPar("file_version"))
 
-    if (reqPropsObj.hasHttpPar("configuration_file")): configurationFile = "-"
+    if (reqPropsObj.hasHttpPar("configuration_file")): 
+        configurationFile = reqPropsObj.getHttpPar("configuration_file")
 
     if (reqPropsObj.hasHttpPar("file_access")):
         fileAccess = reqPropsObj.getHttpPar("file_access")
@@ -538,8 +539,10 @@ def handleCmd(srvObj,
         msg = "configuration_file=" + srvObj.cfg_fname
         genCfgStatus = 1
         # Hidden feature to return complete Cfg!!
-        if int(configurationFile) == -1:
-            genCfgStatus = -1
+        try:
+            genCfgStatus = int(configurationFile)
+        except ValueError:
+            genCfgStatus = 1
         status.setNgamsCfgObj(srvObj.getCfg())
     elif (fileAccess):
         if (not fileVersion): fileVersion = -1
