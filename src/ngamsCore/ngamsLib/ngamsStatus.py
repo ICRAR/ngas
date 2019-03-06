@@ -827,7 +827,7 @@ class ngamsStatus:
             # Hidden feature to return complete Cfg!!
             if (genCfgStatus == -1):
                 ngamsCfgEl = self.__ngamsCfg.genXml()
-                ngamsStatusEl.appendChild(ngamsCfgEl)
+            ngamsStatusEl.appendChild(ngamsCfgEl)
 
         # DiskStatus Elements.
         if (genDiskStatus):
