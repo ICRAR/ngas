@@ -538,7 +538,7 @@ def handleCmd(srvObj,
         msg = "configuration_file=" + srvObj.cfg_fname
         genCfgStatus = 1
         # Hidden feature to return complete Cfg!!
-        if configurationFile == "-1":
+        if int(configurationFile) == -1:
             genCfgStatus = -1
         status.setNgamsCfgObj(srvObj.getCfg())
     elif (fileAccess):
