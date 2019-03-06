@@ -106,8 +106,8 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepCluster((8000, 8011))
-        status = self.status(8000, pars=[["host_id", getNcu11()]])
+        self.prepCluster((8010, 8011))
+        status = self.status(8010, pars=[["host_id", getNcu11()]])
         refMsg = "Successfully handled command STATUS"
         self.assertIn(refMsg, status.getMessage())
         self.assertEqual(status.getHostId(), getNcu11())
@@ -140,7 +140,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepCluster((8000, 8011))
+        self.prepCluster((8010, 8011))
         srcFile = "src/TinyTestFile.fits"
         self.archive(8011, srcFile)
         statObj = self.status(8011,
@@ -149,6 +149,33 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         refMsg = "NGAMS_INFO_FILE_AVAIL:4029:INFO: File with File ID: " +\
                  "NCU.2003-11-11T11:11:11.111/Version: 1, is available on " +\
                  "NGAS Host with Host ID: %s." % getNcu11()
+        self.assertIn(refMsg, statObj.getMessage())
+
+    def test_StatusCmd_4(self):
+        """
+        Synopsis:
+        Test normal execution of STATUS Command/configuration_file
+
+        Description:
+        It is possible to retrieve the file name of the used configuration file
+        This is exercised in this Test Suite.
+
+        Expected Result:
+        The information about the file, located on a sub-node should be
+        retrieved by the contacted node acting as proxy.
+
+        Test Steps:
+        - Start server.
+        - Submit STATUS?configuration_file=1 Command 
+        - Check that the status message returned contains the ConfigFileName attribute
+
+        Remarks:
+        ...
+        """
+        self.prepExtSrv()
+        statObj = self.status(
+                             pars=[["configuration_file", "-1"]])
+        refMsg = "ConfigFileName"
         self.assertIn(refMsg, statObj.getMessage())
 
     def test_filelist(self):

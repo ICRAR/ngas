@@ -822,7 +822,7 @@ class ngamsStatus:
         if (genCfgStatus):
             logger.debug("Generating ngamsCfg XML element")
             if (genCfgStatus == 1):
-                ngamsCfgEl = doc.createElement("NgamsCfg")
+                ngamsCfgEl = doc.createElement("NgamsCfgFile")
                 ngamsCfgEl.setAttribute("ConfigFileName", self.__ngamsCfg.getCfg())
             # Hidden feature to return complete Cfg!!
             if (genCfgStatus == -1):
