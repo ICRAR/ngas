@@ -175,8 +175,8 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         self.prepExtSrv()
         statObj = self.status(
                              pars=[["configuration_file", "1"]])
-        refMsg = "ConfigFileName"
-        self.assertIn(refMsg, statObj.ngamsCfgFileName)
+        refMsg = ".xml"
+        self.assertIn(refMsg, statObj.configFileName)
 
     def test_filelist(self):
         """Checks that the STATUS command handles the file_list option correctly"""
