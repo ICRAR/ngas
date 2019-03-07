@@ -27,78 +27,24 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  18/11/2003  Created
 #
-"""
-This module contains the Test Suite for the HELP Command.
-"""
+import contextlib
 
-from ngamsLib.ngamsCore import NGAMS_HELP_CMD
+from ngamsLib import ngamsHttpUtils
 from ..ngamsTestLib import ngamsTestSuite
 
 
 class ngamsHelpCmdTest(ngamsTestSuite):
-    """
-    Synopsis:
-    Test Suite of the HELP Command.
+    """Tests for the HELP command"""
 
-    Description:
-    The purpose of the Test Suite is to exercise the HELP Command.
+    def test_help_online(self):
+        self._test_help()
 
-    Missing Test Cases:
-    NOTE: The HELP Command is not yet implemented. When implemented this
-          Test Suite should be reviewed and the missing Test Cases added.
-    """
+    def test_help_offline(self):
+        self._test_help()
 
-    def test_NoPars_1(self):
-        """
-        Synopsis:
-        Issue HELP Command with no parameters/Offline State.
-
-        Description:
-        Check that the response to the HELP Command is as expected (taking
-        into account that the HELP Command is not yet implemented).
-
-        Expected Result:
-        The server should send back an Error Response indicating that the
-        HELP Command is not yet implemented.
-
-        Test Steps:
-        - Start server.
-        - Issue HELP Command.
-        - Check that output is as expected (=command rejected).
-
-        Remarks:
-        This Test Case should be modified when the HELP Command has been
-        implemented.
-        """
-        self.prepExtSrv(autoOnline=0)
-        status = self.get_status_fail(NGAMS_HELP_CMD)
-        refStatFile = "ref/ngamsHelpCmdTest_test_NoPars_1_1_ref"
-        self.assert_status_ref_file(refStatFile, status)
-
-
-    def test_NoPars_2(self):
-        """
-        Synopsis:
-        Issue HELP Command with no parameters/Online State.
-
-        Description:
-        Check that the response to the HELP Command is as expected (taking
-        into account that the HELP Command is not yet implemented).
-
-        Expected Result:
-        The server should send back an Error Response indicating that the
-        HELP Command is not yet implemented.
-
-        Test Steps:
-        - Start server.
-        - Issue HELP Command.
-        - Check that output is as expected (command rejected).
-
-        Remarks:
-        This Test Case should be modified when the HELP Command has been
-        implemented.
-        """
+    def _test_help(self):
         self.prepExtSrv()
-        status = self.get_status_fail(NGAMS_HELP_CMD)
-        refStatFile = "ref/ngamsHelpCmdTest_test_NoPars_2_1_ref"
-        self.assert_status_ref_file(refStatFile, status)
+        resp = ngamsHttpUtils.httpGet('localhost', 8888, 'HELP')
+        with contextlib.closing(resp):
+            self.assertEqual(resp.code, 308)
+            self.assertEqual(resp.headers['location'], 'https://ngas.readthedocs.io')
