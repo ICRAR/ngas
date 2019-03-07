@@ -248,6 +248,13 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_response(NGAMS_HTTP_REDIRECT, hdrs={'Location': location})
         self.end_headers()
 
+    def redirect_to_url(self, url, http_status=NGAMS_HTTP_REDIRECT):
+        """Permanent Redirects the client to the requested url"""
+
+        logger.info("Redirecting client to %s", url)
+        self.send_response(http_status, hdrs={'Location': url})
+        self.end_headers()
+
     def send_file(self, f, mime_type, start_byte=0, fname=None, hdrs={}):
         """
         Sends file ``f`` of type ``mime_type`` to the client. Optionally a different

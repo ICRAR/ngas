@@ -33,7 +33,7 @@ Contains code for handling the HELP command.
 TODO: The HELP command is not yet implemented!
 """
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
+from ngamsLib.ngamsCore import NGAMS_HTTP_PERM_REDIRECT
 
 
 def handleCmd(srvObj,
@@ -53,7 +53,5 @@ def handleCmd(srvObj,
     Returns:        Void.
     """
 
-    ##########################################################################
-    # COMMAND NOT YET IMPLEMENTED - REMOVE THIS BLOCK WHEN IMPLEMENTED
-    ##########################################################################
-    httpRef.send_status("Command HELP not implemented", status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
+    url =  "https://ngas.readthedocs.io"  
+    httpRef.redirect_to_url(url, status=NGAMS_HTTP_PERM_REDIRECT)
