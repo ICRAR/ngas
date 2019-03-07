@@ -54,4 +54,4 @@ def handleCmd(srvObj,
     """
 
     url =  "https://ngas.readthedocs.io"  
-    httpRef.redirect_to_url(url, status=NGAMS_HTTP_PERM_REDIRECT)
+    httpRef.redirect_to_url(url, http_status=NGAMS_HTTP_PERM_REDIRECT)
