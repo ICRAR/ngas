@@ -931,6 +931,7 @@ class ngamsTestSuite(unittest.TestCase):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             with contextlib.closing(s):
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 s.bind(('127.0.0.1', port))
         except socket.error:
             raise RuntimeError('Port %d is taken, test server will not be able to start' % port)
