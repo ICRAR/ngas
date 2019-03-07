@@ -927,6 +927,14 @@ class ngamsTestSuite(unittest.TestCase):
         environ = os.environ.copy()
         environ['NGAS_TESTS_TMP_DIR_BASE'] = _tmp_root_base
 
+        logger.info('Making sure port %d is available')
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            with contextlib.closing(s):
+                s.bind(('127.0.0.1', port))
+        except socket.error:
+            raise RuntimeError('Port %d is taken, test server will not be able to start' % port)
+
         logger.info("Starting external NG/AMS Server in port %d with command: %s", port, " ".join(execCmd))
         with self._proc_startup_lock:
             srvProcess = subprocess.Popen(execCmd, shell=False, env=environ)
