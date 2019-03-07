@@ -98,7 +98,7 @@ class Task(object):
         if self._mode == Task.PROCESS:
             code = self._bg_task.exitcode
             if code is None:
-                logger.warning("%s task didn't exit cleanly (exit code=%d), killing it". self.name, code)
+                logger.warning("%s task didn't exit cleanly (exit code=%d), killing it", self.name, code)
                 os.kill(self._bg_task.pid, signal.SIGKILL)
         elif self._bg_task.is_alive():
             logger.warning("Task %s is still alive after stopping it, continuing anyway", self.name)
