@@ -126,7 +126,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         Returns:        Tuple with ngamsConfig and ngamsDb Objects (tuple).
         """
         # This ensure the Db.Id attribute is what we want it to be
-        cfgObj = self.db_aware_cfg(cfgFile, check=checkCfg, db_id_attr=dbIdAttr)
+        cfgObj = self.env_aware_cfg(cfgFile, check=checkCfg, db_id_attr=dbIdAttr)
         revAttr = "NgamsCfg.Header[1].Revision"
         cfgObj.storeVal(revAttr, "TEST-REVISION", "ngamsCfg-Test")
 
@@ -244,7 +244,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         ...
         """
         cfgName = "test_ServerLoad_2"
-        tmpCfg = self.db_aware_cfg().\
+        tmpCfg = self.env_aware_cfg().\
                  storeVal("NgamsCfg.Permissions[1].AllowArchiveReq", "0",
                           "Permissions-Test")
         cfgFile = save_to_tmp(tmpCfg.genXmlDoc(0))
@@ -290,7 +290,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         # For the second cfg. set all the DB Cfg. Group ID to a common value
         # + set all values to a non-sense value.
         cfgName2 = "test_ServerLoad_2"
-        tmpCfg = self.db_aware_cfg()
+        tmpCfg = self.env_aware_cfg()
         for cfgKey in list(tmpCfg._getXmlDic()):
             if ((cfgKey[-1] != "]") and (cfgKey.find("Db[1]") == -1)):
                 tmpCfg.storeVal(cfgKey, "0")
