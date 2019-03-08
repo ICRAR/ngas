@@ -1185,7 +1185,6 @@ def generateReport(srvObj):
         subject = "NGAS MIRRORING SERVICE STATUS REPORT"
         for recipient in repRecipients.split(","):
             ngamsHighLevelLib.sendEmail(srvObj.getCfg(),
-                                        srvObj.getCfg().getNotifSmtpHost(),
                                         subject, [recipient],
                                         srvObj.getCfg().getSender(), summary,
                                         "text/plain")

@@ -32,10 +32,12 @@ Contains higher level common functions.
 """
 
 import contextlib
+import email.mime.multipart
 import errno
 import logging
 import os
 import shutil
+import smtplib
 import socket
 import threading
 import random
@@ -47,8 +49,8 @@ from .ngamsCore import genLog, NGAMS_HOST_LOCAL,\
     NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
     checkCreatePath, checkAvailDiskSpace,\
     getFileSize, NGAMS_BAD_FILES_DIR, NGAMS_BAD_FILE_PREFIX, NGAMS_STATUS_CMD,\
-    mvFile, rmFile, NGAMS_HTTP_UNAUTH, NGAMS_HTTP_SUCCESS, to_valid_filename
-from . import ngamsSmtpLib, ngamsLib, ngamsHostInfo, ngamsHttpUtils
+    mvFile, NGAMS_HTTP_UNAUTH, NGAMS_HTTP_SUCCESS, to_valid_filename
+from . import ngamsLib, ngamsHostInfo, ngamsHttpUtils
 
 
 logger = logging.getLogger(__name__)
@@ -698,14 +700,12 @@ def genTmpFilename(ngamsCfgObj,
 
 
 def sendEmail(ngamsCfgObj,
-              smtpHost,
               subject,
               recList,
               fromField,
               dataRef,
-              contentType = None,
-              attachmentName = None,
-              dataInFile = 0):
+              contentType=None,
+              attachmentName=None):
     """
     Send an e-mail to the recipients specified.
 
@@ -732,38 +732,36 @@ def sendEmail(ngamsCfgObj,
 
     Returns:        Void.
     """
-    hdr = "Subject: " + subject + "\n"
-    if (contentType):
-        hdr += "Content-Type: " + contentType + "\n"
-    if (attachmentName):
-        hdr += "Content-Disposition: attachment; filename=" +\
-               attachmentName + "\n"
-    if (not dataInFile):
-        data = hdr + "\n" + dataRef
-    else:
-        # Prepare a file with the exact contents of the email.
-        data = genTmpFilename(ngamsCfgObj, "_NOTIF_EMAIL.tmp")
-        fo = open(data, "w")
-        fo.write(hdr + "\n")
-        foIn = open(dataRef)
-        while (1):
-            buf = foIn.read(16384)
-            if (buf == ""): break
-            fo.write(buf)
-        fo.close()
-        foIn.close()
 
-    for emailAdr in recList:
-        try:
-            server = ngamsSmtpLib.ngamsSMTP(smtpHost)
-            server.sendMail("From: " + fromField, "Bcc: " + emailAdr, data,
-                            [], [], dataInFile)
-        except Exception as e:
-            if (dataInFile): rmFile(data)
-            errMsg = genLog("NGAMS_ER_EMAIL_NOTIF",
-                            [emailAdr, fromField, smtpHost,str(e)])
-            raise Exception(errMsg)
-    if (dataInFile): rmFile(data)
+    if not attachmentName:
+        msg = email.message.Message()
+    else:
+        msg = email.mime.multipart.MIMEMultipart()
+
+    msg['From'] = fromField
+    msg['Subject'] = subject
+
+    if attachmentName:
+        contentType = contentType or 'text/plain'
+        ct_parts = contentType.split('/')
+        part = email.mime.multipart.MIMEBase(ct_parts[0], ct_parts[1])
+        with open(dataRef, 'rb') as f:
+            part.set_payload(f.read())
+        if ct_parts[0] != 'text':
+            email.encoders.encode_base64(part)
+        part.add_header('Content-Disposition', 'attachment', filename=attachmentName)
+        msg.attach(part)
+    else:
+        if contentType:
+            msg["Content-Type"] = contentType
+        msg.set_payload(dataRef)
+
+    smtpHost = ngamsCfgObj.getNotifSmtpHost()
+    port = ngamsCfgObj.getNotifSmtpPort()
+    client = smtplib.SMTP(smtpHost, port)
+    for rcpt in recList:
+        msg['To'] = rcpt
+        client.sendmail(fromField, rcpt, msg.as_string())
 
 
 # EOF

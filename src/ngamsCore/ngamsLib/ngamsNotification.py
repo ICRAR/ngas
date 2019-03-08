@@ -121,13 +121,11 @@ def _sendNotifMsg(hostId,
             logger.info("Sending Notification Message to: %s. Subject: %s",
                         recipient, subject)
             try:
-                smtpHost = ngamsCfgObj.getNotifSmtpHost()
-                ngamsHighLevelLib.sendEmail(ngamsCfgObj, smtpHost, subject,
+                ngamsHighLevelLib.sendEmail(ngamsCfgObj, subject,
                                             [recipient], fromField, msg,
-                                            contentType, attachmentName,
-                                            dataInFile)
+                                            contentType, attachmentName)
             except:
-                pass
+                logger.exception('Error while sending email with subject "%s" to recipients %r', subject, lst)
 
 
 def _checkSendNotifMsg(hostId,
@@ -254,10 +252,7 @@ def notify(hostId,
     # Service is activated).
     if (dataInFile): force = 1
 
-    global notifSem_
-    try:
-        # Take Notification Semaphore.
-        notifSem_.acquire()
+    with notifSem_:
 
         # Load a possible pickled Retention Buffer.
         pickleObjFile = _getNotifRetBufPickleFile(ngamsCfgObj, hostId)
@@ -282,15 +277,15 @@ def notify(hostId,
         timeNow    = time.time()
         maxRetTime = isoTime2Secs(ngamsCfgObj.getMaxRetentionTime())
         maxRetNo   = ngamsCfgObj.getMaxRetentionSize()
-        if ((not force) and (not retentionBuf_.has_key(msgId))):
+        if not force and msgId not in retentionBuf_:
             # We simply create a new entry for this Message ID and initialize
             # the Last Emission Time. This message will be sent out.
             retentionBuf_[msgId] = [timeNow, None, type, subject, recList, []]
             ngamsLib.createObjPickleFile(pickleObjFile, retentionBuf_)
             _sendNotifMsg(hostId, ngamsCfgObj, type, subject, dataRef, recList,
                           contentType, attachmentName)
-        elif (not force):
-            logger.debug("Appending Notification Message with ID: %s " +  +\
+        elif not force:
+            logger.debug("Appending Notification Message with ID: %s "
                          "in Notification Retention Buffer", msgId)
             # Set the Retention Start Time if not set.
             if (not retentionBuf_[msgId][1]): retentionBuf_[msgId][1] = timeNow
@@ -307,13 +302,6 @@ def notify(hostId,
             # and send it out.
             _sendNotifMsg(hostId, ngamsCfgObj, type, subject, dataRef, recList,
                           contentType, attachmentName, dataInFile)
-
-        # Release Notification Semaphore.
-        notifSem_.release()
-    except Exception:
-        # Release Notification Semaphore.
-        notifSem_.release()
-        raise
 
 
 def checkNotifRetBuf(hostId,
