@@ -1014,7 +1014,7 @@ class ngamsTestSuite(unittest.TestCase):
                 # used by the client that issuea these requests (it was 60 seconds,
                 # we decreased it to 5 which makes more sense).
                 elif isinstance(e, socket.timeout):
-                    logger.warning("Timeo out when connecting to server, will try again")
+                    logger.warning("Timed out when connecting to server, will try again")
                     continue
 
                 logger.exception("Error while STATUS-ing server, shutting down")
