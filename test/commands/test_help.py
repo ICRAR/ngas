@@ -46,5 +46,5 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         self.prepExtSrv()
         resp = ngamsHttpUtils.httpGet('localhost', 8888, 'HELP')
         with contextlib.closing(resp):
-            self.assertEqual(resp.code, 308)
-            self.assertEqual(resp.headers['location'], 'https://ngas.readthedocs.io')
+            self.assertEqual(resp.status, 308)
+            self.assertEqual(resp.getheader('location'), 'https://ngas.readthedocs.io')
