@@ -51,6 +51,29 @@ then
 	# Now create ourselves a virtualenv please and go in there
 	./create_venv.sh ./osx_venv || fail "Failed to create virtual environment"
 	source ./osx_venv/bin/activate
+
+	# Aggresively changing names now...
+	sudo scutil --set HostName `hostname`
+
+	# Let's check what hostnames are reported in MacOS...
+	echo -n "hostname: "
+	hostname
+	for n in HostName LocalHostName ComputerName; do
+		echo -n "scutil --get $n: "
+		scutil --get $n
+	done
+	for m in "getfqdn()" \
+		      "gethostname()" \
+		      "gethostbyname(socket.gethostname())" \
+		      "gethostbyname(\"localhost\")" \
+		      "gethostbyname_ex(socket.gethostname())" \
+		      "gethostbyname_ex(\"localhost\")" \
+		      "gethostbyaddr(\"127.0.0.1\")" \
+		      "gethostbyaddr(socket.gethostbyname(socket.gethostname()))" \
+		      "gethostbyaddr(socket.gethostbyname(\"localhost\"))" ; do
+		echo -n "socket.$m: "
+		python -c "import socket; print(socket.$m)"
+	done
 fi
 
 EUSER="Failed to create database user ngas"
