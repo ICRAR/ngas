@@ -21,6 +21,7 @@
 #
 
 import contextlib
+import itertools
 import logging
 import multiprocessing
 import os
@@ -37,10 +38,12 @@ if sys.version_info[0] > 2:
     def b2s(b, enc='utf8'):
         return b.decode(enc)
     _long = int
+    ifilter = filter
 else:
     def b2s(b, _='utf8'):
         return b
     _long = long
+    ifilter = itertools.ifilter
 
 class Task(object):
     """
@@ -117,3 +120,7 @@ def is_port_available(port):
         return True
     except socket.error:
         return False
+
+def find_available_port(base):
+    """Find the first available port for binding starting from ``base``"""
+    return next(ifilter(is_port_available, itertools.count(base)))
