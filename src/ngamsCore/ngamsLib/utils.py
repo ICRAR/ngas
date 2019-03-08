@@ -20,13 +20,16 @@
 #    MA 02111-1307  USA
 #
 
+import contextlib
 import logging
 import multiprocessing
+import os
+import signal
+import socket
 import sys
 import threading
 import time
-import os
-import signal
+
 
 logger = logging.getLogger(__name__)
 
@@ -102,3 +105,15 @@ class Task(object):
                 os.kill(self._bg_task.pid, signal.SIGKILL)
         elif self._bg_task.is_alive():
             logger.warning("Task %s is still alive after stopping it, continuing anyway", self.name)
+
+def is_port_available(port):
+    """True if port is not available for binding"""
+    logger.debug('Checking if port %d is available', port)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        with contextlib.closing(s):
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind(('127.0.0.1', port))
+        return True
+    except socket.error:
+        return False
