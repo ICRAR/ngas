@@ -809,6 +809,17 @@ class ngamsTestSuite(unittest.TestCase):
                                      expectedStatus=expected_status)
         raise AttributeError
 
+    def ensure_port_is_available(self, port):
+        """Fail if the given port is not available for binding"""
+        logger.info('Making sure port %d is available')
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            with contextlib.closing(s):
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                s.bind(('127.0.0.1', port))
+        except socket.error:
+            raise RuntimeError('Port %d is taken, test server will not be able to start' % port)
+
     def prepExtSrv(self,
                    port = 8888,
                    delDirs = 1,
@@ -864,6 +875,8 @@ class ngamsTestSuite(unittest.TestCase):
         """
         if srvModule and daemon:
             raise ValueError("srvModule cannot be used in daemon mode")
+
+        self.ensure_port_is_available(port)
 
         cfgFile = _to_abs(cfgFile)
 
@@ -926,15 +939,6 @@ class ngamsTestSuite(unittest.TestCase):
         # sometimes communicate through files in the temporary area
         environ = os.environ.copy()
         environ['NGAS_TESTS_TMP_DIR_BASE'] = _tmp_root_base
-
-        logger.info('Making sure port %d is available')
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            with contextlib.closing(s):
-                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                s.bind(('127.0.0.1', port))
-        except socket.error:
-            raise RuntimeError('Port %d is taken, test server will not be able to start' % port)
 
         logger.info("Starting external NG/AMS Server in port %d with command: %s", port, " ".join(execCmd))
         with self._proc_startup_lock:
