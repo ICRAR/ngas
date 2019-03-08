@@ -584,32 +584,6 @@ def remFitsKey(filename,
     pyfits.delval(filename, key)
 
 
-def db_aware_cfg(cfg_filename, check=0, db_id_attr="Db-Test"):
-    """
-    Load the configuration stored in `cfg_filename` and replace the Db element
-    with whatever is in the NGAS_DB_CONF environment variable, if present
-    """
-
-    cfg_filename = _to_abs(cfg_filename)
-
-    if 'NGAS_TESTDB' not in os.environ or not os.environ['NGAS_TESTDB']:
-        return ngamsConfig.ngamsConfig().load(cfg_filename, check)
-
-    new_db = xml.dom.minidom.parseString(os.environ['NGAS_TESTDB'])
-    new_db.documentElement.attributes['Id'].value = db_id_attr
-    root = xml.dom.minidom.parseString(loadFile(cfg_filename)).documentElement
-    for n in root.childNodes:
-        if n.localName != 'Db':
-            continue
-
-        root.removeChild(n)
-        root.appendChild(new_db.documentElement)
-        cfg_filename = save_to_tmp(root.toprettyxml(), prefix='db_aware_cfg_', suffix='.xml')
-        return ngamsConfig.ngamsConfig().load(cfg_filename, check)
-
-    raise Exception('Db element not found in original configuration')
-
-
 def prepCfg(cfgFile,
             parList):
     """
@@ -863,6 +837,30 @@ class ngamsTestSuite(unittest.TestCase):
             return
         self.smtp_server = InMemorySMTPServer(utils.find_available_port(1025))
 
+    def db_aware_cfg(self, cfg_fname='src/ngamsCfg.xml', check=0, db_id_attr="Db-Test"):
+        """
+        Load the configuration stored in `cfg_filename` and replace the Db element
+        with whatever is in the NGAS_DB_CONF environment variable, if present
+        """
+
+        cfg_fname = _to_abs(cfg_fname)
+        if 'NGAS_TESTDB' not in os.environ or not os.environ['NGAS_TESTDB']:
+            return ngamsConfig.ngamsConfig().load(cfg_fname, check)
+
+        new_db = xml.dom.minidom.parseString(os.environ['NGAS_TESTDB'])
+        new_db.documentElement.attributes['Id'].value = db_id_attr
+        root = xml.dom.minidom.parseString(loadFile(cfg_fname)).documentElement
+        for n in root.childNodes:
+            if n.localName != 'Db':
+                continue
+
+            root.removeChild(n)
+            root.appendChild(new_db.documentElement)
+            cfg_filename = save_to_tmp(root.toprettyxml(), prefix='db_aware_cfg_', suffix='.xml')
+            return ngamsConfig.ngamsConfig().load(cfg_filename, check)
+
+        raise Exception('Db element not found in original configuration')
+
     def prepExtSrv(self,
                    port = 8888,
                    delDirs = 1,
@@ -930,13 +928,13 @@ class ngamsTestSuite(unittest.TestCase):
             # If a DB Configuration Name is specified, we first have to
             # extract the configuration information from the DB to
             # create a complete temporary cfg. file.
-            cfgObj = db_aware_cfg(cfgFile)
+            cfgObj = self.db_aware_cfg(cfgFile)
             with contextlib.closing(ngamsDb.from_config(cfgObj, maxpool=1)) as db:
                 cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, db)
             logger.debug("Successfully read configuration from database, root dir is %s", cfgObj2.getRootDirectory())
             cfgFile = save_to_tmp(cfgObj2.genXmlDoc(0))
 
-        cfgObj = db_aware_cfg(cfgFile)
+        cfgObj = self.db_aware_cfg(cfgFile)
 
         # Change what needs to be changed, like the position of the Sqlite
         # database file when necessary, the custom configuration items, and the
@@ -1420,7 +1418,7 @@ class ngamsTestSuite(unittest.TestCase):
         """
 
         # Create the shared database first of all and generate a new config file
-        tmpCfg = db_aware_cfg(cfg_file)
+        tmpCfg = self.db_aware_cfg(cfg_file)
         self.point_to_sqlite_database(tmpCfg, createDatabase)
         if createDatabase:
             with contextlib.closing(ngamsDb.from_config(tmpCfg, maxpool=1)) as db:
