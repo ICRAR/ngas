@@ -437,59 +437,6 @@ def filterOutLines(buf,
     return _old_buf_style(s)
 
 
-def getEmailMsg(remTags = [],
-                timeOut = 10.0):
-    """
-    Retrieve an email message and return the contents (cleaned).
-
-    remTags:    List with additional tags to remove from the email (list).
-
-    timeOut:    Timeout in seconds to apply waiting for emails (float).
-
-    Returns:    Email message, cleaned (string).
-    """
-    stdRemTags = ["Mail version", "/var/spool/mail", ">N  ", "From ",
-                  "Date: ", "From:", "Subject:",
-                  "mbox", "Message ", " N ", " U ", "/var/mail/",
-                  "To: undisclosed-recipients:"]
-    remTags += stdRemTags
-    mailCont = ""
-    startTime = time.time()
-    while ((time.time() - startTime) < timeOut):
-        mailCont = recvEmail(1)
-        if ((mailCont.strip() != "") and
-            (mailCont.find("No mail for ") == -1)):
-            break
-        else:
-            time.sleep(0.2)
-    if (mailCont == ""): return ""
-    return filterOutLines(mailCont, remTags, matchStart=0)
-
-
-def flushEmailQueue():
-    """
-    Flush the email queue of the user running the NG/AMS Unit Tests.
-
-    Returns:   Void.
-    """
-    _, stdout, _ = ngamsCoreExecCmd('echo "x" | mail')
-    mailDic = {}
-    for line in utils.b2s(stdout).split("\n"):
-        line = line.strip()
-        if (line != ""):
-            lineEls = filter(None, line.split(" "))
-            try:
-                mailDic[int(lineEls[1])] = 1
-            except:
-                pass
-
-    # Now delete the mails.
-    mailList = list(mailDic)
-    mailList.sort(reverse=True)
-    for mailNo in mailList:
-        recvEmail(mailNo)
-
-
 def writeFitsKey(filename,
                  key,
                  value,
