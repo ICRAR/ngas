@@ -244,7 +244,7 @@ def notify(hostId,
 
     Returns:        Void.
     """
-    if ((not force) or (ngamsCfgObj.getNotifActive() != 1)):
+    if ngamsCfgObj.getNotifActive() != 1 and not force:
         logger.debug("Leaving notify() with no action (disabled/force=0)")
         return
 
