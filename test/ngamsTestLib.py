@@ -1254,7 +1254,11 @@ class ngamsTestSuite(unittest.TestCase):
             ngas_root = cfg.getRootDirectory()
         if ngas_root:
             replacements['%NGAS_ROOT%'] = ngas_root
-            replacements['%NGAS_ROOT_DISK_ID%'] = ngas_root[1:].replace('/', '-')
+            replacements['%NGAS_ROOT_DISK_ID%'] = as_ngas_disk_id(ngas_root)
+        for srv_info in self.extSrvInfo:
+            ngas_root = srv_info.rootDir
+            replacements['%%NGAS_ROOT:%d%%' % srv_info.port] = ngas_root
+            replacements['%%NGAS_ROOT_DISK_ID:%d%%' % srv_info.port] = as_ngas_disk_id(ngas_root)
         return replacements
 
     def assert_status_ref_file(self, ref_file, status, filters=(),
