@@ -113,7 +113,10 @@ def as_ngas_disk_id(s):
     return s.strip('/').replace('/', '-')
 
 def filter_and_replace(s, filters=[], startswith_filters=[], replacements={}, split_by_newline=False):
-    '''filters lines in s through filters, startswith_fitlers, performing replacements through filtered lines'''
+    '''filters lines in ``s`` through ``filters``, ``startswith_filters``,
+    and then performs ``replacements`` through filtered lines. It finally
+    applies an optional formatting if the line starts with ``[[<pattern>]]``
+    (e.g., ``[[%-7s, %d]]``)'''
     new_s = []
     lines = s.split('\n') if split_by_newline else s.splitlines()
     for line in lines:
@@ -123,6 +126,10 @@ def filter_and_replace(s, filters=[], startswith_filters=[], replacements={}, sp
             continue
         for match, replacement in replacements.items():
             line = line.replace(match, replacement)
+        if line.startswith('[['):
+            idx = line.find(']]')
+            fmt, vals = line[2:idx], line[idx + 2:].split(' ')
+            line = fmt % tuple(vals)
         new_s.append(line)
     return '\n'.join(new_s)
 
