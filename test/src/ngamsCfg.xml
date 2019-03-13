@@ -255,7 +255,7 @@
        SysLogPrefix="NGASLog"/>
 
   <Notification Id="Notification-Test"
-                SmtpHost="localhost"
+                SmtpHost="127.0.0.1"
                 Sender="ngast@localhost"
                 Active="1"
                 MaxRetentionTime="00T00:30:00"

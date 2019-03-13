@@ -21,7 +21,7 @@
     <MimeTypeMap Extension="hfits" MimeType="application/x-hfits"/>
     <MimeTypeMap Extension="nglog.gz" MimeType="application/x-nglog"/>
   </MimeTypes>
-  <Notification Active="1" Id="Notification-Test" MaxRetentionSize="1000" MaxRetentionTime="00T00:30:00" Sender="ngast@localhost" SmtpHost="localhost">
+  <Notification Active="1" Id="Notification-Test" MaxRetentionSize="1000" MaxRetentionTime="00T00:30:00" Sender="ngast@localhost" SmtpHost="127.0.0.1">
     <AlertNotification>
       <EmailRecipient Address="plone@localhost"/>
     </AlertNotification>

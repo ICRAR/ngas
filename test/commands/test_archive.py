@@ -34,7 +34,6 @@ Contains the Test Suite for the ARCHIVE Command.
 
 import contextlib
 import functools
-import getpass
 import glob
 import os
 import subprocess
@@ -45,8 +44,8 @@ from six.moves import cPickle # @UnresolvedImport
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
     NGAMS_SUCCESS, getDiskSpaceAvail, mvFile
-from ngamsLib import ngamsLib, ngamsStatus, ngamsFileInfo, ngamsHttpUtils
-from ..ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
+from ngamsLib import ngamsStatus, ngamsFileInfo, ngamsHttpUtils
+from ..ngamsTestLib import ngamsTestSuite, \
     pollForFile, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
     genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp, \
     save_to_tmp, tmp_path
@@ -185,25 +184,17 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Consider to re-implement this Text Case, using the simulated disks in
         the form of file systems in files.
         """
-        testUserEmail = getpass.getuser() + "@" + ngamsLib.getCompleteHostName()
-        cfg = (
-            ("NgamsCfg.Notification[1].Active", "1"),
-            ("NgamsCfg.Notification[1].SmtpHost", "localhost"),
-            ("NgamsCfg.Notification[1].DiskChangeNotification[1].EmailRecipient[1].Address", testUserEmail),
-            ("NgamsCfg.ArchiveHandling[1].FreeSpaceDiskChangeMb", "10000000")
-        )
+
+        self.start_smtp_server()
+        cfg = (("NgamsCfg.ArchiveHandling[1].FreeSpaceDiskChangeMb", "10000000"),)
         _, dbObj = self.prepExtSrv(cfgProps=cfg)
-        flushEmailQueue()
         self.archive("src/SmallFile.fits")
 
         # Check that Disk Change Notification message have been generated.
-        if _checkMail:
-            mailContClean = getEmailMsg()
-            tmpStatFile = "ngamsArchiveCmdTest_test_NormalArchivePushReq_1_tmp"
-            refStatFile = "ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_1_ref"
-            save_to_tmp(tmpStatFile, mailContClean)
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
-                              "Change Notification email msg")
+        msg = self.smtp_server.pop()
+        refStatFile = "ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_1_ref"
+        self.assert_ref_file(refStatFile, msg.get_payload(), msg="Incorrect/missing Disk "+\
+                          "Change Notification email msg")
 
         # Check that DB information is OK (completed=1).
         mainDiskCompl = dbObj.getDiskCompleted(self.ngas_disk_id("FitsStorage1/Main/1"))
@@ -255,25 +246,17 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Consider to re-implement this Text Case, using the simulated disks in
         the form of file systems in files.
         """
-        testUserEmail = getpass.getuser() + "@" + ngamsLib.getCompleteHostName()
-        cfg = (
-            ("NgamsCfg.Notification[1].Active", "1"),
-            ("NgamsCfg.Notification[1].SmtpHost", "localhost"),
-            ("NgamsCfg.Notification[1].DiskSpaceNotification[1].EmailRecipient[1].Address", testUserEmail),
-            ("NgamsCfg.ArchiveHandling[1].MinFreeSpaceWarningMb", "100000")
-        )
+
+        self.start_smtp_server()
+        cfg = (("NgamsCfg.ArchiveHandling[1].MinFreeSpaceWarningMb", "100000"),)
         self.prepExtSrv(cfgProps=cfg)
-        flushEmailQueue()
         self.archive("src/SmallFile.fits")
 
         # Check that Disk Change Notification message have been generated.
-        if _checkMail:
-            mailContClean = getEmailMsg()
-            mailContClean = mailContClean[0:mailContClean.find("space (")]
-            refStatFile = "ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_2_ref"
-            tmpStatFile = save_to_tmp(mailContClean)
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
-                              "Space Notification email msg")
+        msg = self.smtp_server.pop().get_payload()
+        msg = msg[0:msg.find("space (")]
+        self.assert_ref_file("ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_2_ref",
+                             msg, msg="Incorrect/missing Disk Space Notification email msg")
 
 
     def test_NormalArchivePushReq_4(self):
@@ -793,7 +776,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         #####################################################################
         # Phase 1: Archive data until disk/Slot 1 fills up.
         #####################################################################
-        flushEmailQueue()
+        self.start_smtp_server()
 
         tmpCfgFile = prepCfg("src/ngamsCfg.xml",
                              [["ArchiveHandling[1].FreeSpaceDiskChangeMb","4"],
@@ -847,11 +830,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                               "of NgasDiskInfo File/Main Disk (%s)"%diFiles[0])
         # Check: Email Notification Message is sent indicating to change
         #        only disk/Slot 1.
-        if _checkMail:
-            refStatFile = preFix + "MainDiskSmallerThanRep_1_3_ref"
-            tmpStatFile = save_to_tmp(getEmailMsg())
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
-                              "Change Notification Email Msg")
+        msg = self.smtp_server.pop().get_payload()
+        refStatFile = preFix + "MainDiskSmallerThanRep_1_3_ref"
+        self.assert_ref_file(refStatFile, msg, msg="Incorrect/missing Disk "+\
+                          "Change Notification Email Msg")
         #####################################################################
 
         #####################################################################
@@ -871,11 +853,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                               "of NgasDiskInfo File/Main Disk (%s)"%diFiles[0])
         # Check: That Email Notification sent out indicating to change
         # disk/Slot 3.
-        if _checkMail:
-            refStatFile = preFix + "MainDiskSmallerThanRep_1_6_ref"
-            tmpStatFile = save_to_tmp(getEmailMsg())
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
-                              "Change Notification Email Msg")
+        msg = self.smtp_server.pop().get_payload()
+        refStatFile = preFix + "MainDiskSmallerThanRep_1_6_ref"
+        self.assert_ref_file(refStatFile, msg, msg="Incorrect/missing Disk "+\
+                          "Change Notification Email Msg")
         #####################################################################
 
         #####################################################################
@@ -920,10 +901,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Check: That Email Notification sent out indicating to replace
         #        disk/Slot 5.
-        if _checkMail:
-            refStatFile = preFix + "MainDiskSmallerThanRep_1_9_ref"
-            tmpStatFile = save_to_tmp(getEmailMsg())
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
+        msg = self.smtp_server.pop().get_payload()
+        refStatFile = preFix + "MainDiskSmallerThanRep_1_9_ref"
+        self.assert_ref_file(refStatFile, msg, "Incorrect/missing Disk "+\
                               "Change Notification Email Msg")
         #####################################################################
 
@@ -947,11 +927,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.assert_status_ref_file(diFiles[1], statObj, msg=msg % diFiles[0])
         # Check: That Email Notification sent out indicating to replace
         #        disk/Slot 2.
-        if _checkMail:
-            refStatFile = preFix + "MainDiskSmallerThanRep_1_12_ref"
-            tmpStatFile = save_to_tmp(getEmailMsg())
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
-                              "Change Notification Email Msg")
+        msg = self.smtp_server.pop().get_payload()
+        refStatFile = preFix + "MainDiskSmallerThanRep_1_12_ref"
+        self.assert_ref_file(refStatFile, msg, msg="Incorrect/missing Disk "+\
+                          "Change Notification Email Msg")
         #####################################################################
 
 
