@@ -447,7 +447,7 @@ def issueDiskSpaceWarning(srvObj,
                                  "NOTICE: DISK SPACE RUNNING LOW",
                                  msg + "\n\nNote: This is just a notice. " +\
                                  "A message will be send when the disk " +\
-                                 "should be changed.", [], 1)
+                                 "should be changed.", force=1)
 
 
 def checkDiskSpace(srvObj,
@@ -570,7 +570,7 @@ def checkDiskSpace(srvObj,
                    "- Logical Name: " + repDiskInfo.getLogicalName() + "\n" +\
                    "- Slot ID:      " + repDiskInfo.getSlotId() + "\n\n"
         ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_DISK_CHANGE,
-                                 "CHANGE DISK(S)", msg, [], 1)
+                                 "CHANGE DISK(S)", msg, force=1)
 
 
 def postFileRecepHandling(srvObj,

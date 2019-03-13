@@ -1845,7 +1845,7 @@ class ngamsServer(object):
                 errMsg = genLog("NGAMS_ER_INIT_SERVER", [str(e)])
                 ngamsNotification.notify(self.getHostId() or '', self.getCfg(), NGAMS_NOTIF_ERROR,
                                          "PROBLEMS INITIALIZING NG/AMS SERVER",
-                                         errMsg, [], 1)
+                                         errMsg, force=1)
             except:
                 logger.exception("Error while notifying about problems in server initialization")
 
