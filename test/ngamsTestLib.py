@@ -59,6 +59,8 @@ import xml.dom.minidom
 import astropy.io.fits as pyfits
 import pkg_resources
 import psutil
+import six
+from six.moves import zip_longest
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, utils
 from ngamsLib.ngamsCore import getHostName, rmFile, \
@@ -1305,7 +1307,7 @@ class ngamsTestSuite(unittest.TestCase):
                                  replacements=replacements)
 
         errors = []
-        for i, (refline, statline) in enumerate(zip(ref.splitlines(), data.splitlines()), 1):
+        for i, (refline, statline) in enumerate(zip_longest(ref.splitlines(), data.splitlines(), fillvalue=''), 1):
             if refline != statline:
                 errors.append((i, refline, statline))
         if not errors:
