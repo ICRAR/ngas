@@ -818,10 +818,9 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
             fo.write(tmpFormat % (diskId, fileId, fileVersion, filename))
         fo.write("\n\n==END\n")
         fo.close()
-        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_DATA_CHECK,
-                                 "LOST FILE(S) DETECTED", statRep,
-                                 [], 1, NGAMS_TEXT_MT,
-                                 "JANITOR_THREAD_LOST_FILES", 1)
+        ngamsNotification.notify(srvObj.host_id, srvObj.cfg, NGAMS_NOTIF_DATA_CHECK,
+             "LOST FILE(S) DETECTED", statRep, force=1, contentType=NGAMS_TEXT_MT,
+             attachmentName="JANITOR_THREAD_LOST_FILES")
         rmFile(statRep)
     logger.debug("Number of lost files found: %d", noOfLostFiles)
 

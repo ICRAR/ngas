@@ -1341,6 +1341,16 @@ class ngamsConfig:
         return self.getVal("Notification[1].SmtpHost")
 
 
+    def getNotifSmtpPort(self):
+        """
+        Return the SMTP port for sending Notification e-mails.
+
+        Returns:   SMTP Port (int).
+        """
+        par = "Notification[1].SmtpPort"
+        return getInt(par, self.getVal(par), 25)
+
+
     def getNotifActive(self):
         """
         Return the Email Notification Active Flag.

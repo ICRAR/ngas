@@ -415,9 +415,9 @@ def _registerExec(srvObj,
         if (reqPropsObj.hasHttpPar("path")):
             attachmentName += "-" + reqPropsObj.getHttpPar("path").\
                               replace("/", "_")
-        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_INFO,
-                                 "REGISTER STATUS REPORT", statRep,
-                                 emailAdrList, 1, mimeType, attachmentName, 1)
+        ngamsNotification.notify(srvObj.host_id, srvObj.cfg, NGAMS_NOTIF_INFO,
+            "REGISTER STATUS REPORT", statRep, recList=emailAdrList, force=1,
+            contentType=mimeType, attachmentName=attachmentName)
         del regDbm
         rmFile(regDbmName + "*")
         rmFile(statRep)

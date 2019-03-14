@@ -38,6 +38,13 @@ from ngamsLib import ngamsHttpUtils
 from ngamsServer import ngamsFileUtils
 from ..ngamsTestLib import ngamsTestSuite
 
+
+try:
+    import crc32c  # @UnusedImport
+    _crc32c_available = True
+except ImportError:
+    _crc32c_available = False
+
 # If there's any problem getting bbcp's version
 # e assume that the program is not there, and therefore skip all the tests
 try:
@@ -45,7 +52,6 @@ try:
     bbcp_version = tuple(map(int, out.strip().split(b'.')))
 except:
     bbcp_version = None
-
 
 @unittest.skipIf(bbcp_version is None, 'BBCP not found')
 class ngamsBBCPArchiveTest(ngamsTestSuite):
@@ -141,6 +147,7 @@ class ngamsBBCPArchiveTest(ngamsTestSuite):
     def test_bbcp_with_crc32z(self):
         self._test_correct_checksum('crc32z')
 
+    @unittest.skipIf(not _crc32c_available, 'no crc32c package available')
     def test_bbcp_with_crc32c(self):
 
         if bbcp_version[:2] >= (17, 1):

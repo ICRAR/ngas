@@ -1,11 +1,8 @@
-Content-type: text/plain
-Content-disposition: attachment; filename=CloneStatusReport-%NGAS_ROOT_DISK_ID%:8011-FitsStorage1-Main-1-NCU.2003-11-11T11:11:11.111-3
-
 CLONE STATUS REPORT:
 
 ==Summary:
 
-Disk ID:                    %NGAS_ROOT_DISK_ID%:8011-FitsStorage1-Main-1
+Disk ID:                    %NGAS_ROOT_DISK_ID:8011%-FitsStorage1-Main-1
 File ID:                    NCU.2003-11-11T11:11:11.111
 File Version:               3
 Total Number of Files:      1
@@ -16,7 +13,7 @@ Number of Failed Files:     0
 
 Source File                                                            Target File                                                            Status 
 ---------------------------------------------------------------------- ---------------------------------------------------------------------- -------
-%NGAS_ROOT_DISK_ID%:8011-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/3 tmp-ngamsTest-NGAS:8000-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/3 SUCCESS
+[[%-70s %-70s %-7s]]%NGAS_ROOT_DISK_ID:8011%-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/3 %NGAS_ROOT_DISK_ID:8000%-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/3 SUCCESS
 -----------------------------------------------------------------------------------------------------------------------------------------------------
 
 ==END

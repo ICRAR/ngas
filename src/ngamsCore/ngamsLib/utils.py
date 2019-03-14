@@ -20,13 +20,17 @@
 #    MA 02111-1307  USA
 #
 
+import contextlib
+import itertools
 import logging
 import multiprocessing
+import os
+import signal
+import socket
 import sys
 import threading
 import time
-import os
-import signal
+
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +38,12 @@ if sys.version_info[0] > 2:
     def b2s(b, enc='utf8'):
         return b.decode(enc)
     _long = int
+    ifilter = filter
 else:
     def b2s(b, _='utf8'):
         return b
     _long = long
+    ifilter = itertools.ifilter
 
 class Task(object):
     """
@@ -102,3 +108,19 @@ class Task(object):
                 os.kill(self._bg_task.pid, signal.SIGKILL)
         elif self._bg_task.is_alive():
             logger.warning("Task %s is still alive after stopping it, continuing anyway", self.name)
+
+def is_port_available(port):
+    """True if port is not available for binding"""
+    logger.debug('Checking if port %d is available', port)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        with contextlib.closing(s):
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind(('127.0.0.1', port))
+        return True
+    except socket.error:
+        return False
+
+def find_available_port(base):
+    """Find the first available port for binding starting from ``base``"""
+    return next(ifilter(is_port_available, itertools.count(base)))

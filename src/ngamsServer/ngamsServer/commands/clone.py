@@ -690,9 +690,9 @@ def _cloneExec(srvObj,
             attachmentName += "-" + reqPropsObj.getHttpPar("file_id")
         if (reqPropsObj.hasHttpPar("file_version")):
             attachmentName += "-" + reqPropsObj.getHttpPar("file_version")
-        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_INFO,
-                                 "CLONE STATUS REPORT", statRep, emailAdrList,
-                                 1, mimeType, attachmentName, 1)
+        ngamsNotification.notify(srvObj.host_id, srvObj.cfg, NGAMS_NOTIF_INFO,
+            "CLONE STATUS REPORT", statRep, recList=emailAdrList, force=1,
+            contentType=mimeType, attachmentName=attachmentName)
         del cloneStatusDbm
         rmFile(cloneStatusDbmName + "*")
         rmFile(statRep)

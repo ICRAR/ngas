@@ -32,8 +32,10 @@ This module contains test utilities used to build the NG/AMS Functional Tests.
 """
 # TODO: Check for each function if it can be moved to the ngamsTestSuite Class.
 
+import asyncore
 import collections
 import contextlib
+import email
 import errno
 import functools
 import getpass
@@ -44,6 +46,7 @@ import multiprocessing.pool
 import os
 import shutil
 import signal
+import smtpd
 import socket
 import subprocess
 import sys
@@ -56,6 +59,8 @@ import xml.dom.minidom
 import astropy.io.fits as pyfits
 import pkg_resources
 import psutil
+import six
+from six.moves import zip_longest
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, utils
 from ngamsLib.ngamsCore import getHostName, rmFile, \
@@ -110,7 +115,10 @@ def as_ngas_disk_id(s):
     return s.strip('/').replace('/', '-')
 
 def filter_and_replace(s, filters=[], startswith_filters=[], replacements={}, split_by_newline=False):
-    '''filters lines in s through filters, startswith_fitlers, performing replacements through filtered lines'''
+    '''filters lines in ``s`` through ``filters``, ``startswith_filters``,
+    and then performs ``replacements`` through filtered lines. It finally
+    applies an optional formatting if the line starts with ``[[<pattern>]]``
+    (e.g., ``[[%-7s, %d]]``)'''
     new_s = []
     lines = s.split('\n') if split_by_newline else s.splitlines()
     for line in lines:
@@ -120,6 +128,10 @@ def filter_and_replace(s, filters=[], startswith_filters=[], replacements={}, sp
             continue
         for match, replacement in replacements.items():
             line = line.replace(match, replacement)
+        if line.startswith('[['):
+            idx = line.find(']]')
+            fmt, vals = line[2:idx], line[idx + 2:].split(' ')
+            line = fmt % tuple(vals)
         new_s.append(line)
     return '\n'.join(new_s)
 
@@ -131,76 +143,6 @@ def _to_abs(path):
         path = os.path.abspath(path)
     return path
 
-###########################################################################
-
-###########################################################################
-# Check that it is not possible to connect accidentally to an operating DB.
-###########################################################################
-if (os.path.exists("/opt/sybase/interfaces")):
-    fo = open("/opt/sybase/interfaces")
-    intLines = fo.readlines()
-    for intLine in intLines:
-        if ((intLine.find("ESOECF") != -1) or
-            (intLine.find("ESOECF_DIRECT") != -1) or
-            (intLine.find("ASTOPP") != -1) or
-            (intLine.find("OLASLS") != -1)):
-            errMsg = "The NG/AMS Unit Test cannot be executed on a host " +\
-                     "that might be able to connect to ESOECF, ASTOPP or " +\
-                     "OLASLS. Remove entries for these DB servers from " +\
-                     "/opt/sybase/interfaces and run the test again"
-            raise Exception(errMsg)
-###########################################################################
-
-###########################################################################
-# In order for this to work sendmail must be running locally.
-#
-# As root: # /etc/init.d/sendmail start
-#
-# In addition /etc/sysconfig/sendmail must have the following contents:
-#
-# DAEMON=yes
-# QUEUE=15m
-###########################################################################
-if (os.path.exists("/etc/mail/sendmail.cf")):
-    fo = open("/etc/mail/sendmail.cf")
-    lines = fo.readlines()
-    fo.close()
-    foundDaemonYes = 0
-    for line in lines:
-        if (line.find("DAEMON") != -1):
-    #        if (line.find("yes") != -1):
-                foundDaemonYes = 1
-    if (not foundDaemonYes):
-        raise Exception("Mail configuration incorrect. Set parameter: " + \
-              "DAEMON=yes in /etc/mail/sendmail.cf")
-    out = subprocess.check_output("ps -efww|grep sendmail", shell=True)
-    psLines = out.split("\n")
-    sendMailRunning = 0
-    for psLine in psLines:
-        if ((psLine.find("sendmail") != -1) and
-            (psLine.find("ps -efww|grep sendmail") == -1)):
-            sendMailRunning = 1
-            break
-    if (not sendMailRunning):
-        errMsg = "Start local SMTP server as root " + \
-                 "(# /etc/init.d/sendmail start)"
-        raise Exception(errMsg)
-
-if (os.path.exists("/etc/aliases")):
-    # Check that no entry is defined for ngasmgr in /etc/aliases.
-    fo = open("/etc/aliases")
-    etcAliases = fo.readlines()
-    fo.close()
-    for line in etcAliases:
-        line = line.strip()
-        if (len(line)):
-            if ((line[0] != "#") and (line.find("ngasmgr:") != -1)):
-                errMsg = "Remove entry for ngasmgr in /etc/aliases (%s) and " + \
-                         "run newaliases as root before running the tests. " + \
-                         "Afterwards remember to restore the original settings!"
-                errMsg = errMsg % line
-                raise Exception(errMsg)
-###########################################################################
 
 def has_program(program):
     try:
@@ -495,59 +437,6 @@ def filterOutLines(buf,
     return _old_buf_style(s)
 
 
-def getEmailMsg(remTags = [],
-                timeOut = 10.0):
-    """
-    Retrieve an email message and return the contents (cleaned).
-
-    remTags:    List with additional tags to remove from the email (list).
-
-    timeOut:    Timeout in seconds to apply waiting for emails (float).
-
-    Returns:    Email message, cleaned (string).
-    """
-    stdRemTags = ["Mail version", "/var/spool/mail", ">N  ", "From ",
-                  "Date: ", "From:", "Subject:",
-                  "mbox", "Message ", " N ", " U ", "/var/mail/",
-                  "To: undisclosed-recipients:"]
-    remTags += stdRemTags
-    mailCont = ""
-    startTime = time.time()
-    while ((time.time() - startTime) < timeOut):
-        mailCont = recvEmail(1)
-        if ((mailCont.strip() != "") and
-            (mailCont.find("No mail for ") == -1)):
-            break
-        else:
-            time.sleep(0.2)
-    if (mailCont == ""): return ""
-    return filterOutLines(mailCont, remTags, matchStart=0)
-
-
-def flushEmailQueue():
-    """
-    Flush the email queue of the user running the NG/AMS Unit Tests.
-
-    Returns:   Void.
-    """
-    _, stdout, _ = ngamsCoreExecCmd('echo "x" | mail')
-    mailDic = {}
-    for line in utils.b2s(stdout).split("\n"):
-        line = line.strip()
-        if (line != ""):
-            lineEls = filter(None, line.split(" "))
-            try:
-                mailDic[int(lineEls[1])] = 1
-            except:
-                pass
-
-    # Now delete the mails.
-    mailList = list(mailDic)
-    mailList.sort(reverse=True)
-    for mailNo in mailList:
-        recvEmail(mailNo)
-
-
 def writeFitsKey(filename,
                  key,
                  value,
@@ -579,32 +468,6 @@ def remFitsKey(filename,
     Returns:    Void.
     """
     pyfits.delval(filename, key)
-
-
-def db_aware_cfg(cfg_filename, check=0, db_id_attr="Db-Test"):
-    """
-    Load the configuration stored in `cfg_filename` and replace the Db element
-    with whatever is in the NGAS_DB_CONF environment variable, if present
-    """
-
-    cfg_filename = _to_abs(cfg_filename)
-
-    if 'NGAS_TESTDB' not in os.environ or not os.environ['NGAS_TESTDB']:
-        return ngamsConfig.ngamsConfig().load(cfg_filename, check)
-
-    new_db = xml.dom.minidom.parseString(os.environ['NGAS_TESTDB'])
-    new_db.documentElement.attributes['Id'].value = db_id_attr
-    root = xml.dom.minidom.parseString(loadFile(cfg_filename)).documentElement
-    for n in root.childNodes:
-        if n.localName != 'Db':
-            continue
-
-        root.removeChild(n)
-        root.appendChild(new_db.documentElement)
-        cfg_filename = save_to_tmp(root.toprettyxml(), prefix='db_aware_cfg_', suffix='.xml')
-        return ngamsConfig.ngamsConfig().load(cfg_filename, check)
-
-    raise Exception('Db element not found in original configuration')
 
 
 def prepCfg(cfgFile,
@@ -710,6 +573,51 @@ def unzip(infile, outfile):
 # END: Utility functions
 ###########################################################################
 
+_to_email_message = email.message_from_string
+if six.PY3:
+    _to_email_message = email.message_from_bytes
+
+class InMemorySMTPServer(smtpd.SMTPServer):
+    """In-memory SMTP server, saves messages into a public list"""
+
+    message = collections.namedtuple('message', 'mailfrom rcpts data')
+
+    def __init__(self, port):
+
+        # decode_data is new in 3.5, defaults to True in 3.5, False in 3.6+
+        # Thus, we need to explicitly give it to reliably use message_from_bytes
+        # later
+        kwargs = {}
+        if sys.version_info[0:2] >= (3, 5):
+            kwargs['decode_data'] = False
+        smtpd.SMTPServer.__init__(self, ('127.0.0.1', port), None, **kwargs)
+        self.port = port
+        self.messages = []
+        # email sending on the server can be asynchronous from the instructions
+        # used to trigger them in the tests
+        self.recv_cond = threading.Condition()
+        self.thread = threading.Thread(target=asyncore.loop, args=(0.1,))
+        self.thread.daemon = True
+        self.thread.start()
+
+    def pop(self, timeout=10):
+        with self.recv_cond:
+            while not self.messages:
+                if not self.recv_cond.wait(timeout=timeout):
+                    raise RuntimeError('email expected but none arrived')
+            return _to_email_message(self.messages.pop().data)
+
+    def close(self):
+        smtpd.SMTPServer.close(self)
+        self.thread.join(timeout=1)
+        if self.thread.is_alive():
+            raise RuntimeError('asyncore loop still running')
+
+    def process_message(self, peer, mailfrom, rcpttos, data, **_):
+        with self.recv_cond:
+            self.messages.append(InMemorySMTPServer.message(mailfrom, rcpttos, data))
+            self.recv_cond.notify_all()
+
 ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir', 'cfg_file', 'daemon'])
 
 class ngamsTestSuite(unittest.TestCase):
@@ -735,6 +643,7 @@ class ngamsTestSuite(unittest.TestCase):
         self.__mountedDirs   = []
         self.client = None
         self._clients = None
+        self.smtp_server = None
 
     def _add_client(self, port):
         # We overwrite any client that we may have created on that port already
@@ -809,6 +718,40 @@ class ngamsTestSuite(unittest.TestCase):
                                      expectedStatus=expected_status)
         raise AttributeError
 
+    def start_smtp_server(self):
+        if self.smtp_server:
+            return
+        self.smtp_server = InMemorySMTPServer(utils.find_available_port(1025))
+
+    def env_aware_cfg(self, cfg_fname='src/ngamsCfg.xml', check=0, db_id_attr="Db-Test"):
+        """
+        Load the configuration stored in `cfg_filename` and replace the Db element
+        with whatever is in the NGAS_DB_CONF environment variable, if present
+        """
+
+        def _smtp_aware(cfg):
+            if self.smtp_server:
+                cfg.storeVal("NgamsCfg.Notification[1].SmtpPort", str(self.smtp_server.port))
+            return cfg
+
+        cfg_fname = _to_abs(cfg_fname)
+        if 'NGAS_TESTDB' not in os.environ or not os.environ['NGAS_TESTDB']:
+            return _smtp_aware(ngamsConfig.ngamsConfig().load(cfg_fname, check))
+
+        new_db = xml.dom.minidom.parseString(os.environ['NGAS_TESTDB'])
+        new_db.documentElement.attributes['Id'].value = db_id_attr
+        root = xml.dom.minidom.parseString(loadFile(cfg_fname)).documentElement
+        for n in root.childNodes:
+            if n.localName != 'Db':
+                continue
+
+            root.removeChild(n)
+            root.appendChild(new_db.documentElement)
+            cfg_filename = save_to_tmp(root.toprettyxml(), prefix='db_aware_cfg_', suffix='.xml')
+            return _smtp_aware(ngamsConfig.ngamsConfig().load(cfg_filename, check))
+
+        raise Exception('Db element not found in original configuration')
+
     def prepExtSrv(self,
                    port = 8888,
                    delDirs = 1,
@@ -865,6 +808,9 @@ class ngamsTestSuite(unittest.TestCase):
         if srvModule and daemon:
             raise ValueError("srvModule cannot be used in daemon mode")
 
+        if not utils.is_port_available(port):
+            raise RuntimeError("Port %d is not available for test server to use" % port)
+
         cfgFile = _to_abs(cfgFile)
 
         verbose = logging_levels[logger.getEffectiveLevel()] + 1
@@ -873,13 +819,13 @@ class ngamsTestSuite(unittest.TestCase):
             # If a DB Configuration Name is specified, we first have to
             # extract the configuration information from the DB to
             # create a complete temporary cfg. file.
-            cfgObj = db_aware_cfg(cfgFile)
+            cfgObj = self.env_aware_cfg(cfgFile)
             with contextlib.closing(ngamsDb.from_config(cfgObj, maxpool=1)) as db:
                 cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, db)
             logger.debug("Successfully read configuration from database, root dir is %s", cfgObj2.getRootDirectory())
             cfgFile = save_to_tmp(cfgObj2.genXmlDoc(0))
 
-        cfgObj = db_aware_cfg(cfgFile)
+        cfgObj = self.env_aware_cfg(cfgFile)
 
         # Change what needs to be changed, like the position of the Sqlite
         # database file when necessary, the custom configuration items, and the
@@ -926,15 +872,6 @@ class ngamsTestSuite(unittest.TestCase):
         # sometimes communicate through files in the temporary area
         environ = os.environ.copy()
         environ['NGAS_TESTS_TMP_DIR_BASE'] = _tmp_root_base
-
-        logger.info('Making sure port %d is available')
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            with contextlib.closing(s):
-                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                s.bind(('127.0.0.1', port))
-        except socket.error:
-            raise RuntimeError('Port %d is taken, test server will not be able to start' % port)
 
         logger.info("Starting external NG/AMS Server in port %d with command: %s", port, " ".join(execCmd))
         with self._proc_startup_lock:
@@ -1014,7 +951,7 @@ class ngamsTestSuite(unittest.TestCase):
                 # used by the client that issuea these requests (it was 60 seconds,
                 # we decreased it to 5 which makes more sense).
                 elif isinstance(e, socket.timeout):
-                    logger.warning("Timeo out when connecting to server, will try again")
+                    logger.warning("Timed out when connecting to server, will try again")
                     continue
 
                 logger.exception("Error while STATUS-ing server, shutting down")
@@ -1146,6 +1083,9 @@ class ngamsTestSuite(unittest.TestCase):
 
         self.terminateAllServer()
 
+        if self.smtp_server:
+            self.smtp_server.close()
+
         # Remove temporary files
         if (not getNoCleanUp()):
             shutil.rmtree(tmp_root, True)
@@ -1193,7 +1133,11 @@ class ngamsTestSuite(unittest.TestCase):
             ngas_root = cfg.getRootDirectory()
         if ngas_root:
             replacements['%NGAS_ROOT%'] = ngas_root
-            replacements['%NGAS_ROOT_DISK_ID%'] = ngas_root[1:].replace('/', '-')
+            replacements['%NGAS_ROOT_DISK_ID%'] = as_ngas_disk_id(ngas_root)
+        for srv_info in self.extSrvInfo:
+            ngas_root = srv_info.rootDir
+            replacements['%%NGAS_ROOT:%d%%' % srv_info.port] = ngas_root
+            replacements['%%NGAS_ROOT_DISK_ID:%d%%' % srv_info.port] = as_ngas_disk_id(ngas_root)
         return replacements
 
     def assert_status_ref_file(self, ref_file, status, filters=(),
@@ -1240,7 +1184,7 @@ class ngamsTestSuite(unittest.TestCase):
                                  replacements=replacements)
 
         errors = []
-        for i, (refline, statline) in enumerate(zip(ref.splitlines(), data.splitlines()), 1):
+        for i, (refline, statline) in enumerate(zip_longest(ref.splitlines(), data.splitlines(), fillvalue=''), 1):
             if refline != statline:
                 errors.append((i, refline, statline))
         if not errors:
@@ -1369,7 +1313,7 @@ class ngamsTestSuite(unittest.TestCase):
         """
 
         # Create the shared database first of all and generate a new config file
-        tmpCfg = db_aware_cfg(cfg_file)
+        tmpCfg = self.env_aware_cfg(cfg_file)
         self.point_to_sqlite_database(tmpCfg, createDatabase)
         if createDatabase:
             with contextlib.closing(ngamsDb.from_config(tmpCfg, maxpool=1)) as db:

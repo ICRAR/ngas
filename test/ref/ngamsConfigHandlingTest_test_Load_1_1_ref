@@ -73,7 +73,7 @@ NgamsCfg.Notification[1].MaxRetentionSize              : 1000
 NgamsCfg.Notification[1].MaxRetentionTime              : 00T00:30:00
 NgamsCfg.Notification[1].NoDiskSpaceNotification[1].EmailRecipient[1].Address: plone@localhost
 NgamsCfg.Notification[1].Sender                        : ngast@localhost
-NgamsCfg.Notification[1].SmtpHost                      : localhost
+NgamsCfg.Notification[1].SmtpHost                      : 127.0.0.1
 NgamsCfg.Permissions[1].AllowArchiveReq                : 1
 NgamsCfg.Permissions[1].AllowProcessingReq             : 1
 NgamsCfg.Permissions[1].AllowRemoveReq                 : 1
