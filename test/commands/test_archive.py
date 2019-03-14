@@ -248,7 +248,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
 
         self.start_smtp_server()
-        cfg = (("NgamsCfg.ArchiveHandling[1].MinFreeSpaceWarningMb", "100000"),)
+        avail_space = getDiskSpaceAvail(os.path.dirname(tmp_path()), format="MB")
+        cfg = (("NgamsCfg.ArchiveHandling[1].MinFreeSpaceWarningMb", str(int(10 * avail_space))),)
         self.prepExtSrv(cfgProps=cfg)
         self.archive("src/SmallFile.fits")
 
