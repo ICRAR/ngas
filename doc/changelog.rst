@@ -7,6 +7,16 @@ Changelog
   This should lower the overhead of using python to perform the transfer,
   bringing benefits to ``ngamsPClient`` class and command-line tool,
   and to the subscription thread.
+* Improved NGAS's mail sending capabilities.
+  The code is now automatically tested by our unit tests,
+  which allowed us to ensure it sends mails correctly,
+  and works with python3.
+  On top of that mail messages are now created
+  using the standard library modules for correct mail composition,
+  instead of the "hand-written" logic we had previously.
+* Added tests to ensure all plugin modules can be correctly imported.
+  This ensures the code is compatible with python 3 up to some degree,
+  and it also increases our code coverage.
 * Unit tests don't need to be run from within the ``test`` directory anymore.
   This makes using unit test tools
   like ``pytest`` or the built-in ``unittest`` module
