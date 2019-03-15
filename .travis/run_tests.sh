@@ -29,11 +29,29 @@
 # TRAVIS_OS_NAME    the OS under which we are running (linux, osx)
 #
 
+fail() {
+	echo $1 1>&2
+	exit 1
+}
+
 # In OSX we create our own virtualenv, see run_build.sh
 if [ "${TRAVIS_OS_NAME}" = "osx" ]
 then
 	source ${TRAVIS_BUILD_DIR}/osx_venv/bin/activate
 fi
+
+pip install psutil pytest-cov coveralls || fail "Failed to install unit test dependencies"
+
+# Try to simply import the plugin modules
+# This increases our coverage by a not-too-small amount
+for f in src/ngamsPlugIns/ngamsPlugIns/*.py; do
+	f=`basename $f`
+	if [[ $f == __init__.py ]]; then
+		continue
+	fi
+	coverage run -p <(echo "import ngamsPlugIns.${f%%.py}") &> /dev/null || fail "Failed to import $f plugin"
+done
+coverage combine || fail "Failed to combine coverage information"
 
 # These are the user/dbname/passwd that we created on run_build
 # sqlite3 is the default so it needs no special attention
@@ -45,5 +63,4 @@ elif [[ "$DB" == "postgresql" ]]; then
 fi
 export NGAS_TESTDB
 
-pip install psutil pytest-cov coveralls
-py.test --cov
+py.test --cov --cov-append
