@@ -1210,7 +1210,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     elif crc_name is None:
         cksum = (None, None)
 
-    intestion_rate = archive_result.totaltime / reqPropsObj.getSize()
+    intestion_rate = int(reqPropsObj.getSize() // archive_result.totaltime)
     diskInfo = postFileRecepHandling(srvObj, reqPropsObj, plugin_result,
                                      reqPropsObj.getTargDiskInfo(), cksum=cksum,
                                      sync_disk=sync_disk, ingestion_rate=intestion_rate,
