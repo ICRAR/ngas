@@ -37,13 +37,14 @@ import functools
 import glob
 import os
 import subprocess
+import time
 import unittest
 from multiprocessing.pool import ThreadPool
 
 from six.moves import cPickle # @UnresolvedImport
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
-    NGAMS_SUCCESS, getDiskSpaceAvail, mvFile
+    NGAMS_SUCCESS, getDiskSpaceAvail, mvFile, getFileSize
 from ngamsLib import ngamsStatus, ngamsFileInfo, ngamsHttpUtils
 from ..ngamsTestLib import ngamsTestSuite, \
     pollForFile, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
@@ -1496,6 +1497,21 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         tp.close()
         os.unlink(test_file)
+
+    def test_valid_ingest_rate(self):
+        """Make sure the ingest rate values make sense"""
+
+        # Archive a file and check the overall ingestion rate, which should be
+        # lower than the more specific archiving "read-crc-write" ingestion rate
+        fsize = getFileSize(self.resource('src/SmallFile.fits'))
+
+        _, db = self.prepExtSrv()
+        start = time.time()
+        self.qarchive('src/SmallFile.fits', mimeType='application/octet-stream')
+        duration = time.time() - start
+        overall_rate = int(fsize // duration)
+        archive_rate = db.query2('SELECT ingestion_rate FROM ngas_files')[0][0]
+        self.assertLessEqual(overall_rate, archive_rate)
 
     def test_archive_no_versioning(self):
         self._test_archive_no_versioning('ARCHIVE')
