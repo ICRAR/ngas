@@ -971,7 +971,7 @@ def _clone(srvObj,
     try:
         # Get information about candidate files for cloning.
         files = srvObj.db.getFileInfoFromFileId(fileId, fileVersion, diskId,
-                                                ignore=0, order_version_asc=1,
+                                                ignore=0, order2=1,
                                                 order=0, dbCursor=False)
         if not files:
             msg = genLog("NGAMS_ER_CMD_EXEC",

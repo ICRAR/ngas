@@ -481,14 +481,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             return []
         return res[0]
 
-    def getFileInfoFromFileId(self,
-                              fileId,
-                              fileVersion = -1,
-                              diskId = None,
-                              ignore = None,
-                              dbCursor = 1,
-                              order = 1,
-                              order_version_asc=0):
+    def getFileInfoFromFileId(self, fileId, fileVersion=-1, diskId=None,
+                              ignore = None, dbCursor=1, order=1, order2=0):
         """
         The method queries the file information for the files with the given
         File ID and returns the information found in a list containing
@@ -541,8 +535,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                          (<NG/AMS DB Cursor Object API>|list).
         """
 
-        if bool(order) and bool(order_version_asc):
-            raise ValueError('order and order_version_asc cannot be specified together')
+        if bool(order) and bool(order2):
+            raise ValueError("order and order2 cannot be specified together")
 
         try:
             int(fileVersion)
@@ -575,8 +569,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         # Order the files according to the version.
         if order:
             sql.append(" ORDER BY nf.file_version desc, nd.disk_id desc")
-        elif order_version_asc:
-            sql.append(" ORDER BY nf.file_version asc")
+        elif order2:
+            # Main disks first, Replicas later
+            sql.append(" ORDER BY nf.file_version DESC, nd.logical_name ASC")
 
         if dbCursor:
             return self.dbCursor(''.join(sql), args=vals)
