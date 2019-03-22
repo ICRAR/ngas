@@ -19,10 +19,77 @@ To see more details about the XML documentation
 go to the :doc:`configuration` section.
 
 
+.. _server.modes:
+
+Running Modes
+=============
+
+The NGAS server can be run in three different modes:
+
+ * As a *cache* server
+ * As a *data-mover* (or read-only) server
+ * As a normal server
+
+Selecting which mode will be used
+is done by editing the server configuration file.
+
+
+.. _server.modes.cache:
+
+Cache mode
+----------
+
+When started in *cache* mode,
+an NGAS server starts
+its :ref:`cache control <bg.cache_thread>` thread,
+enabling it to periodically remove files
+from its underlying storage
+after they have been successfully transmitted
+to the configured subscribers.
+This behavior effectively turns the NGAS server
+into a temporary cache
+for data in transit to some other location.
+
+To start an NGAS server
+with its cache control thread enabled
+you need the configure the :ref:`caching <config.caching>` element
+of the server configuration file.
+
+.. note::
+ A server in *cache* mode was historically started
+ by running an *ngamsCacheServer* executable.
+ Since v11.0 this alternative doesn't exist anymore,
+ and centralizing the server's starting mode
+ in its configuration file.
+
+
+.. _server.modes.data_mover:
+
+Data mover mode
+---------------
+
+When started in *data-mover* mode,
+an NGAS server configures itself to operate
+in a *read-only* mode.
+
+This mode is meant to be used
+as a complementing background-processing system
+to a main NGAS server instance.
+While the main NGAS server instance
+manages the data in and out of the volumes,
+a data-mover server can still read data out
+and perform other tasks,
+like taking care of subscriptions
+or perform background processing.
+
+To start an NGAS server in *data-mover* mode
+you need to use the ``-datamover`` command-line switch
+when running the ``ngamsServer`` script.
+
 .. _server.proxy:
 
-Proxy mode
-==========
+Proxy behavior
+==============
 
 When NGAS servers are deployed in a cluster configuration
 (i.e., many servers connected to a single central database),

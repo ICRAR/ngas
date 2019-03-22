@@ -96,7 +96,10 @@ depending on the buffering capabilities
 needed by the system.
 
 A number of criteria control
-how and when local files are removed from NGAS.
+how and when local files are removed from NGAS,
+which can be configured
+through the :ref:`config.caching` element
+in the server's configuration file:
 
 * A per-file time limit has been reached.
   If configured, files are removed from the server

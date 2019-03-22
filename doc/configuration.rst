@@ -233,6 +233,32 @@ The following attributes are available:
 The following attributes are present in old configuration files
 but are not used anymore: *FileSeq*, *DiskSeq*, *LogSummary*, *Prio*.
 
+
+.. _config.caching:
+
+Caching
+-------
+
+The ``Caching`` element defines the behavior
+of the :ref:`cache control thread <bg.cache_thread>`.
+When enabled, it is said that the NGAS server
+is running in :ref:`cache mode <server.modes.cache>`.
+The following attributes are available:
+
+ * *Enable*: Whether the cache control thread should run or not.
+ * *Period*: The period at which the cache control thread runs.
+ * *MaxTime*: The maximum time files can stay in the cache.
+ * *MaxCacheSize*: The maximum total allowed volume of files in the cache.
+ * *MaxFiles*: The maximum allowed number of files in the cache.
+ * *CacheControlPlugIn*: A user-provided cache deletion plug-in
+   that decides whether individual files
+   should be marked for deletion.
+ * *CacheControlPlugInPars*: Parameters for the plug-in above.
+ * *CheckCanBeDeleted*: Check if a file marked for deletion
+   has been sent to all subscribers yet
+   before actual deletion occurs.
+
+
 .. _config.log:
 
 Log
