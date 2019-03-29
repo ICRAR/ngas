@@ -35,6 +35,7 @@ import logging
 import os
 
 import six
+from six.moves import filter
 
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsHighLevelLib
 from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, \
@@ -76,10 +77,11 @@ def _remFile(srvObj,
     if (fileId): fileIds = [fileId]
     if (fileVersion == -1): fileVersion = None
 
+    files = srvObj.db.getFileSummary1(hostId, diskIds, fileIds, ignore=None)
+    if fileVersion:
+        files = filter(lambda f: fileVersion == f[ngamsDbCore.SUM1_VERSION], files)
     n_files = 0
-    for f in srvObj.db.getFileSummary1(hostId, diskIds, fileIds, ignore=None):
-        if fileVersion is not None and fileVersion != f[ngamsDbCore.SUM1_VERSION]:
-            continue
+    for f in files:
         msg = "Scheduling file with ID: %s/%d on disk with ID: %s for " +\
               "deletion"
         logger.debug(msg, f[ngamsDbCore.SUM1_FILE_ID],
