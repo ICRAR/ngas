@@ -56,7 +56,7 @@ def _remFile(srvObj,
     See documentation for the ngamsRemFileCmd.remFile() function.
     """
     # Check for illegal parameter combinations.
-    if ((not diskId) or (diskId and (not fileId))):
+    if not diskId or not fileId:
         errMsg = "Disk ID: %s, File ID: %s, File Version: %d" %\
                  (diskId, fileId, fileVersion)
         errMsg = genLog("NGAMS_ER_CMD_SYNTAX", [NGAMS_REMFILE_CMD, errMsg])
@@ -70,12 +70,14 @@ def _remFile(srvObj,
     hostId = None
     diskIds = []
     fileIds = []
-    if (diskId):
+    if diskId:
         diskIds = [diskId]
-    elif ((not diskId) and fileId):
+    elif fileId:
         hostId = srvObj.getHostId()
-    if (fileId): fileIds = [fileId]
-    if (fileVersion == -1): fileVersion = None
+    if fileId:
+        fileIds = [fileId]
+    if fileVersion == -1:
+        fileVersion = None
 
     files = srvObj.db.getFileSummary1(hostId, diskIds, fileIds, ignore=None)
     if fileVersion:
