@@ -925,7 +925,7 @@ class ngamsTestSuite(unittest.TestCase):
                     continue
 
                 # We are having this funny situation in MacOS builds, when
-                # intermitently the client times out while trying to connect
+                # intermittently the client times out while trying to connect
                 # to the server. This happens very rarely, but when it does it
                 # always seems to coincide with the moment the server starts
                 # listening for connections.
