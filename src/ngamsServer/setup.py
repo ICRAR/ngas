@@ -60,7 +60,8 @@ setup(
         'console_scripts':[
             'ngamsServer=ngamsServer.ngamsServer:main',
             'ngamsDaemon=ngamsServer.ngamsDaemon:main',
-            'ngamsDumpDbSnapshot=ngamsServer.ngamsDumpDbSnapshot:main'
+            'ngamsDumpDbSnapshot=ngamsServer.ngamsDumpDbSnapshot:main',
+            'ngas-prepare-volume=ngamsServer.volumes:prepare_volume'
         ],
     }
 )

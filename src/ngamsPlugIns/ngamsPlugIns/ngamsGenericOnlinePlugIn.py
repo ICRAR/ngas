@@ -53,7 +53,7 @@ import logging
 import os
 
 from ngamsLib import ngamsPhysDiskInfo
-from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \
+from ngamsServer.volumes import NGAS_VOL_INFO_FILE, \
     loadVolInfoFile, NGAS_VOL_INFO_ID, NGAS_VOL_INFO_IGNORE, NGAS_VOL_INFO_TYPE, \
     NGAS_VOL_INFO_MANUFACT
 
