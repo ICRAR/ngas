@@ -81,16 +81,14 @@ class DBMRequestDB(object):
         try:
             os.unlink(self.dbm_fname)
         except OSError as e:
-            if e.errno == errno.ENOENT:
-                pass
-            raise
+            if e.errno != errno.ENOENT:
+                raise
         self.dbm = ngamsDbm.ngamsDbm(self.dbm_fname, cleanUpOnDestr=0, writePerm=1)
 
     def add(self, req):
         with self.lock:
             self.dbm.add(req.getRequestId(), req)
             self.dbm.sync()
-            self.dbm.release()
 
     def update(self, req):
         req_id = req.getRequestId()
