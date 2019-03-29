@@ -174,3 +174,18 @@ class ngamsDaemonTest(ngamsTestSuite):
         self.prepExtSrv(daemon=True)
         cfg_file = self.resource('src/ngamsCfg.xml')
         self.assertNotEqual(0, self._run_daemon_start(self.point_to_ngas_root(cfg_file)))
+
+class _ReqDbTests(object):
+
+    def test_request_db(self):
+        # This simple archive/retrieve pair should exercise some of the
+        # request db functionality
+        amount_of_data = 10*1024*1024 # 10 MBs
+        spaces = " " * amount_of_data
+        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', self.db),))
+        self.archive_data(spaces, 'some-file.data', 'application/octet-stream')
+        self.retrieve(fileId='some-file.data', targetFile=tmp_path())
+
+for db in ('null', 'memory', 'bsddb'):
+    name = 'ReqDbTests_%s' % db
+    locals()[name] = type(name, (ngamsTestSuite, _ReqDbTests,), {'db': db})
