@@ -771,51 +771,40 @@ def _clone(srvObj,
                          ", File Version: " + str(fileVersion)])
         raise Exception(errMsg)
 
+    # Get candidate files for cloning.
+    # We convert to tuple of file info object plus extra info because
+    # this is how the code expects this information to come, so we need to
+    # keep the format unless we change the bulk of the code
+    # f[-2] is the host id, f[-1] is the mount point
+    all_info = [(ngamsFileInfo.ngamsFileInfo().unpackSqlResult(f), f[-2], f[-1])
+                for f in srvObj.db.getFileInfoFromFileId(
+                    fileId, fileVersion, diskId, ignore=0, order=0, order2=1,
+                    dbCursor=False)]
+    if not all_info:
+        msg = genLog("NGAMS_ER_CMD_EXEC",
+                     [NGAMS_CLONE_CMD, "No files for cloning found"])
+        raise Exception(msg)
 
-    # Handling cloning of more files.
-    cloneListDbm = None
+    # Take only the first element in these cases
+    if fileId != "" and (diskId != "" or fileVersion == -1):
+        all_info = [all_info[0]]
+    cloneDbCount = len(all_info)
+
     cloneListDbmName = tmpFilePat + "_CLONE_INFO_DB"
+    rmFile(cloneListDbmName + "*")
     try:
-        # Get information about candidate files for cloning.
-        files = srvObj.db.getFileInfoFromFileId(fileId, fileVersion, diskId,
-                                                ignore=0, order2=1,
-                                                order=0, dbCursor=False)
-        if not files:
-            msg = genLog("NGAMS_ER_CMD_EXEC",
-                         [NGAMS_CLONE_CMD, "No files for cloning found"])
-            raise Exception(msg)
-
-        # Convert to tuple of file info object plus extra info
-        # This is how the code expects this information to come, so we need to
-        # keep the format unless we change the bulk of the code
-        # f[-2] is the host id, f[-1] is the mount point
-        all_info = []
-        for f in files:
-            all_info.append((ngamsFileInfo.ngamsFileInfo().unpackSqlResult(f), f[-2], f[-1]))
-
-        # Create a BSD DB with information about files to be cloned.
-        rmFile(cloneListDbmName + "*")
         cloneListDbm = ngamsDbm.ngamsDbm(cloneListDbmName, cleanUpOnDestr = 0,
                                          writePerm = 1)
-        cloneDbCount = 0
-
-        if fileId != "" and (diskId != "" or fileVersion == -1):
-            # Take only the first element
-            cloneListDbm.add("0", all_info[0])
-            cloneDbCount = 1
-        else:
-            # Take all the files.
-            for tmpFileInfo in all_info:
-                cloneListDbm.add(str(cloneDbCount), tmpFileInfo)
-                cloneDbCount += 1
-
+        for tmpFileInfo in all_info:
+            cloneListDbm.add(str(cloneDbCount), tmpFileInfo)
+            cloneDbCount += 1
+        del cloneListDbm
     except Exception:
         if (cloneListDbm): del cloneListDbm
         rmFile(cloneListDbmName + "*")
         raise
 
     logger.debug("Found: %d file(s) for cloning ...", cloneDbCount)
-    del cloneListDbm
 
     # Check available amount of disk space.
     cloneCheckDiskSpace(srvObj, cloneListDbmName, tmpFilePat, targetDiskId)
