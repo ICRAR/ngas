@@ -62,10 +62,6 @@ def _remFile(srvObj,
         errMsg = genLog("NGAMS_ER_CMD_SYNTAX", [NGAMS_REMFILE_CMD, errMsg])
         raise Exception(errMsg)
 
-    # Temporary DBM to contain SQL info about files concerned by the query.
-    fileListDbmName   = os.path.normpath(tmpFilePat + "_FILE_LIST")
-    fileListDbm       = ngamsDbm.ngamsDbm(fileListDbmName, writePerm = 1)
-
     # Get the information from the DB about the files in question.
     hostId = None
     diskIds = []
@@ -82,16 +78,8 @@ def _remFile(srvObj,
     files = srvObj.db.getFileSummary1(hostId, diskIds, fileIds, ignore=None)
     if fileVersion:
         files = filter(lambda f: fileVersion == f[ngamsDbCore.SUM1_VERSION], files)
-    n_files = 0
-    for f in files:
-        msg = "Scheduling file with ID: %s/%d on disk with ID: %s for " +\
-              "deletion"
-        logger.debug(msg, f[ngamsDbCore.SUM1_FILE_ID],
-                     f[ngamsDbCore.SUM1_VERSION],
-                     f[ngamsDbCore.SUM1_DISK_ID])
-        fileListDbm.add(str(n_files), f)
-        n_files += 1
-        fileListDbm.sync()
+    fileListDbmName   = os.path.normpath(tmpFilePat + "_FILE_LIST")
+    fileListDbm = ngamsDbm.enumerate_to_dbm(fileListDbmName, files)
 
     # Check if the files selected for deletion are available within the NGAS
     # system, in at least 3 copies.

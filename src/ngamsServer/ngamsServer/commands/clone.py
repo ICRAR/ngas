@@ -793,14 +793,8 @@ def _clone(srvObj,
     cloneListDbmName = tmpFilePat + "_CLONE_INFO_DB"
     rmFile(cloneListDbmName + "*")
     try:
-        cloneListDbm = ngamsDbm.ngamsDbm(cloneListDbmName, cleanUpOnDestr = 0,
-                                         writePerm = 1)
-        for tmpFileInfo in all_info:
-            cloneListDbm.add(str(cloneDbCount), tmpFileInfo)
-            cloneDbCount += 1
-        del cloneListDbm
+        ngamsDbm.enumerate_to_dbm(cloneListDbmName, all_info)
     except Exception:
-        if (cloneListDbm): del cloneListDbm
         rmFile(cloneListDbmName + "*")
         raise
 
