@@ -716,7 +716,7 @@ class ngamsTestSuite(unittest.TestCase):
         if hasattr(ngamsPClient.ngamsPClient, name):
             return functools.partial(self._assert_client_call, name,
                                      expectedStatus=expected_status)
-        raise AttributeError
+        raise AttributeError(name)
 
     def start_smtp_server(self):
         if self.smtp_server:
