@@ -108,7 +108,6 @@ NgamsCfg.Server[1].MaxSimReqs                          : 30
 NgamsCfg.Server[1].PortNo                              : 8888
 NgamsCfg.Server[1].ProxyMode                           : 1
 NgamsCfg.Server[1].RootDirectory                       : .
-NgamsCfg.Server[1].Simulation                          : 1
 NgamsCfg.StorageSets[1].Id                             : StorageSets-PATA-8-Dbl
 NgamsCfg.StorageSets[1].StorageSet[1].DiskLabel        : FITS
 NgamsCfg.StorageSets[1].StorageSet[1].MainDiskSlotId   : 1

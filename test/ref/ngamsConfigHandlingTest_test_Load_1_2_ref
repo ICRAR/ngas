@@ -66,7 +66,7 @@
       <MimeType Name="application/x-cfits"/>
     </PlugIn>
   </Register>
-  <Server ArchiveName="ESO-ARCHIVE" BlockSize="65536" Id="Server-Sim" IpAddress="127.0.0.1" MaxSimReqs="30" PortNo="8888" ProxyMode="1" RootDirectory="." Simulation="1" SwVersion=""/>
+  <Server ArchiveName="ESO-ARCHIVE" BlockSize="65536" Id="Server-Sim" IpAddress="127.0.0.1" MaxSimReqs="30" PortNo="8888" ProxyMode="1" RootDirectory="." SwVersion=""/>
   <StorageSets Id="StorageSets-PATA-8-Dbl">
     <StorageSet DiskLabel="FITS" MainDiskSlotId="1" Mutex="0" RepDiskSlotId="2" StorageSetId="FitsStorage1" Synchronize="1"/>
     <StorageSet MainDiskSlotId="3" Mutex="0" RepDiskSlotId="4" StorageSetId="FitsStorage2" Synchronize="1"/>

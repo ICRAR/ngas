@@ -60,7 +60,6 @@
           IpAddress="127.0.0.1"
           PortNo="8888" 
           ProxyMode="1"
-          Simulation="1"
           SwVersion=""/>
 
   <JanitorThread Id="JanitorThread-Std"
