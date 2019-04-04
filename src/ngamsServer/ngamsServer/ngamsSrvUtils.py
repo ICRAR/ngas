@@ -405,7 +405,8 @@ def handleOffline(srvObj,
     srvObj.stopUserServiceThread()
     srvObj.stopMirControlThread()
     srvObj.stopCacheControlThread()
-    srvObj.remote_subscription_creation_task.stop()
+    if srvObj.remote_subscription_creation_task:
+        srvObj.remote_subscription_creation_task.stop()
 
     logger.debug("Prepare NG/AMS for Offline State ...")
 

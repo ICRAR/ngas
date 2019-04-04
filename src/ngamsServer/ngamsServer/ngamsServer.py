@@ -697,6 +697,9 @@ class ngamsServer(object):
         # takes place
         self.archive_event_subscribers = []
 
+        # Created by ngamsSrvUtils.handleOnline
+        self.remote_subscription_creation_task = None
+
     def load_archive_event_subscribers(self):
 
         # Built-in event subscriber that triggers the subscription thread
