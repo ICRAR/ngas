@@ -65,8 +65,10 @@ from six.moves import zip_longest
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, utils
 from ngamsLib.ngamsCore import getHostName, rmFile, \
     NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
-    execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601, getDiskSpaceAvail
+    execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601, getDiskSpaceAvail,\
+    checkCreatePath
 from ngamsPClient import ngamsPClient
+from ngamsServer import volumes
 
 
 logger = logging.getLogger(__name__)
@@ -752,6 +754,22 @@ class ngamsTestSuite(unittest.TestCase):
 
         raise Exception('Db element not found in original configuration')
 
+    def _prepare_volume(self, voldir, disk_type, manufacturer):
+        if os.path.exists(voldir):
+            return
+        checkCreatePath(voldir)
+        disk_id = as_ngas_disk_id(voldir)
+        volumes.prepare_volume_info_file(voldir, disk_id=disk_id,
+                                         disk_type=disk_type,
+                                         manufacturer=manufacturer)
+
+    def _prepare_volumes(self, cfg):
+        for slot_id in filter(None, cfg.getSlotIds()):
+            sset = cfg.getStorageSetFromSlotId(slot_id)
+            disk_type = 'Main' if sset.getMainDiskSlotId() == slot_id else 'Rep'
+            voldir = os.path.join(cfg.getVolumeDirectory(), slot_id)
+            self._prepare_volume(voldir, disk_type, 'TEST-MANUFACTURER')
+
     def prepExtSrv(self,
                    port = 8888,
                    delDirs = 1,
@@ -849,8 +867,9 @@ class ngamsTestSuite(unittest.TestCase):
             logger.debug("Clearing NGAS DB ...")
             delNgasTbls(dbObj)
 
-        # Point the configuration to the root directory
+        # Prepare volume directories and point the configuration to the root directory
         tmpCfg = self.point_to_ngas_root(cfgObj, root_dir)
+        self._prepare_volumes(cfgObj)
 
         # Execute the server as an external process.
         if daemon:

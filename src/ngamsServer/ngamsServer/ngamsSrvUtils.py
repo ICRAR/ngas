@@ -34,16 +34,12 @@ This module contains various utilities used by the NG/AMS Server.
 import contextlib
 import glob
 import logging
-import os
-import re
 
 from ngamsLib.ngamsCore import NGAMS_NOT_RUN_STATE,\
-    NGAMS_ONLINE_STATE, NGAMS_SUBSCRIBE_CMD,\
-    NGAMS_SUCCESS, genLog, NGAMS_DISK_INFO, checkCreatePath,\
+    NGAMS_ONLINE_STATE, NGAMS_SUBSCRIBE_CMD, NGAMS_SUCCESS, genLog, \
     NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
     loadPlugInEntryPoint, toiso8601, fromiso8601
 from ngamsLib import ngamsStatus, ngamsLib, ngamsHttpUtils, utils
-from ngamsLib import ngamsPhysDiskInfo
 from ngamsLib import ngamsSubscriber
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
 from ngamsLib import ngamsNotification
@@ -173,84 +169,16 @@ def getDiskInfo(srvObj,
     Returns:       Dictionary containing information about the
                    disks (dictionary).
     """
-    diskInfoDic = {}
-
     plugIn = srvObj.getCfg().getOnlinePlugIn()
-    if (not srvObj.getCfg().getSimulation()):
-        logger.info("Invoking System Online Plug-In: %s(srvObj)", plugIn)
-        plugInMethod = loadPlugInEntryPoint(plugIn)
-        diskInfoDic = plugInMethod(srvObj, reqPropsObj)
-        if (len(diskInfoDic) == 0):
-            if (not ngamsLib.trueArchiveProxySrv(srvObj.getCfg())):
-                errMsg = genLog("NGAMS_NOTICE_NO_DISKS_AVAIL",
-                                [srvObj.getHostId(),
-                                 srvObj.getHostId()])
-                logger.warning(errMsg)
-    else:
-        if (srvObj.getCfg().getAllowArchiveReq()):
-            logger.debug("Running as a simulated archiving system - generating " +\
-                 "simulated disk info ...")
-            portNo = 0
-            slotIdLst = srvObj.getCfg().getSlotIds()
-            for slotId in slotIdLst:
-                if (slotId != ""):
-                    storageSet = srvObj.getCfg().\
-                                 getStorageSetFromSlotId(slotId)
-                    if (storageSet.getMainDiskSlotId() == slotId):
-                        diskType = "Main"
-                    else:
-                        diskType = "Rep"
-                    mtRootDir = srvObj.getCfg().getRootDirectory()
-                    mtPt = os.path.normpath(mtRootDir +\
-                                            "/"+storageSet.getStorageSetId() +\
-                                            "-" + diskType + "-" + str(slotId))
-                    diskId = re.sub("/", "-", mtPt)[1:]
-                    serialNo = "SERIAL-NUMBER-" + str(portNo)
-                    manufact = "TEST-MANUFACTURER"
-                    diskInfoDic[slotId] = ngamsPhysDiskInfo.ngamsPhysDiskInfo()
-                    diskInfoDic[slotId].\
-                                          setPortNo(portNo).\
-                                          setSlotId(slotId).\
-                                          setMountPoint(mtPt).\
-                                          setStatus("OK").\
-                                          setCapacityGb(100).\
-                                          setModel("TEST-MODEL").\
-                                          setSerialNo(serialNo).\
-                                          setType("TEST-TYPE").\
-                                          setManufacturer(manufact).\
-                                          setDiskId(diskId).\
-                                          setDeviceName("/dev/dummy" + slotId)
-                    # We create the mount directory if it does not exist
-                    checkCreatePath(mtPt)
-
-                    portNo = portNo + 1
-        else:
-            # It is not an Archiving System. We check which of the directories
-            # in the Ngas.RootDirectory contain an NgasDiskInfo file.
-            # These are considered as available disks in simulation mode.
-            baseDir = srvObj.getCfg().getRootDirectory()
-            dirList = glob.glob(os.path.normpath(baseDir + "/*"))
-            for mtPt in dirList:
-                checkPath = os.path.normpath(mtPt + "/" + NGAMS_DISK_INFO)
-                logger.debug("Checking if path exists: %s", checkPath)
-                if (os.path.exists(checkPath)):
-                    slotId = mtPt.split("-")[-1]
-                    portNo = (int(slotId) - 1)
-                    diskId = re.sub("/", "-", mtPt)
-                    serialNo = "SERIAL-NUMBER-" + str(portNo)
-                    diskInfoDic[slotId]=ngamsPhysDiskInfo.ngamsPhysDiskInfo().\
-                                         setPortNo(portNo).\
-                                         setSlotId(slotId).\
-                                         setMountPoint(mtPt).\
-                                         setStatus("OK").\
-                                         setCapacityGb(100).\
-                                         setModel("TEST-MODEL").\
-                                         setSerialNo(serialNo).\
-                                         setType("TEST-TYPE").\
-                                         setManufacturer("TEST-MANUFACTURER").\
-                                         setDiskId(diskId).\
-                                         setDeviceName("/dev/dummy" + slotId)
-
+    logger.info("Invoking System Online Plug-In: %s(srvObj)", plugIn)
+    plugInMethod = loadPlugInEntryPoint(plugIn)
+    diskInfoDic = plugInMethod(srvObj, reqPropsObj)
+    if not diskInfoDic:
+        if (not ngamsLib.trueArchiveProxySrv(srvObj.getCfg())):
+            errMsg = genLog("NGAMS_NOTICE_NO_DISKS_AVAIL",
+                            [srvObj.getHostId(),
+                             srvObj.getHostId()])
+            logger.warning(errMsg)
     logger.debug("Disk Dictionary: %s", str(diskInfoDic))
     return diskInfoDic
 
@@ -437,12 +365,9 @@ def handleOffline(srvObj,
     ngamsDiskUtils.dumpDiskInfoAllDisks(srvObj.getHostId(),
                                         srvObj.getDb(), srvObj.getCfg())
     plugIn = srvObj.getCfg().getOfflinePlugIn()
-    if (srvObj.getCfg().getSimulation() == 0):
-        logger.info("Invoking System Offline Plug-In: %s(srvObj, reqPropsObj)", plugIn)
-        plugInMethod = loadPlugInEntryPoint(plugIn)
-        plugInRes = plugInMethod(srvObj, reqPropsObj)
-    else:
-        pass
+    logger.info("Invoking System Offline Plug-In: %s(srvObj, reqPropsObj)", plugIn)
+    plugInMethod = loadPlugInEntryPoint(plugIn)
+    plugInMethod(srvObj, reqPropsObj)
     ngamsDiskUtils.markDisksAsUnmountedInDb(srvObj.getHostId(), srvObj.getDb(), srvObj.getCfg())
 
     # Send out possible Retained Email Notification Messages.

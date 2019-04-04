@@ -124,9 +124,12 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
 
     def test_unregistered(self):
 
-        # Manually copy a file into the disk
-        trgFile = tmp_path("NGAS/FitsStorage1-Main-1/SmallFile.fits")
-        checkCreatePath(os.path.dirname(trgFile))
+        # Manually copy a file into the disk. We need to manually prepare the
+        # directory as a volume first so when the server starts it can see the
+        # directory as a volume
+        voldir = tmp_path("NGAS/FitsStorage1-Main-1")
+        self._prepare_volume(voldir, 'Main', 'Manufacturer')
+        trgFile = os.path.join(voldir, "SmallFile.fits")
         self.cp("src/SmallFile.fits", trgFile)
 
         # It should appear as unregistered when the server checks it
