@@ -1075,9 +1075,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                          "checksum_result=0/0000000000000000"]]]
 
     def _genArchProxyCfg(self, ports):
-        """
-        Generate a cfg. file.
-        """
+        """Strip out <Streams> from ngamsCfg.xml, provide our own values"""
+        # The ngamsConfig class has no way to remove items, so we need to load
+        # the config file as a DOM, remove it ourselves, then dump the XML into
+        # a file again
+        root = self.load_dom(self.resource('src/ngamsCfg.xml')).documentElement
+        streams = root.getElementsByTagName('Streams')
+        root.removeChild(streams[0])
+        cfg_fname = save_to_tmp(root.toprettyxml(), prefix='no_streams_cfg_', suffix='.xml')
+
         cfg = []
         for idx,streamEl in enumerate(self.__STREAM_LIST, 1):
             strEl = self.__STR_EL % idx
@@ -1089,7 +1095,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                 cfg.append((nauAttr, "%s:%d" % (getHostName(), port)))
                 hostIdx += 1
             idx += 1
-        return "src/ngamsCfgNoStreams.xml", cfg
+        return cfg_fname, cfg
     #########################################################################
 
 
