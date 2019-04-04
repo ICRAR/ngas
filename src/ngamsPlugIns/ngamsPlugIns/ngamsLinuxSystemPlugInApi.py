@@ -411,7 +411,8 @@ def ngamsMount(srvObj,
                       unpackFromSqlQuery(hostInfo[0])
     slotIds.sort()
     for slotId in slotIds:
-        if (not diskDic.has_key(slotId)): continue
+        if slotId not in diskDic:
+            continue
         #####entry = [diskDic[slotId].getDeviceName(),
         #####         diskDic[slotId].getMountPoint(),
         #####         "auto", "noauto,user", "0", "0"]
