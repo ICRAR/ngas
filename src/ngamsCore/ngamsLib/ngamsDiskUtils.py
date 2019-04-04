@@ -86,31 +86,6 @@ def prepNgasDiskInfoFile(hostId,
     return xmlDoc
 
 
-def getDiskCompleted(dbConObj,
-                     diskId):
-    """
-    Return 1 if a disk is marked as completed in the DB, otherwise
-    0 is returned.
-
-    dbConObj:   NGAS DB connection object (ngamsDb).
-
-    diskId:     Disk ID for the disk (string).
-
-    Returns:    1 if disk is marked as completed, otherwise 0 (integer).
-    """
-    logger.debug("Checking if disk with ID: %s is marked as completed ...",  diskId)
-    completed = dbConObj.getDiskCompleted(diskId)
-    if (completed == None):
-        logger.debug("Disk with ID: %s is not registered", diskId)
-        return 0
-    else:
-        if (completed):
-            logger.debug("Disk with ID: %s is completed", diskId)
-        else:
-            logger.debug("Disk with ID: %s is not completed", diskId)
-        return completed
-
-
 def isMainDisk(slotId,
                ngamsCfg):
     """
@@ -744,39 +719,6 @@ def markDiskAsUmountedInDb(hostId,
                                setMountPoint("").setLastHostId(hostId).\
                                write(dbConObj)
     logger.info("Marked disk with ID: %s as unmounted in the NGAS DB ...", diskId)
-
-
-def getAssociatedDiskId(diskId,
-                        ngamsCfgObj,
-                        diskDic):
-    """
-    Get Disk ID for the disk _currently_ associated with the disk with the
-    given ID (if any).
-
-    diskId:         Disk ID (string).
-
-    ngamsCfgObj:    Instance of NG/AMS Configuration Class (ngamsConfig).
-
-    diskDic:        Dictionary containing ngamsPhysDiskInfo objects
-                    with the information about the disk configuration
-                    (dictionary).
-
-    Returns:        ID of disk currently associated to the disk with the
-                    given ID or '' (string).
-    """
-    # Find the Slot ID for the given Disk ID.
-    slotId = ""
-    for id in diskDic.keys():
-        if (diskDic[id].getDiskId() == diskId):
-            slotId = id
-            break
-
-    # Find and return the Disk ID of the associated disk.
-    assocSlotId = ngamsCfgObj.getAssocSlotId(slotId)
-    for id in diskDic.keys():
-        if (id == assocSlotId): return diskDic[id].getDiskId()
-
-    return ""
 
 
 def updateDiskStatusDb(dbConObj,
