@@ -1914,7 +1914,7 @@ class ngamsConfig:
         """Checks if ``prop`` is duplicated in the configuration by testing if
         it has already been registered in the given dictionary"""
         if value in checkDic:
-            errMsg = "Duplicate value for property: %s. Value: %r" (prop, value)
+            errMsg = "Duplicate value for property: %s. Value: %r" % (prop, value)
             errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
             logger.error(errMsg)
             self.__checkRep.append(errMsg)
