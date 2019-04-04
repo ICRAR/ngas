@@ -314,13 +314,9 @@ def checkNotifRetBuf(hostId,
 
     Returns:        Void.
     """
-    global notifSem_
-    try:
-        pickleObjFile = _getNotifRetBufPickleFile(ngamsCfgObj, hostId)
 
-        # Take Notification Semaphore.
-        notifSem_.acquire()
-
+    pickleObjFile = _getNotifRetBufPickleFile(ngamsCfgObj, hostId)
+    with notifSem_:
         # Load a possible pickled Retention Buffer.
         global retentionBuf_
         if (not retentionBuf_):
@@ -335,13 +331,6 @@ def checkNotifRetBuf(hostId,
         for msgId in retentionBuf_.keys():
             _checkSendNotifMsg(hostId, ngamsCfgObj, msgId, retentionBuf_, flush,
                                flushMsg)
-
-        # Release Notification Semaphore.
-        notifSem_.release()
-    except:
-        # Release Notification Semaphore.
-        notifSem_.release()
-        raise
 
 
 # EOF
