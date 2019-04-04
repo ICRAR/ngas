@@ -773,6 +773,50 @@ class ngamsTestSuite(unittest.TestCase):
             voldir = os.path.join(cfg.getVolumeDirectory(), slot_id)
             self._prepare_volume(voldir, disk_type, 'TEST-MANUFACTURER')
 
+    def start_volumes_server(self):
+
+        num_volumes = 6
+        num_ssets = num_volumes // 2
+
+        # Create volumes under NGAS_ROOT/volumes
+        root_dir = tmp_path('NGAS')
+        for i in range(num_volumes):
+            voldir = os.path.join(root_dir, 'volumes', 'Volume%03d' % (i + 1))
+            self._prepare_volume(voldir, 'testtype%d' % (i + 1), 'testmanu%d' % (i + 1))
+
+        # Produce a configuration declaring n/2 storage sets for these volumes
+        dom = self.load_dom(self.resource('src/ngamsCfg.xml'))
+        ssets = dom.documentElement.getElementsByTagName('StorageSets')[0]
+        for sset in ssets.getElementsByTagName('StorageSet'):
+            ssets.removeChild(sset)
+        for i in range(num_ssets):
+            sset = dom.createElement('StorageSet')
+            ssets.appendChild(sset)
+            for name, value in (('StorageSetId', 'StorageSet%03d' % (i + 1)),
+                                ('MainDiskSlotId', 'Volume%03d' % (i * 2 + 1)),
+                                ('RepDiskSlotId', "Volume%03d" % (i * 2 + 2)),
+                                ('Mutex', '1'), ('Synchronize', '1')):
+                attr = dom.createAttribute(name)
+                sset.setAttributeNode(attr)
+                attr.value = value
+
+        # Make all streams use all storage sets
+        for stream in dom.documentElement.getElementsByTagName('Streams')[0].getElementsByTagName('Stream'):
+            for sset_ref in stream.getElementsByTagName('StorageSetRef'):
+                stream.removeChild(sset_ref)
+            for i in range(num_ssets):
+                sset_ref = dom.createElement('StorageSetRef')
+                attr = dom.createAttribute('StorageSetId')
+                attr.value = 'StorageSet%03d' % (i + 1)
+                sset_ref.setAttributeNode(attr)
+                stream.appendChild(sset_ref)
+
+        # Create configuration, start server.
+        cfg_fname = save_to_tmp(dom.toprettyxml(), prefix='volumes_cfg_', suffix='.xml')
+        return self.prepExtSrv(delDirs=0, cfgFile=cfg_fname,
+                               cfgProps=(('NgamsCfg.Server[1].VolumeDirectory', 'volumes'),))
+
+
     def prepExtSrv(self,
                    port = 8888,
                    delDirs = 1,
