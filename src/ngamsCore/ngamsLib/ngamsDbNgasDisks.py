@@ -649,10 +649,9 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                   (integer).
         """
         sql = "SELECT min(last_check) FROM ngas_disks WHERE host_id={}"
-        res = self.query2(sql, args = (hostId,))
-        if not res:
+        val = self.query2(sql, args = (hostId,))[0][0]
+        if not val:
             return None
-        val = res[0][0]
         return fromiso8601(val, local=True)
 
     def getAvailableVolumes(self, hostId):
