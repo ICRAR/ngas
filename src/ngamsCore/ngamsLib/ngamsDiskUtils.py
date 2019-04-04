@@ -390,14 +390,13 @@ def checkDisks(hostId,
         slotIds = list(dbUpdateDic.keys())
 
         # Sort the slots such that the Main Slot is always listed before the
-        # Replication Slot + sort the slots 'logically' according to the name.
+        # Replication Slot + sort the slots according to the name.
         slotIdDic = {}
         for slotId in slotIds:
             storageSet = ngamsCfgObj.getStorageSetFromSlotId(slotId)
             slotIdDic[storageSet.getMainDiskSlotId()] = storageSet
-        tmpSortedSlotIds = ngamsLib.logicalStrListSort(slotIdDic.keys())
         sortedSlotIds = []
-        for slotId in tmpSortedSlotIds:
+        for slotId in list(sorted(slotIdDic.keys())):
             slotId = slotId.strip()
             storageSet = slotIdDic[slotId]
             sortedSlotIds.append(storageSet.getMainDiskSlotId())
