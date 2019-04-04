@@ -257,7 +257,7 @@
   <Notification Id="Notification-Test"
                 SmtpHost="127.0.0.1"
                 Sender="ngast@localhost"
-                Active="1"
+                Active="0"
                 MaxRetentionTime="00T00:30:00"
                 MaxRetentionSize="1000">
     <AlertNotification>

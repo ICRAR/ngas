@@ -62,7 +62,7 @@ NgamsCfg.MimeTypes[1].MimeTypeMap[7].Extension         : hfits
 NgamsCfg.MimeTypes[1].MimeTypeMap[7].MimeType          : application/x-hfits
 NgamsCfg.MimeTypes[1].MimeTypeMap[8].Extension         : nglog.gz
 NgamsCfg.MimeTypes[1].MimeTypeMap[8].MimeType          : application/x-nglog
-NgamsCfg.Notification[1].Active                        : 1
+NgamsCfg.Notification[1].Active                        : 0
 NgamsCfg.Notification[1].AlertNotification[1].EmailRecipient[1].Address: plone@localhost
 NgamsCfg.Notification[1].DataErrorNotification[1].EmailRecipient[1].Address: plone@localhost
 NgamsCfg.Notification[1].DiskChangeNotification[1].EmailRecipient[1].Address: plone@localhost
