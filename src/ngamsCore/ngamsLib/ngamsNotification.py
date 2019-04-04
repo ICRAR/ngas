@@ -171,7 +171,7 @@ def _checkSendNotifMsg(hostId,
     format     = "Check if Retention Buffer with ID: %s should be emptied. " +\
                  "Retention Buffer Size/Maximum Size: %d/%d. " +\
                  "Retention Time/Maximum Time: %.0fs/%.0fs"
-    logger.debug(format, msgId, retBufLen, maxRetNo, retTime)
+    logger.debug(format, msgId, retBufLen, maxRetNo, retTime, maxRetTime)
     if ((retBufLen >= maxRetNo) or ((retTime >= maxRetTime) and retBufLen) or
         (retBufLen and flush)):
         logger.debug("Sending out retained Notification Messages for Message ID: %s. " + \
