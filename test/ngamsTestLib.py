@@ -720,6 +720,9 @@ class ngamsTestSuite(unittest.TestCase):
                                      expectedStatus=expected_status)
         raise AttributeError(name)
 
+    def load_dom(self, fname):
+        return xml.dom.minidom.parseString(loadFile(fname))
+
     def start_smtp_server(self):
         if self.smtp_server:
             return
@@ -742,7 +745,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         new_db = xml.dom.minidom.parseString(os.environ['NGAS_TESTDB'])
         new_db.documentElement.attributes['Id'].value = db_id_attr
-        root = xml.dom.minidom.parseString(loadFile(cfg_fname)).documentElement
+        root = self.load_dom(cfg_fname).documentElement
         for n in root.childNodes:
             if n.localName != 'Db':
                 continue
