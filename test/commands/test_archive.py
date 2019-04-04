@@ -1291,15 +1291,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        # Create basic structure.
-        ngasRootDir = tmp_path('NGAS')
-        rmFile(ngasRootDir)
-        checkCreatePath(ngasRootDir)
-        subprocess.check_call(['tar', 'zxf', self.resource('src/volumes_dir.tar.gz')])
-        mvFile('volumes', ngasRootDir)
 
-        # Create configuration, start server.
-        self.prepExtSrv(delDirs=0, cfgFile="src/ngamsCfg_VolumeDirectory.xml")
+        cfg, _ = self.start_volumes_server()
 
         # Archive a file.
         stat = self.archive("src/SmallFile.fits")
@@ -1309,7 +1302,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Check that the target files have been archived in their
         # appropriate locations.
-        checkFile = ngasRootDir + "/volumes/Volume00%d/saf/" +\
+        checkFile = cfg.getRootDirectory() + "/volumes/Volume00%d/saf/" +\
                     "2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.gz"
         for n in (1,2):
             if (not os.path.exists(checkFile % n)):
