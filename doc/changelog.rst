@@ -14,6 +14,13 @@ Changelog
   On top of that mail messages are now created
   using the standard library modules for correct mail composition,
   instead of the "hand-written" logic we had previously.
+* Cleaned up and aligned the way in which volume information
+  is created and processed by NGAS.
+  Instructions on how to :ref:`set up a volume directory <post_inst.setup_volumes>`
+  have been updated,
+  the code around volume creation and scanning has been revised,
+  and unit tests have been improved
+  to test the functionality more thoroughly.
 * Added tests to ensure all plugin modules can be correctly imported.
   This ensures the code is compatible with python 3 up to some degree,
   and it also increases our code coverage.
