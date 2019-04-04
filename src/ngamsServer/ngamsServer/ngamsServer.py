@@ -1843,7 +1843,7 @@ class ngamsServer(object):
 
             try:
                 errMsg = genLog("NGAMS_ER_INIT_SERVER", [str(e)])
-                ngamsNotification.notify(self.getHostId() or '', self.getCfg(), NGAMS_NOTIF_ERROR,
+                ngamsNotification.notify(self.host_id or '', self.cfg, NGAMS_NOTIF_ERROR,
                                          "PROBLEMS INITIALIZING NG/AMS SERVER",
                                          errMsg, force=1)
             except:
