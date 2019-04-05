@@ -223,26 +223,6 @@ def waitReqCompl(clientObj,
 
 
 _noCleanUp   = int(os.environ.get('NGAS_TESTS_NO_CLEANUP', 0))
-def setNoCleanUp(noCleanUp):
-    """
-    Set the No Clean Up Flag.
-
-    noCleanUp:     New value for flag (integer/0|1).
-
-    Returns:       Void.
-    """
-    global _noCleanUp
-    _noCleanUp = noCleanUp
-
-
-def getNoCleanUp():
-    """
-    Return the No Clean Up Flag.
-
-    Returns:    No Clean Up Flag (integer/0|1).
-    """
-    global _noCleanUp
-    return _noCleanUp
 
 
 def cmpFiles(refFile,
