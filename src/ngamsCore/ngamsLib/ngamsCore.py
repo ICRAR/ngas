@@ -77,7 +77,7 @@ import pkg_resources
 import six
 
 from . import utils
-from . import logdefs
+from . import logutils
 
 
 logger = logging.getLogger(__name__)
@@ -285,7 +285,7 @@ def ngamsCopyrightString():
     return utils.b2s(pkg_resources.resource_string('ngamsData', 'COPYRIGHT'))
 
 
-_logDef = logdefs.LogDefHolder(pkg_resources.resource_stream('ngamsData', 'ngamsLogDef.xml'))# @UndefinedVariable
+_logDef = logutils.LogDefHolder(pkg_resources.resource_stream('ngamsData', 'ngamsLogDef.xml'))# @UndefinedVariable
 def genLog(logId, parList = []):
     """
     Generate a log line and return this.
