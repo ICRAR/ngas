@@ -80,6 +80,9 @@ logging_levels = {
     logging.NOTSET: 5,
 }
 
+# The environment-dependent values
+_tmp_root_base = os.environ.get('NGAS_TESTS_TMP_DIR_BASE', '')
+_noCleanUp   = int(os.environ.get('NGAS_TESTS_NO_CLEANUP', 0))
 
 # Pool used to start/shutdown servers in parallel
 srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
@@ -88,7 +91,6 @@ srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
 # under 'tmp' relative to the cwd. We now instead try different approaches,
 # using a temporary directory under the system's tmp directory,
 # or under /dev/shm which would yield faster test runs
-_tmp_root_base = os.environ.get('NGAS_TESTS_TMP_DIR_BASE', '')
 if not _tmp_root_base:
     _tmp_root_base = tempfile.gettempdir()
     if os.path.isdir('/dev/shm') and getDiskSpaceAvail('/dev/shm') > 1024:
@@ -220,9 +222,6 @@ def waitReqCompl(clientObj,
         time.sleep(0.100)
     errMsg = "Timeout waiting for request: %s to finish"
     raise Exception(errMsg % (requestId,))
-
-
-_noCleanUp   = int(os.environ.get('NGAS_TESTS_NO_CLEANUP', 0))
 
 
 def cmpFiles(refFile,
