@@ -594,8 +594,11 @@ class InMemorySMTPServer(smtpd.SMTPServer):
         self.port = port
         self.messages = []
         # email sending on the server can be asynchronous from the instructions
-        # used to trigger them in the tests
+        # used to trigger them in the tests. We tried using only a Condition
+        # instead of a Condition/event pair, but Condition.wait() didn't signal
+        # timeouts until python 3.2
         self.recv_cond = threading.Condition()
+        self.recv_evt = threading.Event()
         self.thread = threading.Thread(target=asyncore.loop, args=(0.1,))
         self.thread.daemon = True
         self.thread.start()
@@ -603,8 +606,10 @@ class InMemorySMTPServer(smtpd.SMTPServer):
     def pop(self, timeout=10):
         with self.recv_cond:
             while not self.messages:
-                if not self.recv_cond.wait(timeout=timeout):
+                self.recv_cond.wait(timeout=timeout)
+                if not self.recv_evt.is_set():
                     raise RuntimeError('email expected but none arrived')
+                self.recv_evt.clear()
             return _to_email_message(self.messages.pop().data)
 
     def close(self):
@@ -616,6 +621,7 @@ class InMemorySMTPServer(smtpd.SMTPServer):
     def process_message(self, peer, mailfrom, rcpttos, data, **_):
         with self.recv_cond:
             self.messages.append(InMemorySMTPServer.message(mailfrom, rcpttos, data))
+            self.recv_evt.set()
             self.recv_cond.notify_all()
 
 ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir', 'cfg_file', 'daemon'])
