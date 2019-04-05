@@ -48,8 +48,7 @@ from ngamsLib.ngamsCore import getHostName, NGAMS_ARCHIVE_CMD, checkCreatePath, 
 from ngamsLib import ngamsStatus, ngamsFileInfo, ngamsHttpUtils
 from ..ngamsTestLib import ngamsTestSuite, \
     pollForFile, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
-    genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp, \
-    save_to_tmp, tmp_path
+    genTmpFilename, execCmd, save_to_tmp, tmp_path
 from ngamsServer import ngamsFileUtils
 
 
@@ -369,16 +368,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           "Illegal Back-Log Buffered File: %s" %\
                           tmpReqPropObj.getStagingFilename())
 
-        # Cleanly shut down the server, and wait until it's completely down
-        old_cleanup = getNoCleanUp()
-        setNoCleanUp(True)
-        self.termExtSrv(self.extSrvInfo.pop())
-        setNoCleanUp(old_cleanup)
-
         cfgPars = [["NgamsCfg.Permissions[1].AllowArchiveReq", "1"],
                    ["NgamsCfg.ArchiveHandling[1].BackLogBuffering", "1"],
                    ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:05"]]
-        _, dbObj = self.prepExtSrv(delDirs=0, clearDb=0, cfgProps=cfgPars)
+        _, dbObj = self.restart_last_server(cfgProps=cfgPars)
         pollForFile(self.ngas_path("back-log/*"), 0, timeOut=30)
         filePat = self.ngas_path("%s/saf/2001-05-08/1/" +\
                   "TEST.2001-05-08T15:25:00.123.fits.gz")
@@ -972,13 +965,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             fo.write("TEST/DUMMY REQUEST PROPERTIES FILE: %s" % diskName)
             fo.close()
 
-        # Cleanly shut down the server, and wait until it's completely down
-        old_cleanup = getNoCleanUp()
-        setNoCleanUp(True)
-        self.termExtSrv(self.extSrvInfo.pop())
-        setNoCleanUp(old_cleanup)
-
-        self.prepExtSrv(delDirs=0, clearDb=0)
+        self.restart_last_server()
         badDirPat = self.ngas_path("bad-files/BAD-FILE-*-%s.fits")
         for diskName in diskList:
             badFile = badDirPat % diskName
@@ -1010,14 +997,20 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(srvModule="test.support.ngamsSrvTestKillBeforeArchCleanUp")
+        req_fname = self.ngas_path("FitsStorage1-Main-1/staging/*-SmallFile.fits.pickle")
+
+        # Archive to trigger an auto-kill, then restart the server checking that
+        # the pickle file was produced
         try:
             self.archive("src/SmallFile.fits")
+            self.fail('archive should have failed')
         except:
             pass
-        reqPropStgFile = self.ngas_path("FitsStorage1-Main-1/staging/" +\
-                         "*-SmallFile.fits.pickle")
-        pollForFile(reqPropStgFile, 1)
-        self.prepExtSrv(delDirs=0, clearDb=0, force=True)
+
+        def before_restart():
+            self.assertGreater(len(glob.glob(req_fname)), 0)
+
+        self.restart_last_server(before_restart=before_restart, force=True)
         reqPropBadFile = self.ngas_path("bad-files/BAD-FILE-*-SmallFile.fits.pickle", port=8888)
         pollForFile(reqPropBadFile, 1)
 

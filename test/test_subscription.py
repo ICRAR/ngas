@@ -44,7 +44,7 @@ from six.moves import socketserver  # @UnresolvedImport
 
 from ngamsLib import ngamsHttpUtils
 from ngamsServer import ngamsServer
-from .ngamsTestLib import ngamsTestSuite, getNoCleanUp, setNoCleanUp, tmp_path
+from .ngamsTestLib import ngamsTestSuite, tmp_path
 
 
 # The plug-in that we configure the subscriber server with, so we know when
@@ -295,17 +295,10 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
     def test_server_starts_after_subscription_added(self):
 
+        # Server should come up properly after a subscription is created
         self.prepExtSrv()
         self.subscribe('http://somewhere/SOMETHING')
-
-        # Cleanly shut down the server, and wait until it's completely down
-        old_cleanup = getNoCleanUp()
-        setNoCleanUp(True)
-        self.termExtSrv(self.extSrvInfo.pop())
-        setNoCleanUp(old_cleanup)
-
-        # Server should come up properly
-        self.prepExtSrv(delDirs=0, clearDb=0)
+        self.restart_last_server()
 
     def test_url_values(self):
 
