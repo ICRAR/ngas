@@ -969,8 +969,17 @@ class ngamsTestSuite(unittest.TestCase):
         self._add_client(port)
         return (cfgObj, dbObj)
 
+    def restart_last_server(self, before_restart=None, start=None, **kwargs):
+        """Safely restarts the last server that was started"""
+        self.termExtSrv(self.extSrvInfo.pop(), keep_root=True)
+        if before_restart:
+            before_restart()
+        kwargs['delDirs'] = 0
+        kwargs['clearDb'] = 0
+        start = start or self.prepExtSrv
+        return start(**kwargs)
 
-    def termExtSrv(self, srvInfo, auth=None):
+    def termExtSrv(self, srvInfo, auth=None, keep_root=_noCleanUp):
         """
         Terminate an externally running server.
         """
@@ -1059,7 +1068,7 @@ class ngamsTestSuite(unittest.TestCase):
             logger.exception("Error while finishing server process %d, port %d", srvProcess.pid, port)
             raise
         finally:
-            if ((not getNoCleanUp()) and rootDir):
+            if not keep_root and rootDir:
                 shutil.rmtree(rootDir, True)
 
     def terminateAllServer(self):
