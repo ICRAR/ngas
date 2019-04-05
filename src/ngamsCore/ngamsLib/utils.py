@@ -27,6 +27,7 @@ import multiprocessing
 import os
 import signal
 import socket
+import struct
 import sys
 import threading
 import time
@@ -116,6 +117,7 @@ def is_port_available(port):
     try:
         with contextlib.closing(s):
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
             s.bind(('127.0.0.1', port))
         return True
     except socket.error:
