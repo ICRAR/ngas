@@ -88,15 +88,15 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
 
     logger.info("Executing external command: %s", subprocess.list2cmdline(cmd_list))
 
-    p1 = subprocess.Popen(cmd_list, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-    checksum_out, out = p1.communicate()
-
+    p1 = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p1.communicate()
     if p1.returncode != 0:
-        raise Exception("bbcp returncode: %d error: %s" % (p1.returncode, out))
+        args = (p1.returncode, subprocess.list2cmdline(cmd_list), out, err)
+        raise Exception("bbcp returncode: %d. Command line: [%r], out: %s, err: %s" % args)
 
     # extract c32 zip variant checksum from output and convert to signed 32 bit integer
     crc_info = ngamsFileUtils.get_checksum_info(crc_name)
-    checksum_bytes = codecs.decode(checksum_out.split(b' ')[2], 'hex')
+    checksum_bytes = codecs.decode(out.split(b' ')[2], 'hex')
     bbcp_checksum = crc_info.from_bytes(checksum_bytes)
 
     logger.info('BBCP final message: %s', out.split(b'\n')[-2]) # e.g. "1 file copied at effectively 18.9 MB/s"

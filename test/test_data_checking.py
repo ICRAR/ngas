@@ -35,8 +35,7 @@ import os
 import time
 
 from ngamsLib.ngamsCore import checkCreatePath
-from .ngamsTestLib import ngamsTestSuite, getNoCleanUp, setNoCleanUp, \
-    tmp_path
+from .ngamsTestLib import ngamsTestSuite, tmp_path
 
 
 class ngamsDataCheckingThreadTest(ngamsTestSuite):
@@ -105,18 +104,13 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         for _ in range(3):
             self.archive("src/SmallFile.fits")
 
-        # Cleanly shut down the server, and wait until it's completely down
-        old_cleanup = getNoCleanUp()
-        setNoCleanUp(True)
-        self.termExtSrv(self.extSrvInfo.pop())
-        setNoCleanUp(old_cleanup)
-
         # Potentially corrupt the NGAS data somehow
-        if corrupt:
-            corrupt(cfg, db)
+        def before_restart():
+            if corrupt:
+                corrupt(cfg, db)
 
         # Restart and see what does the data checker thread find
-        cfg, db = self.start_srv(delDirs=0, clearDb=0)
+        cfg, db = self.restart_last_server(before_restart=before_restart, start=self.start_srv)
         self.wait_and_count_checked_files(cfg, db, registered, unregistered, bad)
 
     def test_normal_case(self):

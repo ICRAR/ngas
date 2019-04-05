@@ -82,6 +82,9 @@ logging_levels = {
     logging.NOTSET: 5,
 }
 
+# The environment-dependent values
+_tmp_root_base = os.environ.get('NGAS_TESTS_TMP_DIR_BASE', '')
+_noCleanUp   = int(os.environ.get('NGAS_TESTS_NO_CLEANUP', 0))
 
 # Pool used to start/shutdown servers in parallel
 srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
@@ -90,7 +93,6 @@ srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
 # under 'tmp' relative to the cwd. We now instead try different approaches,
 # using a temporary directory under the system's tmp directory,
 # or under /dev/shm which would yield faster test runs
-_tmp_root_base = os.environ.get('NGAS_TESTS_TMP_DIR_BASE', '')
 if not _tmp_root_base:
     _tmp_root_base = tempfile.gettempdir()
     if os.path.isdir('/dev/shm') and getDiskSpaceAvail('/dev/shm') > 1024:
@@ -222,29 +224,6 @@ def waitReqCompl(clientObj,
         time.sleep(0.100)
     errMsg = "Timeout waiting for request: %s to finish"
     raise Exception(errMsg % (requestId,))
-
-
-_noCleanUp   = int(os.environ.get('NGAS_TESTS_NO_CLEANUP', 0))
-def setNoCleanUp(noCleanUp):
-    """
-    Set the No Clean Up Flag.
-
-    noCleanUp:     New value for flag (integer/0|1).
-
-    Returns:       Void.
-    """
-    global _noCleanUp
-    _noCleanUp = noCleanUp
-
-
-def getNoCleanUp():
-    """
-    Return the No Clean Up Flag.
-
-    Returns:    No Clean Up Flag (integer/0|1).
-    """
-    global _noCleanUp
-    return _noCleanUp
 
 
 def cmpFiles(refFile,
@@ -596,8 +575,11 @@ class InMemorySMTPServer(smtpd.SMTPServer):
         self.port = port
         self.messages = []
         # email sending on the server can be asynchronous from the instructions
-        # used to trigger them in the tests
+        # used to trigger them in the tests. We tried using only a Condition
+        # instead of a Condition/event pair, but Condition.wait() didn't signal
+        # timeouts until python 3.2
         self.recv_cond = threading.Condition()
+        self.recv_evt = threading.Event()
         self.thread = threading.Thread(target=asyncore.loop, args=(0.1,))
         self.thread.daemon = True
         self.thread.start()
@@ -605,8 +587,10 @@ class InMemorySMTPServer(smtpd.SMTPServer):
     def pop(self, timeout=10):
         with self.recv_cond:
             while not self.messages:
-                if not self.recv_cond.wait(timeout=timeout):
+                self.recv_cond.wait(timeout=timeout)
+                if not self.recv_evt.is_set():
                     raise RuntimeError('email expected but none arrived')
+                self.recv_evt.clear()
             return _to_email_message(self.messages.pop().data)
 
     def close(self):
@@ -618,6 +602,7 @@ class InMemorySMTPServer(smtpd.SMTPServer):
     def process_message(self, peer, mailfrom, rcpttos, data, **_):
         with self.recv_cond:
             self.messages.append(InMemorySMTPServer.message(mailfrom, rcpttos, data))
+            self.recv_evt.set()
             self.recv_cond.notify_all()
 
 ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir', 'cfg_file', 'daemon'])
@@ -991,7 +976,7 @@ class ngamsTestSuite(unittest.TestCase):
                     continue
 
                 # We are having this funny situation in MacOS builds, when
-                # intermitently the client times out while trying to connect
+                # intermittently the client times out while trying to connect
                 # to the server. This happens very rarely, but when it does it
                 # always seems to coincide with the moment the server starts
                 # listening for connections.
@@ -1029,8 +1014,17 @@ class ngamsTestSuite(unittest.TestCase):
         self._add_client(port)
         return (cfgObj, dbObj)
 
+    def restart_last_server(self, before_restart=None, start=None, **kwargs):
+        """Safely restarts the last server that was started"""
+        self.termExtSrv(self.extSrvInfo.pop(), keep_root=True)
+        if before_restart:
+            before_restart()
+        kwargs['delDirs'] = 0
+        kwargs['clearDb'] = 0
+        start = start or self.prepExtSrv
+        return start(**kwargs)
 
-    def termExtSrv(self, srvInfo, auth=None):
+    def termExtSrv(self, srvInfo, auth=None, keep_root=_noCleanUp):
         """
         Terminate an externally running server.
         """
@@ -1119,7 +1113,7 @@ class ngamsTestSuite(unittest.TestCase):
             logger.exception("Error while finishing server process %d, port %d", srvProcess.pid, port)
             raise
         finally:
-            if ((not getNoCleanUp()) and rootDir):
+            if not keep_root and rootDir:
                 shutil.rmtree(rootDir, True)
 
     def terminateAllServer(self):
@@ -1143,7 +1137,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:   Void.
         """
-        if (not getNoCleanUp()):
+        if not _noCleanUp:
             for d in self.__mountedDirs:
                 execCmd("sudo /bin/umount %s" % (d,), 0)
 
@@ -1153,7 +1147,7 @@ class ngamsTestSuite(unittest.TestCase):
             self.smtp_server.close()
 
         # Remove temporary files
-        if (not getNoCleanUp()):
+        if not _noCleanUp:
             shutil.rmtree(tmp_root, True)
 
         # There's this file that gets generated by many tests, so we clean it up
