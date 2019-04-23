@@ -34,75 +34,10 @@ This module contains the Test Suite for the SUBSCRIBE Command.
 import base64
 import contextlib
 import functools
-import pickle
-import socket
-import struct
-import threading
 import time
 
-from six.moves import socketserver  # @UnresolvedImport
-
 from ngamsLib import ngamsHttpUtils
-from ngamsServer import ngamsServer
 from .ngamsTestLib import ngamsTestSuite, tmp_path
-
-
-# The plug-in that we configure the subscriber server with, so we know when
-# an archiving has taken place on the subscription receiving end
-class SenderHandler(object):
-
-    def handle_event(self, evt):
-
-        # pickle evt as a normal tuple and send it over to the test runner
-        evt = pickle.dumps(tuple(evt))
-
-        # send this to the notification_srv
-        try:
-            s = socket.create_connection(('127.0.0.1', 8887), timeout=5)
-            s.send(struct.pack('!I', len(evt)))
-            s.send(evt)
-            s.close()
-        except socket.error as e:
-            print(e)
-
-# A small server that receives the archiving event and sets a threading event
-class notification_srv(socketserver.TCPServer):
-
-    allow_reuse_address = True
-
-    def __init__(self, recvevt):
-        socketserver.TCPServer.__init__(self, ('127.0.0.1', 8887), None)
-        self.recvevt = recvevt
-        self.archive_evt = None
-
-    def finish_request(self, request, _):
-        l = struct.unpack('!I', request.recv(4))[0]
-        self.archive_evt = ngamsServer.archive_event(*pickle.loads(request.recv(l)))
-        self.recvevt.set()
-
-# A class that starts the notification server and can wait until it receives
-# an archiving event
-class notification_listener(object):
-
-    def __init__(self):
-        self.closed = False
-        self.recevt = threading.Event()
-        self.server = notification_srv(self.recevt)
-
-    def wait_for_file(self, timeout):
-        self.server.timeout = timeout
-        self.server.handle_request()
-        return self.server.archive_evt
-
-    def close(self):
-        if self.closed:
-            return
-        if self.server:
-            self.server.server_close()
-            self.server = None
-            self.closed = True
-
-    __del__ = close
 
 class ngamsSubscriptionTest(ngamsTestSuite):
     """
@@ -117,7 +52,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
     - Test UNSUBSCRIBE Command.
     """
 
-    def _prep_subscription_cluster(self, orig_server_list):
+    def _prep_subscription_cluster(self, *orig_server_list):
 
         # The current subscription code requires a local user named 'ngas-int',
         # regardless of whether remote authentication is enabled or not
@@ -125,11 +60,13 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         ngas_int = ('Name', 'ngas-int'), ('Password', base64.b64encode(b'ngas-int'))
         server_list = []
         for srvInfo in orig_server_list:
-            port, cfg_pars = srvInfo, []
+            port, cfg_pars, send_archive_evt = srvInfo, [], False
             if isinstance(srvInfo, (tuple, list)):
-                port, cfg_pars = srvInfo
+                port, cfg_pars, send_archive_evt = srvInfo
                 cfg_pars = list(cfg_pars)
             cfg_pars += [('NgamsCfg.Authorization[1].User[1].' + name, value) for name, value in ngas_int]
+            if send_archive_evt:
+                cfg_pars.append(('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'test.ngamsTestLib.SenderHandler'))
             server_list.append((port, cfg_pars))
 
         return self.prepCluster(server_list)
@@ -138,8 +75,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # We configure the second server to send notifications via socket
         # to the listener we start later
-        cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'test.test_subscription.SenderHandler'),)
-        self._prep_subscription_cluster((8888, (8889, cfg)))
+        self._prep_subscription_cluster(8888, (8889, [], True))
 
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
 
@@ -152,7 +88,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # Create listener that should get information when files get archives
         # in the second server (i.e., the one on the receiving end of the subscription)
-        subscription_listener = notification_listener()
+        subscription_listener = self.notification_listener()
 
         # Create subscription
         params = {'url': 'http://localhost:8889/QARCHIVE',
@@ -179,8 +115,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
     def test_basic_subscription_fail(self):
 
         src_cfg = (("NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:02'), ("NgamsCfg.Log[1].LocalLogLevel", '4'))
-        tgt_cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'test.test_subscription.SenderHandler'),)
-        self._prep_subscription_cluster(((8888, src_cfg), (8889, tgt_cfg)))
+        self._prep_subscription_cluster((8888, src_cfg, False), (8889, [], True))
 
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
         usubscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'USUBSCRIBE', timeout=5)
@@ -258,7 +193,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # USUBSCRIBE updates the subscription to valid values
         # After this update the two files should go through
-        subscription_listener = notification_listener()
+        subscription_listener = self.notification_listener()
         params = {'url': 'http://localhost:8889/QARCHIVE',
                   'subscr_id': 'TEST',
                   'priority': 1,
@@ -280,7 +215,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             retrieve(f, fileVersion=2)
 
         # UNSUBSCRIBE and check the newly archived file is not transfered
-        subscription_listener = notification_listener()
+        subscription_listener = self.notification_listener()
         params = {'subscr_id': 'TEST'}
         with contextlib.closing(unsubscribe(pars=params)) as resp:
             self.assertEqual(resp.status, 200)
@@ -338,12 +273,11 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         subscription_pars = (('NgamsCfg.SubscriptionDef[1].Enable', '1'),
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].HostId', 'localhost'),
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].PortNo', '8888'),
-                             ('NgamsCfg.SubscriptionDef[1].Subscription[1].Command', 'QARCHIVE'),
-                             ('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'test.test_subscription.SenderHandler'))
-        self._prep_subscription_cluster((8888, (8889, subscription_pars)))
+                             ('NgamsCfg.SubscriptionDef[1].Subscription[1].Command', 'QARCHIVE'))
+        self._prep_subscription_cluster(8888, (8889, subscription_pars, True))
 
         # Listen for archives on server B (B is configured to send us notifications)
-        listener = notification_listener()
+        listener = self.notification_listener()
 
         # File archived onto server A
         self.archive(8888, 'src/SmallFile.fits', mimeType='application/octet-stream')

@@ -44,10 +44,12 @@ import gzip
 import logging
 import multiprocessing.pool
 import os
+import pickle
 import shutil
 import signal
 import smtpd
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -60,7 +62,7 @@ import astropy.io.fits as pyfits
 import pkg_resources
 import psutil
 import six
-from six.moves import zip_longest
+from six.moves import zip_longest, socketserver
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, utils
 from ngamsLib.ngamsCore import getHostName, rmFile, \
@@ -68,7 +70,7 @@ from ngamsLib.ngamsCore import getHostName, rmFile, \
     execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601, getDiskSpaceAvail,\
     checkCreatePath
 from ngamsPClient import ngamsPClient
-from ngamsServer import volumes
+from ngamsServer import volumes, ngamsServer
 
 
 logger = logging.getLogger(__name__)
@@ -553,6 +555,66 @@ def unzip(infile, outfile):
 ###########################################################################
 # END: Utility functions
 ###########################################################################
+
+
+# The plug-in that we configure the subscriber server with, so we know when
+# an archiving has taken place on the subscription receiving end
+class SenderHandler(object):
+
+    def handle_event(self, evt):
+
+        # pickle evt as a normal tuple and send it over to the test runner
+        evt = pickle.dumps(tuple(evt))
+
+        # send this to the notification_srv
+        try:
+            s = socket.create_connection(('127.0.0.1', 8887), timeout=5)
+            s.send(struct.pack('!I', len(evt)))
+            s.send(evt)
+            s.close()
+        except socket.error as e:
+            print(e)
+
+# A small server that receives the archiving event and sets a threading event
+class notification_srv(socketserver.TCPServer):
+
+    allow_reuse_address = True
+
+    def __init__(self, recvevt):
+        socketserver.TCPServer.__init__(self, ('127.0.0.1', 8887), None)
+        self.recvevt = recvevt
+        self.archive_evt = None
+
+    def finish_request(self, request, _):
+        l = struct.unpack('!I', request.recv(4))[0]
+        self.archive_evt = ngamsServer.archive_event(*pickle.loads(request.recv(l)))
+        self.recvevt.set()
+
+# A class that starts the notification server and can wait until it receives
+# an archiving event
+class notification_listener(object):
+
+    def __init__(self):
+        self.closed = False
+        self.recevt = threading.Event()
+        self.server = None
+        self.server = notification_srv(self.recevt)
+
+    def wait_for_file(self, timeout):
+        self.server.timeout = timeout
+        self.server.handle_request()
+        return self.server.archive_evt
+
+    def close(self):
+        if self.closed:
+            return
+        if self.server:
+            self.server.server_close()
+            self.server = None
+            self.closed = True
+
+    __del__ = close
+
 
 _to_email_message = email.message_from_string
 if six.PY3:
@@ -1121,6 +1183,9 @@ class ngamsTestSuite(unittest.TestCase):
         for srv_info in self.extSrvInfo:
             self._remove_client(srv_info.port)
         self.extSrvInfo = []
+
+    def notification_listener(self):
+        return notification_listener()
 
     def setUp(self):
         # Make sure there the temporary directory is there
