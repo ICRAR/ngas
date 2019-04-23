@@ -34,7 +34,6 @@ This module contains the Test Suite for the Data Consistency Checking Thread.
 import os
 import time
 
-from ngamsLib.ngamsCore import checkCreatePath
 from .ngamsTestLib import ngamsTestSuite, tmp_path
 
 

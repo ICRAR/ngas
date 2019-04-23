@@ -34,10 +34,9 @@ This module contains the Test Suite for the RETRIEVE Command.
 import contextlib
 import io
 import os
-import subprocess
 
 from ngamsLib import ngamsHttpUtils
-from ngamsLib.ngamsCore import getHostName, checkCreatePath, rmFile, mvFile
+from ngamsLib.ngamsCore import getHostName
 from ..ngamsTestLib import ngamsTestSuite, genTmpFilename, unzip, tmp_path
 
 
