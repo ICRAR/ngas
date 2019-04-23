@@ -50,7 +50,7 @@ import time
 from xml.dom import minidom
 
 from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus, ngamsMIMEMultipart,\
-    ngamsHttpUtils
+    ngamsHttpUtils, logutils
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD,\
     NGAMS_HTTP_SUCCESS
 from ngamsLib.ngamsCore import NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CONTENT_TYPE, \
@@ -792,12 +792,8 @@ def setup_logging(opts):
             5:logging.NOTSET
         }
 
-        fmt = '%(asctime)-15s.%(msecs)03d [%(threadName)10.10s] [%(levelname)6.6s] %(name)s#%(funcName)s:%(lineno)s %(message)s'
-        datefmt = '%Y-%m-%dT%H:%M:%S'
-        formatter = logging.Formatter(fmt, datefmt=datefmt)
-        formatter.converter = time.gmtime
         hnd = logging.StreamHandler(stream=sys.stdout)
-        hnd.setFormatter(formatter)
+        hnd.setFormatter(logutils.get_formatter())
         logging.root.addHandler(hnd)
         logging.root.setLevel(logging_levels[opts.verbose - 1])
 

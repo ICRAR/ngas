@@ -66,7 +66,7 @@ from ngamsLib.ngamsCore import genLog, getNgamsVersion, \
     NGAMS_NOT_SET, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
     toiso8601
 from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils,\
-    utils
+    utils, logutils
 from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps, pysendfile
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 from . import janitor
@@ -440,58 +440,6 @@ class logging_config(object):
         self.syslog_address = syslog_address
 
 
-from logging.handlers import BaseRotatingHandler
-class NgasRotatingFileHandler(BaseRotatingHandler):
-    """
-    Logging handler that rotates periodically the NGAS logfile into
-    LOG-ROTATE-<date>.nglog.unsaved.
-    These rotated files are later on picked up by the Janitor Thread,
-    archived into this server, and re-renamed into LOG-ROTATE-<date>.nglog.
-    At close() time it also makes sure the current logfile is also rotated,
-    whatever its size.
-
-    This class is basically a strip-down version of TimedRotatingFileHandler,
-    without all the complexities of different when/interval combinations, etc.
-    """
-
-    def __init__(self, fname, interval):
-        checkCreatePath(os.path.dirname(fname))
-        BaseRotatingHandler.__init__(self, fname, mode='a')
-        self.interval = interval
-        self.rolloverAt = self.interval + time.time()
-        pass
-
-    def shouldRollover(self, record):
-        return time.time() >= self.rolloverAt
-
-    def _rollover(self):
-        if not os.path.exists(self.baseFilename):
-            return
-
-        if self.stream:
-            self.stream.close()
-
-        # It's time to rotate the current Local Log File.
-        dirname = os.path.dirname(self.baseFilename)
-        rotated_name = "LOG-ROTATE-%s.nglog.unsaved" % (toiso8601(),)
-        rotated_name = os.path.normpath(os.path.join(dirname, rotated_name))
-        shutil.move(self.baseFilename, rotated_name)
-
-    def doRollover(self):
-        self._rollover()
-        self.stream = self._open()
-        self.rolloverAt = time.time() + self.interval
-
-    def close(self):
-        logging.handlers.BaseRotatingHandler.close(self)
-        self.stream = None
-        self.acquire()
-        try:
-            self._rollover()
-        finally:
-            self.release()
-
-
 def show_threads():
     """
     Log the name, ident and daemon flag of all alive threads in DEBUG level
@@ -797,13 +745,11 @@ class ngamsServer(object):
                 syslog_setup_failed = True
 
         # We use the same format for both file and stdout
-        fmt = '%(asctime)-15s.%(msecs)03d [%(process)5d] [%(threadName)10.10s] [%(levelname)5.5s] %(name)s#%(funcName)s:%(lineno)s %(message)s'
-        datefmt = '%Y-%m-%dT%H:%M:%S'
-        formatter = logging.Formatter(fmt, datefmt=datefmt)
-        formatter.converter = time.gmtime
+        formatter = logutils.get_formatter(include_pid=True, include_thread_name=True)
 
         if log_to_file:
-            hnd = NgasRotatingFileHandler(logcfg.logfile, logcfg.logfile_rot_interval)
+            checkCreatePath(os.path.dirname(logcfg.logfile))
+            hnd = logutils.RenamedRotatingFileHandler(logcfg.logfile, logcfg.logfile_rot_interval, "LOG-ROTATE-%s.nglog.unsaved")
             hnd.setLevel(file_level)
             hnd.setFormatter(formatter)
             logging.root.addHandler(hnd)

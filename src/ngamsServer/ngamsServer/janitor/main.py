@@ -42,6 +42,7 @@ from six.moves import queue as Queue  # @UnresolvedImport
 
 from ..ngamsDbSnapshotUtils import checkUpdateDbSnapShots, updateDbSnapShots
 from .common import StopJanitorThreadException, checkStopJanitorThread, suspend
+from ngamsLib import logutils
 from ngamsLib.ngamsCore import isoTime2Secs, loadPlugInEntryPoint
 
 
@@ -82,32 +83,6 @@ def get_plugins(srvObj):
     return built_in + user_plugins
 
 
-class ForwarderHandler(logging.Handler):
-
-    def __init__(self, srv):
-        super(ForwarderHandler, self).__init__()
-        self.srv = srv
-
-    def _format_record(self, record):
-        # ensure that exc_info and args
-        # have been stringified. Removes any chance of
-        # unpickleable things inside and possibly reduces
-        # message size sent over the pipe.
-        if record.args:
-            record.msg = record.msg % record.args
-            record.args = None
-        if record.exc_info:
-            self.format(record)
-            record.exc_info = None
-        record.threadName = 'JANITOR-PROC'
-        return record
-
-    def emit(self, record):
-        try:
-            self.srv.janitor_send('log-record', self._format_record(record))
-        except:
-            self.handleError(record)
-
 def janitorThread(srvObj, srv_to_jan_queue, jan_to_srv_queue, stopEvt):
     """
     Entry point for the janitor process. It checks which plug-ins should be run,
@@ -128,7 +103,10 @@ def janitorThread(srvObj, srv_to_jan_queue, jan_to_srv_queue, stopEvt):
     # Set up the logging so it outputs the records into the jan->srv queue
     for h in list(logging.root.handlers):
         logging.root.removeHandler(h)
-    logging.root.addHandler(ForwarderHandler(srvObj))
+    def fwd(record):
+        record.threadName = 'JANITOR-PROC'
+        srvObj.janitor_send('log-record', record)
+    logging.root.addHandler(logutils.ForwarderHandler(fwd))
 
     # Reset the db pointer in our server object to get fresh connections
     srvObj.reconnect_to_db()
