@@ -89,12 +89,6 @@ def janitorThread(srvObj, srv_to_jan_queue, jan_to_srv_queue, stopEvt):
     how frequently, and runs them in an infinite loop.
     """
 
-    # No need to shut down anything on this process
-    def noop(*args):
-        pass
-    signal.signal(signal.SIGTERM, noop)
-    signal.signal(signal.SIGINT, noop)
-
     # Reset the internal multiprocess queues so the janitor_communicate() method
     # of the server object is usable from within this process
     srvObj._serv_to_jan_queue = srv_to_jan_queue
