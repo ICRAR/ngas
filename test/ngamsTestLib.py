@@ -1687,7 +1687,7 @@ class ngamsTestSuite(unittest.TestCase):
             if nodeSusp:
                 logger.info("Server suspended itself after: %.3fs",
                             (time.time() - startTime))
-                return 1
+                return time.time()
             else:
                 time.sleep(0.1)
 
