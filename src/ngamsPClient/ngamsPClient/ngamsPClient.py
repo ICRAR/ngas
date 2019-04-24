@@ -89,9 +89,7 @@ class ngamsPClient:
         if servers and (host or port):
             raise ValueError("Either host/port or servers must be specified")
 
-        if servers is not None:
-            if not servers:
-                raise ValueError("Empty server list")
+        if servers:
             self.servers = servers
         else:
             host = host or '127.0.0.1'
