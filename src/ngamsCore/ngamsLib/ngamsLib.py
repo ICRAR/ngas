@@ -170,6 +170,8 @@ def parseRawPlugInPars(rawPars):
     """
     # Plug-In Parameters. Expect:
     # "<field name>=<field value>[,field name>=<field value>]"
+    if not rawPars:
+        return {}
     parDic = {}
     pars = rawPars.split(",")
     for par in pars:
