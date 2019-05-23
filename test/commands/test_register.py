@@ -36,7 +36,7 @@ import time
 
 from ngamsLib import ngamsFileInfo
 from ngamsLib.ngamsCore import checkCreatePath, getHostName, NGAMS_REGISTER_CMD
-from ..ngamsTestLib import ngamsTestSuite
+from ..ngamsTestLib import ngamsTestSuite, tmp_path
 
 
 class ngamsRegisterCmdTest(ngamsTestSuite):
@@ -55,6 +55,13 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
     - File/path not on NGAS Disk.
     - Unknown mime-type.
     """
+
+    def copy_and_register(self, file_suffix='', **extra_params):
+        srcFile = "src/SmallFile.fits"
+        tmpSrcFile = self.ngas_path("FitsStorage2-Main-3/saf/test/SmallFile.fits" + file_suffix)
+        checkCreatePath(os.path.dirname(tmpSrcFile))
+        self.cp(srcFile, tmpSrcFile)
+        return self.get_status(NGAMS_REGISTER_CMD, (("path", tmpSrcFile),) + tuple(extra_params.items()))
 
     def test_RegisterCmd_1(self):
         """
@@ -81,11 +88,7 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         ...
         """
         _, dbObj = self.prepExtSrv()
-        srcFile = "src/SmallFile.fits"
-        tmpSrcFile = self.ngas_path("FitsStorage2-Main-3/saf/test/SmallFile.fits")
-        checkCreatePath(os.path.dirname(tmpSrcFile))
-        self.cp(srcFile, tmpSrcFile)
-        status = self.get_status(NGAMS_REGISTER_CMD, [["path", tmpSrcFile]])
+        status = self.copy_and_register()
         msg = "Incorrect status returned for REGISTER command"
         refStatFile = "ref/ngamsRegisterCmdTest_test_RegisterCmd_1_ref"
         self.assert_status_ref_file(refStatFile, status, msg=msg)
@@ -104,3 +107,11 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         tmpFileObj = ngamsFileInfo.ngamsFileInfo().unpackSqlResult(tmpFileRes)
         msg = "Incorrect info in DB for registered file"
         self.assert_status_ref_file(fileInfoRef, tmpFileObj, msg=msg)
+
+    def test_register_no_params(self):
+        '''Tests that a register plugin without parameters can work'''
+        cfg = (('NgamsCfg.Register[1].PlugIn[2].Name', 'test.support.generic_register_plugin'),
+               ('NgamsCfg.Register[1].PlugIn[2].MimeType[1].Name', 'ngas/log'))
+        self.prepExtSrv(cfgProps=cfg)
+        self.copy_and_register(file_suffix='.log')
+        self.retrieve('SmallFile.fits.log', targetFile=tmp_path())
