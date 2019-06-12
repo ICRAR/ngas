@@ -30,7 +30,7 @@ with open('../../VERSION') as vfile:
             break
 
 
-install_requires = ['ngamsCore', 'python-daemon', 'netifaces>=0.10.6']
+install_requires = ['ngamsCore', 'python-daemon', 'netifaces']
 
 # Users might opt out from depending on crc32c
 # Our code is able to cope with that situation already
