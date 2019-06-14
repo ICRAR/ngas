@@ -1192,6 +1192,8 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
             errMsg = genLog("NGAMS_WA_BUF_DATA",
                             [reqPropsObj.getFileUri(), str(e)])
             logger.error(errMsg)
+            srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
+            httpRef.send_status(errMsg, status=NGAMS_FAILURE)
         cleanUpStagingArea()
         raise
 
