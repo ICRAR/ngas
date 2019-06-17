@@ -16,11 +16,29 @@ Changelog
   instead of the "hand-written" logic we had previously.
 * Cleaned up and aligned the way in which volume information
   is created and processed by NGAS.
+  The code around volume creation and scanning has been revised,
+  unit tests have been improved
+  to test the functionality more thoroughly,
+  and the existing, not-well maintained script
+  has now been :ref:`better integrated <tools.prepare_volume>`
+  into the NGAS ecosystem.
   Instructions on how to :ref:`set up a volume directory <post_inst.setup_volumes>`
-  have been updated,
-  the code around volume creation and scanning has been revised,
-  and unit tests have been improved
-  to test the functionality more thoroughly.
+  have also been updated,
+* Renamed the old ``ngasArchiveClient`` tool
+  into ``fs-monitor``,
+  and moved it into the ``ngamsPClient`` package.
+  :ref:`This utility <tools.fs_monitor>`
+  had been kept until now
+  under the unmaintained ``ngasUtils`` package,
+  and therefore hadn't been ported
+  alongside the rest of the code until now.
+  Not only was this tool renamed,
+  but it was completely overwritten
+  to simplify its maintenance in the long run,
+  and to enable easy unit testing,
+  which we have also added now.
+  Moving it into the ``ngamsPClient``
+  ensure it will have continued testing and visibility.
 * Added tests to ensure all plugin modules can be correctly imported.
   This ensures the code is compatible with python 3 up to some degree,
   and it also increases our code coverage.

@@ -15,6 +15,7 @@ Contents:
    changelog
    install
    post_installation
+   tools
    server
    background
    plugins-index
