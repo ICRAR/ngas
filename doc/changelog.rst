@@ -110,6 +110,10 @@ Changelog
   update the file status flags atomically.
   Before they had a race condition which resulted in files
   not being deleted on the cache server.
+* Improving handling of overwriting flags for archiving commands.
+  Now all archiving commands obey the same logic,
+  which has been detached from the individual
+  data-archiving plug-ins.
 * Improving and simplifying the ``QUERY`` command.
 * Removed many unnecessary internal usage
   of ``.bsddb`` files.
