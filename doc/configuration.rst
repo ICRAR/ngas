@@ -18,17 +18,25 @@ Contains the overall server configuration.
 
 * *RootDirectory*: The root directory which most of the other configuration
   items are relative to.
+* *ArchiveName*: The logical name under which
+  disks found by the server are grouped into.
+  Using this, disks found in different servers
+  may belong to the same logically distributed archive.
+* *BlockSize*: The block size used for disk and network access,
+  and checksum calculation.
+  In the future different configuration options may be offered
+  for these different operations.
 * *IpAddress*: The IP address to bind the server to. If not specified the server
   will bind itself to ``127.0.0.1``. To bind the server to all interfaces
   ``0.0.0.0`` can be set.
-* *Port*: The port to bind the server to. It defaults to 7777 if unspecified.
+* *PortNo*: The port to bind the server to. It defaults to 7777 if unspecified.
 * *MaxSimReqs*: The maximum number of requests the server can be serving
   at a given time. If a new request comes in and the server has reached
   the limit already, it will respond with an ``503`` HTTP code.
 * *PluginsPath*: A colon-separated list of directories
   where external python code, like NGAS plug-ins or database drivers,
   can be loaded from.
-* *Proxy*: Whether this server should act as a proxy when serving requests that
+* *ProxyMode*: Whether this server should act as a proxy when serving requests that
   are addressed to a different server within the same cluster (``1``)
   or not (``0``).
   See :ref:`server.proxy` for details.
