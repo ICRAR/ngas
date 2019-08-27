@@ -51,6 +51,7 @@ mounted at boot time.
 import glob
 import logging
 import os
+import os.path
 
 from ngamsLib import ngamsPhysDiskInfo
 from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \
@@ -88,9 +89,8 @@ def ngamsGenericOnlinePlugIn(srvObj,
     diskInfoDic = {}
     logger.debug('Will check the following directories for rootDir/volumeDir %s/%s: %r', rootDir, volumeDir, dirList)
     for dir in dirList:
-        # Check if a '.ngas_volume_id' is found under the directory.
-        volInfoFile = os.path.\
-                      normpath(dir + os.sep + NGAS_VOL_INFO_FILE)
+        # Check if a '.ngas_volume_info' is found under the directory.
+        volInfoFile = os.path.normpath(os.path.join(dir, NGAS_VOL_INFO_FILE))
         if (os.path.exists(volInfoFile)):
             # - It exists, load it
             volInfoDic = loadVolInfoFile(volInfoFile)
@@ -133,5 +133,7 @@ def ngamsGenericOnlinePlugIn(srvObj,
                                        setManufacturer(manufact).\
                                        setDiskId(diskId).\
                                        setDeviceName(devName)
+        else:
+            logger.debug("%s does not exist", volInfoFile)
 
     return diskInfoDic
