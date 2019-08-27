@@ -85,7 +85,7 @@ def ngamsMWAOnlinePlugIn(srvObj,
     dirList = glob.glob(ngasVolDir + os.sep + "*")
     diskInfoDic = {}
     for dir in dirList:
-        # Check if a '.ngas_volume_id' is found under the directory.
+        # Check if a '.ngas_volume_info' is found under the directory.
         volInfoFile = os.path.\
                       normpath(dir + os.sep + NGAS_VOL_INFO_FILE)
         if (os.path.exists(volInfoFile)):
