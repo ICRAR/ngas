@@ -323,6 +323,8 @@ def _checkIfDeliverFile(srvObj,
         lastSchedule = scheduledStatus[subscrObj.getId()]
     else:
         lastSchedule = None
+    if lastSchedule is not None:
+        lastSchedule = fromiso8601(lastSchedule, local=True)
 
     fileInfo            = _convertFileInfo(fileInfo)
     fileId              = fileInfo[FILE_ID]
