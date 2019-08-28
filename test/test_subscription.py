@@ -362,3 +362,37 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # Double-check that the file is in B
         self.retrieve(8889, 'SmallFile.fits', targetFile=tmp_path())
+
+    def test_continuous_subscription(self):
+        """
+        Test that a subscription between two servers works across several file
+        archivals. Reproduces the problem reported in #4.
+        """
+
+        # We configure the second server to send notifications via socket
+        # to the listener we start later
+        cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'test.test_subscription.SenderHandler'),)
+        self._prep_subscription_cluster((8888, (8889, cfg)))
+
+        # Create subscription
+        subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
+        subscription_listener = notification_listener()
+        params = {'url': 'http://localhost:8889/QARCHIVE',
+                  'subscr_id': 'HERE-TO-THERE',
+                  'priority': 1,
+                  'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
+                  'concurrent_threads': 1}
+        with contextlib.closing(subscribe(pars=params)) as resp:
+            self.assertEqual(resp.status, 200)
+
+        try:
+            for fname in ('SmallFile.fits', 'TinyTestFile.fits'):
+                self.qarchive(8888, 'src/' + fname, mimeType='application/octet-stream')
+                self.retrieve_fail(8889, fname, fileVersion=2, targetFile=tmp_path())
+                archive_evt = subscription_listener.wait_for_file(5)
+                self.assertIsNotNone(archive_evt)
+                self.assertEqual(2, archive_evt.file_version)
+                self.assertEqual(fname, archive_evt.file_id)
+                self.retrieve(8889, fname, fileVersion=2, targetFile=tmp_path())
+        finally:
+            subscription_listener.close()
