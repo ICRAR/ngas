@@ -7,7 +7,7 @@ Format:                             application/x-gfits
 UncompressedFileSize:               69120
 Compression:                        gzip --no-name
 Ignore:                             0
-ChecksumPlugIn:                     0
+ChecksumPlugIn:                     crc32
 FileStatus:                         00000000
 Tag:                                
 Permissions:                        

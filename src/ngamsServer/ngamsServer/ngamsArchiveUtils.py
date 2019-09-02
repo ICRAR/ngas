@@ -602,7 +602,7 @@ def postFileRecepHandling(srvObj,
 
     # if checksum is already supplied then do not calculate it from the plugin
     if cksum is None:
-        checksumPlugIn = srvObj.cfg.getCRCVariant()
+        checksumPlugIn = ngamsFileUtils.get_checksum_name(srvObj.cfg.getCRCVariant())
         checksum = ngamsFileUtils.get_checksum(65536, resultPlugIn.getCompleteFilename(), checksumPlugIn)
     else:
         checksum, checksumPlugIn = cksum
