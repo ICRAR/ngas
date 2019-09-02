@@ -388,7 +388,6 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         try:
             for fname in ('SmallFile.fits', 'TinyTestFile.fits'):
                 self.qarchive(8888, 'src/' + fname, mimeType='application/octet-stream')
-                self.retrieve_fail(8889, fname, fileVersion=2, targetFile=tmp_path())
                 archive_evt = subscription_listener.wait_for_file(5)
                 self.assertIsNotNone(archive_evt)
                 self.assertEqual(2, archive_evt.file_version)
