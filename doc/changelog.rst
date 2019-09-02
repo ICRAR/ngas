@@ -14,6 +14,11 @@ Changelog
   On top of that mail messages are now created
   using the standard library modules for correct mail composition,
   instead of the "hand-written" logic we had previously.
+* Fixed a small issue during backlog file archival
+  where the checksum plugin name was incorrectly recorded in the database.
+  This shouldn't affect operational installations,
+  and most database drivers happily worked with the previous code,
+  but the Sybase driver caught this one.
 * Added tests to ensure all plugin modules can be correctly imported.
   This ensures the code is compatible with python 3 up to some degree,
   and it also increases our code coverage.
