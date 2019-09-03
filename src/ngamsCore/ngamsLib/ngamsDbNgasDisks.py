@@ -552,12 +552,8 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             if delFileInfo and self.getCreateDbSnapshot():
                 diskInfo = ngamsDiskInfo.ngamsDiskInfo().read(self, diskId)
                 fileInfoDbmName = self.genTmpFile('DISK_INFO')
-                fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, cleanUpOnDestr=0, writePerm = 1)
-                fileCount = 0
-                for fileInfo in self.getFileInfoList(diskId, fetch_size=1000):
-                    fileInfoDbm.add(str(fileCount), fileInfo)
-                    fileCount += 1
-                fileInfoDbm.sync()
+                file_infos = self.getFileInfoList(diskId, fetch_size=1000)
+                fileInfoDbm = ngamsDbm.enumerate_to_dbm(fileInfoDbmName, file_infos)
 
             # Delete the disk info.
             sql = "DELETE FROM ngas_disks WHERE disk_id={}"
@@ -653,10 +649,9 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                   (integer).
         """
         sql = "SELECT min(last_check) FROM ngas_disks WHERE host_id={}"
-        res = self.query2(sql, args = (hostId,))
-        if not res:
+        val = self.query2(sql, args = (hostId,))[0][0]
+        if not val:
             return None
-        val = res[0][0]
         return fromiso8601(val, local=True)
 
     def getAvailableVolumes(self, hostId):

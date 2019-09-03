@@ -48,8 +48,7 @@ from ngamsLib.ngamsCore import getHostName, NGAMS_ARCHIVE_CMD, checkCreatePath, 
 from ngamsLib import ngamsStatus, ngamsFileInfo, ngamsHttpUtils
 from ..ngamsTestLib import ngamsTestSuite, \
     pollForFile, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
-    genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp, \
-    save_to_tmp, tmp_path
+    genTmpFilename, execCmd, save_to_tmp, tmp_path
 from ngamsServer import ngamsFileUtils
 
 
@@ -369,16 +368,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           "Illegal Back-Log Buffered File: %s" %\
                           tmpReqPropObj.getStagingFilename())
 
-        # Cleanly shut down the server, and wait until it's completely down
-        old_cleanup = getNoCleanUp()
-        setNoCleanUp(True)
-        self.termExtSrv(self.extSrvInfo.pop())
-        setNoCleanUp(old_cleanup)
-
         cfgPars = [["NgamsCfg.Permissions[1].AllowArchiveReq", "1"],
                    ["NgamsCfg.ArchiveHandling[1].BackLogBuffering", "1"],
                    ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:05"]]
-        _, dbObj = self.prepExtSrv(delDirs=0, clearDb=0, cfgProps=cfgPars)
+        _, dbObj = self.restart_last_server(cfgProps=cfgPars)
         pollForFile(self.ngas_path("back-log/*"), 0, timeOut=30)
         filePat = self.ngas_path("%s/saf/2001-05-08/1/" +\
                   "TEST.2001-05-08T15:25:00.123.fits.gz")
@@ -972,13 +965,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             fo.write("TEST/DUMMY REQUEST PROPERTIES FILE: %s" % diskName)
             fo.close()
 
-        # Cleanly shut down the server, and wait until it's completely down
-        old_cleanup = getNoCleanUp()
-        setNoCleanUp(True)
-        self.termExtSrv(self.extSrvInfo.pop())
-        setNoCleanUp(old_cleanup)
-
-        self.prepExtSrv(delDirs=0, clearDb=0)
+        self.restart_last_server()
         badDirPat = self.ngas_path("bad-files/BAD-FILE-*-%s.fits")
         for diskName in diskList:
             badFile = badDirPat % diskName
@@ -1010,14 +997,20 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(srvModule="test.support.ngamsSrvTestKillBeforeArchCleanUp")
+        req_fname = self.ngas_path("FitsStorage1-Main-1/staging/*-SmallFile.fits.pickle")
+
+        # Archive to trigger an auto-kill, then restart the server checking that
+        # the pickle file was produced
         try:
             self.archive("src/SmallFile.fits")
+            self.fail('archive should have failed')
         except:
             pass
-        reqPropStgFile = self.ngas_path("FitsStorage1-Main-1/staging/" +\
-                         "*-SmallFile.fits.pickle")
-        pollForFile(reqPropStgFile, 1)
-        self.prepExtSrv(delDirs=0, clearDb=0, force=True)
+
+        def before_restart():
+            self.assertGreater(len(glob.glob(req_fname)), 0)
+
+        self.restart_last_server(before_restart=before_restart, force=True)
         reqPropBadFile = self.ngas_path("bad-files/BAD-FILE-*-SmallFile.fits.pickle", port=8888)
         pollForFile(reqPropBadFile, 1)
 
@@ -1075,9 +1068,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                          "checksum_result=0/0000000000000000"]]]
 
     def _genArchProxyCfg(self, ports):
-        """
-        Generate a cfg. file.
-        """
+        """Strip out <Streams> from ngamsCfg.xml, provide our own values"""
+        # The ngamsConfig class has no way to remove items, so we need to load
+        # the config file as a DOM, remove it ourselves, then dump the XML into
+        # a file again
+        root = self.load_dom(self.resource('src/ngamsCfg.xml')).documentElement
+        streams = root.getElementsByTagName('Streams')
+        root.removeChild(streams[0])
+        cfg_fname = save_to_tmp(root.toprettyxml(), prefix='no_streams_cfg_', suffix='.xml')
+
         cfg = []
         for idx,streamEl in enumerate(self.__STREAM_LIST, 1):
             strEl = self.__STR_EL % idx
@@ -1089,7 +1088,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                 cfg.append((nauAttr, "%s:%d" % (getHostName(), port)))
                 hostIdx += 1
             idx += 1
-        return "src/ngamsCfgNoStreams.xml", cfg
+        return cfg_fname, cfg
     #########################################################################
 
 
@@ -1285,15 +1284,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        # Create basic structure.
-        ngasRootDir = tmp_path('NGAS')
-        rmFile(ngasRootDir)
-        checkCreatePath(ngasRootDir)
-        subprocess.check_call(['tar', 'zxf', self.resource('src/volumes_dir.tar.gz')])
-        mvFile('volumes', ngasRootDir)
 
-        # Create configuration, start server.
-        self.prepExtSrv(delDirs=0, cfgFile="src/ngamsCfg_VolumeDirectory.xml")
+        cfg, _ = self.start_volumes_server()
 
         # Archive a file.
         stat = self.archive("src/SmallFile.fits")
@@ -1303,7 +1295,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Check that the target files have been archived in their
         # appropriate locations.
-        checkFile = ngasRootDir + "/volumes/Volume00%d/saf/" +\
+        checkFile = cfg.getRootDirectory() + "/volumes/Volume00%d/saf/" +\
                     "2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.gz"
         for n in (1,2):
             if (not os.path.exists(checkFile % n)):

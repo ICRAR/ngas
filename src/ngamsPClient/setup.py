@@ -48,7 +48,9 @@ setup(
     # No spaces allowed between the '='s
     entry_points= {
         'console_scripts':[
-            'ngamsPClient=ngamsPClient.ngamsPClient:main'
+            'ngamsPClient=ngamsPClient.ngamsPClient:main',
+            'ngas-fs-monitor-client=ngamsPClient.fs_monitor:main',
+            'ngasArchiveClient=ngamsPClient.fs_monitor:main'
         ],
     },
 )

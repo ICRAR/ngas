@@ -331,7 +331,7 @@ def _cloneExec(srvObj,
     merely implemented in order to encapsulate the whole process to be able
     to clean up properly when the processing is terminated.
     """
-    cloneListDbm = cloneStatusDbm = None
+    cloneStatusDbm = None
 
     emailNotif = 0
     checkChecksum = 1
@@ -703,188 +703,6 @@ def _cloneExec(srvObj,
                 timeAccu, (timeAccu / totFiles))
 
 
-def _cloneExplicit(srvObj,
-                   reqPropsObj,
-                   diskId,
-                   fileId,
-                   fileVersion,
-                   targetDiskId):
-    """
-    Execute CLONE Command, where the source Disk ID, File ID and File Version
-    are specified. Is much faster than a normal CLONE Command when an explicit
-    file is specified.
-
-    srvObj:           Reference to instance of Server Object (ngamsServer).
-
-    fileInfoObj:      File info object with info about the file
-
-    diskId:           ID of disk hosting the file to be cloned (string).
-
-    fileId:           ID of file to clone (string).
-
-    fileVersion:      Version of file to clone (integer).
-
-    targetDiskId:     ID of target disk (string).
-
-    Returns:          Void.
-    """
-    # Resolve the location of the file to clone.
-    location, hostId, ipAddress, portNo, mountPoint, filename,\
-              fileVersion, mimeType =\
-              ngamsFileUtils.quickFileLocate(srvObj, reqPropsObj, fileId,
-                                             diskId=diskId,
-                                             fileVersion=fileVersion)
-    # Read also the entire file info (unfortunately).
-    srcFileInfo = ngamsFileInfo.ngamsFileInfo().read(srvObj.getHostId(),
-                                                     srvObj.getDb(), fileId,
-                                                     fileVersion, diskId)
-
-    # Determine target disk.
-    if (targetDiskId == ""):
-        # Try to find a disk not hosting already a file with that
-        # ID + version.
-        diskExemptList = [diskId]
-        while (1):
-            trgDiskInfo = ngamsDiskUtils.\
-                          findTargetDisk(srvObj.getHostId(),
-                                         srvObj.getDb(), srvObj.getCfg(),
-                                         mimeType, 1, diskExemptList)
-            # Check if a file with that ID + version is already
-            # stored on the selected Target Disk.
-            if (srvObj.getDb().fileInDb(trgDiskInfo.getDiskId(), fileId,
-                                        fileVersion)):
-                # This file is already stored on the given disk.
-                # Add to the exempt list.
-                diskExemptList.append(trgDiskInfo.getDiskId())
-            else:
-                # OK, this disk should be OK, stop looking for a
-                # suitable Target Disk.
-                break
-    else:
-        trgDiskInfo = ngamsDiskInfo.ngamsDiskInfo().\
-                      read(srvObj.getDb(), targetDiskId)
-        slotId = trgDiskInfo.getSlotId()
-        storageSetId = srvObj.getCfg().getStorageSetFromSlotId(slotId).\
-                       getStorageSetId()
-        trgDiskInfo.setStorageSetId(storageSetId)
-
-    # Don't accept to clone onto the same disk (this would meann overwriting).
-    if (trgDiskInfo.getDiskId() == diskId):
-        err = "Source and target files are identical"
-        msg = "Failed in cloning file with ID: " + fileId +\
-              "/Version: " + str(fileVersion) +\
-              " on disk with ID: " + diskId +\
-              " on host: " + hostId + ". Reason: " + err
-        raise Exception(msg)
-
-    # Receive the file into the staging filename.
-    tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
-    tmpReqPropsObj.setMimeType(mimeType)
-    stagingFilename = ngamsHighLevelLib.genStagingFilename(srvObj.getCfg(),
-                                                           tmpReqPropsObj,
-                                                           trgDiskInfo,
-                                                           fileId)
-    try:
-        quickLocation = False
-        if (reqPropsObj.hasHttpPar("quick")):
-            quickLocation = int(reqPropsObj.getHttpPar("quick"))
-
-        # Receive the data into the Staging File using the urllib.
-        if (srvObj.getHostId() != hostId):
-            # Example: http://host:7777/RETRIEVE?disk_id=%s&"
-            #          file_id=id&file_version=1
-            fileUrl = "http://%s:%s/RETRIEVE?disk_id=%s&file_id=%s&" +\
-                      "file_version=%s"
-            fileUrl = fileUrl % (ipAddress, str(portNo), diskId, fileId,
-                                 str(fileVersion))
-
-            # If CLONE?quick specified, we try to retrieve the file via the
-            # RETRIEVE?quick_location method.
-            quickFileUrl = fileUrl
-            if (reqPropsObj.hasHttpPar("quick")):
-                if (int(reqPropsObj.getHttpPar("quick"))):
-                    quickFileUrl = fileUrl + "&quick_location=1"
-
-            # Check if host is suspended, if yes, wake it up.
-            if (srvObj.getDb().getSrvSuspended(hostId)):
-                logger.debug("Clone Request - Waking up suspended " +\
-                     "NGAS Host: %s", hostId)
-                ngamsSrvUtils.wakeUpHost(srvObj, hostId)
-        else:
-            # TODO: a time-bomb waiting to explode....
-            fileUrl = "file:" + mtPt + "/" + filename
-        logger.debug("Receiving file via URI: %s into staging filename: %s",
-                     fileUrl, stagingFilename)
-        # We try up to 5 times to retrieve the file in case a problem is
-        # encountered during cloning.
-        for attempt in range(5):
-            try:
-                if (attempt == 0):
-                    filename, headers = urlrequest.urlretrieve(quickFileUrl, stagingFilename)
-                else:
-                    filename, headers = urlrequest.urlretrieve(fileUrl, stagingFilename)
-                _checkFile(srvObj, srcFileInfo, stagingFilename, headers, True)
-                # If we get to this point the transfer was (probably) OK.
-                break
-            except Exception as e:
-                rmFile(stagingFilename)
-                errMsg = "Problem occurred while cloning file "+\
-                         "via URL: " + fileUrl + " - Error: " + str(e)
-                if (attempt < 4):
-                    errMsg += " - Retrying in 5s ..."
-                    logger.error(errMsg)
-                    time.sleep(0.5)
-                else:
-                    raise Exception(errMsg)
-
-        # We simply copy the file into the same destination as the
-        # source file (but on another disk).
-        targPathName  = os.path.dirname(srcFileInfo.getFilename())
-        targFilename  = os.path.basename(srcFileInfo.getFilename())
-        complTargPath = os.path.normpath(trgDiskInfo.getMountPoint() +\
-                                         "/" + targPathName)
-        checkCreatePath(complTargPath)
-        complFilename = os.path.normpath(complTargPath + "/" + targFilename)
-        mvTime = mvFile(stagingFilename, complFilename)
-        ngamsLib.makeFileReadOnly(complFilename)
-
-        # Update status for new file in the DB.
-        newFileInfo = srcFileInfo.clone().setDiskId(trgDiskInfo.getDiskId()).\
-                      setCreationDate(getFileCreationTime(complFilename))
-        fileExists = srvObj.getDb().fileInDb(trgDiskInfo.getDiskId(),
-                                             fileId, fileVersion)
-        newFileInfo.write(srvObj.getHostId(), srvObj.getDb())
-
-        # Update status for the Target Disk in DB + check if the disk is
-        # completed.
-        if (fileExists): mvTime = 0
-        dummyDapiStatObj = ngamsDapiStatus.ngamsDapiStatus().\
-                           setDiskId(trgDiskInfo.getDiskId()).\
-                           setFileExists(fileExists).\
-                           setFileSize(srcFileInfo.getFileSize()).\
-                           setIoTime(mvTime)
-        ngamsDiskUtils.updateDiskStatusDb(srvObj.getDb(), dummyDapiStatObj)
-        ngamsArchiveUtils.checkDiskSpace(srvObj, trgDiskInfo.getDiskId())
-
-        # If running as a cache archive, update the Cache New Files DBM
-        # with the information about the new file.
-        if (srvObj.getCachingActive()):
-            ngamsCacheControlThread.addEntryNewFilesDbm(srvObj, diskId, fileId,
-                                                        fileVersion, filename)
-
-        # Generate a confirmation log entry.
-        msg = genLog("NGAMS_INFO_FILE_CLONED",
-                     [fileId, fileVersion, diskId, hostId])
-        logger.info(msg, extra={'to_syslog': True})
-    except:
-        # Delete Staging File if already created.
-        if (os.path.exists(stagingFilename)): rmFile(stagingFilename)
-        raise
-
-
-
-
-
 def _cloneThread(srvObj,
                  cloneListDbmName,
                  tmpFilePat,
@@ -946,69 +764,41 @@ def _clone(srvObj,
     logger.debug("Handling file cloning with parameters - File ID: %s -" + \
                  "Disk ID: %s - File Version: %s - Target Disk ID: |%s|",
                  fileId, diskId, str(fileVersion), targetDiskId)
-    if (((fileId == "") and (diskId == "") and (fileVersion != -1)) or
-        ((fileId == "") and (diskId == "") and (fileVersion == -1))):
+    if not fileId and not diskId:
         errMsg = genLog("NGAMS_ER_CMD_SYNTAX",
                         [NGAMS_CLONE_CMD, "File Id: " + fileId +\
                          ", Disk ID: " + diskId +\
                          ", File Version: " + str(fileVersion)])
         raise Exception(errMsg)
 
-    # If Disk ID, File ID and File Version are given, execute a quick cloning.
-    try:
-        fileVersion = int(fileVersion)
-    except:
-        pass
-    if (False and diskId and fileId and (fileVersion > 0)):
-        _cloneExplicit(srvObj, reqPropsObj, diskId, fileId, fileVersion,
-                       targetDiskId)
-        logger.info("Successfully handled command CLONE")
-        return
+    # Get candidate files for cloning.
+    # We convert to tuple of file info object plus extra info because
+    # this is how the code expects this information to come, so we need to
+    # keep the format unless we change the bulk of the code
+    # f[-2] is the host id, f[-1] is the mount point
+    all_info = [(ngamsFileInfo.ngamsFileInfo().unpackSqlResult(f), f[-2], f[-1])
+                for f in srvObj.db.getFileInfoFromFileId(
+                    fileId, fileVersion, diskId, ignore=0, order=0, order2=1,
+                    dbCursor=False)]
+    if not all_info:
+        msg = genLog("NGAMS_ER_CMD_EXEC",
+                     [NGAMS_CLONE_CMD, "No files for cloning found"])
+        raise Exception(msg)
 
-    # Handling cloning of more files.
-    cloneListDbm = None
+    # Take only the first element in these cases
+    if fileId != "" and (diskId != "" or fileVersion == -1):
+        all_info = [all_info[0]]
+    cloneDbCount = len(all_info)
+
     cloneListDbmName = tmpFilePat + "_CLONE_INFO_DB"
+    rmFile(cloneListDbmName + "*")
     try:
-        # Get information about candidate files for cloning.
-        files = srvObj.db.getFileInfoFromFileId(fileId, fileVersion, diskId,
-                                                ignore=0, order2=1,
-                                                order=0, dbCursor=False)
-        if not files:
-            msg = genLog("NGAMS_ER_CMD_EXEC",
-                         [NGAMS_CLONE_CMD, "No files for cloning found"])
-            raise Exception(msg)
-
-        # Convert to tuple of file info object plus extra info
-        # This is how the code expects this information to come, so we need to
-        # keep the format unless we change the bulk of the code
-        # f[-2] is the host id, f[-1] is the mount point
-        all_info = []
-        for f in files:
-            all_info.append((ngamsFileInfo.ngamsFileInfo().unpackSqlResult(f), f[-2], f[-1]))
-
-        # Create a BSD DB with information about files to be cloned.
-        rmFile(cloneListDbmName + "*")
-        cloneListDbm = ngamsDbm.ngamsDbm(cloneListDbmName, cleanUpOnDestr = 0,
-                                         writePerm = 1)
-        cloneDbCount = 0
-
-        if fileId != "" and (diskId != "" or fileVersion == -1):
-            # Take only the first element
-            cloneListDbm.add("0", all_info[0])
-            cloneDbCount = 1
-        else:
-            # Take all the files.
-            for tmpFileInfo in all_info:
-                cloneListDbm.add(str(cloneDbCount), tmpFileInfo)
-                cloneDbCount += 1
-
+        ngamsDbm.enumerate_to_dbm(cloneListDbmName, all_info)
     except Exception:
-        if (cloneListDbm): del cloneListDbm
         rmFile(cloneListDbmName + "*")
         raise
 
     logger.debug("Found: %d file(s) for cloning ...", cloneDbCount)
-    del cloneListDbm
 
     # Check available amount of disk space.
     cloneCheckDiskSpace(srvObj, cloneListDbmName, tmpFilePat, targetDiskId)

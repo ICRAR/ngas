@@ -53,15 +53,43 @@ import logging
 import os
 
 from ngamsLib import ngamsPhysDiskInfo
-from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \
+from ngamsServer.volumes import NGAS_VOL_INFO_FILE, \
     loadVolInfoFile, NGAS_VOL_INFO_ID, NGAS_VOL_INFO_IGNORE, NGAS_VOL_INFO_TYPE, \
     NGAS_VOL_INFO_MANUFACT
 
 
 logger = logging.getLogger(__name__)
 
-def ngamsGenericOnlinePlugIn(srvObj,
-                             reqPropsObj = None):
+def _get_phys_disk_info(dirname, fname, i):
+    volInfoDic = loadVolInfoFile(fname)
+    diskId = volInfoDic[NGAS_VOL_INFO_ID]
+    diskType = volInfoDic.get(NGAS_VOL_INFO_TYPE, NGAS_VOL_INFO_IGNORE)
+    manufact = volInfoDic.get(NGAS_VOL_INFO_MANUFACT, NGAS_VOL_INFO_IGNORE)
+    devName    = NGAS_VOL_INFO_IGNORE
+    portNo     = i
+    mtPt       = dirname
+    slotId     = os.path.basename(dirname)
+    status     = "OK"
+    capGb      = -1
+    model      = NGAS_VOL_INFO_IGNORE
+    serialNo   = NGAS_VOL_INFO_IGNORE
+    msg = "Registering volume with parameters: Disk ID: %s, " +\
+          "Device: %s, Port No: %s, Slot ID: %s, Mount Point: %s, "+\
+          "Status: %s, Capacity (GB): %s, Model: %s, Serial#: %s, " +\
+          "Type: %s, Manufacturer: %s"
+    logger.debug(msg, diskId, devName, str(portNo), slotId, mtPt,
+                   status, str(capGb), model, serialNo, diskType,
+                   manufact)
+    pinfo = ngamsPhysDiskInfo.ngamsPhysDiskInfo().\
+               setPortNo(portNo).setSlotId(slotId).\
+               setMountPoint(mtPt).setStatus(status).\
+               setCapacityGb(capGb).setModel(model).\
+               setSerialNo(serialNo).setType(diskType).\
+               setManufacturer(manufact).setDiskId(diskId).\
+               setDeviceName(devName)
+    return slotId, pinfo
+
+def ngamsGenericOnlinePlugIn(srvObj, reqPropsObj=None):
     """
     Scan the specified Root Directory/Volume Directory for NGAS Volumes
     and register these as operational volumes.
@@ -83,56 +111,13 @@ def ngamsGenericOnlinePlugIn(srvObj,
     if volumeDir.startswith('/'):
         ngasVolDir = volumeDir
     else:
-        ngasVolDir = os.path.normpath(rootDir + os.sep + volumeDir)
-    dirList = glob.glob(ngasVolDir + os.sep + "*")
-    diskInfoDic = {}
-    logger.debug('Will check the following directories for rootDir/volumeDir %s/%s: %r', rootDir, volumeDir, dirList)
-    for dir in dirList:
-        # Check if a '.ngas_volume_info' is found under the directory.
-        volInfoFile = os.path.normpath(os.path.join(dir, NGAS_VOL_INFO_FILE))
-        if (os.path.exists(volInfoFile)):
-            # - It exists, load it
-            volInfoDic = loadVolInfoFile(volInfoFile)
-            # Create an ngamsPhysDiskInfo object with the information about
-            # the slot.
-            diskId     = volInfoDic[NGAS_VOL_INFO_ID]
-            devName    = NGAS_VOL_INFO_IGNORE
-            portNo     = -1
-            slotId     = dir.split(os.sep)[-1]
-            mtPt       = dir
-            status     = "OK"
-            capGb      = -1
-            model      = NGAS_VOL_INFO_IGNORE
-            serialNo   = NGAS_VOL_INFO_IGNORE
-            if NGAS_VOL_INFO_TYPE in volInfoDic:
-                diskType = volInfoDic[NGAS_VOL_INFO_TYPE]
-            else:
-                diskType = NGAS_VOL_INFO_IGNORE
-            if NGAS_VOL_INFO_MANUFACT in volInfoDic:
-                manufact = volInfoDic[NGAS_VOL_INFO_MANUFACT]
-            else:
-                manufact = NGAS_VOL_INFO_IGNORE
-            msg = "Registering volume with parameters: Disk ID: %s, " +\
-                  "Device: %s, Port No: %s, Slot ID: %s, Mount Point: %s, "+\
-                  "Status: %s, Capacity (GB): %s, Model: %s, Serial#: %s, " +\
-                  "Type: %s, Manufacturer: %s"
-            logger.debug(msg, diskId, devName, str(portNo), slotId, mtPt,
-                           status, str(capGb), model, serialNo, diskType,
-                           manufact)
-            diskInfoDic[str(slotId)] = ngamsPhysDiskInfo.\
-                                       ngamsPhysDiskInfo().\
-                                       setPortNo(portNo).\
-                                       setSlotId(slotId).\
-                                       setMountPoint(mtPt).\
-                                       setStatus(status).\
-                                       setCapacityGb(capGb).\
-                                       setModel(model).\
-                                       setSerialNo(serialNo).\
-                                       setType(diskType).\
-                                       setManufacturer(manufact).\
-                                       setDiskId(diskId).\
-                                       setDeviceName(devName)
-        else:
-            logger.debug("%s does not exist", volInfoFile)
+        ngasVolDir = os.path.join(rootDir, volumeDir)
 
-    return diskInfoDic
+    dirs = glob.glob(ngasVolDir + os.sep + "*")
+    logger.debug('Will check the following directories for rootDir/volumeDir %s/%s: %r', rootDir, volumeDir, dirs)
+
+    # Check if a '.ngas_volume_info' is found under each directory
+    vinfo = [(d, os.path.join(d, NGAS_VOL_INFO_FILE)) for d in dirs]
+    vinfo = filter(lambda v: os.path.exists(v[1]), vinfo)
+    return dict(_get_phys_disk_info(d, f, i)
+                for i, (d, f) in enumerate(vinfo))
