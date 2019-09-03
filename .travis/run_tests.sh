@@ -40,7 +40,7 @@ then
 	source ${TRAVIS_BUILD_DIR}/osx_venv/bin/activate
 fi
 
-pip install psutil pytest-cov coveralls || fail "Failed to install unit test dependencies"
+pip install psutil pytest-cov coveralls trustme || fail "Failed to install unit test dependencies"
 
 # Try to simply import the plugin modules
 # This increases our coverage by a not-too-small amount

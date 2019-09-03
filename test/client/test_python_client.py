@@ -629,4 +629,4 @@ class CommandLineTest(ngamsTestSuite):
 
         # Wrong subscriptions: missing URL, URL scheme not supported
         self.assert_client_fails('SUBSCRIBE')
-        self.assert_client_fails('SUBSCRIBE', '--url', 'https://somewhere:8907/QARCHIVE')
+        self.assert_client_fails('SUBSCRIBE', '--url', 'ftp://somewhere:8907/QARCHIVE')

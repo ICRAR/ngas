@@ -34,10 +34,22 @@ This module contains the Test Suite for the SUBSCRIBE Command.
 import base64
 import contextlib
 import functools
+import os
 import time
+import unittest
+
+import six
+import requests
+import trustme
 
 from ngamsLib import ngamsHttpUtils
-from .ngamsTestLib import ngamsTestSuite, tmp_path
+from ngamsLib.ngamsCore import getHostName
+from .ngamsTestLib import ngamsTestSuite, tmp_path, genTmpFilename
+
+try:
+    import ssl
+except ImportError:
+    ssl = None
 
 class ngamsSubscriptionTest(ngamsTestSuite):
     """
@@ -52,12 +64,15 @@ class ngamsSubscriptionTest(ngamsTestSuite):
     - Test UNSUBSCRIBE Command.
     """
 
-    def _prep_subscription_cluster(self, *orig_server_list):
+    def _prep_subscription_cluster(self, *orig_server_list, **kwargs):
 
         # The current subscription code requires a local user named 'ngas-int',
         # regardless of whether remote authentication is enabled or not
         # To make things simple we add the user to all servers of the cluster
         ngas_int = ('Name', 'ngas-int'), ('Password', base64.b64encode(b'ngas-int'))
+        cert_file = kwargs.pop("cert_file", None)
+        if kwargs:
+            raise ValueError("The arguments {} are not handled".format(kwargs))
         server_list = []
         for srvInfo in orig_server_list:
             port, cfg_pars, send_archive_evt = srvInfo, [], False
@@ -69,7 +84,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                 cfg_pars.append(('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'test.ngamsTestLib.SenderHandler'))
             server_list.append((port, cfg_pars))
 
-        return self.prepCluster(server_list)
+        return self.prepCluster(server_list, cert_file=cert_file)
 
     def test_basic_subscription(self):
 
@@ -254,14 +269,13 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             status = self.subscribe_fail(url)
             self.assertIn('no netloc found', status.getMessage().lower())
 
-        # Scheme is actually not http
+        # Scheme is actually not http or https
         for url in (
             "ftp://host:port/path", # ftp scheme not allowed
-            "https://host/path", # https not allowed
             "file://hostname:port/somewhere/over/the/rainbow" # file not allowed
             ):
             status = self.subscribe_fail(url)
-            self.assertIn('only http:// scheme allowed', status.getMessage().lower())
+            self.assertIn('only http or https scheme allowed', status.getMessage().lower())
 
     def test_create_remote_subscriptions(self):
         """
@@ -321,3 +335,57 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                 self.retrieve(8889, fname, fileVersion=2, targetFile=tmp_path())
         finally:
             subscription_listener.close()
+
+    @unittest.skipIf(ssl is None, "Need ssl module for this test to run")
+    def test_https_subscription(self):
+        ca = trustme.CA()
+        with ca.cert_pem.tempfile() as ca_temp_path:
+            os.environ["NGAS_CA_PATH"] = ca_temp_path
+            server_cert = ca.issue_cert(
+                u"localhost", six.u(getHostName()), u"127.0.0.1",
+            )
+            cert_file = genTmpFilename(suffix='pem')
+            server_cert.private_key_and_cert_chain_pem.write_to_path(cert_file)
+            # We configure the second server to send notifications via socket
+            # to the listener we start later
+            self._prep_subscription_cluster(8778, (8779, [], True), cert_file=cert_file)
+            # Initial archiving
+            self.qarchive(8778, 'src/SmallFile.fits', mimeType='application/octet-stream')
+
+            # Version 2 of the file should only exist after
+            # subscription transfer is successful.
+            self.retrieve_fail(8779, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
+
+            # Create listener that should get information when files get archives
+            # in the second server (i.e., the one on the receiving end of the subscription)
+            subscription_listener = self.notification_listener()
+
+            # Create subscription
+            params = {'url': 'https://localhost:8779/QARCHIVE',
+                      'subscr_id': 'HERE-TO-THERE',
+                      'priority': 1,
+                      'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
+                      'concurrent_threads': 1}
+
+            self.assertEqual(
+                requests.get(
+                    "https://127.0.0.1:8778/SUBSCRIBE", params=params,
+                    verify=ca_temp_path,
+                ).status_code, 200
+            )
+
+            # Do not like sleeps but xfer should happen immediately.
+            try:
+                archive_evt = subscription_listener.wait_for_file(60)
+            finally:
+                subscription_listener.close()
+            self.assertIsNotNone(archive_evt)
+
+            self.assertEqual(2, archive_evt.file_version)
+            self.assertEqual('SmallFile.fits', archive_evt.file_id)
+
+            self.retrieve(8779, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
+
+        del os.environ["NGAS_CA_PATH"]
+        # Note that as the cleanup will run here, the cleanup via offline will
+        # fail due to unknown CA, so the servers will be killed instead
