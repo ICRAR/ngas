@@ -71,11 +71,15 @@ ssh localhost ls || fail "Testing ssh localhost failed"
 # Install bbcp
 # After compilation we put it in the PATH, then go back to where we were
 cd ../
-git clone http://www.slac.stanford.edu/~abh/bbcp/bbcp.git || fail "Failed to clone bbcp"
-cd bbcp/src
-make all || fail "Failed to build bbcp"
-sudo cp $PWD/../bin/`../MakeSname`/bbcp /usr/local/bin || fail "Failed to copy bbcp to /usr/local/bin"
-bbcp --help > /dev/null || fail "bbcp failed to run with --help"
+git clone http://www.slac.stanford.edu/~abh/bbcp/bbcp.git
+if [ $? -eq 0 ]; then
+	cd bbcp/src
+	make all || fail "Failed to build bbcp"
+	sudo cp $PWD/../bin/`../MakeSname`/bbcp /usr/local/bin || fail "Failed to copy bbcp to /usr/local/bin"
+	bbcp --help > /dev/null || fail "bbcp failed to run with --help"
+else
+	echo "Failed to clone bbcp, testing proceeding without bbcp" 1>&2
+fi
 cd ${TRAVIS_BUILD_DIR}
 
 # In OSX we need to brew install some things
