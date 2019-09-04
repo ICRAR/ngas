@@ -6,7 +6,7 @@ SubState:
 DiskStatus:
 DiskId:                             %NGAS_ROOT_DISK_ID%-FitsStorage1-Rep-2
 Archive:                            ESO-ARCHIVE
-Type:                               TEST-TYPE
+Type:                               Rep
 Manufacturer:                       TEST-MANUFACTURER
 LogicalName:                        FITS-R-000001
 SlotId:                             

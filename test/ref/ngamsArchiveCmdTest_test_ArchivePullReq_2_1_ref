@@ -5,9 +5,9 @@ SubState:                           IDLE
 DiskStatus:
 DiskId:                             %NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1
 Archive:                            ESO-ARCHIVE
-Type:                               TEST-TYPE
+Type:                               Main
 Manufacturer:                       TEST-MANUFACTURER
-SlotId:                             1
+SlotId:                             FitsStorage1-Main-1
 Mounted:                            1
 MountPoint:                         %NGAS_ROOT%/FitsStorage1-Main-1
 NumberOfFiles:                      1

@@ -401,7 +401,7 @@ def ngamsMount(srvObj,
     Returns:       Void.
     """
     # Get information about this host.
-    hostInfo = srvObj.getDb().getHostInfoFromHostIds([getHostName()])
+    hostInfo = srvObj.getDb().getHostInfoFromHostIds([srvObj.host_id])
     if (len(hostInfo) != 1):
         errMsg = "Problem querying information about host: " + getHostName() +\
                  " from the NGAS DB."
@@ -411,7 +411,8 @@ def ngamsMount(srvObj,
                       unpackFromSqlQuery(hostInfo[0])
     slotIds.sort()
     for slotId in slotIds:
-        if (not diskDic.has_key(slotId)): continue
+        if slotId not in diskDic:
+            continue
         #####entry = [diskDic[slotId].getDeviceName(),
         #####         diskDic[slotId].getMountPoint(),
         #####         "auto", "noauto,user", "0", "0"]

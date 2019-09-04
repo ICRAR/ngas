@@ -44,10 +44,12 @@ import gzip
 import logging
 import multiprocessing.pool
 import os
+import pickle
 import shutil
 import signal
 import smtpd
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -60,13 +62,15 @@ import astropy.io.fits as pyfits
 import pkg_resources
 import psutil
 import six
-from six.moves import zip_longest
+from six.moves import zip_longest, socketserver
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, utils
 from ngamsLib.ngamsCore import getHostName, rmFile, \
     NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
-    execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601, getDiskSpaceAvail
+    execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601, getDiskSpaceAvail,\
+    checkCreatePath
 from ngamsPClient import ngamsPClient
+from ngamsServer import volumes, ngamsServer
 
 
 logger = logging.getLogger(__name__)
@@ -80,6 +84,9 @@ logging_levels = {
     logging.NOTSET: 5,
 }
 
+# The environment-dependent values
+_tmp_root_base = os.environ.get('NGAS_TESTS_TMP_DIR_BASE', '')
+_noCleanUp   = int(os.environ.get('NGAS_TESTS_NO_CLEANUP', 0))
 
 # Pool used to start/shutdown servers in parallel
 srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
@@ -88,7 +95,6 @@ srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
 # under 'tmp' relative to the cwd. We now instead try different approaches,
 # using a temporary directory under the system's tmp directory,
 # or under /dev/shm which would yield faster test runs
-_tmp_root_base = os.environ.get('NGAS_TESTS_TMP_DIR_BASE', '')
 if not _tmp_root_base:
     _tmp_root_base = tempfile.gettempdir()
     if os.path.isdir('/dev/shm') and getDiskSpaceAvail('/dev/shm') > 1024:
@@ -220,29 +226,6 @@ def waitReqCompl(clientObj,
         time.sleep(0.100)
     errMsg = "Timeout waiting for request: %s to finish"
     raise Exception(errMsg % (requestId,))
-
-
-_noCleanUp   = int(os.environ.get('NGAS_TESTS_NO_CLEANUP', 0))
-def setNoCleanUp(noCleanUp):
-    """
-    Set the No Clean Up Flag.
-
-    noCleanUp:     New value for flag (integer/0|1).
-
-    Returns:       Void.
-    """
-    global _noCleanUp
-    _noCleanUp = noCleanUp
-
-
-def getNoCleanUp():
-    """
-    Return the No Clean Up Flag.
-
-    Returns:    No Clean Up Flag (integer/0|1).
-    """
-    global _noCleanUp
-    return _noCleanUp
 
 
 def cmpFiles(refFile,
@@ -573,6 +556,66 @@ def unzip(infile, outfile):
 # END: Utility functions
 ###########################################################################
 
+
+# The plug-in that we configure the subscriber server with, so we know when
+# an archiving has taken place on the subscription receiving end
+class SenderHandler(object):
+
+    def handle_event(self, evt):
+
+        # pickle evt as a normal tuple and send it over to the test runner
+        evt = pickle.dumps(tuple(evt))
+
+        # send this to the notification_srv
+        try:
+            s = socket.create_connection(('127.0.0.1', 8887), timeout=5)
+            s.send(struct.pack('!I', len(evt)))
+            s.send(evt)
+            s.close()
+        except socket.error as e:
+            print(e)
+
+# A small server that receives the archiving event and sets a threading event
+class notification_srv(socketserver.TCPServer):
+
+    allow_reuse_address = True
+
+    def __init__(self, recvevt):
+        socketserver.TCPServer.__init__(self, ('127.0.0.1', 8887), None)
+        self.recvevt = recvevt
+        self.archive_evt = None
+
+    def finish_request(self, request, _):
+        l = struct.unpack('!I', request.recv(4))[0]
+        self.archive_evt = ngamsServer.archive_event(*pickle.loads(request.recv(l)))
+        self.recvevt.set()
+
+# A class that starts the notification server and can wait until it receives
+# an archiving event
+class notification_listener(object):
+
+    def __init__(self):
+        self.closed = False
+        self.recevt = threading.Event()
+        self.server = None
+        self.server = notification_srv(self.recevt)
+
+    def wait_for_file(self, timeout):
+        self.server.timeout = timeout
+        self.server.handle_request()
+        return self.server.archive_evt
+
+    def close(self):
+        if self.closed:
+            return
+        if self.server:
+            self.server.server_close()
+            self.server = None
+            self.closed = True
+
+    __del__ = close
+
+
 _to_email_message = email.message_from_string
 if six.PY3:
     _to_email_message = email.message_from_bytes
@@ -594,8 +637,11 @@ class InMemorySMTPServer(smtpd.SMTPServer):
         self.port = port
         self.messages = []
         # email sending on the server can be asynchronous from the instructions
-        # used to trigger them in the tests
+        # used to trigger them in the tests. We tried using only a Condition
+        # instead of a Condition/event pair, but Condition.wait() didn't signal
+        # timeouts until python 3.2
         self.recv_cond = threading.Condition()
+        self.recv_evt = threading.Event()
         self.thread = threading.Thread(target=asyncore.loop, args=(0.1,))
         self.thread.daemon = True
         self.thread.start()
@@ -603,8 +649,10 @@ class InMemorySMTPServer(smtpd.SMTPServer):
     def pop(self, timeout=10):
         with self.recv_cond:
             while not self.messages:
-                if not self.recv_cond.wait(timeout=timeout):
+                self.recv_cond.wait(timeout=timeout)
+                if not self.recv_evt.is_set():
                     raise RuntimeError('email expected but none arrived')
+                self.recv_evt.clear()
             return _to_email_message(self.messages.pop().data)
 
     def close(self):
@@ -616,6 +664,7 @@ class InMemorySMTPServer(smtpd.SMTPServer):
     def process_message(self, peer, mailfrom, rcpttos, data, **_):
         with self.recv_cond:
             self.messages.append(InMemorySMTPServer.message(mailfrom, rcpttos, data))
+            self.recv_evt.set()
             self.recv_cond.notify_all()
 
 ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir', 'cfg_file', 'daemon'])
@@ -716,7 +765,10 @@ class ngamsTestSuite(unittest.TestCase):
         if hasattr(ngamsPClient.ngamsPClient, name):
             return functools.partial(self._assert_client_call, name,
                                      expectedStatus=expected_status)
-        raise AttributeError
+        raise AttributeError(name)
+
+    def load_dom(self, fname):
+        return xml.dom.minidom.parseString(loadFile(fname))
 
     def start_smtp_server(self):
         if self.smtp_server:
@@ -740,7 +792,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         new_db = xml.dom.minidom.parseString(os.environ['NGAS_TESTDB'])
         new_db.documentElement.attributes['Id'].value = db_id_attr
-        root = xml.dom.minidom.parseString(loadFile(cfg_fname)).documentElement
+        root = self.load_dom(cfg_fname).documentElement
         for n in root.childNodes:
             if n.localName != 'Db':
                 continue
@@ -751,6 +803,66 @@ class ngamsTestSuite(unittest.TestCase):
             return _smtp_aware(ngamsConfig.ngamsConfig().load(cfg_filename, check))
 
         raise Exception('Db element not found in original configuration')
+
+    def _prepare_volume(self, voldir, disk_type, manufacturer):
+        if os.path.exists(voldir):
+            return
+        checkCreatePath(voldir)
+        disk_id = as_ngas_disk_id(voldir)
+        volumes.prepare_volume_info_file(voldir, disk_id=disk_id,
+                                         disk_type=disk_type,
+                                         manufacturer=manufacturer)
+
+    def _prepare_volumes(self, cfg):
+        for slot_id in filter(None, cfg.getSlotIds()):
+            sset = cfg.getStorageSetFromSlotId(slot_id)
+            disk_type = 'Main' if sset.getMainDiskSlotId() == slot_id else 'Rep'
+            voldir = os.path.join(cfg.getVolumeDirectory(), slot_id)
+            self._prepare_volume(voldir, disk_type, 'TEST-MANUFACTURER')
+
+    def start_volumes_server(self):
+
+        num_volumes = 6
+        num_ssets = num_volumes // 2
+
+        # Create volumes under NGAS_ROOT/volumes
+        root_dir = tmp_path('NGAS')
+        for i in range(num_volumes):
+            voldir = os.path.join(root_dir, 'volumes', 'Volume%03d' % (i + 1))
+            self._prepare_volume(voldir, 'testtype%d' % (i + 1), 'testmanu%d' % (i + 1))
+
+        # Produce a configuration declaring n/2 storage sets for these volumes
+        dom = self.load_dom(self.resource('src/ngamsCfg.xml'))
+        ssets = dom.documentElement.getElementsByTagName('StorageSets')[0]
+        for sset in ssets.getElementsByTagName('StorageSet'):
+            ssets.removeChild(sset)
+        for i in range(num_ssets):
+            sset = dom.createElement('StorageSet')
+            ssets.appendChild(sset)
+            for name, value in (('StorageSetId', 'StorageSet%03d' % (i + 1)),
+                                ('MainDiskSlotId', 'Volume%03d' % (i * 2 + 1)),
+                                ('RepDiskSlotId', "Volume%03d" % (i * 2 + 2)),
+                                ('Mutex', '1'), ('Synchronize', '1')):
+                attr = dom.createAttribute(name)
+                sset.setAttributeNode(attr)
+                attr.value = value
+
+        # Make all streams use all storage sets
+        for stream in dom.documentElement.getElementsByTagName('Streams')[0].getElementsByTagName('Stream'):
+            for sset_ref in stream.getElementsByTagName('StorageSetRef'):
+                stream.removeChild(sset_ref)
+            for i in range(num_ssets):
+                sset_ref = dom.createElement('StorageSetRef')
+                attr = dom.createAttribute('StorageSetId')
+                attr.value = 'StorageSet%03d' % (i + 1)
+                sset_ref.setAttributeNode(attr)
+                stream.appendChild(sset_ref)
+
+        # Create configuration, start server.
+        cfg_fname = save_to_tmp(dom.toprettyxml(), prefix='volumes_cfg_', suffix='.xml')
+        return self.prepExtSrv(delDirs=0, cfgFile=cfg_fname,
+                               cfgProps=(('NgamsCfg.Server[1].VolumeDirectory', 'volumes'),))
+
 
     def prepExtSrv(self,
                    port = 8888,
@@ -849,8 +961,9 @@ class ngamsTestSuite(unittest.TestCase):
             logger.debug("Clearing NGAS DB ...")
             delNgasTbls(dbObj)
 
-        # Point the configuration to the root directory
+        # Prepare volume directories and point the configuration to the root directory
         tmpCfg = self.point_to_ngas_root(cfgObj, root_dir)
+        self._prepare_volumes(cfgObj)
 
         # Execute the server as an external process.
         if daemon:
@@ -925,7 +1038,7 @@ class ngamsTestSuite(unittest.TestCase):
                     continue
 
                 # We are having this funny situation in MacOS builds, when
-                # intermitently the client times out while trying to connect
+                # intermittently the client times out while trying to connect
                 # to the server. This happens very rarely, but when it does it
                 # always seems to coincide with the moment the server starts
                 # listening for connections.
@@ -963,8 +1076,17 @@ class ngamsTestSuite(unittest.TestCase):
         self._add_client(port)
         return (cfgObj, dbObj)
 
+    def restart_last_server(self, before_restart=None, start=None, **kwargs):
+        """Safely restarts the last server that was started"""
+        self.termExtSrv(self.extSrvInfo.pop(), keep_root=True)
+        if before_restart:
+            before_restart()
+        kwargs['delDirs'] = 0
+        kwargs['clearDb'] = 0
+        start = start or self.prepExtSrv
+        return start(**kwargs)
 
-    def termExtSrv(self, srvInfo, auth=None):
+    def termExtSrv(self, srvInfo, auth=None, keep_root=_noCleanUp):
         """
         Terminate an externally running server.
         """
@@ -1053,7 +1175,7 @@ class ngamsTestSuite(unittest.TestCase):
             logger.exception("Error while finishing server process %d, port %d", srvProcess.pid, port)
             raise
         finally:
-            if ((not getNoCleanUp()) and rootDir):
+            if not keep_root and rootDir:
                 shutil.rmtree(rootDir, True)
 
     def terminateAllServer(self):
@@ -1061,6 +1183,9 @@ class ngamsTestSuite(unittest.TestCase):
         for srv_info in self.extSrvInfo:
             self._remove_client(srv_info.port)
         self.extSrvInfo = []
+
+    def notification_listener(self):
+        return notification_listener()
 
     def setUp(self):
         # Make sure there the temporary directory is there
@@ -1077,7 +1202,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:   Void.
         """
-        if (not getNoCleanUp()):
+        if not _noCleanUp:
             for d in self.__mountedDirs:
                 execCmd("sudo /bin/umount %s" % (d,), 0)
 
@@ -1087,7 +1212,7 @@ class ngamsTestSuite(unittest.TestCase):
             self.smtp_server.close()
 
         # Remove temporary files
-        if (not getNoCleanUp()):
+        if not _noCleanUp:
             shutil.rmtree(tmp_root, True)
 
         # There's this file that gets generated by many tests, so we clean it up
@@ -1627,7 +1752,7 @@ class ngamsTestSuite(unittest.TestCase):
             if nodeSusp:
                 logger.info("Server suspended itself after: %.3fs",
                             (time.time() - startTime))
-                return 1
+                return time.time()
             else:
                 time.sleep(0.1)
 

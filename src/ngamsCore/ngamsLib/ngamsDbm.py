@@ -375,4 +375,13 @@ class ngamsDbm:
 
         return self.__dbmObj.iteritems()
 
+def enumerate_to_dbm(name, iterable, **kwargs):
+    """iterable -> ngamsDbm({0: element1, 1: element2...})"""
+    kwargs['writePerm'] = 1
+    dbm = ngamsDbm(name, **kwargs)
+    for i, o in enumerate(iterable):
+        dbm.add(str(i), o)
+    dbm.sync()
+    return dbm
+
 # EOF

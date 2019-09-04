@@ -20,20 +20,21 @@
 #    MA 02111-1307  USA
 #
 """
-Contains the Log Definition handling classes.
-
-These were initially part of the "pcc" python package, but after the big pcc
-cleanup that happened in NGAS these were the only pcc-related classes handling
-around and thus were incorporated into NGAS and simplified a bit
+Contains several logging utilities, such as NGAS log definition loading logic
+and file rotation with renaming.
 """
-
 import collections
+import logging.handlers
+import os
 import re
+import shutil
+import time
 import xml.dom.minidom
 
 import six
 
-#: A single log definition
+
+# A single log definition
 log_def = collections.namedtuple('log_def', 'id number text type description')
 
 class LogDefHolder(object):
@@ -120,3 +121,95 @@ class LogDefHolder(object):
                 sanitized.append(p)
             return text % tuple(sanitized)
         return text
+
+class RenamedRotatingFileHandler(logging.handlers.BaseRotatingHandler):
+    """
+    Logging handler that rotates periodically a logfile using a new name.
+    At close() time it also makes sure the current logfile is also rotated,
+    whatever its size.
+
+    This class is basically a strip-down version of TimedRotatingFileHandler,
+    without all the complexities of different when/interval combinations, etc.
+    """
+
+    def __init__(self, fname, interval, rotated_fname_fmt):
+        logging.handlers.BaseRotatingHandler.__init__(self, fname, mode='a')
+        self.rotated_fname_fmt = rotated_fname_fmt
+        self.interval = interval
+        self.rolloverAt = self.interval + time.time()
+
+    def shouldRollover(self, record):
+        return time.time() >= self.rolloverAt
+
+    def _rollover(self):
+        if not os.path.exists(self.baseFilename):
+            return
+        if self.stream:
+            self.stream.close()
+        # We import ngamsCore here to avoid a top-level circural dependency
+        # In the future that circular dependency would disappear if genLog lived
+        # in this module
+        from . import ngamsCore
+        # It's time to rotate the current Local Log File.
+        dirname = os.path.dirname(self.baseFilename)
+        rotated_name = self.rotated_fname_fmt % (ngamsCore.toiso8601(),)
+        rotated_name = os.path.normpath(os.path.join(dirname, rotated_name))
+        shutil.move(self.baseFilename, rotated_name)
+
+    def doRollover(self):
+        self._rollover()
+        self.stream = self._open()
+        self.rolloverAt = time.time() + self.interval
+
+    def close(self):
+        logging.handlers.BaseRotatingHandler.close(self)
+        self.stream = None
+        self.acquire()
+        try:
+            self._rollover()
+        finally:
+            self.release()
+
+def get_formatter(fmt=None, include_thread_name=False, include_pid=False):
+    """Get a "standard" NGAS log formatter, so logs produced by different tools
+    look similar"""
+    if fmt and (include_thread_name or include_pid):
+        raise ValueError('no other argument allowed when fmt is given')
+    if not fmt:
+        fmt = '%(asctime)-15s.%(msecs)03d '
+        if include_pid:
+            fmt += '[%(process)5d] '
+        if include_thread_name:
+            fmt += '[%(threadName)10.10s] '
+        fmt += '[%(levelname)6.6s] %(name)s#%(funcName)s:%(lineno)s %(message)s'
+    datefmt = '%Y-%m-%dT%H:%M:%S'
+    formatter = logging.Formatter(fmt, datefmt=datefmt)
+    formatter.converter = time.gmtime
+    return formatter
+
+class ForwarderHandler(logging.Handler):
+    """A handler that formats log records for forwarding to different processes.
+    The actual forwarding function is given by the user"""
+
+    def __init__(self, fwd):
+        super(ForwarderHandler, self).__init__()
+        self.fwd = fwd
+
+    def _format_record(self, record):
+        # ensure that exc_info and args
+        # have been stringified. Removes any chance of
+        # unpickleable things inside and possibly reduces
+        # message size sent over the pipe.
+        if record.args:
+            record.msg = record.msg % record.args
+            record.args = None
+        if record.exc_info:
+            self.format(record)
+            record.exc_info = None
+        return record
+
+    def emit(self, record):
+        try:
+            self.fwd(self._format_record(record))
+        except:
+            self.handleError(record)

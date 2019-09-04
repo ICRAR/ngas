@@ -34,9 +34,7 @@ This module contains the Test Suite for the Data Consistency Checking Thread.
 import os
 import time
 
-from ngamsLib.ngamsCore import checkCreatePath
-from .ngamsTestLib import ngamsTestSuite, getNoCleanUp, setNoCleanUp, \
-    tmp_path
+from .ngamsTestLib import ngamsTestSuite, tmp_path
 
 
 class ngamsDataCheckingThreadTest(ngamsTestSuite):
@@ -105,18 +103,13 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         for _ in range(3):
             self.archive("src/SmallFile.fits")
 
-        # Cleanly shut down the server, and wait until it's completely down
-        old_cleanup = getNoCleanUp()
-        setNoCleanUp(True)
-        self.termExtSrv(self.extSrvInfo.pop())
-        setNoCleanUp(old_cleanup)
-
         # Potentially corrupt the NGAS data somehow
-        if corrupt:
-            corrupt(cfg, db)
+        def before_restart():
+            if corrupt:
+                corrupt(cfg, db)
 
         # Restart and see what does the data checker thread find
-        cfg, db = self.start_srv(delDirs=0, clearDb=0)
+        cfg, db = self.restart_last_server(before_restart=before_restart, start=self.start_srv)
         self.wait_and_count_checked_files(cfg, db, registered, unregistered, bad)
 
     def test_normal_case(self):
@@ -124,9 +117,12 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
 
     def test_unregistered(self):
 
-        # Manually copy a file into the disk
-        trgFile = tmp_path("NGAS/FitsStorage1-Main-1/SmallFile.fits")
-        checkCreatePath(os.path.dirname(trgFile))
+        # Manually copy a file into the disk. We need to manually prepare the
+        # directory as a volume first so when the server starts it can see the
+        # directory as a volume
+        voldir = tmp_path("NGAS/FitsStorage1-Main-1")
+        self._prepare_volume(voldir, 'Main', 'Manufacturer')
+        trgFile = os.path.join(voldir, "SmallFile.fits")
         self.cp("src/SmallFile.fits", trgFile)
 
         # It should appear as unregistered when the server checks it

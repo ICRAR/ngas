@@ -21,7 +21,7 @@
     <MimeTypeMap Extension="hfits" MimeType="application/x-hfits"/>
     <MimeTypeMap Extension="nglog.gz" MimeType="application/x-nglog"/>
   </MimeTypes>
-  <Notification Active="1" Id="Notification-Test" MaxRetentionSize="1000" MaxRetentionTime="00T00:30:00" Sender="ngast@localhost" SmtpHost="127.0.0.1">
+  <Notification Active="0" Id="Notification-Test" MaxRetentionSize="1000" MaxRetentionTime="00T00:30:00" Sender="ngast@localhost" SmtpHost="127.0.0.1">
     <AlertNotification>
       <EmailRecipient Address="plone@localhost"/>
     </AlertNotification>
@@ -66,13 +66,13 @@
       <MimeType Name="application/x-cfits"/>
     </PlugIn>
   </Register>
-  <Server ArchiveName="ESO-ARCHIVE" BlockSize="65536" Id="Server-Sim" IpAddress="127.0.0.1" MaxSimReqs="30" PortNo="8888" ProxyMode="1" RootDirectory="." Simulation="1" SwVersion=""/>
+  <Server ArchiveName="ESO-ARCHIVE" BlockSize="65536" Id="Server-Sim" IpAddress="127.0.0.1" MaxSimReqs="30" PortNo="8888" ProxyMode="1" RootDirectory="." SwVersion=""/>
   <StorageSets Id="StorageSets-PATA-8-Dbl">
-    <StorageSet DiskLabel="FITS" MainDiskSlotId="1" Mutex="0" RepDiskSlotId="2" StorageSetId="FitsStorage1" Synchronize="1"/>
-    <StorageSet MainDiskSlotId="3" Mutex="0" RepDiskSlotId="4" StorageSetId="FitsStorage2" Synchronize="1"/>
-    <StorageSet MainDiskSlotId="5" Mutex="0" RepDiskSlotId="6" StorageSetId="FitsStorage3" Synchronize="1"/>
-    <StorageSet MainDiskSlotId="7" Mutex="0" RepDiskSlotId="8" StorageSetId="PafStorage" Synchronize="1"/>
-    <StorageSet MainDiskSlotId="9" Mutex="0" RepDiskSlotId="10" StorageSetId="LogStorage" Synchronize="1"/>
+    <StorageSet DiskLabel="FITS" MainDiskSlotId="FitsStorage1-Main-1" Mutex="0" RepDiskSlotId="FitsStorage1-Rep-2" StorageSetId="FitsStorage1" Synchronize="1"/>
+    <StorageSet MainDiskSlotId="FitsStorage2-Main-3" Mutex="0" RepDiskSlotId="FitsStorage2-Rep-4" StorageSetId="FitsStorage2" Synchronize="1"/>
+    <StorageSet MainDiskSlotId="FitsStorage3-Main-5" Mutex="0" RepDiskSlotId="FitsStorage3-Rep-6" StorageSetId="FitsStorage3" Synchronize="1"/>
+    <StorageSet MainDiskSlotId="PafStorage-Main-7" Mutex="0" RepDiskSlotId="PafStorage-Rep-8" StorageSetId="PafStorage" Synchronize="1"/>
+    <StorageSet MainDiskSlotId="LogStorage-Main-9" Mutex="0" RepDiskSlotId="LogStorage-Rep-10" StorageSetId="LogStorage" Synchronize="1"/>
   </StorageSets>
   <Streams Id="Streams-4-Dbl">
     <Stream MimeType="application/octet-stream" PlugIn="ngamsGenDapi">
@@ -110,5 +110,5 @@
   <SubscriptionDef AutoUnsubscribe="0" BackLogExpTime="28T00:00:00" Enable="0" Id="SubscriptionDef-Test" SuspensionTime="0T00:03:00">
     <Subscription FilterPlugIn="ngamsMimeTypeFilterPI" FilterPlugInPars="mime_types=image/x-fits|application/x-cfits|application/octet-stream" HostId="DEFINE" PortNo="8888" Priority="0" SubscriberUrl="http://DEFINE:8888/ARCHIVE"/>
   </SubscriptionDef>
-  <SystemPlugIns DiskSyncPlugIn="ngamsDiskSyncPlugIn" DiskSyncPlugInPars="controllers=1/2" Id="SystemPlugIns-Std" LabelPrinterPlugIn="ngamsNullLabelPrinterPlugIn" LabelPrinterPlugInPars="-" OfflinePlugIn="ngamsLinuxOfflinePlugIn" OfflinePlugInPars="unmount=0" OnlinePlugIn="ngamsLinuxOnlinePlugIn" OnlinePlugInPars="uri=http://localhost:1080/technical.html,                                    module=3w-xxxx,old_format=1"/>
+  <SystemPlugIns DiskSyncPlugIn="ngamsDiskSyncPlugIn" DiskSyncPlugInPars="controllers=1/2" Id="SystemPlugIns-Std" LabelPrinterPlugIn="ngamsNullLabelPrinterPlugIn" LabelPrinterPlugInPars="-" OfflinePlugIn="ngamsGenericOfflinePlugIn" OfflinePlugInPars="unmount=0" OnlinePlugIn="ngamsGenericOnlinePlugIn" OnlinePlugInPars="-"/>
 </NgamsCfg>

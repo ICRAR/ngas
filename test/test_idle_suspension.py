@@ -37,7 +37,8 @@ import time
 
 from six.moves.urllib import parse as urlparse  # @UnresolvedImport
 
-from ngamsLib.ngamsCore import getHostName, NGAMS_CHECKFILE_CMD, rmFile
+from ngamsLib.ngamsCore import getHostName, NGAMS_CHECKFILE_CMD, rmFile,\
+    fromiso8601
 from .ngamsTestLib import ngamsTestSuite, loadFile, genTmpFilename, unzip, tmp_path
 
 
@@ -577,20 +578,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         # Archive two files into subnode 8001 and wait for it to go to suspended state
         self.archive(8001, "src/TinyTestFile.fits")
         self.archive(8001, "src/SmallFile.fits")
-        self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
-
-        # Get timestamp for the log indicating that the node suspended itself.
-        suspLog = "NG/AMS Server %s suspending itself" % subNode1
-        subNodeLog = loadFile(subNode1Log).split("\n")
-        suspLogEntry = ""
-        for line in subNodeLog:
-            if (line.find(suspLog) != -1):
-                suspLogEntry = line
-                break
-        if (not suspLogEntry):
-            self.fail("Did not find expected log entry in sub-node " +\
-                      "log file: " + suspLog)
-        suspLogTime = suspLogEntry.split(" ")[0]
+        suspension_time = self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
 
         # Now we have to wait until the sub-node is woken up for DCC.
         self.waitTillWokenUp(dbConObj, subNode1, 60, susp_nodes)
@@ -611,16 +599,13 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         dccStatLog = None
         while (time.time() - startTime) < (datacheck_period * 1.5):
 
-            lines = loadFile(subNode1Log).splitlines()
-            lines.reverse()
-
             datacheck_time = None
-            for line in lines:
+            for line in reversed(loadFile(subNode1Log).splitlines()):
                 if "NGAMS_INFO_DATA_CHK_STAT" in line:
                     dccStatLog = line
                     datacheck_time = dccStatLog.split(" ")[0]
                     break
-            if datacheck_time and datacheck_time < suspLogTime:
+            if datacheck_time and fromiso8601(datacheck_time) < suspension_time:
                 datacheck_executed = True
                 break
 

@@ -270,7 +270,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         status = ngamsPClient.ngamsPClient(port=8888).\
-                 label("1", getHostName() + ":8888")
+                 label("FitsStorage1-Main-1", getHostName() + ":8888")
         refMsg = "Successfully handled command LABEL"
         self.assertEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "LABEL Command")
