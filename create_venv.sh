@@ -174,11 +174,8 @@ fi
 if [[ "$FABRIC_READY" == "yes" ]]
 then
 	$sourceCommand || error "Failed to source virtualenv"
-	FABRIC=fabric
-	if [ ${PYTHON_VERSION} = "3" ]
-	then
-		FABRIC=fabric3
-	fi
+	# fabric3 now supports both python2 and python3
+	FABRIC=fabric3
 	pip install boto ${FABRIC} || error "Failed to install fabric packages in virtualenv"
 fi
 
