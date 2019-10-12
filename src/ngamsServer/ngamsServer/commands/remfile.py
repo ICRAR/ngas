@@ -35,6 +35,7 @@ import logging
 import os
 
 import six
+from six.moves import filter
 
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsHighLevelLib
 from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, \
@@ -55,39 +56,30 @@ def _remFile(srvObj,
     See documentation for the ngamsRemFileCmd.remFile() function.
     """
     # Check for illegal parameter combinations.
-    if ((not diskId) or (diskId and (not fileId))):
+    if not diskId or not fileId:
         errMsg = "Disk ID: %s, File ID: %s, File Version: %d" %\
                  (diskId, fileId, fileVersion)
         errMsg = genLog("NGAMS_ER_CMD_SYNTAX", [NGAMS_REMFILE_CMD, errMsg])
         raise Exception(errMsg)
 
-    # Temporary DBM to contain SQL info about files concerned by the query.
-    fileListDbmName   = os.path.normpath(tmpFilePat + "_FILE_LIST")
-    fileListDbm       = ngamsDbm.ngamsDbm(fileListDbmName, writePerm = 1)
-
     # Get the information from the DB about the files in question.
     hostId = None
     diskIds = []
     fileIds = []
-    if (diskId):
+    if diskId:
         diskIds = [diskId]
-    elif ((not diskId) and fileId):
+    elif fileId:
         hostId = srvObj.getHostId()
-    if (fileId): fileIds = [fileId]
-    if (fileVersion == -1): fileVersion = None
+    if fileId:
+        fileIds = [fileId]
+    if fileVersion == -1:
+        fileVersion = None
 
-    n_files = 0
-    for f in srvObj.db.getFileSummary1(hostId, diskIds, fileIds, ignore=None):
-        if fileVersion is not None and fileVersion != f[ngamsDbCore.SUM1_VERSION]:
-            continue
-        msg = "Scheduling file with ID: %s/%d on disk with ID: %s for " +\
-              "deletion"
-        logger.debug(msg, f[ngamsDbCore.SUM1_FILE_ID],
-                     f[ngamsDbCore.SUM1_VERSION],
-                     f[ngamsDbCore.SUM1_DISK_ID])
-        fileListDbm.add(str(n_files), f)
-        n_files += 1
-        fileListDbm.sync()
+    files = srvObj.db.getFileSummary1(hostId, diskIds, fileIds, ignore=None)
+    if fileVersion:
+        files = filter(lambda f: fileVersion == f[ngamsDbCore.SUM1_VERSION], files)
+    fileListDbmName   = os.path.normpath(tmpFilePat + "_FILE_LIST")
+    fileListDbm = ngamsDbm.enumerate_to_dbm(fileListDbmName, files)
 
     # Check if the files selected for deletion are available within the NGAS
     # system, in at least 3 copies.

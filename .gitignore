@@ -29,3 +29,5 @@ fabfile/authorized_keys
 # The directory with the HTML report
 # generated with "coverage html"
 htmlcov/
+
+.tox

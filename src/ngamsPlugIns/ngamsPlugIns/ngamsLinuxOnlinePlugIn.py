@@ -57,19 +57,19 @@ def ngamsLinuxOnlinePlugIn(srvObj,
     rootMtPt = srvObj.getCfg().getRootDirectory()
     parDic = ngamsPlugInApi.\
              parseRawPlugInPars(srvObj.getCfg().getOnlinePlugInPars())
-    if (parDic.has_key("module")):
+    if "module" in parDic:
         stat = ngamsLinuxSystemPlugInApi.insMod(parDic["module"])
     else:
         stat = 0
     if (stat == 0):
-        if (parDic.has_key("module")):
+        if "module" in parDic:
             msg = "Kernel module " + parDic["module"] + " loaded"
             logger.info(msg)
 
         # Old format = unfortunately some Disk IDs of WDC/Maxtor were
         # generated wrongly due to a mistake by IBM, which lead to a wrong
         # implementation of the generation of the Disk ID.
-        if (not parDic.has_key("old_format")):
+        if "old_format" not in parDic:
             oldFormat = 0
             raise Warning("Missing Online Plug-In Parameter: old_format=0|1")
         else:
@@ -77,32 +77,21 @@ def ngamsLinuxOnlinePlugIn(srvObj,
 
         # The controllers Plug-In Parameter, specifies the number of controller
         # in the system.
-        if (not parDic.has_key("controllers")):
-            controllers = None
-        else:
-            controllers = parDic["controllers"]
+        controllers = parDic.get('controllers', None)
 
         # Get start index for the 3ware disk devices.
-        if (not parDic.has_key("dev_start_idx")):
-            devStartIdx = "a"
-        else:
-            devStartIdx = parDic["dev_start_idx"]
-
+        devStartIdx = parDic.get("dev_start_idx", 'a')
 
         # AWI: added this to fix problem at the ATF
 
         # Get start index for NGAS disk devices
-        if (not parDic.has_key("ngas_start_idx")):
-            ngasStartIdx = devStartIdx
-        else:
-            ngasStartIdx = parDic["ngas_start_idx"]
-
+        ngasStartIdx = parDic.get("ngas_start_idx", devStartIdx)
 
         # Try first to umount possibly mounted disks (forced).
         ngamsLinuxSystemPlugInApi.umount(rootMtPt)
 
         # Select between 3ware WEB Interface and 3ware Command Line Tool.
-        if (parDic["uri"].find("http") != -1):
+        if 'http' in parDic["uri"]:
             diskDic = ngamsEscaladeUtils.parseHtmlInfo(parDic["uri"], rootMtPt)
         else:
             diskDic = ngamsEscaladeUtils.\

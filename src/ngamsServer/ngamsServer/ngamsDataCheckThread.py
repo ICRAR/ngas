@@ -593,7 +593,7 @@ def _genReport(srvObj, unregistered, diskDic, dbmObjDic, stats):
         # Send Notification Message if needed (only if disks where checked).
         if (len(diskDic.keys())):
             ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_DATA_CHECK,
-                                     "DATA CHECK REPORT", report, [], 1)
+                                     "DATA CHECK REPORT", report, force=1)
 
     # Give out the statistics for the checking.
     msg = genLog("NGAMS_INFO_DATA_CHK_STAT",

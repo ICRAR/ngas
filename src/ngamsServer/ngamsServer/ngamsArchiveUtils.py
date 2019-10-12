@@ -447,7 +447,7 @@ def issueDiskSpaceWarning(srvObj,
                                  "NOTICE: DISK SPACE RUNNING LOW",
                                  msg + "\n\nNote: This is just a notice. " +\
                                  "A message will be send when the disk " +\
-                                 "should be changed.", [], 1)
+                                 "should be changed.", force=1)
 
 
 def checkDiskSpace(srvObj,
@@ -570,7 +570,7 @@ def checkDiskSpace(srvObj,
                    "- Logical Name: " + repDiskInfo.getLogicalName() + "\n" +\
                    "- Slot ID:      " + repDiskInfo.getSlotId() + "\n\n"
         ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_DISK_CHANGE,
-                                 "CHANGE DISK(S)", msg, [], 1)
+                                 "CHANGE DISK(S)", msg, force=1)
 
 
 def postFileRecepHandling(srvObj,
@@ -602,7 +602,7 @@ def postFileRecepHandling(srvObj,
 
     # if checksum is already supplied then do not calculate it from the plugin
     if cksum is None:
-        checksumPlugIn = srvObj.cfg.getCRCVariant()
+        checksumPlugIn = ngamsFileUtils.get_checksum_name(srvObj.cfg.getCRCVariant())
         checksum = ngamsFileUtils.get_checksum(65536, resultPlugIn.getCompleteFilename(), checksumPlugIn)
     else:
         checksum, checksumPlugIn = cksum
@@ -1192,6 +1192,8 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
             errMsg = genLog("NGAMS_WA_BUF_DATA",
                             [reqPropsObj.getFileUri(), str(e)])
             logger.error(errMsg)
+            srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
+            httpRef.send_status(errMsg, status=NGAMS_FAILURE)
         cleanUpStagingArea()
         raise
 
@@ -1211,7 +1213,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     elif crc_name is None:
         cksum = (None, None)
 
-    intestion_rate = archive_result.totaltime / reqPropsObj.getSize()
+    intestion_rate = int(reqPropsObj.getSize() // archive_result.totaltime)
     diskInfo = postFileRecepHandling(srvObj, reqPropsObj, plugin_result,
                                      reqPropsObj.getTargDiskInfo(), cksum=cksum,
                                      sync_disk=sync_disk, ingestion_rate=intestion_rate,

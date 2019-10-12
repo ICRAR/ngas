@@ -66,7 +66,7 @@ In any case, volumes need to be tagged as such
 in order to be recognized by NGAS.
 This is done by placing a small, hidden file in the root
 of the volume containing a random UID for the disk
-using the ``ngasPrepareVolumeNoRoot`` utility.
+using the ``ngas-prepare-volume`` utility.
 
 For example, if the NGAS *root* directory
 is under ``~/NGAS`` and a new volume called
@@ -76,9 +76,10 @@ it can be tagged as such::
  $ cd ~/NGAS
  $ mkdir volume1
  $ cd volume1
- $ python /path/to/ngas-sources/src/ngasUtils/src/ngasPrepareVolumeNoRoot.py --path=$PWD
+ $ ngas-prepare-volume $PWD
 
 Answer Yes and you're done.
+Try running ``ngas-prepare-volume -h`` to list all available options.
 
 To let NGAS know about your volumes check
 the :ref:`config.storage_sets` configuration option.

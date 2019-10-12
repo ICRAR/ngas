@@ -55,9 +55,10 @@ import os
 from six.moves import cPickle as pickle  # @UnresolvedImport
 
 from ngamsLib import ngamsPhysDiskInfo, ngamsPlugInApi
-from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \
+from ngamsServer.volumes import NGAS_VOL_INFO_FILE, \
     loadVolInfoFile, NGAS_VOL_INFO_ID, NGAS_VOL_INFO_IGNORE, NGAS_VOL_INFO_TYPE, \
-    NGAS_VOL_INFO_MANUFACT, notifyRegistrationService
+    NGAS_VOL_INFO_MANUFACT
+from ngamsPlugIns.ngamsGenericPlugInLib import notifyRegistrationService
 
 
 logger = logging.getLogger(__name__)
@@ -85,7 +86,7 @@ def ngamsMWAOnlinePlugIn(srvObj,
     dirList = glob.glob(ngasVolDir + os.sep + "*")
     diskInfoDic = {}
     for dir in dirList:
-        # Check if a '.ngas_volume_id' is found under the directory.
+        # Check if a '.ngas_volume_info' is found under the directory.
         volInfoFile = os.path.\
                       normpath(dir + os.sep + NGAS_VOL_INFO_FILE)
         if (os.path.exists(volInfoFile)):

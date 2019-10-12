@@ -1,6 +1,3 @@
-Content-type: text/plain
-Content-disposition: attachment; filename=CloneStatusReport-%NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1
-
 CLONE STATUS REPORT:
 
 ==Summary:
@@ -16,11 +13,11 @@ Number of Failed Files:     0
 
 Source File                                                            Target File                                                            Status 
 ---------------------------------------------------------------------- ---------------------------------------------------------------------- -------
-%NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/1  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/1  SUCCESS
-%NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/2  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/2  SUCCESS
-%NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/3  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/3  SUCCESS
-%NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/4  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/4  SUCCESS
-%NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/5  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/5  SUCCESS
+[[%-70s %-70s %-7s]]%NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/1 %NGAS_ROOT_DISK_ID%-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/1 SUCCESS
+[[%-70s %-70s %-7s]]%NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/2 %NGAS_ROOT_DISK_ID%-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/2 SUCCESS
+[[%-70s %-70s %-7s]]%NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/3 %NGAS_ROOT_DISK_ID%-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/3 SUCCESS
+[[%-70s %-70s %-7s]]%NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/4 %NGAS_ROOT_DISK_ID%-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/4 SUCCESS
+[[%-70s %-70s %-7s]]%NGAS_ROOT_DISK_ID%-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/5 %NGAS_ROOT_DISK_ID%-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/5 SUCCESS
 -----------------------------------------------------------------------------------------------------------------------------------------------------
 
 ==END

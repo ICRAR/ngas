@@ -34,22 +34,21 @@ Contains the Test Suite for the ARCHIVE Command.
 
 import contextlib
 import functools
-import getpass
 import glob
 import os
 import subprocess
+import time
 import unittest
 from multiprocessing.pool import ThreadPool
 
 from six.moves import cPickle # @UnresolvedImport
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
-    NGAMS_SUCCESS, getDiskSpaceAvail, mvFile
-from ngamsLib import ngamsLib, ngamsStatus, ngamsFileInfo, ngamsHttpUtils
-from ..ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
+    NGAMS_SUCCESS, getDiskSpaceAvail, mvFile, getFileSize
+from ngamsLib import ngamsStatus, ngamsFileInfo, ngamsHttpUtils
+from ..ngamsTestLib import ngamsTestSuite, \
     pollForFile, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, \
-    genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp, \
-    save_to_tmp, tmp_path
+    genTmpFilename, execCmd, save_to_tmp, tmp_path
 from ngamsServer import ngamsFileUtils
 
 
@@ -185,25 +184,17 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Consider to re-implement this Text Case, using the simulated disks in
         the form of file systems in files.
         """
-        testUserEmail = getpass.getuser() + "@" + ngamsLib.getCompleteHostName()
-        cfg = (
-            ("NgamsCfg.Notification[1].Active", "1"),
-            ("NgamsCfg.Notification[1].SmtpHost", "localhost"),
-            ("NgamsCfg.Notification[1].DiskChangeNotification[1].EmailRecipient[1].Address", testUserEmail),
-            ("NgamsCfg.ArchiveHandling[1].FreeSpaceDiskChangeMb", "10000000")
-        )
+
+        self.start_smtp_server()
+        cfg = (("NgamsCfg.ArchiveHandling[1].FreeSpaceDiskChangeMb", "10000000"),)
         _, dbObj = self.prepExtSrv(cfgProps=cfg)
-        flushEmailQueue()
         self.archive("src/SmallFile.fits")
 
         # Check that Disk Change Notification message have been generated.
-        if _checkMail:
-            mailContClean = getEmailMsg()
-            tmpStatFile = "ngamsArchiveCmdTest_test_NormalArchivePushReq_1_tmp"
-            refStatFile = "ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_1_ref"
-            save_to_tmp(tmpStatFile, mailContClean)
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
-                              "Change Notification email msg")
+        msg = self.smtp_server.pop()
+        refStatFile = "ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_1_ref"
+        self.assert_ref_file(refStatFile, msg.get_payload(), msg="Incorrect/missing Disk "+\
+                          "Change Notification email msg")
 
         # Check that DB information is OK (completed=1).
         mainDiskCompl = dbObj.getDiskCompleted(self.ngas_disk_id("FitsStorage1/Main/1"))
@@ -255,25 +246,18 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Consider to re-implement this Text Case, using the simulated disks in
         the form of file systems in files.
         """
-        testUserEmail = getpass.getuser() + "@" + ngamsLib.getCompleteHostName()
-        cfg = (
-            ("NgamsCfg.Notification[1].Active", "1"),
-            ("NgamsCfg.Notification[1].SmtpHost", "localhost"),
-            ("NgamsCfg.Notification[1].DiskSpaceNotification[1].EmailRecipient[1].Address", testUserEmail),
-            ("NgamsCfg.ArchiveHandling[1].MinFreeSpaceWarningMb", "100000")
-        )
+
+        self.start_smtp_server()
+        avail_space = getDiskSpaceAvail(os.path.dirname(tmp_path()), format="MB")
+        cfg = (("NgamsCfg.ArchiveHandling[1].MinFreeSpaceWarningMb", str(int(10 * avail_space))),)
         self.prepExtSrv(cfgProps=cfg)
-        flushEmailQueue()
         self.archive("src/SmallFile.fits")
 
         # Check that Disk Change Notification message have been generated.
-        if _checkMail:
-            mailContClean = getEmailMsg()
-            mailContClean = mailContClean[0:mailContClean.find("space (")]
-            refStatFile = "ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_2_ref"
-            tmpStatFile = save_to_tmp(mailContClean)
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
-                              "Space Notification email msg")
+        msg = self.smtp_server.pop().get_payload()
+        msg = msg[0:msg.find("space (")]
+        self.assert_ref_file("ref/ngamsArchiveCmdTest_test_NormalArchivePushReq_2_ref",
+                             msg, msg="Incorrect/missing Disk Space Notification email msg")
 
 
     def test_NormalArchivePushReq_4(self):
@@ -384,16 +368,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           "Illegal Back-Log Buffered File: %s" %\
                           tmpReqPropObj.getStagingFilename())
 
-        # Cleanly shut down the server, and wait until it's completely down
-        old_cleanup = getNoCleanUp()
-        setNoCleanUp(True)
-        self.termExtSrv(self.extSrvInfo.pop())
-        setNoCleanUp(old_cleanup)
-
         cfgPars = [["NgamsCfg.Permissions[1].AllowArchiveReq", "1"],
                    ["NgamsCfg.ArchiveHandling[1].BackLogBuffering", "1"],
                    ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:05"]]
-        _, dbObj = self.prepExtSrv(delDirs=0, clearDb=0, cfgProps=cfgPars)
+        _, dbObj = self.restart_last_server(cfgProps=cfgPars)
         pollForFile(self.ngas_path("back-log/*"), 0, timeOut=30)
         filePat = self.ngas_path("%s/saf/2001-05-08/1/" +\
                   "TEST.2001-05-08T15:25:00.123.fits.gz")
@@ -793,7 +771,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         #####################################################################
         # Phase 1: Archive data until disk/Slot 1 fills up.
         #####################################################################
-        flushEmailQueue()
+        self.start_smtp_server()
 
         tmpCfgFile = prepCfg("src/ngamsCfg.xml",
                              [["ArchiveHandling[1].FreeSpaceDiskChangeMb","4"],
@@ -847,11 +825,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                               "of NgasDiskInfo File/Main Disk (%s)"%diFiles[0])
         # Check: Email Notification Message is sent indicating to change
         #        only disk/Slot 1.
-        if _checkMail:
-            refStatFile = preFix + "MainDiskSmallerThanRep_1_3_ref"
-            tmpStatFile = save_to_tmp(getEmailMsg())
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
-                              "Change Notification Email Msg")
+        msg = self.smtp_server.pop().get_payload()
+        refStatFile = preFix + "MainDiskSmallerThanRep_1_3_ref"
+        self.assert_ref_file(refStatFile, msg, msg="Incorrect/missing Disk "+\
+                          "Change Notification Email Msg")
         #####################################################################
 
         #####################################################################
@@ -871,11 +848,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                               "of NgasDiskInfo File/Main Disk (%s)"%diFiles[0])
         # Check: That Email Notification sent out indicating to change
         # disk/Slot 3.
-        if _checkMail:
-            refStatFile = preFix + "MainDiskSmallerThanRep_1_6_ref"
-            tmpStatFile = save_to_tmp(getEmailMsg())
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
-                              "Change Notification Email Msg")
+        msg = self.smtp_server.pop().get_payload()
+        refStatFile = preFix + "MainDiskSmallerThanRep_1_6_ref"
+        self.assert_ref_file(refStatFile, msg, msg="Incorrect/missing Disk "+\
+                          "Change Notification Email Msg")
         #####################################################################
 
         #####################################################################
@@ -920,10 +896,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Check: That Email Notification sent out indicating to replace
         #        disk/Slot 5.
-        if _checkMail:
-            refStatFile = preFix + "MainDiskSmallerThanRep_1_9_ref"
-            tmpStatFile = save_to_tmp(getEmailMsg())
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
+        msg = self.smtp_server.pop().get_payload()
+        refStatFile = preFix + "MainDiskSmallerThanRep_1_9_ref"
+        self.assert_ref_file(refStatFile, msg, "Incorrect/missing Disk "+\
                               "Change Notification Email Msg")
         #####################################################################
 
@@ -947,11 +922,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.assert_status_ref_file(diFiles[1], statObj, msg=msg % diFiles[0])
         # Check: That Email Notification sent out indicating to replace
         #        disk/Slot 2.
-        if _checkMail:
-            refStatFile = preFix + "MainDiskSmallerThanRep_1_12_ref"
-            tmpStatFile = save_to_tmp(getEmailMsg())
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
-                              "Change Notification Email Msg")
+        msg = self.smtp_server.pop().get_payload()
+        refStatFile = preFix + "MainDiskSmallerThanRep_1_12_ref"
+        self.assert_ref_file(refStatFile, msg, msg="Incorrect/missing Disk "+\
+                          "Change Notification Email Msg")
         #####################################################################
 
 
@@ -991,13 +965,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             fo.write("TEST/DUMMY REQUEST PROPERTIES FILE: %s" % diskName)
             fo.close()
 
-        # Cleanly shut down the server, and wait until it's completely down
-        old_cleanup = getNoCleanUp()
-        setNoCleanUp(True)
-        self.termExtSrv(self.extSrvInfo.pop())
-        setNoCleanUp(old_cleanup)
-
-        self.prepExtSrv(delDirs=0, clearDb=0)
+        self.restart_last_server()
         badDirPat = self.ngas_path("bad-files/BAD-FILE-*-%s.fits")
         for diskName in diskList:
             badFile = badDirPat % diskName
@@ -1029,14 +997,20 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(srvModule="test.support.ngamsSrvTestKillBeforeArchCleanUp")
+        req_fname = self.ngas_path("FitsStorage1-Main-1/staging/*-SmallFile.fits.pickle")
+
+        # Archive to trigger an auto-kill, then restart the server checking that
+        # the pickle file was produced
         try:
             self.archive("src/SmallFile.fits")
+            self.fail('archive should have failed')
         except:
             pass
-        reqPropStgFile = self.ngas_path("FitsStorage1-Main-1/staging/" +\
-                         "*-SmallFile.fits.pickle")
-        pollForFile(reqPropStgFile, 1)
-        self.prepExtSrv(delDirs=0, clearDb=0, force=True)
+
+        def before_restart():
+            self.assertGreater(len(glob.glob(req_fname)), 0)
+
+        self.restart_last_server(before_restart=before_restart, force=True)
         reqPropBadFile = self.ngas_path("bad-files/BAD-FILE-*-SmallFile.fits.pickle", port=8888)
         pollForFile(reqPropBadFile, 1)
 
@@ -1094,9 +1068,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                          "checksum_result=0/0000000000000000"]]]
 
     def _genArchProxyCfg(self, ports):
-        """
-        Generate a cfg. file.
-        """
+        """Strip out <Streams> from ngamsCfg.xml, provide our own values"""
+        # The ngamsConfig class has no way to remove items, so we need to load
+        # the config file as a DOM, remove it ourselves, then dump the XML into
+        # a file again
+        root = self.load_dom(self.resource('src/ngamsCfg.xml')).documentElement
+        streams = root.getElementsByTagName('Streams')
+        root.removeChild(streams[0])
+        cfg_fname = save_to_tmp(root.toprettyxml(), prefix='no_streams_cfg_', suffix='.xml')
+
         cfg = []
         for idx,streamEl in enumerate(self.__STREAM_LIST, 1):
             strEl = self.__STR_EL % idx
@@ -1108,7 +1088,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                 cfg.append((nauAttr, "%s:%d" % (getHostName(), port)))
                 hostIdx += 1
             idx += 1
-        return "src/ngamsCfgNoStreams.xml", cfg
+        return cfg_fname, cfg
     #########################################################################
 
 
@@ -1304,15 +1284,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        # Create basic structure.
-        ngasRootDir = tmp_path('NGAS')
-        rmFile(ngasRootDir)
-        checkCreatePath(ngasRootDir)
-        subprocess.check_call(['tar', 'zxf', self.resource('src/volumes_dir.tar.gz')])
-        mvFile('volumes', ngasRootDir)
 
-        # Create configuration, start server.
-        self.prepExtSrv(delDirs=0, cfgFile="src/ngamsCfg_VolumeDirectory.xml")
+        cfg, _ = self.start_volumes_server()
 
         # Archive a file.
         stat = self.archive("src/SmallFile.fits")
@@ -1322,7 +1295,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Check that the target files have been archived in their
         # appropriate locations.
-        checkFile = ngasRootDir + "/volumes/Volume00%d/saf/" +\
+        checkFile = cfg.getRootDirectory() + "/volumes/Volume00%d/saf/" +\
                     "2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.gz"
         for n in (1,2):
             if (not os.path.exists(checkFile % n)):
@@ -1516,6 +1489,21 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         tp.close()
         os.unlink(test_file)
+
+    def test_valid_ingest_rate(self):
+        """Make sure the ingest rate values make sense"""
+
+        # Archive a file and check the overall ingestion rate, which should be
+        # lower than the more specific archiving "read-crc-write" ingestion rate
+        fsize = getFileSize(self.resource('src/SmallFile.fits'))
+
+        _, db = self.prepExtSrv()
+        start = time.time()
+        self.qarchive('src/SmallFile.fits', mimeType='application/octet-stream')
+        duration = time.time() - start
+        overall_rate = int(fsize // duration)
+        archive_rate = db.query2('SELECT ingestion_rate FROM ngas_files')[0][0]
+        self.assertLessEqual(overall_rate, archive_rate)
 
     def test_archive_no_versioning(self):
         self._test_archive_no_versioning('ARCHIVE')

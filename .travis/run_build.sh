@@ -36,6 +36,52 @@ fail() {
 	exit 1
 }
 
+
+# Make ourselves resolvable
+# NGAS itself doesn't need this because it always internally resolves
+# `hostname` to 127.0.0.1 to avoid hitting the network. Other programs
+# don't do this though. In particular, bbcp (which we need to test the BBCPARC
+# command) fails.
+if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
+	sudo -h localhost sed -i '' "s/127\\.0\\.0\\.1.*/& `hostname`/" /etc/hosts
+else
+	sudo -h localhost sed -i "s/127\\.0\\.1\\.1.*/& `hostname`/" /etc/hosts
+fi
+
+# Enable passwordless localhost ssh self-connectivity
+# Again, this is not needed by NGAS itself, but by bbcp.
+# NGAS forces bbcp to use key-based authentication because interactive
+# password-based authentication is not viable.
+if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
+	sudo systemsetup -setremotelogin on
+else
+	sudo start ssh
+fi
+ssh-keygen -t rsa -f ~/.ssh/id_rsa -N "" -q || fail "Failed to create RSA key"
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys || fail "Failed to add public key to authorized keys"
+ssh-keyscan -t rsa localhost >> ~/.ssh/known_hosts || fail "Failed to import localhost's RSA key"
+cat << EOF >> ~/.ssh/config
+Host localhost
+     IdentityFile ~/.ssh/id_rsa
+Host `hostname`
+     IdentityFile ~/.ssh/id_rsa
+EOF
+ssh localhost ls || fail "Testing ssh localhost failed"
+
+# Install bbcp
+# After compilation we put it in the PATH, then go back to where we were
+cd ../
+git clone http://www.slac.stanford.edu/~abh/bbcp/bbcp.git
+if [ $? -eq 0 ]; then
+	cd bbcp/src
+	make all || fail "Failed to build bbcp"
+	sudo cp $PWD/../bin/`../MakeSname`/bbcp /usr/local/bin || fail "Failed to copy bbcp to /usr/local/bin"
+	bbcp --help > /dev/null || fail "bbcp failed to run with --help"
+else
+	echo "Failed to clone bbcp, testing proceeding without bbcp" 1>&2
+fi
+cd ${TRAVIS_BUILD_DIR}
+
 # In OSX we need to brew install some things
 #
 # Most notably, Travis doesn't support python builds in OSX,
@@ -51,6 +97,29 @@ then
 	# Now create ourselves a virtualenv please and go in there
 	./create_venv.sh ./osx_venv || fail "Failed to create virtual environment"
 	source ./osx_venv/bin/activate
+
+	# Aggresively changing names now...
+	sudo scutil --set HostName `hostname`
+
+	# Let's check what hostnames are reported in MacOS...
+	echo -n "hostname: "
+	hostname
+	for n in HostName LocalHostName ComputerName; do
+		echo -n "scutil --get $n: "
+		scutil --get $n
+	done
+	for m in "getfqdn()" \
+		      "gethostname()" \
+		      "gethostbyname(socket.gethostname())" \
+		      "gethostbyname(\"localhost\")" \
+		      "gethostbyname_ex(socket.gethostname())" \
+		      "gethostbyname_ex(\"localhost\")" \
+		      "gethostbyaddr(\"127.0.0.1\")" \
+		      "gethostbyaddr(socket.gethostbyname(socket.gethostname()))" \
+		      "gethostbyaddr(socket.gethostbyname(\"localhost\"))" ; do
+		echo -n "socket.$m: "
+		python -c "import socket; print(socket.$m)"
+	done
 fi
 
 EUSER="Failed to create database user ngas"

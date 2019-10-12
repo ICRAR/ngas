@@ -32,17 +32,12 @@ This module contains the Test Suite for the CLONE Command.
 """
 
 import functools
-import getpass
-import traceback
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_CLONE_CMD
-from ngamsLib import ngamsFileInfo, ngamsLib
-from ..ngamsTestLib import flushEmailQueue, save_to_tmp, \
-    getEmailMsg, ngamsTestSuite, waitReqCompl, genErrMsgVals, \
+from ngamsLib import ngamsFileInfo
+from ..ngamsTestLib import ngamsTestSuite, waitReqCompl, genErrMsgVals, \
     unzip, genTmpFilename, tmp_path, as_ngas_disk_id
 
-# TODO: See how we can actually set this dynamically in the future
-_checkMail = False
 
 def _sortRepFileList(report):
     """
@@ -77,101 +72,29 @@ def _sortRepFileList(report):
 
     Returns:   Sorted Clone Status Report (string).
     """
-    print(report)
-    try:
-        sortBuf = ""
-        repLines = report.split("\n")
-        idx = -1
-        while (1):
-            idx += 1
-            sortBuf += repLines[idx] + "\n"
-            if (repLines[idx].find("-----") == 0): break
-        # Put the lines containing info about each file in a list, sort, and
-        # add it in the final report.
-        fileInfoLines = []
-        while (1):
-            idx += 1
-            if (repLines[idx].find("-----") == 0): break
-            fileInfoLines.append(repLines[idx])
-        fileInfoLines.sort()
-        for fileInfoLine in fileInfoLines:
-            sortBuf += fileInfoLine + "\n"
-        # Get the last part of the buffer.
-        for line in repLines[idx:]:
-            sortBuf += line + "\n"
-        return sortBuf
-    except:
-        traceback.print_exc()
-        raise Exception("Wrong format of Clone Status Report")
-
-
-def _execCloneTest(testObj,
-                   testData,
-                   refStatFile):
-    """
-    Execute the Clone Command Test based on the given input data. There is
-    always waited for command execution.
-
-    A more thorough test (using async=1) is implemented in test_CloneCmd_1 and
-    test_CloneCmd_2 (testing also the Email Notification in connection with the
-    CLONE Command).
-
-    testData:       List with test information:
-
-                      [<Disk ID>, <File ID>, <File Ver>, <Trg Disk ID>,
-                       <Subnode (0|1)>]                                 (list)
-
-    refStatFile:    Name of reference file (string).
-
-    Returns:        Void.
-    """
-    diskId  = testData[0]
-    fileId  = testData[1]
-    fileVer = testData[2]
-    trgDisk = testData[3]
-    subNode = testData[4]
-    if (subNode):
-        testObj.prepCluster((8000, 8011))
-        main_archive = functools.partial(testObj.archive, 8000)
-        node_archive = functools.partial(testObj.archive, 8011)
-        main_client = testObj.client(8000)
-    else:
-        testObj.prepExtSrv(port=8000)
-        main_archive = testObj.archive
-        main_client = testObj.client
-
-    for _ in range(5):
-        main_archive("src/SmallFile.fits")
-        if (subNode):
-            node_archive("src/TinyTestFile.fits")
-
-    cmdPars = []
-    if (diskId):  cmdPars.append(["disk_id", diskId])
-    if (fileId):  cmdPars.append(["file_id", fileId])
-    if (fileVer): cmdPars.append(["file_version", fileVer])
-    if (trgDisk): cmdPars.append(["target_disk_id", trgDisk])
-    cmdPars.append(["async", "0"])
-    cmdPars.append(["notif_email", getpass.getuser() + "@" +\
-                    ngamsLib.getCompleteHostName()])
-    flushEmailQueue()
-    statObj = main_client.get_status(NGAMS_CLONE_CMD, pars = cmdPars)
-
-    # Check returned status.
-    errMsg = "Executed CLONE Command: Disk ID: %s, File ID: %s, " +\
-             "File Version: %s, Target Disk: %s. Message: %s"
-    testObj.assert_status_ref_file(refStatFile + "_1_ref", statObj, msg=errMsg %
-                                         (str(diskId), str(fileId), str(fileVer), str(trgDisk),
-                                          str(statObj.getMessage())),
-                                         status_dump_args=(0, 1, 1))
-
-    if _checkMail:
-        # Check Email Notification Message.
-        mailCont = getEmailMsg(["NGAS Host:", "Total proc", "Handling time"])
-        mailCont = _sortRepFileList(mailCont)
-        testObj.assert_ref_file(refStatFile + "_2_ref", mailCont, errMsg %
-                             (str(diskId), str(fileId), str(fileVer),
-                              str(trgDisk), "Illegal CLONE Command Email " +\
-                              "Notification Message"))
+    sortBuf = ""
+    repLines = report.split("\n")
+    idx = -1
+    while (1):
+        idx += 1
+        if idx >= len(repLines):
+            return sortBuf
+        sortBuf += repLines[idx] + "\n"
+        if (repLines[idx].find("-----") == 0): break
+    # Put the lines containing info about each file in a list, sort, and
+    # add it in the final report.
+    fileInfoLines = []
+    while (1):
+        idx += 1
+        if (repLines[idx].find("-----") == 0): break
+        fileInfoLines.append(repLines[idx])
+    fileInfoLines.sort()
+    for fileInfoLine in fileInfoLines:
+        sortBuf += fileInfoLine + "\n"
+    # Get the last part of the buffer.
+    for line in repLines[idx:]:
+        sortBuf += line + "\n"
+    return sortBuf
 
 
 # Test disks/files.
@@ -215,6 +138,69 @@ class ngamsCloneCmdTest(ngamsTestSuite):
     - Rejection of CLONE Command when the required disk space is not enough.
     """
 
+    mail_startwith_filters = (
+        'NGAS Host:', 'Total processing time (s): ', 'Handling time per file (s): ')
+
+    def assert_clone_mail(self, ref_file, msg):
+        mail = self.smtp_server.pop()
+        self.assertTrue(mail.is_multipart())
+        parts_iter = iter(mail.walk())
+        next(parts_iter)
+        part = next(parts_iter)
+        mail_body = _sortRepFileList(part.get_payload())
+        self.assert_ref_file(ref_file, mail_body, msg=msg,
+                            startswith_filters=self.mail_startwith_filters)
+
+
+    def _test_clone(self, testData, refStatFile, mail_expected=True):
+        """
+        Execute the Clone Command Test based on the given input data. There is
+        always waited for command execution.
+        """
+
+        self.start_smtp_server()
+
+        diskId, fileId, fileVer, trgDisk, subNode = testData
+        if subNode:
+            self.prepCluster((8000, 8011))
+            main_archive = functools.partial(self.archive, 8000)
+            node_archive = functools.partial(self.archive, 8011)
+            main_client = self.client(8000)
+        else:
+            self.prepExtSrv(port=8000)
+            main_archive = self.archive
+            main_client = self.client
+
+        for _ in range(5):
+            main_archive("src/SmallFile.fits")
+            if subNode:
+                node_archive("src/TinyTestFile.fits")
+
+        cmdPars = [["async", "0"], ["notif_email", 'alice@localhost.local']]
+        if diskId:
+            cmdPars.append(["disk_id", diskId])
+        if fileId:
+            cmdPars.append(["file_id", fileId])
+        if fileVer:
+            cmdPars.append(["file_version", fileVer])
+        if trgDisk:
+            cmdPars.append(["target_disk_id", trgDisk])
+        statObj = main_client.get_status(NGAMS_CLONE_CMD, pars = cmdPars)
+
+        # Check returned status.
+        errMsg = "Executed CLONE Command: Disk ID: %s, File ID: %s, " +\
+                 "File Version: %s, Target Disk: %s. Message: %s"
+        self.assert_status_ref_file(refStatFile + "_1_ref", statObj, msg=errMsg %
+                                             (str(diskId), str(fileId), str(fileVer), str(trgDisk),
+                                              str(statObj.getMessage())),
+                                             status_dump_args=(0, 1, 1))
+
+        if mail_expected:
+            msg = errMsg % (str(diskId), str(fileId), str(fileVer), str(trgDisk),
+                    "Illegal CLONE Command Email Notification Message")
+            self.assert_clone_mail(refStatFile + "_2_ref", msg=msg)
+
+
     def test_NormalExec_1(self):
         """
         Synopsis:
@@ -233,7 +219,6 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Test Steps:
         - Start instance of NG/AMS Server.
         - Archive a file 5 times.
-        - Flush the email queue for the test user.
         - Clone it via its File ID, specify the test user as recepient of
           the Clone Status Report.
         - Check that the response returned is as expected.
@@ -244,7 +229,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         ...
         """
         testData = [None, nmuFileId, None, None, 0]
-        _execCloneTest(self, testData, refFilePat1 % (1, 1))
+        self._test_clone(testData, refFilePat1 % (1, 1))
 
 
     def test_NormalExec_2(self):
@@ -269,7 +254,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
 
         """
         testData = [None, nmuFileId, "2", None, 0]
-        _execCloneTest(self, testData, refFilePat1 % (2, 1))
+        self._test_clone(testData, refFilePat1 % (2, 1))
 
 
     def test_NormalExec_3(self):
@@ -294,7 +279,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
 
         """
         testData = [srcDiskId, nmuFileId, "1", None, 0]
-        _execCloneTest(self, testData, refFilePat1 % (3, 1))
+        self._test_clone(testData, refFilePat1 % (3, 1))
 
 
     def test_NormalExec_4(self):
@@ -316,7 +301,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         ...
         """
         testData = [srcDiskId, None, None, None, 0]
-        _execCloneTest(self, testData, refFilePat1 % (4, 1))
+        self._test_clone(testData, refFilePat1 % (4, 1))
 
 
     def test_NormalExec_5(self):
@@ -341,7 +326,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         ...
         """
         testData = [srcDiskId, nmuFileId, "3", trgDiskId, 0]
-        _execCloneTest(self, testData, refFilePat1 % (5, 1))
+        self._test_clone(testData, refFilePat1 % (5, 1))
 
 
     def test_NormalExec_6(self):
@@ -365,7 +350,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         ...
         """
         testData = [srcDiskId, None, None, trgDiskId, 0]
-        _execCloneTest(self, testData, refFilePat1 % (6, 1))
+        self._test_clone(testData, refFilePat1 % (6, 1))
 
 
     def test_NormalExec_7(self):
@@ -387,7 +372,6 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Test Steps:
         - Start two instances of the NG/AMS Server on the test node.
         - Archive a file 5 times onto one of the NGAS Systems.
-        - Flush email queue no the node.
         - Clone the disk onto the other NGAS System, by specifying the
           disk hosting the files in the other NGAS System (async=0).
         - Check that the response from the NG/AMS Server is as expected.
@@ -399,7 +383,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Target Disk + info in NGAS DB).
         """
         testData = [ncuSrcDiskId, None, None, None, 1]
-        _execCloneTest(self, testData, refFilePat1 % (7, 1))
+        self._test_clone(testData, refFilePat1 % (7, 1))
 
 
     def test_NormalExec_8(self):
@@ -424,7 +408,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         info is properly updated in the DB.
         """
         testData = [None, ncuFileId, "4", None, 1]
-        _execCloneTest(self, testData, refFilePat1 % (8, 1))
+        self._test_clone(testData, refFilePat1 % (8, 1))
 
 
     def test_NormalExec_9(self):
@@ -447,7 +431,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         and is registered in the NGAS DB.
         """
         testData = [ncuSrcDiskId, ncuFileId, "3", None, 1]
-        _execCloneTest(self, testData, refFilePat1 % (9, 1))
+        self._test_clone(testData, refFilePat1 % (9, 1))
 
 
     def test_NormalExec_10(self):
@@ -469,7 +453,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         and is registered in the NGAS DB.
         """
         testData = [ncuSrcDiskId, ncuFileId, "3", nmuTrgDiskId, 1]
-        _execCloneTest(self, testData, refFilePat1 % (10, 1))
+        self._test_clone(testData, refFilePat1 % (10, 1))
 
 
     def test_ErrExec_1(self):
@@ -497,7 +481,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         TODO: Verify that this Test Case is correct.
         """
         testData = [None, nmuFileId, "3", nmuTrgDiskId, 1]
-        _execCloneTest(self, testData, refFilePat2 % (1, 1))
+        self._test_clone(testData, refFilePat2 % (1, 1), mail_expected=False)
 
 
     def test_CloneCmd_1(self):
@@ -528,17 +512,16 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         TODO: Re-implement using _execCloneTest().
         """
         srcFile = "src/SmallFile.fits"
+        self.start_smtp_server()
         _, dbObj = self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
         for _ in range(2):
             self.archive(srcFile)
-        flushEmailQueue()
-        testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
         statObj = self.get_status(NGAMS_CLONE_CMD,
                                     pars = [["disk_id", srcDiskId],
                                             ["file_id", nmuFileId],
                                             ["file_version", "1"],
                                             ["async", "1"],
-                                            ["notif_email", testUserEmail]])
+                                            ["notif_email", 'alice@localhost.local']])
         refStatFile = "ref/ngamsCloneCmdTest_test_CloneCmd_1_1_ref"
         msg = "Incorrect status for CLONE command/successfull cloning"
         self.assert_status_ref_file(refStatFile, statObj, msg=msg)
@@ -550,12 +533,9 @@ class ngamsCloneCmdTest(ngamsTestSuite):
                                       "Command/Completion Percent", "100.0",
                                       complPer))
 
-        if _checkMail:
-            mailCont = getEmailMsg(["NGAS Host:", "Total proc", "Handling time"])
-            refStatFile = "ref/ngamsCloneCmdTest_test_CloneCmd_1_ref"
-            msg = "Incorrect/missing CLONE Status Notification Email Msg"
-            self.assert_ref_file(refStatFile, mailCont, msg=msg)
-
+        ref_file = "ref/ngamsCloneCmdTest_test_CloneCmd_1_ref"
+        msg = "Incorrect/missing CLONE Status Notification Email Msg"
+        self.assert_clone_mail(ref_file, msg)
 
         tmpFitsFile = self.ngas_path("FitsStorage2-Main-3/saf/" +\
                       "2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.gz")
@@ -591,7 +571,6 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Test Steps:
         - Start normal NG/AMS Server.
         - Archive small FITS file 10 times.
-        - Flush email queue.
         - Issue Clone Request.
         - Wait for Clone Request to terminate.
         - Check that the Clone Status Report indicates that the files were
@@ -601,21 +580,17 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         TODO: Re-implement using _execCloneTest().
         """
         srcFile = "src/SmallFile.fits"
+        self.start_smtp_server()
         self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
         for _ in range(10):
             self.archive(srcFile)
-        flushEmailQueue()
-        testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
         diskId = self.ngas_disk_id("FitsStorage1/Main/1")
         statObj = self.get_status(NGAMS_CLONE_CMD,
                                     pars = [["disk_id", diskId],
                                             ["async", "1"],
-                                            ["notif_email", testUserEmail]])
+                                            ["notif_email", 'alice@localhost.local']])
         waitReqCompl(self, statObj.getRequestId(), 20)
 
-        if _checkMail:
-            mailCont = getEmailMsg(["NGAS Host:", "Total proc", "Handling time"])
-            refStatFile = "ref/ngamsCloneCmdTest_test_CloneCmd_2_ref"
-            tmpStatFile = save_to_tmp(_sortRepFileList(mailCont))
-            self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing " +\
-                              "CLONE Status Notification Email Msg")
+        ref_file = "ref/ngamsCloneCmdTest_test_CloneCmd_2_ref"
+        msg = "Incorrect/missing CLONE Status Notification Email Msg"
+        self.assert_clone_mail(ref_file, msg)

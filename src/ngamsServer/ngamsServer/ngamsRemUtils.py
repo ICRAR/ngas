@@ -159,9 +159,9 @@ def _notify(srvObj,
     emailAdrList = reqPropsObj.getHttpPar("notif_email").split(",")
     attachmentName = cmd + "-StatusReport"
     attachmentName += "-" + reqPropsObj.getHttpPar("disk_id")
-    ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_INFO,
-                             cmd + " STATUS REPORT", statRep,
-                             emailAdrList, 1, mimeType, attachmentName, 1)
+    ngamsNotification.notify(srvObj.host_id, srvObj.cfg, NGAMS_NOTIF_INFO,
+        cmd + " STATUS REPORT", statRep, recList=emailAdrList, force=1,
+        contentType=mimeType, attachmentName=attachmentName)
 
 
 def _remStatErrReport(srvObj,

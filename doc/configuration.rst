@@ -18,17 +18,28 @@ Contains the overall server configuration.
 
 * *RootDirectory*: The root directory which most of the other configuration
   items are relative to.
+* *ArchiveName*: The logical name under which
+  disks found by the server are grouped into.
+  Using this, disks found in different servers
+  may belong to the same logically distributed archive.
+* *BlockSize*: The block size used for disk and network access,
+  and checksum calculation.
+  In the future different configuration options may be offered
+  for these different operations.
 * *IpAddress*: The IP address to bind the server to. If not specified the server
   will bind itself to ``127.0.0.1``. To bind the server to all interfaces
   ``0.0.0.0`` can be set.
-* *Port*: The port to bind the server to. It defaults to 7777 if unspecified.
+* *PortNo*: The port to bind the server to. It defaults to 7777 if unspecified.
+* *VolumeDirectory*: The base directory where volumes are searched for.
+  It relative, it is considered relative to the NGAS root directory.
+  Defaults to ``.``.
 * *MaxSimReqs*: The maximum number of requests the server can be serving
   at a given time. If a new request comes in and the server has reached
   the limit already, it will respond with an ``503`` HTTP code.
 * *PluginsPath*: A colon-separated list of directories
   where external python code, like NGAS plug-ins or database drivers,
   can be loaded from.
-* *Proxy*: Whether this server should act as a proxy when serving requests that
+* *ProxyMode*: Whether this server should act as a proxy when serving requests that
   are addressed to a different server within the same cluster (``1``)
   or not (``0``).
   See :ref:`server.proxy` for details.
@@ -147,10 +158,10 @@ can be found, each one listing the following attributes:
  * *StorageSetId*: The name this storage set can be referenced by.
  * *MainDiskSlotId*: The name of the directory where the data will be stored.
    If a relative path is given, it is considered to be relative to the NGAS
-   root directory.
+   volumes directory.
  * *RepDiskSlotId*: The name of the directory where the data will be replicated.
    If a relative path is given, it is considered to be relative to the NGAS
-   root directory.
+   volumes directory.
 
 For an explanation on volumes, main/replication disks,
 directories and storage sets
@@ -232,6 +243,32 @@ The following attributes are available:
 
 The following attributes are present in old configuration files
 but are not used anymore: *FileSeq*, *DiskSeq*, *LogSummary*, *Prio*.
+
+
+.. _config.caching:
+
+Caching
+-------
+
+The ``Caching`` element defines the behavior
+of the :ref:`cache control thread <bg.cache_thread>`.
+When enabled, it is said that the NGAS server
+is running in :ref:`cache mode <server.modes.cache>`.
+The following attributes are available:
+
+ * *Enable*: Whether the cache control thread should run or not.
+ * *Period*: The period at which the cache control thread runs.
+ * *MaxTime*: The maximum time files can stay in the cache.
+ * *MaxCacheSize*: The maximum total allowed volume of files in the cache.
+ * *MaxFiles*: The maximum allowed number of files in the cache.
+ * *CacheControlPlugIn*: A user-provided cache deletion plug-in
+   that decides whether individual files
+   should be marked for deletion.
+ * *CacheControlPlugInPars*: Parameters for the plug-in above.
+ * *CheckCanBeDeleted*: Check if a file marked for deletion
+   has been sent to all subscribers yet
+   before actual deletion occurs.
+
 
 .. _config.log:
 

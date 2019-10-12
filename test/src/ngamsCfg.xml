@@ -60,7 +60,6 @@
           IpAddress="127.0.0.1"
           PortNo="8888" 
           ProxyMode="1"
-          Simulation="1"
           SwVersion=""/>
 
   <JanitorThread Id="JanitorThread-Std"
@@ -84,11 +83,10 @@
   <SystemPlugIns Id="SystemPlugIns-Std"
                  LabelPrinterPlugIn="ngamsNullLabelPrinterPlugIn" 
                  LabelPrinterPlugInPars="-" 
-                 OfflinePlugIn="ngamsLinuxOfflinePlugIn" 
+                 OfflinePlugIn="ngamsGenericOfflinePlugIn"
                  OfflinePlugInPars="unmount=0" 
-                 OnlinePlugIn="ngamsLinuxOnlinePlugIn" 
-                 OnlinePlugInPars="uri=http://localhost:1080/technical.html,
-                                   module=3w-xxxx,old_format=1"
+                 OnlinePlugIn="ngamsGenericOnlinePlugIn"
+                 OnlinePlugInPars="-"
                  DiskSyncPlugIn="ngamsDiskSyncPlugIn"
                  DiskSyncPlugInPars="controllers=1/2"/>
  
@@ -112,32 +110,32 @@
   <StorageSets Id="StorageSets-PATA-8-Dbl">
     <StorageSet StorageSetId="FitsStorage1"
                 DiskLabel="FITS"
-                MainDiskSlotId="1"
-                RepDiskSlotId="2"
+                MainDiskSlotId="FitsStorage1-Main-1"
+                RepDiskSlotId="FitsStorage1-Rep-2"
                 Mutex="0"
                 Synchronize="1"/>
 
     <StorageSet StorageSetId="FitsStorage2"
-                MainDiskSlotId="3"
-                RepDiskSlotId="4"
+                MainDiskSlotId="FitsStorage2-Main-3"
+                RepDiskSlotId="FitsStorage2-Rep-4"
                 Mutex="0"
                 Synchronize="1"/>
 
     <StorageSet StorageSetId="FitsStorage3"
-                MainDiskSlotId="5"
-                RepDiskSlotId="6"
+                MainDiskSlotId="FitsStorage3-Main-5"
+                RepDiskSlotId="FitsStorage3-Rep-6"
                 Mutex="0"
                 Synchronize="1"/>
 
     <StorageSet StorageSetId="PafStorage"
-                MainDiskSlotId="7"
-                RepDiskSlotId="8"
+                MainDiskSlotId="PafStorage-Main-7"
+                RepDiskSlotId="PafStorage-Rep-8"
                 Mutex="0"
                 Synchronize="1"/> 
 
     <StorageSet StorageSetId="LogStorage"
-                MainDiskSlotId="9"
-                RepDiskSlotId="10"
+                MainDiskSlotId="LogStorage-Main-9"
+                RepDiskSlotId="LogStorage-Rep-10"
                 Mutex="0"
                 Synchronize="1"/> 
   </StorageSets>
@@ -255,9 +253,9 @@
        SysLogPrefix="NGASLog"/>
 
   <Notification Id="Notification-Test"
-                SmtpHost="localhost"
+                SmtpHost="127.0.0.1"
                 Sender="ngast@localhost"
-                Active="1"
+                Active="0"
                 MaxRetentionTime="00T00:30:00"
                 MaxRetentionSize="1000">
     <AlertNotification>

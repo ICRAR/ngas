@@ -593,16 +593,6 @@ class ngamsConfig:
         return self.getVal("Server[1].ArchiveName")
 
 
-    def getSimulation(self):
-        """
-        Get NGAS Simulation Flag.
-
-        Returns:  NGAS Simulation Flag (integer).
-        """
-        par = "Server[1].Simulation"
-        return getInt(par, self.getVal(par), 0)
-
-
     def getRootDirectory(self):
         """
         Get NGAS Root Directory.
@@ -1341,6 +1331,16 @@ class ngamsConfig:
         return self.getVal("Notification[1].SmtpHost")
 
 
+    def getNotifSmtpPort(self):
+        """
+        Return the SMTP port for sending Notification e-mails.
+
+        Returns:   SMTP Port (int).
+        """
+        par = "Notification[1].SmtpPort"
+        return getInt(par, self.getVal(par), 25)
+
+
     def getNotifActive(self):
         """
         Return the Email Notification Active Flag.
@@ -1914,7 +1914,7 @@ class ngamsConfig:
         """Checks if ``prop`` is duplicated in the configuration by testing if
         it has already been registered in the given dictionary"""
         if value in checkDic:
-            errMsg = "Duplicate value for property: %s. Value: %r" (prop, value)
+            errMsg = "Duplicate value for property: %s. Value: %r" % (prop, value)
             errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
             logger.error(errMsg)
             self.__checkRep.append(errMsg)

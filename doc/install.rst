@@ -5,7 +5,14 @@ Installation
 .. contents:: Contents
    :local:
 
-Installing NGAS is pretty straight-forward.
+Installing from source
+======================
+
+First, get the latest NGAS sources::
+
+ git clone https://github.com/ICRAR/ngas
+
+Installing NGAS from source is pretty straight-forward.
 There are two ways to perform an installation:
 
 * :ref:`Manually <inst.manual>`.
@@ -19,7 +26,7 @@ In both cases you may want to
 .. _inst.venv:
 
 Virtual environment creation
-============================
+----------------------------
 
 Either if you are installing NGAS :ref:`manually <inst.manual>`
 or :ref:`using Fabric <inst.fabric>`
@@ -47,7 +54,7 @@ a set of basic packages needed to use Fabric.
 .. _inst.manual:
 
 Manual installation
-===================
+-------------------
 
 .. note::
  Like any other python package,
@@ -98,7 +105,7 @@ be manually compiled and installed easily via the usual::
 .. _inst.fabric:
 
 Via Fabric
-==========
+----------
 
 .. note::
  The installation via Fabric always installs NGAS in a virtualenv
@@ -146,7 +153,7 @@ The two main fabric tasks NGAS provides are:
 .. _inst.fabric.user:
 
 Basic per-user installation
----------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To compile and install NGAS in a user-owned directory run::
 
@@ -165,7 +172,7 @@ the following command would do::
 .. _inst.fabric.system:
 
 Total system setup
-------------------
+^^^^^^^^^^^^^^^^^^
 
 .. note::
  ``sudo`` must be installed and configured in the target host
@@ -183,7 +190,7 @@ To perform a system-wide setup and NGAS install run::
 .. _inst.other_fabric:
 
 Other Fabric tasks
-==================
+------------------
 
 On top of the :ref:`two main Fabric tasks<inst.fabric>` to install NGAS,
 our fabric modules define a number of other
@@ -193,7 +200,7 @@ in other scenarios.
 .. _inst.other_fabric.aws:
 
 AWS deployment
---------------
+^^^^^^^^^^^^^^
 
 .. note::
 
@@ -220,18 +227,20 @@ available::
 .. _inst.other_fabric.docker:
 
 Docker Image
-------------
+^^^^^^^^^^^^
+
+.. note::
+ These instructions are to *build* a docker image with NGAS.
+ If you simply want to *use* the pre-built images
+ see :ref:`inst.docker`.
 
 .. note::
 
- The ``docker`` module is required for use of this install option.
+ The ``docker`` python package is required to use of this install option.
+ Also, a local docker daemon must be running
+ and the current user must have access to perform docker operations.
 
-.. note::
-
- A local docker daemon must be running and the current user must have access to
- start/stop/build, etc, container and images, this cannot be via sudo!
-
-To create a Docker container containing an NGAS installation simply run::
+To build a Docker container containing an NGAS installation simply run::
 
  fab hl.docker_image
 
@@ -242,3 +251,19 @@ under ``/home/ngas/NGAS/cfg/ngamsServer.conf``,
 which by default needs to be provided via volume mapping.
 
 .. include:: docker_image_desc.rst
+
+
+.. _inst.docker:
+
+Docker container
+================
+
+Alternatively, if you don't need to build NGAS from sources
+you can use the pre-built docker image we distribute for NGAS.
+To do so you can do::
+
+ docker pull icrar/ngas:latest
+
+Then follow the instructions
+in `the DockerHub page <https://hub.docker.com/r/icrar/ngas>`_
+to get yourself started.

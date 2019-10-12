@@ -170,6 +170,8 @@ def parseRawPlugInPars(rawPars):
     """
     # Plug-In Parameters. Expect:
     # "<field name>=<field value>[,field name>=<field value>]"
+    if not rawPars:
+        return {}
     parDic = {}
     pars = rawPars.split(",")
     for par in pars:
@@ -345,30 +347,6 @@ def trueArchiveProxySrv(cfgObj):
                 trueArchProxySrv = 0
                 break
     return trueArchProxySrv
-
-
-def logicalStrListSort(strList):
-    """
-    Sort a list of strings, such that strings in the list that might be
-    lexigraphically smaller than other, but logically larger, are found
-    in the end of the list. E.g.:
-
-       ['3','11','1','10','2']
-
-    - becomes:
-
-      ['1','2','3','10','11']
-
-    - end not:
-
-      ['1','10,'11','2','3']
-
-    Returns:   Sorted list (list).
-    """
-    maxLen = max(map(len, strList))
-    estretched_strings = [(maxLen - len(s)) * " " + s for s in strList]
-    estretched_strings.sort()
-    return estretched_strings
 
 
 class GzipFile(gzip.GzipFile):

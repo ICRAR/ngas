@@ -34,10 +34,9 @@ This module contains the Test Suite for the RETRIEVE Command.
 import contextlib
 import io
 import os
-import subprocess
 
 from ngamsLib import ngamsHttpUtils
-from ngamsLib.ngamsCore import getHostName, checkCreatePath, rmFile, mvFile
+from ngamsLib.ngamsCore import getHostName
 from ..ngamsTestLib import ngamsTestSuite, genTmpFilename, unzip, tmp_path
 
 
@@ -435,15 +434,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        # Create basic structure.
-        ngasRootDir = tmp_path("NGAS")
-        rmFile(ngasRootDir)
-        checkCreatePath(ngasRootDir)
-        subprocess.check_call(['tar', 'zxf', self.resource('src/volumes_dir.tar.gz')])
-        mvFile('volumes', ngasRootDir)
 
-        # Create configuration, start server.
-        self.prepExtSrv(delDirs=0, cfgFile='src/ngamsCfg_VolumeDirectory.xml')
+        self.start_volumes_server()
 
         # Archive a file.
         stat = self.archive("src/SmallFile.fits")
