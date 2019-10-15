@@ -389,3 +389,65 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         del os.environ["NGAS_CA_PATH"]
         # Note that as the cleanup will run here, the cleanup via offline will
         # fail due to unknown CA, so the servers will be killed instead
+
+    @unittest.skipIf(ssl is None, "Need ssl module for this test to run")
+    def test_custom_auth_subscription(self):
+        ca = trustme.CA()
+        with ca.cert_pem.tempfile() as ca_temp_path:
+            os.environ["NGAS_CA_PATH"] = ca_temp_path
+            server_cert = ca.issue_cert(
+                u"localhost", six.u(getHostName()), u"127.0.0.1",
+            )
+            cert_file = genTmpFilename(suffix='pem')
+            server_cert.private_key_and_cert_chain_pem.write_to_path(cert_file)
+            # We configure the second server to send notifications via socket
+            # to the listener we start later
+            auth_plugin_cfg = (
+                ("NgamsCfg.SubscriptionAuth[1].PlugInName",
+                    'test.support.subscription_auth_plugin'),
+            )
+            self._prep_subscription_cluster(
+                (8778, auth_plugin_cfg, False),
+                (8779, [], True),
+                cert_file=cert_file,
+            )
+            # Initial archiving
+            self.qarchive(8778, 'src/SmallFile.fits', mimeType='application/octet-stream')
+
+            # Version 2 of the file should only exist after
+            # subscription transfer is successful.
+            self.retrieve_fail(8779, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
+
+            # Create listener that should get information when files get archives
+            # in the second server (i.e., the one on the receiving end of the subscription)
+            subscription_listener = self.notification_listener()
+
+            # Create subscription
+            params = {'url': 'https://localhost:8779/QARCHIVE',
+                      'subscr_id': 'HERE-TO-THERE',
+                      'priority': 1,
+                      'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
+                      'concurrent_threads': 1}
+
+            self.assertEqual(
+                requests.get(
+                    "https://127.0.0.1:8778/SUBSCRIBE", params=params,
+                    verify=ca_temp_path,
+                ).status_code, 200
+            )
+
+            # Do not like sleeps but xfer should happen immediately.
+            try:
+                archive_evt = subscription_listener.wait_for_file(60)
+            finally:
+                subscription_listener.close()
+            self.assertIsNotNone(archive_evt)
+
+            self.assertEqual(2, archive_evt.file_version)
+            self.assertEqual('SmallFile.fits', archive_evt.file_id)
+
+            self.retrieve(8779, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
+
+        del os.environ["NGAS_CA_PATH"]
+        # Note that as the cleanup will run here, the cleanup via offline will
+        # fail due to unknown CA, so the servers will be killed instead

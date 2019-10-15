@@ -748,6 +748,12 @@ def _deliveryThread(srvObj,
                         hdrs = {NGAMS_HTTP_HDR_CHECKSUM: fileChecksum}
                         if fileInfoObjHdr:
                             hdrs[NGAMS_HTTP_HDR_FILE_INFO] = fileInfoObjHdr
+
+                        sub_auth = srvObj.getCfg().getSubscriptionAuth(
+                            filename=filename, url=sendUrl
+                        )
+                        if sub_auth is not None:
+                            authHdr = sub_auth
                         with open(filename, "rb") as f:
                             reply, msg, hdrs, data = \
                                    ngamsHttpUtils.httpPostUrl(sendUrl, f, fileMimeType,
