@@ -138,9 +138,9 @@ def prepare_volume():
                         help='The path of the volume as mounted on the system')
     parser.add_argument('-o', '--overwrite', action='store_true',
                         help='Overwrite an existing NGAS Volume Info File')
-    parser.add_argument('-i', '--id',
+    parser.add_argument('-i', '--disk-id',
                         help='Disk ID. Defaults to auto-generated, unique ID')
-    parser.add_argument('-t', '--type',
+    parser.add_argument('-t', '--disk-type',
                         help='Type of the volume')
     parser.add_argument('-m', '--manufacturer',
                         help='Name of the disk manufacturer')
