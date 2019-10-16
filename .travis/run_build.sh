@@ -112,14 +112,14 @@ then
 		scutil --get $n
 	done
 	for m in "getfqdn()" \
-		      "gethostname()" \
-		      "gethostbyname(socket.gethostname())" \
-		      "gethostbyname(\"localhost\")" \
-		      "gethostbyname_ex(socket.gethostname())" \
-		      "gethostbyname_ex(\"localhost\")" \
-		      "gethostbyaddr(\"127.0.0.1\")" \
-		      "gethostbyaddr(socket.gethostbyname(socket.gethostname()))" \
-		      "gethostbyaddr(socket.gethostbyname(\"localhost\"))" ; do
+	         "gethostname()" \
+	         "gethostbyname(socket.gethostname())" \
+	         "gethostbyname(\"localhost\")" \
+	         "gethostbyname_ex(socket.gethostname())" \
+	         "gethostbyname_ex(\"localhost\")" \
+	         "gethostbyaddr(\"127.0.0.1\")" \
+	         "gethostbyaddr(socket.gethostbyname(socket.gethostname()))" \
+	         "gethostbyaddr(socket.gethostbyname(\"localhost\"))" ; do
 		echo -n "socket.$m: "
 		python -c "import socket; print(socket.$m)"
 	done
