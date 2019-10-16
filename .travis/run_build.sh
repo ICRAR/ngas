@@ -71,7 +71,7 @@ ssh localhost ls || fail "Testing ssh localhost failed"
 # Install bbcp
 # After compilation we put it in the PATH, then go back to where we were
 cd ../
-git clone http://www.slac.stanford.edu/~abh/bbcp/bbcp.git
+git clone https://www.slac.stanford.edu/~abh/bbcp/bbcp.git
 if [ $? -eq 0 ]; then
 	cd bbcp/src
 	make all || fail "Failed to build bbcp"
