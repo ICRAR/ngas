@@ -57,8 +57,8 @@ def validate_url(url):
     if not parse_result.netloc:
         raise ValueError("No netloc found in URL %s. Value interpreted as %r" % (url, parse_result,))
 
-    if parse_result.scheme != 'http':
-        msg = "%s scheme not currently supported, only http:// scheme allowed"
+    if parse_result.scheme not in ('http', 'https'):
+        msg = "%s scheme not currently supported, only http or https scheme allowed"
         raise ValueError(msg % parse_result.scheme)
 
 

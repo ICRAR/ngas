@@ -124,6 +124,13 @@ class ngamsHttpServer(thread_pool_mixin, BaseHTTPServer.HTTPServer):
         thread_pool_mixin.__init__(self, ngamsServer)
         BaseHTTPServer.HTTPServer.__init__(self, server_address, ngamsHttpRequestHandler)
 
+        if ngamsServer._cert is not None:
+            import ssl
+            logger.info("Using TLS for testing")
+            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            context.load_cert_chain(certfile=ngamsServer._cert)
+            self.socket = context.wrap_socket(self.socket, server_side=True)
+
 
 class _atomic_counter(object):
     """A simple atomic counter"""
@@ -294,7 +301,10 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         logger.info("Sending %s (%d bytes) to client, starting at byte %d", f, size, start_byte)
         with open(f, 'rb') as fin:
             st = time.time()
-            pysendfile.sendfile(self.connection, fin, start_byte)
+            if self.ngasServer.get_server_access_proto() == "https":
+                pysendfile.sendfile_send(self.connection, fin, start_byte)
+            else:
+                pysendfile.sendfile(self.connection, fin, start_byte)
             howlong = time.time() - st
             size_mb = size / 1024. / 1024.
         logger.info("Sent %s at %.3f [MB/s]", f, size_mb / howlong)
@@ -473,7 +483,7 @@ class ngamsServer(object):
     """The underlying configuration object of type
     :py:class:`ngamsConfig <ngamsLib.ngamsConfig.ngamsConfig>`"""
 
-    def __init__(self, cfg_fname):
+    def __init__(self, cfg_fname, _cert=None):
         """
         Constructor method.
         """
@@ -493,6 +503,7 @@ class ngamsServer(object):
         self.__busyCount              = 0
         self.__sysMtPtDic             = {}
         self._pid_file_created         = False
+        self._cert                     = _cert
 
         # Keep track of how many requests are being served,
         # This is slightly different from keeping track of the server's
@@ -645,8 +656,14 @@ class ngamsServer(object):
         # takes place
         self.archive_event_subscribers = []
 
+
         # Created by ngamsSrvUtils.handleOnline
         self.remote_subscription_creation_task = None
+
+    def get_server_access_proto(self):
+        if self._cert is not None:
+            return 'https'
+        return 'http'
 
     def load_archive_event_subscribers(self):
 
@@ -2293,6 +2310,7 @@ def _parse_and_run(args, prog, server_class):
     advopts.add_argument('-dbcfgid', help='ID of the configuration in the database that should be loaded')
     advopts.add_argument('-noautoexit', action='store_true', help='Do not automatically shutdown the server on startup failures')
     advopts.add_argument('-datamover', action='store_true', help="Start this server as a DataMover server")
+    advopts.add_argument('-cert', action='store', help="Use cert for tls tests PRIVATE DON'T USE")
 
     opts = parser.parse_args(modified_args)
     if opts.version:
@@ -2312,7 +2330,7 @@ def _parse_and_run(args, prog, server_class):
                 raise ValueError("Path %s doesn't exist" % (p,))
             sys.path.insert(0, p)
 
-    server = server_class(opts.cfg)
+    server = server_class(opts.cfg, _cert=opts.cert)
     server.autoonline = opts.autoonline
     server.force_start = opts.force
 

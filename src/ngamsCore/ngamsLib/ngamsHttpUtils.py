@@ -34,6 +34,7 @@ import sys
 
 from six.moves import http_client as httplib  # @UnresolvedImport
 from six.moves.urllib import parse as urlparse  # @UnresolvedImport
+import requests
 
 from . import pysendfile
 
@@ -219,16 +220,39 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
 
 
 def httpPostUrl(url, data, mimeType, hdrs={},
-                timeout=None, contDisp=None, auth=None):
+                timeout=None, contDisp=None, auth=None, pars=[]):
     """
     Like `httpPost` but specifies a HTTP url instead of a combination of
     host, port and command.
     """
-    url = urlparse.urlparse(url)
-    pars = [] if not url.query else urlparse.parse_qsl(url.query)
-    return httpPost(url.hostname, url.port, url.path, data, mimeType,
-                    pars=pars, hdrs=hdrs, timeout=timeout,
-                    contDisp=contDisp, auth=auth)
+    split_url = urlparse.urlparse(url)
+
+    if split_url.scheme == 'https':
+        cert_path = os.environ.get("NGAS_CA_PATH")
+        hdrs["Content-Type"] = mimeType
+        if contDisp:
+            hdrs["Content-Disposition"] = contDisp
+
+        if isinstance(auth, str):
+            # this passes on the internals of ngas' auth setup
+            hdrs["Authorization"] = auth.strip()
+            auth = None
+
+        resp = requests.post(
+            url, data=data, headers=hdrs, timeout=timeout, auth=auth,
+            params=pars, verify=cert_path if cert_path is not None else True,
+        )
+
+        reply, msg, hdrs = resp.status_code, resp.reason, resp.headers
+        data = resp.content
+        return [reply, msg, hdrs, data]
+
+    allpars = [] if not split_url.query else urlparse.parse_qsl(split_url.query)
+
+    allpars.extend(pars)
+    return httpPost(split_url.hostname, split_url.port, split_url.path, data,
+            mimeType, pars=allpars, hdrs=hdrs, timeout=timeout,
+            contDisp=contDisp, auth=auth)
 
 
 def httpGet(host, port, cmd, pars=[], hdrs={},
@@ -251,10 +275,26 @@ def httpGetUrl(url, pars=[], hdrs={}, timeout=None, auth=None):
     Like `httpGet`, but specifies a HTTP url instead of a combination of
     host, port and command.
     """
-    url = urlparse.urlparse(url)
-    pars = [] if not url.query else urlparse.parse_qsl(url.query)
-    return httpGet(url.hostname, url.port, url.path,
-                   pars=pars, hdrs=hdrs, timeout=timeout)
+    split_url = urlparse.urlparse(url)
+
+    if split_url.scheme == 'https':
+        cert_path = os.environ.get("NGAS_CA_PATH")
+
+        if isinstance(auth, str):
+            # this passes on the internals of ngas' auth setup
+            hdrs["Authorization"] = auth.strip()
+            auth = None
+        resp =  requests.get(
+            url, headers=hdrs, timeout=timeout, auth=auth, params=pars,
+            verify=cert_path if cert_path is not None else True,
+        )
+        resp.status = resp.status_code
+        return resp
+
+    allpars = [] if not split_url.query else urlparse.parse_qsl(split_url.query)
+    allpars.extend(pars)
+    return httpGet(split_url.hostname, split_url.port, split_url.path,
+                   pars=allpars, hdrs=hdrs, timeout=timeout)
 
 class sizeaware(object):
     """

@@ -765,7 +765,7 @@ def _deliveryThread(srvObj,
 
                 except Exception as e:
                     ex = str(e)
-                    logger.error('%s Message: %s' % (ex, stat.getMessage()))
+                    logger.exception('%s Message: %s' % (ex, stat.getMessage()))
 
                 if ex or reply != NGAMS_HTTP_SUCCESS or stat.getStatus() == NGAMS_FAILURE:
 

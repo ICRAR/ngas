@@ -190,6 +190,17 @@ def _check_sendfile_params(sock, file, offset, count):
             raise ValueError(
                 "count must be a positive integer (got %s)" % repr(count))
 
+def sendfile_send(sock, file, offset=0, count=None):
+    """sendfile_send(sock, file[, offset[, count]]) -> sent
+
+    API-compatible version of sendfile which does not use the sendfile system
+    call. The purpose of this is to allow users to disable usage of sendfile
+    (either in the case where https is used on the server and sendfile breaks,
+    or some other situation where sendfile is problematic). See the sendfile
+    function for more details about arguments.
+    """
+    return _sendfile_use_send(sock, file, offset, count)
+
 
 def sendfile(sock, file, offset=0, count=None):
     """sendfile(sock, file[, offset[, count]]) -> sent
