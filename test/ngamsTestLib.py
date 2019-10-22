@@ -53,7 +53,6 @@ import struct
 import subprocess
 import sys
 import tempfile
-from tempfile import mkstemp
 import threading
 import time
 import unittest
