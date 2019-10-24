@@ -2171,7 +2171,5 @@ class ngamsConfig:
             return None
 
         plugin = loadPlugInEntryPoint(plugin_name, "ngas_subscriber_auth")
-        if plugin is None:
-            return None
 
         return plugin(filename=filename, url=url)
