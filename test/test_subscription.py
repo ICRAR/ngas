@@ -94,16 +94,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
 
-        # Initial archiving
-        self.qarchive(8888, 'src/SmallFile.fits', mimeType='application/octet-stream')
-
-        # Version 2 of the file should only exist after
-        # subscription transfer is successful.
-        self.retrieve_fail(8889, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
-
-        # Create listener that should get information when files get archives
-        # in the second server (i.e., the one on the receiving end of the subscription)
-        subscription_listener = self.notification_listener()
+        subscription_listener = self.upload_subscription_files(8888, 8889)
 
         # Create subscription
         params = {'url': 'http://localhost:8889/QARCHIVE',
@@ -114,17 +105,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         with contextlib.closing(subscribe(pars=params)) as resp:
             self.assertEqual(resp.status, 200)
 
-        # Do not like sleeps but xfer should happen immediately.
-        try:
-            archive_evt = subscription_listener.wait_for_file(5)
-        finally:
-            subscription_listener.close()
-        self.assertIsNotNone(archive_evt)
-
-        self.assertEqual(2, archive_evt.file_version)
-        self.assertEqual('SmallFile.fits', archive_evt.file_id)
-
-        self.retrieve(8889, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
+        self.check_subscription_transfer(subscription_listener, 8889)
 
 
     def test_basic_subscription_fail(self):
@@ -349,16 +330,8 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             # We configure the second server to send notifications via socket
             # to the listener we start later
             self._prep_subscription_cluster(8778, (8779, [], True), cert_file=cert_file)
-            # Initial archiving
-            self.qarchive(8778, 'src/SmallFile.fits', mimeType='application/octet-stream')
 
-            # Version 2 of the file should only exist after
-            # subscription transfer is successful.
-            self.retrieve_fail(8779, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
-
-            # Create listener that should get information when files get archives
-            # in the second server (i.e., the one on the receiving end of the subscription)
-            subscription_listener = self.notification_listener()
+            subscription_listener = self.upload_subscription_files(8778, 8779)
 
             # Create subscription
             params = {'url': 'https://localhost:8779/QARCHIVE',
@@ -374,18 +347,78 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                 ).status_code, 200
             )
 
-            # Do not like sleeps but xfer should happen immediately.
-            try:
-                archive_evt = subscription_listener.wait_for_file(60)
-            finally:
-                subscription_listener.close()
-            self.assertIsNotNone(archive_evt)
-
-            self.assertEqual(2, archive_evt.file_version)
-            self.assertEqual('SmallFile.fits', archive_evt.file_id)
-
-            self.retrieve(8779, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
+            self.check_subscription_transfer(subscription_listener, 8779)
 
         del os.environ["NGAS_CA_PATH"]
         # Note that as the cleanup will run here, the cleanup via offline will
         # fail due to unknown CA, so the servers will be killed instead
+
+    @unittest.skipIf(ssl is None, "Need ssl module for this test to run")
+    def test_custom_auth_subscription(self):
+        ca = trustme.CA()
+        with ca.cert_pem.tempfile() as ca_temp_path:
+            os.environ["NGAS_CA_PATH"] = ca_temp_path
+            server_cert = ca.issue_cert(
+                u"localhost", six.u(getHostName()), u"127.0.0.1",
+            )
+            cert_file = genTmpFilename(suffix='pem')
+            server_cert.private_key_and_cert_chain_pem.write_to_path(cert_file)
+            # We configure the second server to send notifications via socket
+            # to the listener we start later
+            auth_plugin_cfg = (
+                ("NgamsCfg.SubscriptionAuth[1].PlugInName",
+                    'test.support.subscription_auth_plugin'),
+            )
+            self._prep_subscription_cluster(
+                (8778, auth_plugin_cfg, False),
+                (8779, [], True),
+                cert_file=cert_file,
+            )
+
+            subscription_listener = self.upload_subscription_files(8778, 8779)
+
+            # Create subscription
+            params = {'url': 'https://localhost:8779/QARCHIVE',
+                      'subscr_id': 'HERE-TO-THERE',
+                      'priority': 1,
+                      'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
+                      'concurrent_threads': 1}
+
+            self.assertEqual(
+                requests.get(
+                    "https://127.0.0.1:8778/SUBSCRIBE", params=params,
+                    verify=ca_temp_path,
+                ).status_code, 200
+            )
+
+            self.check_subscription_transfer(subscription_listener, 8779)
+
+        del os.environ["NGAS_CA_PATH"]
+        # Note that as the cleanup will run here, the cleanup via offline will
+        # fail due to unknown CA, so the servers will be killed instead
+
+    def upload_subscription_files(self, start_port, end_port):
+        # Initial archiving
+        self.qarchive(start_port, 'src/SmallFile.fits', mimeType='application/octet-stream')
+
+        # Version 2 of the file should only exist after
+        # subscription transfer is successful.
+        self.retrieve_fail(end_port, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())
+
+        # Create listener that should get information when files get archives
+        # in the second server (i.e., the one on the receiving end of the subscription)
+        return self.notification_listener()
+
+    def check_subscription_transfer(self, subscription_listener, sub_port):
+
+        # Do not like sleeps but xfer should happen immediately.
+        try:
+            archive_evt = subscription_listener.wait_for_file(60)
+        finally:
+            subscription_listener.close()
+        self.assertIsNotNone(archive_evt)
+
+        self.assertEqual(2, archive_evt.file_version)
+        self.assertEqual('SmallFile.fits', archive_evt.file_id)
+
+        self.retrieve(sub_port, 'SmallFile.fits', fileVersion=2, targetFile=tmp_path())

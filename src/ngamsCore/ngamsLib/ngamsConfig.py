@@ -42,7 +42,10 @@ import six
 from . import ngamsConfigBase, ngamsSubscriber
 from . import ngamsStorageSet, ngamsStream, ngamsMirroringSource
 from . import utils
-from .ngamsCore import genLog, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_BACK_LOG_DIR
+from .ngamsCore import (
+    genLog, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_BACK_LOG_DIR,
+    loadPlugInEntryPoint,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -2161,3 +2164,12 @@ class ngamsConfig:
             val = 'null'
 
         return val
+
+    def getSubscriptionAuth(self, filename, url):
+        plugin_name = self.getVal("NgamsCfg.SubscriptionAuth[1].PlugInName")
+        if plugin_name is None:
+            return None
+
+        plugin = loadPlugInEntryPoint(plugin_name, "ngas_subscriber_auth")
+
+        return plugin(filename=filename, url=url)

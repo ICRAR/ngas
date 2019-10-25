@@ -54,6 +54,14 @@ Changelog
 * Fixed small issue in ``QUERY`` command
   where column names where not correctly aligned
   with the underlying column data.
+* Added support for using HTTPS with both the client and with subscriptions.
+  Support for wrapping the server with TLS has also been added, but this should
+  only be used for testing, rather than in production (we recommend handling
+  HTTPS with more traditional HTTPS servers such as Apache or Nginx).
+* Added support for using more diverse authentication plugins for subscription,
+  via the authentication mechanisms provided by requests. Note that with the
+  current setup, the authentication plugins can only be used with HTTPS (this
+  may change in the future).
 
 .. rubric:: 11.0.2
 

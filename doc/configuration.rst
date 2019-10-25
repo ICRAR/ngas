@@ -321,3 +321,28 @@ Each ``User`` element should have the following attributes:
 * *Password*: The base64-encoded password.
 * *Commands*: A comma-separated list of commands this user is allowed to
   execute. The special value ``*`` is interpreted as all commands.
+
+
+SubscriptionAuth
+----------------
+
+The ``SubscriptionAuth`` element defines the authentication/authorisation
+configuration to use when acting as a client when using the subscription
+service. Currently it has only one element ``PlugInName``, which follows the
+usual rules for plugins as noted above, with ``PlugInName`` being the name of
+the module to import. This module should have a callable which matches with the
+signature:
+
+.. py:function:: ngas_subscriber_auth(filename, url)
+
+    Provides authentication information needed to send ``filename`` to ``url``.
+
+    This function should return an object that can be handled by the ``auth``
+    keyword argument of requests.reqeusts, which is generally either a string,
+    or an instance of ``requests.auth.AuthBase``. ``None`` can be returned in
+    the case where the authentication is not needed.
+
+    :param str filename: The filename to be sent
+    :param str url: The url to send the filename to
+    :return: An object used by requests to authenticate the connection
+    :rtype: requests.auth.AuthBase, None, str
