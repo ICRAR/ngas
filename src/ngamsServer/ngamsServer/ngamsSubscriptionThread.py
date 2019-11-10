@@ -334,7 +334,7 @@ def _checkIfDeliverFile(srvObj,
     fileBackLogBuffered = fileInfo[FILE_BL]
     subs_start = subscrObj.getStartDate()
 
-    if lastSchedule is not None and lastSchedule > lastDelivery:
+    if lastDelivery is not None and lastSchedule is not None and lastSchedule > lastDelivery:
         # assume what have been scheduled are already delivered, this avoids multiple schedules for the same file across multiple main thread iterations
         # (so that we do not have to block the main iteration anymore)
         # if a file is scheduled but fail to deliver, it will be picked up by backlog in the future
