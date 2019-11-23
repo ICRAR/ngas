@@ -229,6 +229,8 @@ def httpPostUrl(url, data, mimeType, hdrs={},
 
     if split_url.scheme == 'https':
         cert_path = os.environ.get("NGAS_CA_PATH")
+        client_cert = os.environ.get("NGAS_CLIENT_CERT")
+        client_key = os.environ.get("NGAS_CLIENT_KEY")
         hdrs["Content-Type"] = mimeType
         if contDisp:
             hdrs["Content-Disposition"] = contDisp
@@ -241,6 +243,7 @@ def httpPostUrl(url, data, mimeType, hdrs={},
         resp = requests.post(
             url, data=data, headers=hdrs, timeout=timeout, auth=auth,
             params=pars, verify=cert_path if cert_path is not None else True,
+            cert=(client_cert, client_key),
         )
 
         reply, msg, hdrs = resp.status_code, resp.reason, resp.headers
@@ -279,14 +282,17 @@ def httpGetUrl(url, pars=[], hdrs={}, timeout=None, auth=None):
 
     if split_url.scheme == 'https':
         cert_path = os.environ.get("NGAS_CA_PATH")
+        client_cert = os.environ.get("NGAS_CLIENT_CERT")
+        client_key = os.environ.get("NGAS_CLIENT_KEY")
 
         if isinstance(auth, str):
             # this passes on the internals of ngas' auth setup
             hdrs["Authorization"] = auth.strip()
             auth = None
-        resp =  requests.get(
+        resp = requests.get(
             url, headers=hdrs, timeout=timeout, auth=auth, params=pars,
             verify=cert_path if cert_path is not None else True,
+            cert=(client_cert, client_key),
         )
         resp.status = resp.status_code
         return resp
