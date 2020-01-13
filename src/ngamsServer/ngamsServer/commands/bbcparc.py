@@ -108,20 +108,18 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
 
 def get_params(request):
 
+    url = request.getFileUri()
+    if url.lower().startswith('ssh://'):
+        url = url[6:]
+    elif url.lower().startswith('ssh:/'):
+        url = url[5:]
+    elif url.lower().startswith('ssh:'):
+        url = url[4:]
+    url = urlparse.urlparse('ssh://' + url)
+
     # exclude pulling files from these locations
     invalid_paths = ('/dev', '/var', '/usr', '/opt', '/etc')
-    uri = request.getFileUri()
-
-    if uri.lower().startswith('ssh://'):
-        uri = uri[6:]
-    elif uri.lower().startswith('ssh:/'):
-        uri = uri[5:]
-    elif uri.lower().startswith('ssh:'):
-        uri = uri[4:]
-
-    uri = 'ssh://' + uri
-    uri_parsed = urlparse.urlparse(uri)
-    if uri_parsed.path.lower().startswith(invalid_paths):
+    if url.path.lower().startswith(invalid_paths):
         raise Exception('Requested to pull file from excluded location')
 
     # Collect BBCP parameters
