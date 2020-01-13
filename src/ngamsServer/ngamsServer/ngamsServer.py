@@ -1712,6 +1712,7 @@ class ngamsServer(object):
         msg = "Handling HTTP request: client_address=%s - method=%s - path=|%s|"
         logger.info(msg, str(clientAddress), method, safePath)
 
+        reqPropsObj.client_addr = clientAddress[0]
         reqPropsObj.unpackHttpInfo(self.getCfg(), method, path, headers)
 
         try:

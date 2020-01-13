@@ -144,13 +144,29 @@ def get_params(request):
     return bbcp_param(port, winsize, num_streams, checksum)
 
 
+def get_source_file(request):
+    """
+    Put the NGAS client address as the netloc of the URL in the source file,
+    so that bbcp contacts the host issuing the HTTP request. Carry over any
+    username, if given
+    """
+    url = urlparse.urlsplit(request.getFileUri())
+    if not url.scheme:
+        url = urlparse.urlsplit('file://' + request.getFileUri())
+    if url.username:
+        netloc = url.username + '@' + request.client_addr
+    else:
+        netloc = request.client_addr
+    return netloc + ':' + url.path
+
 def bbcp_transfer(request, out_fname, crc_name, skip_crc):
 
     bparam = get_params(request)
+    source_file = get_source_file(request)
 
     # perform the bbcp transfer, we will always return the checksum
     start = time.time()
-    checksum = bbcpFile(request.getFileUri(), out_fname, bparam, crc_name, skip_crc)
+    checksum = bbcpFile(source_file, out_fname, bparam, crc_name, skip_crc)
     size = getFileSize(out_fname)
     totaltime = time.time() - start
 
