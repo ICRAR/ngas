@@ -70,7 +70,8 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
         ns = ['-s', str(bparam.num_streams)]
 
     # bypass password prompt with -oBatchMode=yes this implies you need keys
-    ssh_src = ['-S', 'ssh -x -a -oBatchMode=yes -oFallBackToRsh=no %4 %I -l %U %H bbcp']
+    # also disable kerberos-based (GSSAPI) authentication
+    ssh_src = ['-S', 'ssh -x -a -oBatchMode=yes -oGSSAPIAuthentication=no -oFallBackToRsh=no %4 %I -l %U %H bbcp']
 
     # perform checksum on host and compare to target. If it's different bbcp will fail.
     if not skip_crc and crc_name is not None:
