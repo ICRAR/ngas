@@ -1050,8 +1050,10 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
 
     cfg = srvObj.getCfg()
 
-    # GET means pull, POST is push
-    if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
+    # GET means pull, POST is push (only for HTTP transfers)
+    if transfer is not None:
+        rfile = None
+    elif (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
         logger.info("Handling archive pull request")
 
         # Default to absolute path file:// scheme if url has no schema
@@ -1070,7 +1072,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
 
     logger.info(genLog("NGAMS_INFO_ARCHIVING_FILE", [reqPropsObj.getFileUri()]), extra={'to_syslog': True})
 
-    if reqPropsObj.getSize() <= 0:
+    if transfer is None and reqPropsObj.getSize() <= 0:
         raise Exception('Content-Length is 0')
 
     mimeType = reqPropsObj.getMimeType()
