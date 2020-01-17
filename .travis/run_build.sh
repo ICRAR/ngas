@@ -188,6 +188,18 @@ then
 	export BERKELEYDB_DIR="${db_dir}"
 	export CFLAGS="$CFLAGS -I${db_dir}/include"
 	export LDFLAGS="$LDFLAGS -L${db_dir}/lib"
+
+	# setuptools is not present in homebrew python installations.
+	# It previously got automatically pulled by our dependencies,
+	# but now that they've removed python 2.7 support we need
+	# to explicitly install a previous version
+	PIP_PACKAGES="setuptools<45 $PIP_PACKAGES"
+
+	# Avoid issue in Travis with MacOS 10.13 where the MacOS SDK
+	# doesn't exist (or the wrong one gets picked up), so no headers
+	# are found. Still don't know exactly what's going on, but this
+	# seems to fix it
+	export CFLAGS="$CFLAGS -isysroot /"
 fi
 
 pip install $PIP_PACKAGES || fail "$EPIP"
