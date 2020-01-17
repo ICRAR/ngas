@@ -59,14 +59,15 @@ else
 fi
 ssh-keygen -t rsa -f ~/.ssh/id_rsa -N "" -q || fail "Failed to create RSA key"
 cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys || fail "Failed to add public key to authorized keys"
-ssh-keyscan -t rsa localhost >> ~/.ssh/known_hosts || fail "Failed to import localhost's RSA key"
+ssh-keyscan localhost >> ~/.ssh/known_hosts || fail "Failed to import localhost's keys"
 cat << EOF >> ~/.ssh/config
-Host localhost
+Host *
      IdentityFile ~/.ssh/id_rsa
-Host `hostname`
-     IdentityFile ~/.ssh/id_rsa
+     NoHostAuthenticationForLocalhost yes
 EOF
 ssh localhost ls || fail "Testing ssh localhost failed"
+ssh 127.0.0.1 ls || fail "Testing ssh 127.0.0.1 failed"
+ssh `hostname` ls || fail "Testing ssh `hostname` failed"
 
 # Install bbcp
 # After compilation we put it in the PATH, then go back to where we were
@@ -77,6 +78,12 @@ if [ $? -eq 0 ]; then
 	make all || fail "Failed to build bbcp"
 	sudo cp $PWD/../bin/`../MakeSname`/bbcp /usr/local/bin || fail "Failed to copy bbcp to /usr/local/bin"
 	bbcp --help > /dev/null || fail "bbcp failed to run with --help"
+
+	# In MacOS /usr/local/bin is not seen by newly created environments
+	# (e.g., when ssh-ing into localhost, which bbcp does), so let's
+	# do this ourselves
+	echo "export PATH=/usr/local/bin:\$PATH" | cat - ~/.bashrc > ~/.bashrc.mod
+	mv ~/.bashrc.mod ~/.bashrc
 else
 	echo "Failed to clone bbcp, testing proceeding without bbcp" 1>&2
 fi
