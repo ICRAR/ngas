@@ -50,12 +50,6 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
     """
     logger.debug("Copying file: %s to filename: %s", srcFilename, targFilename)
 
-    # Make target file writable if existing.
-    if (os.path.exists(targFilename)):
-        os.chmod(targFilename, 420)
-
-    checkCreatePath(os.path.dirname(targFilename))
-
     if bparam.port:
         pt = ['-Z', str(bparam.port)]
     else:
@@ -85,7 +79,7 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
         else:
             raise Exception("Unsupported checksum method in BBCP: %s" % (crc_name,))
 
-    cmd_list = ['bbcp', '-f', '-V'] + ssh_src + cmd_checksum + fw + ns + ['-P', '2'] + pt + [srcFilename, targFilename]
+    cmd_list = ['bbcp', '-f', '-V', '-z'] + ssh_src + cmd_checksum + fw + ns + ['-P', '2'] + pt + [srcFilename, targFilename]
 
     logger.info("Executing external command: %s", subprocess.list2cmdline(cmd_list))
 
@@ -160,12 +154,22 @@ def get_source_file(request):
 
 def bbcp_transfer(request, out_fname, crc_name, skip_crc):
 
+    # source_file must have the IP of the client, so bbcp can contact it and
+    # launch a copy ot itself.
+    # OTOH, target_file must have the IP through which we received the original
+    # HTTP request to ensure the same network path is used by bbcp
     bparam = get_params(request)
     source_file = get_source_file(request)
+    target_file = request.getHttpHdr('host') + ':' + out_fname
+
+    # Make target file writable if existing.
+    if (os.path.exists(out_fname)):
+        os.chmod(out_fname, 420)
+    checkCreatePath(os.path.dirname(out_fname))
 
     # perform the bbcp transfer, we will always return the checksum
     start = time.time()
-    checksum = bbcpFile(source_file, out_fname, bparam, crc_name, skip_crc)
+    checksum = bbcpFile(source_file, target_file, bparam, crc_name, skip_crc)
     size = getFileSize(out_fname)
     totaltime = time.time() - start
 
