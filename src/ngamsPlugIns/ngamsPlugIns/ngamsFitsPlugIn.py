@@ -87,7 +87,7 @@ def getFitsKeys(fitsFile,
         raise
 
 
-def getDpIdInfo(filename):
+def getDpIdInfo(request):
     """
     Generate the File ID (here DP ID) for the file.
 
@@ -97,12 +97,15 @@ def getDpIdInfo(filename):
                 of the file, and the JD date. The two latter deducted from
                 the ARCFILE keyword (tuple).
     """
+    ignore_arcfile_keyword = int(request.get('ignore_arcfile', 0))
+    if ignore_arcfile_keyword:
+        filename = os.path.basename(request.getFileUri())
+        return filename, toiso8601(fmt=FMT_DATE_ONLY)
     try:
-        keyDic  = getFitsKeys(filename, ["ARCFILE"])
+        keyDic  = getFitsKeys(request.getStagingFilename(), ["ARCFILE"])
         arcFile = keyDic["ARCFILE"][0]
         els     = arcFile.split(".")
         dpId    = els[0] + "." + els[1] + "." + els[2]
-        date    = els[1].split("T")[0]
         # Make sure that the files are stored according to JD
         # (one night is 12am -> 12am).
         isoTime = '.'.join(els[1:])
@@ -206,7 +209,7 @@ def prepFile(reqPropsObj,
         reqPropsObj.setStagingFilename(newFn)
 
     checkFitsFileSize(reqPropsObj.getStagingFilename())
-    dpIdInfo = getDpIdInfo(reqPropsObj.getStagingFilename())
+    dpIdInfo = getDpIdInfo(reqPropsObj)
 
     return dpIdInfo[1], dpIdInfo[2], comprExt
 
@@ -292,7 +295,7 @@ def ngamsFitsPlugIn(srvObj,
     dpId, dateDirName, comprExt = prepFile(reqPropsObj, parDic)
 
     # Get various information about the file being handled.
-    dpIdInfo = getDpIdInfo(reqPropsObj.getStagingFilename())
+    dpIdInfo = getDpIdInfo(reqPropsObj)
     dpId = dpIdInfo[1]
     dateDirName = dpIdInfo[2]
     fileVersion, relPath, relFilename,\
