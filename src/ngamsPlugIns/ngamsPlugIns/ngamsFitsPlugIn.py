@@ -113,7 +113,7 @@ def getDpIdInfo(request):
         ts2 = tomjd(ts1) - 0.5
         dateDirName = toiso8601(frommjd(ts2), fmt=FMT_DATE_ONLY)
 
-        return [arcFile, dpId, dateDirName]
+        return dpId, dateDirName
     except:
         err = "Did not find keyword ARCFILE in FITS file or ARCFILE illegal"
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
@@ -209,9 +209,7 @@ def prepFile(reqPropsObj,
         reqPropsObj.setStagingFilename(newFn)
 
     checkFitsFileSize(reqPropsObj.getStagingFilename())
-    dpIdInfo = getDpIdInfo(reqPropsObj)
-
-    return dpIdInfo[1], dpIdInfo[2], comprExt
+    return comprExt
 
 
 def _compress_data(plugin_pars):
@@ -292,12 +290,10 @@ def ngamsFitsPlugIn(srvObj,
                                                 reqPropsObj.getMimeType())
 
     # Check file (size + checksum) + extract information.
-    dpId, dateDirName, comprExt = prepFile(reqPropsObj, parDic)
+    comprExt = prepFile(reqPropsObj, parDic)
 
     # Get various information about the file being handled.
-    dpIdInfo = getDpIdInfo(reqPropsObj)
-    dpId = dpIdInfo[1]
-    dateDirName = dpIdInfo[2]
+    dpId, dateDirName = getDpIdInfo(reqPropsObj)
     fileVersion, relPath, relFilename,\
                  complFilename, fileExists =\
                  ngamsPlugInApi.genFileInfo(srvObj.getDb(), srvObj.getCfg(),

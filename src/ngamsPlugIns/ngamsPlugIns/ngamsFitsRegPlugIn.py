@@ -82,7 +82,7 @@ def ngamsFitsRegPlugIn(srvObj, reqPropsObj, parDic):
         ngamsFitsPlugIn.checkFitsChecksum(reqPropsObj, workingFile)
 
     # Get various information about the file being handled.
-    arcFile, dpId, dateDirName = ngamsFitsPlugIn.getDpIdInfo(reqPropsObj)
+    dpId, dateDirName = ngamsFitsPlugIn.getDpIdInfo(reqPropsObj)
     fileVersion, relPath, relFilename,\
                  complFilename, fileExists =\
                  ngamsPlugInApi.genFileInfoReg(srvObj.getDb(), srvObj.getCfg(),
