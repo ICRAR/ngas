@@ -62,6 +62,10 @@ Changelog
   via the authentication mechanisms provided by requests. Note that with the
   current setup, the authentication plugins can only be used with HTTPS (this
   may change in the future).
+* Default FITS plug-in doesn't mandate an ``ARCFILE`` keyword to be present
+  in the incoming FITS file if the ``ignore_arcfile=1`` option is given in the
+  HTTP parameters. This is useful for archiving FITS files that don't have this
+  keyword, but that want to use the default FITS plug-in.
 
 .. rubric:: 11.0.2
 
