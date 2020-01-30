@@ -87,7 +87,7 @@ def getFitsKeys(fitsFile,
         raise
 
 
-def getDpIdInfo(filename):
+def getDpIdInfo(request):
     """
     Generate the File ID (here DP ID) for the file.
 
@@ -97,12 +97,15 @@ def getDpIdInfo(filename):
                 of the file, and the JD date. The two latter deducted from
                 the ARCFILE keyword (tuple).
     """
+    ignore_arcfile_keyword = int(request.get('ignore_arcfile', 0))
+    if ignore_arcfile_keyword:
+        filename = os.path.basename(request.getFileUri())
+        return filename, toiso8601(fmt=FMT_DATE_ONLY)
     try:
-        keyDic  = getFitsKeys(filename, ["ARCFILE"])
+        keyDic  = getFitsKeys(request.getStagingFilename(), ["ARCFILE"])
         arcFile = keyDic["ARCFILE"][0]
         els     = arcFile.split(".")
         dpId    = els[0] + "." + els[1] + "." + els[2]
-        date    = els[1].split("T")[0]
         # Make sure that the files are stored according to JD
         # (one night is 12am -> 12am).
         isoTime = '.'.join(els[1:])
@@ -110,7 +113,7 @@ def getDpIdInfo(filename):
         ts2 = tomjd(ts1) - 0.5
         dateDirName = toiso8601(frommjd(ts2), fmt=FMT_DATE_ONLY)
 
-        return [arcFile, dpId, dateDirName]
+        return dpId, dateDirName
     except:
         err = "Did not find keyword ARCFILE in FITS file or ARCFILE illegal"
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
@@ -192,11 +195,7 @@ def prepFile(reqPropsObj,
                     (<DP ID>, <Date Obs. Night>, <Compr. Ext.>)   (tuple).
     """
     # If the file is already compressed, we have to decompress it.
-    comprExt = ''
-    compression = parDic["compression"]
-    if compression and 'gzip' in compression:
-        comprExt = 'gz'
-
+    comprExt = 'gz' if _compress_data(parDic) else ''
     tmpFn = reqPropsObj.getStagingFilename()
     if tmpFn.lower().endswith('.gz'):
         newFn = os.path.splitext(tmpFn)[0]
@@ -206,13 +205,11 @@ def prepFile(reqPropsObj,
         reqPropsObj.setStagingFilename(newFn)
 
     checkFitsFileSize(reqPropsObj.getStagingFilename())
-    dpIdInfo = getDpIdInfo(reqPropsObj.getStagingFilename())
-
-    return dpIdInfo[1], dpIdInfo[2], comprExt
+    return comprExt
 
 
 def _compress_data(plugin_pars):
-    compression = plugin_pars["compression"]
+    compression = plugin_pars.get("compression")
     return compression and 'gzip' in compression
 
 def compress(reqPropsObj,
@@ -232,7 +229,7 @@ def compress(reqPropsObj,
     stFn = reqPropsObj.getStagingFilename()
     uncomprSize = ngamsPlugInApi.getFileSize(stFn)
     mime = reqPropsObj.getMimeType()
-    compression = parDic["compression"]
+    compression = parDic.get("compression")
 
     if _compress_data(parDic):
         logger.debug("Compressing file: %s using: %s", stFn, compression)
@@ -258,6 +255,7 @@ def compress(reqPropsObj,
         logger.debug("File compressed: %s Time: %.3fs", gzip_name, compress_time)
     else:
         compression = ''
+        crc = None
 
     archFileSize = ngamsPlugInApi.getFileSize(reqPropsObj.getStagingFilename())
 
@@ -289,12 +287,10 @@ def ngamsFitsPlugIn(srvObj,
                                                 reqPropsObj.getMimeType())
 
     # Check file (size + checksum) + extract information.
-    dpId, dateDirName, comprExt = prepFile(reqPropsObj, parDic)
+    comprExt = prepFile(reqPropsObj, parDic)
 
     # Get various information about the file being handled.
-    dpIdInfo = getDpIdInfo(reqPropsObj.getStagingFilename())
-    dpId = dpIdInfo[1]
-    dateDirName = dpIdInfo[2]
+    dpId, dateDirName = getDpIdInfo(reqPropsObj)
     fileVersion, relPath, relFilename,\
                  complFilename, fileExists =\
                  ngamsPlugInApi.genFileInfo(srvObj.getDb(), srvObj.getCfg(),
