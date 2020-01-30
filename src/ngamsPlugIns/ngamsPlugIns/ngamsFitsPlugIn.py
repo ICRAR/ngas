@@ -195,11 +195,7 @@ def prepFile(reqPropsObj,
                     (<DP ID>, <Date Obs. Night>, <Compr. Ext.>)   (tuple).
     """
     # If the file is already compressed, we have to decompress it.
-    comprExt = ''
-    compression = parDic["compression"]
-    if compression and 'gzip' in compression:
-        comprExt = 'gz'
-
+    comprExt = 'gz' if _compress_data(parDic) else ''
     tmpFn = reqPropsObj.getStagingFilename()
     if tmpFn.lower().endswith('.gz'):
         newFn = os.path.splitext(tmpFn)[0]
@@ -213,7 +209,7 @@ def prepFile(reqPropsObj,
 
 
 def _compress_data(plugin_pars):
-    compression = plugin_pars["compression"]
+    compression = plugin_pars.get("compression")
     return compression and 'gzip' in compression
 
 def compress(reqPropsObj,
@@ -233,7 +229,7 @@ def compress(reqPropsObj,
     stFn = reqPropsObj.getStagingFilename()
     uncomprSize = ngamsPlugInApi.getFileSize(stFn)
     mime = reqPropsObj.getMimeType()
-    compression = parDic["compression"]
+    compression = parDic.get("compression")
 
     if _compress_data(parDic):
         logger.debug("Compressing file: %s using: %s", stFn, compression)
@@ -259,6 +255,7 @@ def compress(reqPropsObj,
         logger.debug("File compressed: %s Time: %.3fs", gzip_name, compress_time)
     else:
         compression = ''
+        crc = None
 
     archFileSize = ngamsPlugInApi.getFileSize(reqPropsObj.getStagingFilename())
 
