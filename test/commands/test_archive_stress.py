@@ -145,7 +145,7 @@ class ngamsArchiveStressTest(ngamsTestSuite):
         startTime = time.time()
         while ((time.time() - startTime) < 100):
             for key in list(THREADS):
-                if (not THREADS[key].isAlive()): del THREADS[key]
+                if not THREADS[key].is_alive(): del THREADS[key]
                 if (THREADS == {}): break
             if (THREADS == {}): break
             time.sleep(0.100)
