@@ -90,12 +90,12 @@
 /**************************************************************************
  * Various utility functions.
  */
-char* ngamsArchCliManPage(void);
+const char* ngamsArchiveClientMan(void);
 
 
 void ngamsCorrectUsage()
 {
-    printf("%s", (ngamsArchCliManPage() + 1));
+    printf("%s", ngamsArchiveClientMan());
 }
 
 

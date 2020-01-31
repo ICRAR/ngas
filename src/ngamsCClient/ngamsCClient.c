@@ -75,9 +75,11 @@
 #include "ngamsCClientGlobals.h"
 
 
+const char *ngamsCClientMan();
+
 void correctUsage()
 {
-    printf(">> ngamsCClient %s", ngamsManPage());
+    printf(">> ngamsCClient %s", ngamsCClientMan());
 }
 
 

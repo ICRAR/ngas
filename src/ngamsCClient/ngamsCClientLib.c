@@ -262,9 +262,6 @@
 #include "ngamsVERSION.h"
 #include "ngamsCClientGlobals.h"
 
-char* _ngamsLicense(void);
-char* _ngamsManPage(void);
-
 /* IMPL: Add entry/exit debug logs in all functions where relevant. */
 
 /**
@@ -4424,18 +4421,6 @@ int ngamsIsDir(const char* filename) {
 }
 
 /**
- char* ngamsLicense(void)
-
- Return pointer to buffer containing the NG/AMS License Agreement.
-
- Returns:   Pointer to static buffer containing the license agreement
- for NG/AMS.
- */
-char* ngamsLicense(void) {
-	return _ngamsLicense();
-}
-
-/**
  int ngamsLogCodeInStatus(const ngamsSTATUS*     status,
  const char*            errId)
  Probe if the given log/status code is contained in the ngamsSTAT object.
@@ -4481,17 +4466,6 @@ ngamsSTAT ngamsLoadFile(const char* filename, char* buf, const int maxSize) {
 	ngamsLogInfo(LEV4, "Opened/loaded file: %s", filename);
 
 	return ngamsSTAT_SUCCESS;
-}
-
-/**
- char* ngamsManPage(void)
- Return reference to the man-page of the NG/AMS C-Client.
-
- Returns:    Pointer to static buffer containing the man-page
- for the NG/AMS C-Client.
- */
-char* ngamsManPage(void) {
-	return _ngamsManPage();
 }
 
 /**

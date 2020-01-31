@@ -17,3 +17,4 @@ ngamsMAN_PAGE.c
 ngamsMAN_PAGE.lo
 ngamsMAN_PAGE_X.lo
 ngamsVERSION.h
+*.txt.c
