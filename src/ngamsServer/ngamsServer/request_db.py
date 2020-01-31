@@ -25,7 +25,7 @@ import errno
 import os
 import threading
 
-from ngamsLib import ngamsDbm
+from ngamsLib import ngamsDbm, utils
 
 
 class NullRequestDB(object):
@@ -125,4 +125,4 @@ class DBMRequestDB(object):
 
     def keys(self):
         with self.lock:
-            return self.dbm.keys()
+            return list(map(utils.b2s, self.dbm.keys()))
