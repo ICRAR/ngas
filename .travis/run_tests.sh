@@ -68,4 +68,4 @@ elif [[ "$DB" == "postgresql" ]]; then
 fi
 export NGAS_TESTDB
 
-py.test --cov --cov-append
+py.test -v --cov --cov-append
