@@ -77,7 +77,7 @@
 
 void correctUsage()
 {
-    printf(">> ngamsCClient %s", (ngamsManPage() + 1));
+    printf(">> ngamsCClient %s", ngamsManPage());
 }
 
 
