@@ -47,13 +47,15 @@ pip install psutil 'coverage<5' pytest-cov coveralls trustme || fail "Failed to 
 
 # Try to simply import the plugin modules
 # This increases our coverage by a not-too-small amount
+import_statements=''
 for f in src/ngamsPlugIns/ngamsPlugIns/*.py; do
 	f=`basename $f`
 	if [[ $f == __init__.py ]]; then
 		continue
 	fi
-	coverage run -p <(echo "import ngamsPlugIns.${f%%.py}") &> /dev/null || fail "Failed to import $f plugin"
+	import_statements+="import ngamsPlugIns.${f%%.py}; "
 done
+coverage run -p <(echo $import_statements) &> /dev/null || fail "Import plugins failed"
 coverage combine || fail "Failed to combine coverage information"
 
 # These are the user/dbname/passwd that we created on run_build
