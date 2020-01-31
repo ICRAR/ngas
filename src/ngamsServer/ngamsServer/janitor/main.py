@@ -35,7 +35,6 @@ suspended NGAS hosts, suspending itself.
 
 import importlib
 import logging
-import signal
 import time
 
 from six.moves import queue as Queue  # @UnresolvedImport
