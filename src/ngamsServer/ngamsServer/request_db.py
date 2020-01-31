@@ -25,7 +25,7 @@ import errno
 import os
 import threading
 
-from ngamsLib import ngamsHighLevelLib, ngamsDbm
+from ngamsLib import ngamsDbm
 
 
 class NullRequestDB(object):
@@ -72,8 +72,8 @@ class InMemoryRequestDB(object):
 class DBMRequestDB(object):
     """A RequestDB backed up by a DBM file"""
 
-    def __init__(self, host_id, cfg):
-        self.dbm_fname = os.path.join(ngamsHighLevelLib.getNgasChacheDir(cfg), '%s_REQUEST_INFO_DB' % host_id)
+    def __init__(self, fname):
+        self.dbm_fname = fname
         self.lock = threading.Lock()
         self.recreate_dbm()
 

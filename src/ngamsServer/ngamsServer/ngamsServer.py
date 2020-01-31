@@ -2087,7 +2087,9 @@ class ngamsServer(object):
         elif request_db_backend == 'memory':
             self.request_db = request_db.InMemoryRequestDB()
         elif request_db_backend == 'bsddb':
-            self.request_db = request_db.DBMRequestDB(self.getHostId(), self.getCfg())
+            cache_dir = ngamsHighLevelLib.getNgasChacheDir(self.getCfg())
+            dbm_fname = os.path.join(cache_dir, '%s_REQUEST_INFO_DB' % self.host_id)
+            self.request_db = request_db.DBMRequestDB(dbm_fname)
         else:
             raise Exception("Unsupported backend: %s" % request_db_backend)
 
