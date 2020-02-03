@@ -51,6 +51,9 @@ Changelog
   This makes using unit test tools
   like ``pytest`` or the built-in ``unittest`` module
   easier to use.
+* Fixed issues with the ``BBCPARC`` command,
+  which `didn't work <https://github.com/ICRAR/ngas/issues/19>`_
+  for remote host transfers, only for ``localhost`` ones.
 * Fixed small issue in ``QUERY`` command
   where column names where not correctly aligned
   with the underlying column data.
