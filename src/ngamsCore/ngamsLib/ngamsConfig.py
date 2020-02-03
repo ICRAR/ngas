@@ -1896,7 +1896,7 @@ class ngamsConfig:
     def _check_int(self, prop, value):
         """Check that ``value`` given is integer and different from -1"""
         if not isinstance(value, six.integer_types) or value == -1:
-            errMsg = "Must define a proper integer value for property: %s" (prop,)
+            errMsg = "Must define a proper integer value for property: %s" % (prop,)
             errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
             logger.error(errMsg)
             self.__checkRep.append(errMsg)
