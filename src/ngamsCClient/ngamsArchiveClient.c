@@ -90,12 +90,12 @@
 /**************************************************************************
  * Various utility functions.
  */
-char* ngamsArchCliManPage(void);
+const char* ngamsArchiveClientMan(void);
 
 
 void ngamsCorrectUsage()
 {
-    printf("%s", (ngamsArchCliManPage() + 1));
+    printf("%s", ngamsArchiveClientMan());
 }
 
 
@@ -531,7 +531,12 @@ ngamsSTAT ngamsExecCmd(const char*    cmd,
 	ngamsLogError("Error executing command: %s", cmd);
 	return ngamsSTAT_FAILURE;
 	}
-    fread(res, sizeof(ngamsHUGE_BUF), sizeof(char), fp);
+    if (fread(res, sizeof(ngamsHUGE_BUF), sizeof(char), fp) == 0 &&
+        ferror(fp)) {
+        fprintf(stderr, "Error when reading output from command: %s", cmd);
+        pclose(fp);
+        return ngamsSTAT_FAILURE;
+    }
     ngamsLogInfo(LEV4, "Result of cmd: %s: %s", cmd, res);
     pclose(fp);
 
@@ -557,7 +562,11 @@ ngamsSTAT ngamsServe(ngamsARCHIVE_CLIENT_REGISTRY*  regP)
 	return ngamsSTAT_FAILURE;
     while (dirs[i] != NULL)
 	{
-	sprintf(tmpName, "%s/%s/%s", rootDirLoc, ngamsARCH_CLI_DIR, dirs[i]);
+	int written = snprintf(tmpName, sizeof(ngamsMED_BUF), "%s/%s/%s", rootDirLoc, ngamsARCH_CLI_DIR, dirs[i]);
+	if (written >= sizeof(ngamsMED_BUF)) {
+		fprintf(stderr, "\nCouldn't assembly directory name for %s", dirs[i]);
+		return ngamsSTAT_FAILURE;
+	}
 	/* Check if directory already exists */
 	if ((tmpFd = open(tmpName, O_RDONLY, 0)) == -1)
 	    {
@@ -580,19 +589,31 @@ ngamsSTAT ngamsServe(ngamsARCHIVE_CLIENT_REGISTRY*  regP)
 	}
     memset(pidBuf, 0, sizeof(ngamsMED_BUF));
     sprintf(pidBuf, "%d", (int)getpid());
-    write(tmpFd, pidBuf, strlen(pidBuf));
+    if (write(tmpFd, pidBuf, strlen(pidBuf)) != strlen(pidBuf)) {
+        fprintf(stderr, "\nFailure when writing PID file contents");
+        close(tmpFd);
+        return ngamsSTAT_FAILURE;
+    }
     close(tmpFd);
 
     /* Set up logging properties */
     ngamsSetVerboseLevel(regP->verboseLevel);
-    sprintf(tmpName, "%s/%s/%s/%s", rootDirLoc, ngamsARCH_CLI_DIR,
+    int written = snprintf(tmpName, sizeof(ngamsMED_BUF), "%s/%s/%s/%s", rootDirLoc, ngamsARCH_CLI_DIR,
 	    ngamsARCH_CLI_LOG_DIR, ngamsARCH_CLI_LOG_FILE);
+    if (written >= sizeof(ngamsMED_BUF)) {
+        fprintf(stderr, "\nCouldn't assembly log filename");
+        return ngamsSTAT_FAILURE;
+    }
     if ((stat = ngamsPrepLog(tmpName, regP->logLevel,
 			     regP->logRotate, regP->logHistory)) !=
 	ngamsSTAT_SUCCESS)
 	return stat;
     ngamsGetHostName(tmpHostId);
-    sprintf(systemId, "%s@%s", ngamsARCH_CLI_NAME, tmpHostId);
+    written = snprintf(systemId, sizeof(ngamsMED_BUF), "%s@%s", ngamsARCH_CLI_NAME, tmpHostId);
+    if (written >= sizeof(ngamsMED_BUF)) {
+        fprintf(stderr, "\nCouldn't assembly system ID");
+        return ngamsSTAT_FAILURE;
+    }
     ngamsLogInfo(LEV1, "Initializing NG/AMS Archive Client - SYSTEM-ID: %s ",
 		 systemId);
 
@@ -698,9 +719,17 @@ ngamsSTAT ngamsMoveFile2StatDir(const char*  statDir,
     ngamsMED_BUF   trgFilename, xmlStatDocFile, isoTime;
 
     ngamsGenIsoTime(3, isoTime);
-    sprintf(trgFilename, "%s/%s___%s", statDir, isoTime, filename);
-    sprintf(xmlStatDocFile, "%s/%s___%s%s", statDir, isoTime,
+    int written = snprintf(trgFilename, sizeof(ngamsMED_BUF), "%s/%s___%s", statDir, isoTime, filename);
+    if (written >= sizeof(ngamsMED_BUF)) {
+        ngamsLogError("Couldn't assemble new target filename");
+        return ngamsSTAT_FAILURE;
+    }
+    written = snprintf(xmlStatDocFile, sizeof(ngamsMED_BUF), "%s/%s___%s%s", statDir, isoTime,
 	    filename, ngamsARCH_CLI_STAT_EXT);
+    if (written >= sizeof(ngamsMED_BUF)) {
+        ngamsLogError("Couldn't assemble new XML stat filename");
+        return ngamsSTAT_FAILURE;
+    }
     ngamsLogInfo(LEV1, "Moving handled file (or link): %s to "
 		 "directory: %s ...", queueFilename, trgFilename);
     if (rename(queueFilename, trgFilename) == -1)
@@ -753,8 +782,12 @@ ngamsSTAT ngamsCheckArchiveQueue(ngamsARCHIVE_CLIENT_REGISTRY*  regP)
 	{
 	if (dirEnt->d_name[0] != '.')
 	    {
-	    sprintf(queueFilename, "%s/%s", ngamsGetQueueDir(regP->rootDir),
+	    int written = snprintf(queueFilename, sizeof(ngamsMED_BUF), "%s/%s", ngamsGetQueueDir(regP->rootDir),
 		    dirEnt->d_name);
+	    if (written >= sizeof(ngamsMED_BUF)) {
+	        ngamsLogError("Problem assembling filename for file in archive directory queue: %s", dirEnt->d_name);
+	        goto errExit;
+	    }
 	    if (!fileBeingProcessed(regP, queueFilename))
 		{
 		ngamsLogInfo(LEV1, "Scheduling file for archiving: %s ...",
@@ -794,7 +827,11 @@ ngamsSTAT ngamsArchiveFile(ngamsARCHIVE_CLIENT_REGISTRY*  regP,
 
     if (*(regP->checksum) != '\0')
 	{
-	sprintf(checksumCmd, "%s %s", regP->checksum, sourceFile);
+	int written = snprintf(checksumCmd, sizeof(ngamsMED_BUF), "%s %s", regP->checksum, sourceFile);
+	if (written >= sizeof(ngamsMED_BUF)) {
+		ngamsLogError("Error generating checksum command");
+		return ngamsSTAT_FAILURE;
+	}
 	if (ngamsExecCmd(checksumCmd, checksumRes) != ngamsSTAT_SUCCESS)
 	    {
 	    ngamsLogError("Error generating checksum using Checksum "
@@ -888,8 +925,12 @@ ngamsSTAT ngamsArchiveFile(ngamsARCHIVE_CLIENT_REGISTRY*  regP,
 	    
 	    /* First rename, then remove it */
 	    ngamsMED_BUF  removeName;
-	    sprintf(removeName, "%s/.REMOVED_%s", ngamsGetQueueDir(NULL),
+	    int written = snprintf(removeName, sizeof(ngamsMED_BUF), "%s/.REMOVED_%s", ngamsGetQueueDir(NULL),
 		    baseName);
+	    if (written >= sizeof(ngamsMED_BUF)) {
+	        ngamsLogError("Cannot assemble filename to be removed");
+	        return ngamsSTAT_FAILURE;
+	    }
 	    rename(sourceFile, removeName);
 	    remove(removeName);
 	    /* may cause lots of delay when calling sync()*/
@@ -944,9 +985,17 @@ ngamsSTAT ngamsCleanUpArchivedFiles(ngamsARCHIVE_CLIENT_REGISTRY*  regP)
 	if ((dirEnt->d_name[0] != '.') &&
 	    (strstr(dirEnt->d_name, ngamsARCH_CLI_STAT_EXT) == NULL))
 	    {
-	    sprintf(archFile, "%s/%s", ngamsGetArchDir(regP->rootDir),
+	    int written = snprintf(archFile, sizeof(ngamsMED_BUF), "%s/%s", ngamsGetArchDir(regP->rootDir),
 		    dirEnt->d_name);
-	    sprintf(xmlStatDocFile, "%s%s", archFile, ngamsARCH_CLI_STAT_EXT);
+	    if (written >= sizeof(ngamsMED_BUF)) {
+	        ngamsLogError("Error assembling filename");
+	        goto errExit;
+	    }
+	    written = snprintf(xmlStatDocFile, sizeof(ngamsMED_BUF), "%s%s", archFile, ngamsARCH_CLI_STAT_EXT);
+	    if (written >= sizeof(ngamsMED_BUF)) {
+	        ngamsLogError("Error assembling XML stat filename");
+	        goto errExit;
+	    }
 
 	    /* Check if the time for keeping the file in the Archived Files
 	     * Directory has elapsed

@@ -385,12 +385,10 @@ ngamsSTAT ngamsLabel(const char*      host,
                      const char*      slotId,
                      ngamsSTATUS*     status);
 
-char* ngamsLicense(void);
+const char* ngamsLicense(void);
 
 int ngamsLogCodeInStatus(const ngamsSTATUS*  status,
 			 const char*         errId);
-
-char* ngamsManPage(void);
 
 ngamsSTAT ngamsOffline(const char*       host,
                        const int         port,

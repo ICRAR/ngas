@@ -74,12 +74,12 @@
 #define GLOBALS 1
 #include "ngamsCClientGlobals.h"
 
-char *_ngamsManPageX(void);
+const char *ngamsCClientXMan(void);
 
 
 void _correctUsage()
 {
-    printf("> ngamsCClientX %s", (_ngamsManPageX() + 1));
+    printf("> ngamsCClientX %s", ngamsCClientXMan());
 }
 
 
