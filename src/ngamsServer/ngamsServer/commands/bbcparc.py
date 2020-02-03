@@ -79,7 +79,7 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
         else:
             raise Exception("Unsupported checksum method in BBCP: %s" % (crc_name,))
 
-    cmd_list = ['bbcp', '-f', '-V', '-z'] + ssh_src + cmd_checksum + fw + ns + ['-P', '2'] + pt + [srcFilename, targFilename]
+    cmd_list = ['bbcp', '-f', '-V'] + ssh_src + cmd_checksum + fw + ns + ['-P', '2'] + pt + [srcFilename, targFilename]
 
     logger.info("Executing external command: %s", subprocess.list2cmdline(cmd_list))
 
