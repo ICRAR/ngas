@@ -21,7 +21,7 @@
 #
 
 from ngamsLib import ngamsDb, ngamsDiskInfo, ngamsFileInfo
-from test import ngamsTestLib
+import ngamsTestLib
 
 class DbTests(ngamsTestLib.ngamsTestSuite):
 
