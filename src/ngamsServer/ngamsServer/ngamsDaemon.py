@@ -21,6 +21,7 @@
 #
 
 import errno
+import inspect
 import os
 import signal
 import sys
@@ -50,8 +51,16 @@ def start(args, cfg, pidfile):
         err('PID file %s already exists (pid=%d), not overwriting possibly existing instance' % (pidfile, pid,))
         return 1
 
+    # Old versions of lockfile don't offer a timeout parameter for PIDLockFile.
+    # We thus use it only when available (because we still want to have the
+    # behavior available when possible)
+    PIDLockFile = lockfile.pidlockfile.PIDLockFile
+    pidlockfile_kwargs = {}
+    if 'timeout' in inspect.getargspec(PIDLockFile.__init__).args:
+        pidlockfile_kwargs['timeout'] = 1
+
     # Go, go, go!
-    with daemon.DaemonContext(pidfile=lockfile.pidlockfile.PIDLockFile(pidfile)):
+    with daemon.DaemonContext(pidfile=PIDLockFile(pidfile, **pidlockfile_kwargs)):
         ngamsServer.main(args=args[1:], prog='ngamsDaemon')
 
     return 0
