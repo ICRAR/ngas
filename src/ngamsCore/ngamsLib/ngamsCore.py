@@ -285,7 +285,7 @@ def ngamsCopyrightString():
     return utils.b2s(pkg_resources.resource_string('ngamsData', 'COPYRIGHT'))
 
 
-_logDef = logutils.LogDefHolder(pkg_resources.resource_stream('ngamsData', 'ngamsLogDef.xml'))# @UndefinedVariable
+_logDef = None
 def genLog(logId, parList = []):
     """
     Generate a log line and return this.
@@ -296,6 +296,15 @@ def genLog(logId, parList = []):
 
     Returns:  Generated log line (string).
     """
+    # This can run intorace conditions where different threads create different
+    # instances of the LogDefHolder object, but at the end of the day they will
+    # be the same for all effects, so we don't really care. On the other hand
+    # lazily loading the XML document leads to better import times
+    global _logDef
+    if _logDef is None:
+        _logDef = logutils.LogDefHolder(
+            pkg_resources.resource_stream('ngamsData', 'ngamsLogDef.xml')
+        )
     return _logDef.generate_log(logId, *parList)
 
 
