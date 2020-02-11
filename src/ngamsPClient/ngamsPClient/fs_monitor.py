@@ -156,8 +156,6 @@ class Monitor(ClientWrapper):
                   self.badfiles_dir, self.backlog_dir):
             checkCreatePath(d)
 
-        self.start_tasks()
-        logger.debug('Done starting tasks')
 
     def start_tasks(self):
 
@@ -190,6 +188,8 @@ class Monitor(ClientWrapper):
         task = utils.Task('Log handling', self.handle_child_log_records)
         task.start()
         self.all_tasks.append(task)
+        logger.debug('Done starting all tasks')
+
 
     def handle_child_log_records(self, stop_evt):
         while not stop_evt.is_set():
@@ -383,6 +383,7 @@ def main():
         # Let SIGTERM also raise a KeyboardInterrupt
         signal.signal(signal.SIGTERM, signal.getsignal(signal.SIGINT))
         try:
+            monitor.start_tasks()
             signal.pause()
         except KeyboardInterrupt:
             monitor.stop(30)
