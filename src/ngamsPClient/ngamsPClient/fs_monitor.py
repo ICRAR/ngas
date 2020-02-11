@@ -380,8 +380,6 @@ def main():
                           client_retry_period=opts.client_retry_period,
                           cleanup_timeout=opts.cleanup_timeout,
                           archiving_cmd=opts.command)
-        # Let SIGTERM also raise a KeyboardInterrupt
-        signal.signal(signal.SIGTERM, signal.getsignal(signal.SIGINT))
         try:
             monitor.start_tasks()
             signal.pause()
@@ -390,4 +388,9 @@ def main():
         logging.shutdown()
 
 if __name__ == '__main__':
-    main()
+    # Let SIGTERM also raise a KeyboardInterrupt
+    signal.signal(signal.SIGTERM, signal.getsignal(signal.SIGINT))
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
