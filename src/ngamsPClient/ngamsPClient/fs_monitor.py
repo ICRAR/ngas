@@ -156,6 +156,8 @@ class Monitor(ClientWrapper):
                   self.badfiles_dir, self.backlog_dir):
             checkCreatePath(d)
 
+        # Used by close(), so needs to be there if start_tasks is not invoked
+        self.check_queue = None
 
     def start_tasks(self):
 
@@ -223,7 +225,9 @@ class Monitor(ClientWrapper):
             self.check_queue.put_nowait(req)
 
     def dump_pending_checks(self):
-        pending_check_requests = list(flush(self.check_queue))
+        pending_check_requests = None
+        if self.check_queue is not None:
+            pending_check_requests = list(flush(self.check_queue))
         if pending_check_requests:
             with open(self.pickled_check_reqs, 'wb') as f:
                 cPickle.dump(pending_check_requests, f)
