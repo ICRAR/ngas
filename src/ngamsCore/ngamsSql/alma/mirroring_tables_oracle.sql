@@ -25,41 +25,41 @@
 -- MA 02111-1307  USA
 --
 
-
-CREATE TABLE ALMA_MIRRORING_EXCLUSIONS
+-- Create ALMA NGAS mirroring tables
+create table alma_mirroring_exclusions
 (
-   ID decimal(38,0) PRIMARY KEY NOT NULL,
-   RULE_TYPE varchar2(8) NOT NULL,
-   FILE_PATTERN varchar2(64) NOT NULL,
-   INGESTION_START timestamp NOT NULL,
-   INGESTION_END timestamp NOT NULL,
-   ARC varchar2(6)
+    id number(*, 0) constraint nn_alma_mirroring_exclusions_id not null,
+    rule_type varchar2(8) constraint nn_alma_mirroring_exclusions_rule_type not null,
+    file_pattern varchar2(64) constraint nn_alma_mirroring_exclusions_file_pattern not null,
+    ingestion_start timestamp(6) constraint nn_alma_mirroring_exclusions_ingestion_start not null,
+    ingestion_end timestamp(6) constraint nn_alma_mirroring_exclusions_ingestion_end not null,
+    arc varchar2(6) null,
+    constraint pk_alma_mirroring_exclusions primary key (id)
 );
-CREATE UNIQUE INDEX MIRR_EXCLUSIONS_PK ON ALMA_MIRRORING_EXCLUSIONS(ID);
 
-
-CREATE TABLE NGAS_MIRRORING_BOOKKEEPING
+create table ngas_mirroring_bookkeeping
 (
-   FILE_ID varchar2(220) NOT NULL,
-   FILE_VERSION decimal(22,0) NOT NULL,
-   FILE_SIZE decimal(20,0) NOT NULL,
-   DISK_ID varchar2(128),
-   HOST_ID varchar2(32),
-   FORMAT varchar2(32),
-   STATUS char(8) NOT NULL,
-   TARGET_CLUSTER varchar2(64),
-   TARGET_HOST varchar2(64),
-   SOURCE_HOST varchar2(64) NOT NULL,
-   INGESTION_DATE varchar2(23),
-   INGESTION_TIME float(126),
-   ITERATION decimal(22,0) NOT NULL,
-   CHECKSUM varchar2(64) NOT NULL,
-   STAGING_FILE varchar2(305),
-   ATTEMPT decimal(4,0),
-   DOWNLOADED_BYTES decimal(22,0),
-   SOURCE_INGESTION_DATE timestamp DEFAULT sysdate NOT NULL,
-   CONSTRAINT NGAS_MIRRORING_BOOKKEEPING_IDX PRIMARY KEY (FILE_ID,FILE_VERSION,ITERATION)
+    file_id varchar2(220) constraint nn_ngas_mirroring_bookkeeping_file_id not null,
+    file_version number(22, 0) constraint nn_ngas_mirroring_bookkeeping_file_version not null,
+    file_size number(20, 0) constraint nn_ngas_mirroring_bookkeeping_file_size not null,
+    disk_id varchar2(128) null,
+    host_id varchar2(128) null,
+    format varchar2(32) null,
+    status char(8) constraint nn_ngas_mirroring_bookkeeping_status not null,
+    target_cluster varchar2(64) constraint nn_ngas_mirroring_bookkeeping_target_cluster not null,
+    target_host varchar2(64) null,
+    source_host varchar2(64) constraint nn_ngas_mirroring_bookkeeping_source_host not null,
+    ingestion_date varchar2(23) null,
+    ingestion_time float(126) default 0 constraint nn_ngas_mirroring_bookkeeping_ingestion_time not null,
+    iteration number(22, 0) default 0 constraint nn_ngas_mirroring_bookkeeping_iteration not null,
+    checksum varchar2(64) default '?' constraint nn_ngas_mirroring_bookkeeping_checksum not null,
+    staging_file varchar2(305) null,
+    attempt number(4, 0) default 0 null,
+    downloaded_bytes number(22, 0) default 0 null,
+    source_ingestion_date date default sysdate constraint nn_ngas_mirroring_bookkeeping_source_ingestion_date not null,
+    constraint pk_ngas_mirroring_bookkeeping primary key (file_id, file_version, iteration)
 );
-CREATE INDEX NMB_THOST_STATUS_SHOST_IDX ON NGAS_MIRRORING_BOOKKEEPING (TARGET_CLUSTER, TARGET_HOST, STATUS, SOURCE_HOST);
-CREATE INDEX NMB_FILE_SIZE_IDX ON NGAS_MIRRORING_BOOKKEEPING (FILE_SIZE);
-CREATE INDEX NMB_ITER_STATUS_IDX ON NGAS_MIRRORING_BOOKKEEPING (ITERATION, STATUS);
+create index idx_ngas_mirroring_bookkeeping_target_cluster_target_host_status_source_host on ngas_mirroring_bookkeeping (target_cluster, target_host, status, source_host);
+create index idx_ngas_mirroring_bookkeeping_file_size on ngas_mirroring_bookkeeping (file_size);
+create index idx_ngas_mirroring_bookkeeping_iteration_status on ngas_mirroring_bookkeeping (iteration, status);
+
