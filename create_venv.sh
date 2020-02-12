@@ -144,12 +144,13 @@ else
 	if [[ -z "$(command -v virtualenv 2> /dev/null)" ]]
 	then
 		VIRTUALENV_URL='https://pypi.python.org/packages/8b/2c/c0d3e47709d0458816167002e1aa3d64d03bdeb2a9d57c5bd18448fd24cd/virtualenv-15.0.3.tar.gz#md5=a5a061ad8a37d973d27eb197d05d99bf'
+                VIRTUALENV_URL='https://files.pythonhosted.org/packages/52/15/f484da0b72093ad78f078a5e9cf54bb0c6b14169e645b06f3753e322e6b8/virtualenv-20.0.2.tar.gz'
 		if [[ ! -z "$(command -v wget 2> /dev/null)" ]]
 		then
 			wget "$VIRTUALENV_URL" || error "Failed to download virtualenv"
 		elif [[ ! -z "$(command -v curl 2> /dev/null)" ]]
 		then
-			curl -L "$VIRTUALENV_URL" -o virtualenv-15.0.3.tar.gz || error "Failed to download virtualenv"
+			curl -L "$VIRTUALENV_URL" -o virtualenv-20.0.2.tar.gz || error "Failed to download virtualenv"
 		else
 			error "Can't find a download tool (tried wget and curl), cannot download virtualenv"
 		fi
