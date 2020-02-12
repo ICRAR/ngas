@@ -60,10 +60,10 @@ env.APP_ROOT_DIR_NAME = env.APP_NAME.upper()
 env.APP_INSTALL_DIR_NAME = env.APP_NAME.lower() + '_rt'
 
 # Version of Python required for the Application
-env.APP_PYTHON_VERSION = '3.6'
+env.APP_PYTHON_VERSION = '3.7'
 
 # URL to download the correct Python version
-env.APP_PYTHON_URL = 'https://www.python.org/ftp/python/3.7.2/Python-3.7.2.tgz'
+env.APP_PYTHON_URL = 'https://www.python.org/ftp/python/3.7.4/Python-3.7.4.tgz'
 
 env.APP_DATAFILES = ['NGAS']
 
