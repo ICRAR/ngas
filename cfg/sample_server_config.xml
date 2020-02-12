@@ -597,6 +597,6 @@ passwords will be expressed literally.
         files via the subscription system. See the documentation for more
         information, or see the example plugin included below.
 	-->
-    <SubscriptionAuth Id="SubscriptionAuth" PlugInName="ngas_sub_auth_plugin">
+    <SubscriptionAuth Id="SubscriptionAuth" PlugInName="ngas_sub_auth_plugin"/>
 
 </NgamsCfg>
