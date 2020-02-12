@@ -51,9 +51,24 @@ Changelog
   This makes using unit test tools
   like ``pytest`` or the built-in ``unittest`` module
   easier to use.
+* Fixed issues with the ``BBCPARC`` command,
+  which `didn't work <https://github.com/ICRAR/ngas/issues/19>`_
+  for remote host transfers, only for ``localhost`` ones.
 * Fixed small issue in ``QUERY`` command
   where column names where not correctly aligned
   with the underlying column data.
+* Added support for using HTTPS with both the client and with subscriptions.
+  Support for wrapping the server with TLS has also been added, but this should
+  only be used for testing, rather than in production (we recommend handling
+  HTTPS with more traditional HTTPS servers such as Apache or Nginx).
+* Added support for using more diverse authentication plugins for subscription,
+  via the authentication mechanisms provided by requests. Note that with the
+  current setup, the authentication plugins can only be used with HTTPS (this
+  may change in the future).
+* Default FITS plug-in doesn't mandate an ``ARCFILE`` keyword to be present
+  in the incoming FITS file if the ``ignore_arcfile=1`` option is given in the
+  HTTP parameters. This is useful for archiving FITS files that don't have this
+  keyword, but that want to use the default FITS plug-in.
 
 .. rubric:: 11.0.2
 

@@ -42,7 +42,10 @@ import six
 from . import ngamsConfigBase, ngamsSubscriber
 from . import ngamsStorageSet, ngamsStream, ngamsMirroringSource
 from . import utils
-from .ngamsCore import genLog, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_BACK_LOG_DIR
+from .ngamsCore import (
+    genLog, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_BACK_LOG_DIR,
+    loadPlugInEntryPoint,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -1893,7 +1896,7 @@ class ngamsConfig:
     def _check_int(self, prop, value):
         """Check that ``value`` given is integer and different from -1"""
         if not isinstance(value, six.integer_types) or value == -1:
-            errMsg = "Must define a proper integer value for property: %s" (prop,)
+            errMsg = "Must define a proper integer value for property: %s" % (prop,)
             errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
             logger.error(errMsg)
             self.__checkRep.append(errMsg)
@@ -2161,3 +2164,12 @@ class ngamsConfig:
             val = 'null'
 
         return val
+
+    def getSubscriptionAuth(self, filename, url):
+        plugin_name = self.getVal("NgamsCfg.SubscriptionAuth[1].PlugInName")
+        if plugin_name is None:
+            return None
+
+        plugin = loadPlugInEntryPoint(plugin_name, "ngas_subscriber_auth")
+
+        return plugin(filename=filename, url=url)

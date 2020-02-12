@@ -1,7 +1,7 @@
 #
-#    ALMA - Atacama Large Millimiter Array
-#    (c) European Southern Observatory, 2002
-#    Copyright by ESO (in the framework of the ALMA collaboration),
+#    ICRAR - International Centre for Radio Astronomy Research
+#    (c) UWA - The University of Western Australia, 2020
+#    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
 #
 #    This library is free software; you can redistribute it and/or
@@ -19,19 +19,10 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+"""Janitor Plug-In used by the janitor tests that writes an empty file to disk"""
 
-#******************************************************************************
-#
-# "@(#) $Id: ngamsFormatHdrFile.awk,v 1.5 2004/08/04 16:45:30 ngasmgr Exp $"
-#
-# Who       When        What
-# --------  ----------  -------------------------------------------------------
-# jknudstr  18/07/2002  Created
-#
-
-#OLD: {print $0,"\\n\\"}
-#{print "\"", $0, "\n", "\""}
-{print "\"", $0, "\","}
+import os
 
 
-# EOF
+def run(_srv, _stop_event):
+    open(os.getenv('NGAS_JANITOR_EMPTY_FILE'), 'wt').close()

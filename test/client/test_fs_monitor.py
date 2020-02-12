@@ -42,6 +42,7 @@ class FsMonitorTests(ngamsTestSuite):
     def create_monitor(self, *args, **kwargs):
         self.monitor = Monitor(self.workdir, host='127.0.0.1', port=8888,
                                *args, **kwargs)
+        self.monitor.start_tasks()
 
     def queue_smallfits(self, basename='test.fits'):
         cpFile(self.resource('src/SmallFile.fits'),

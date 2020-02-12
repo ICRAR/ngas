@@ -262,9 +262,6 @@
 #include "ngamsVERSION.h"
 #include "ngamsCClientGlobals.h"
 
-char* _ngamsLicense(void);
-char* _ngamsManPage(void);
-
 /* IMPL: Add entry/exit debug logs in all functions where relevant. */
 
 /**
@@ -494,7 +491,7 @@ ngamsSTAT ngamsUnpackStatus(const char* xmlDoc, ngamsSTATUS* status) {
 		strtok(tmpBuf, ":");
 		memset(errCode, 0, (64 * sizeof(char)));
 		strncpy(errCode, strtok(NULL, ":"), 64);
-		if (errCode != NULL)
+		if (strlen(errCode) > 0)
 			status->errorCode = atoi(errCode);
 		free(tmpBuf);
 	} else
@@ -601,6 +598,7 @@ ngamsSTAT ngamsGenSendData(const char* host, const int port,
 		const char* mimeType, const ngamsPAR_ARRAY* parArray,
 		ngamsSTATUS* status) {
 	int retCode, i;
+	int written;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
 	ngamsHTTP_RESP httpResp;
@@ -619,11 +617,17 @@ ngamsSTAT ngamsGenSendData(const char* host, const int port,
 			|| (strstr(fileUri, "http:") != NULL) || (strstr(fileUri, "ftp:")
 			!= NULL)) {
 		/* Data is pulled */
-		sprintf(url, "%s?filename=\"%s\"&mime_type=\"%s\"", cmd, tmpFileUri,
+		written = snprintf(url, sizeof(ngamsMED_BUF), "%s?filename=\"%s\"&mime_type=\"%s\"", cmd, tmpFileUri,
 				mimeType);
+		if (written >= sizeof(ngamsMED_BUF)) {
+			goto errExit;
+		}
 		for (i = 0; i < parArray->idx; i++) {
 			ngamsEncodeUrlVal(parArray->valArray[i], 1, tmpEnc);
-			sprintf(tmpBuf, "&%s=\"%s\"", parArray->parArray[i], tmpEnc);
+			written = snprintf(tmpBuf, sizeof(ngamsMED_BUF), "&%s=\"%s\"", parArray->parArray[i], tmpEnc);
+			if (written >= sizeof(ngamsMED_BUF)) {
+				goto errExit;
+			}
 			strcat(url, tmpBuf);
 		}
 		if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, url, 1,
@@ -639,7 +643,10 @@ ngamsSTAT ngamsGenSendData(const char* host, const int port,
 			sprintf(contDisp, "attachment; filename=\"%s\"", tmpFileUri);
 		for (i = 0; i < parArray->idx; i++) {
 			ngamsEncodeUrlVal(parArray->valArray[i], 1, tmpEnc);
-			sprintf(tmpBuf, "; %s=\"%s\"", parArray->parArray[i], tmpEnc);
+			written = snprintf(tmpBuf, sizeof(ngamsMED_BUF), "; %s=\"%s\"", parArray->parArray[i], tmpEnc);
+			if (written >= sizeof(ngamsMED_BUF)) {
+				goto errExit;
+			}
 			strcat(contDisp, tmpBuf);
 		}
 		if (*mimeType == '\0')
@@ -873,9 +880,12 @@ ngamsSTAT ngamsArchiveFromMem(const char* host, const int port,
 		locTimeout = -1;
 	else
 		locTimeout = (int) (timeoutSecs + 0.5);
-	sprintf(contDisp, "attachment; filename=\"%s\"; wait=\"%d\"; "
+	int written = snprintf(contDisp, sizeof(ngamsMED_BUF), "attachment; filename=\"%s\"; wait=\"%d\"; "
 		"no_versioning=\"%d\"; time_out\"%d\"", tmpFileUri, wait, noVersioning,
 			locTimeout);
+	if (written >= sizeof(ngamsMED_BUF)) {
+		goto errExit;
+	}
 	if (*mimeType != '\0')
 		strcat(tmpUrl, mtBuf);
 	if ((retCode = ngamsHttpPost(host, port, timeoutSecs, ngamsUSER_AGENT, "ARCHIVE",
@@ -1022,7 +1032,10 @@ ngamsSTAT ngamsLabel(const char* host, const int port, const float timeoutSecs,
 	ngamsLogDebug("Entering ngamsLabel() ...");
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(slotId, 1, tmpEnc);
-	sprintf(tmpUrl, "%s?slot_id=\"%s\"", ngamsCMD_LABEL_STR, tmpEnc);
+	int written = snprintf(tmpUrl, sizeof(ngamsMED_BUF), "%s?slot_id=\"%s\"", ngamsCMD_LABEL_STR, tmpEnc);
+	if (written >= sizeof(ngamsMED_BUF)) {
+		goto errExit;
+	}
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
@@ -1275,8 +1288,11 @@ ngamsSTAT ngamsRemDisk(const char* host, const int port,
 	ngamsLogDebug("Entering ngamsRemDisk() ...");
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(diskId, 1, tmpEnc);
-	sprintf(tmpUrl, "%s?disk_id=\"%s\"&execute=%d", ngamsCMD_REMDISK_STR,
+	int written= snprintf(tmpUrl, sizeof(ngamsMED_BUF), "%s?disk_id=\"%s\"&execute=%d", ngamsCMD_REMDISK_STR,
 			tmpEnc, execute);
+	if (written >= sizeof(ngamsMED_BUF)) {
+		goto errExit;
+	}
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
@@ -1333,9 +1349,12 @@ ngamsSTAT ngamsRemFile(const char* host, const int port,
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(fileId, 1, encFileId);
 	ngamsEncodeUrlVal(diskId, 1, encDiskId);
-	sprintf(tmpUrl, "%s?disk_id=\"%s\"&file_id=\"%s\"&file_version=%d"
+	int written = snprintf(tmpUrl, sizeof(ngamsMED_BUF), "%s?disk_id=\"%s\"&file_id=\"%s\"&file_version=%d"
 		"&execute=%d", ngamsCMD_REMFILE_STR, encDiskId, encFileId, fileVersion,
 			execute);
+	if (written >= sizeof(ngamsMED_BUF)) {
+		goto errExit;
+	}
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
@@ -1396,30 +1415,47 @@ ngamsSTAT ngamsRetrieve2Mem(const char* host, const int port,
 	char tmpBuf[10000];
 	int retCode;
 	int bytesRd;
+	int written;
 	ngamsDATA_LEN bytesRead = 0;
 	ngamsHTTP_RESP httpResp;
 	ngamsHTTP_HDR httpHdr;
 	ngamsBIG_BUF tmpUrl;
 
 	/* Perform the query */
-	if (strcmp(fileId, ngamsNG_LOG_REF) == 0)
-		sprintf(tmpUrl, "%s?ng_log", ngamsCMD_RETRIEVE_STR);
+	if (strcmp(fileId, ngamsNG_LOG_REF) == 0) {
+		written = snprintf(tmpUrl, sizeof(ngamsBIG_BUF), "%s?ng_log", ngamsCMD_RETRIEVE_STR);
+		if (written >= sizeof(ngamsBIG_BUF)) {
+			goto errExit;
+		}
+	}
 	else if (strcmp(fileId, ngamsCFG_REF) == 0)
 		sprintf(tmpUrl, "%s?cfg", ngamsCMD_RETRIEVE_STR);
 	else if (internal) {
 		ngamsEncodeUrlVal(fileId, 1, tmpBuf);
-		sprintf(tmpUrl, "%s?internal=\"%s\"", ngamsCMD_RETRIEVE_STR, tmpBuf);
+		written = snprintf(tmpUrl, sizeof(ngamsBIG_BUF), "%s?internal=\"%s\"", ngamsCMD_RETRIEVE_STR, tmpBuf);
+		if (written >= sizeof(ngamsBIG_BUF)) {
+			goto errExit;
+		}
 	} else {
 		ngamsEncodeUrlVal(fileId, 1, tmpBuf);
-		sprintf(tmpUrl, "%s?file_id=\"%s\"", ngamsCMD_RETRIEVE_STR, tmpBuf);
+		written = snprintf(tmpUrl, sizeof(ngamsBIG_BUF), "%s?file_id=\"%s\"", ngamsCMD_RETRIEVE_STR, tmpBuf);
+		if (written >= sizeof(ngamsBIG_BUF)) {
+			goto errExit;
+		}
 	}
 	if ((processing != NULL) && (*processing != '\0')) {
 		ngamsEncodeUrlVal(processing, 1, tmpBuf);
-		sprintf(tmpBuf, "&processing=\"%s\"", tmpBuf);
+		written = snprintf(tmpBuf, sizeof(ngamsBIG_BUF), "&processing=\"%s\"", tmpBuf);
+		if (written >= sizeof(ngamsBIG_BUF)) {
+			goto errExit;
+		}
 		strcat(tmpUrl, tmpBuf);
 		if ((processingPars != NULL) && (*processingPars != '\0')) {
 			ngamsEncodeUrlVal(processingPars, 1, tmpBuf);
-			sprintf(tmpBuf, "&processing_pars=\"%s\"", tmpBuf);
+			written = snprintf(tmpBuf, sizeof(ngamsBIG_BUF), "&processing_pars=\"%s\"", tmpBuf);
+			if (written >= sizeof(ngamsBIG_BUF)) {
+				goto errExit;
+			}
 			strcat(tmpUrl, tmpBuf);
 		}
 	}
@@ -1876,6 +1912,7 @@ ngamsSTAT ngamsSubscribe(const char* host, const int port,
 		const char* startDate, const char* filterPlugIn,
 		const char* filterPlugInPars, ngamsSTATUS* status) {
 	int retCode;
+	int written;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
 	ngamsHTTP_RESP httpResp;
@@ -1885,21 +1922,33 @@ ngamsSTAT ngamsSubscribe(const char* host, const int port,
 	ngamsLogDebug("Entering ngamsSubscribe() ...");
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(url, 1, tmpEnc);
-	sprintf(reqUrl, "%s?url=\"%s\"&priority=%d", ngamsCMD_SUBSCRIBE_STR,
+	written = snprintf(reqUrl, sizeof(ngamsMED_BUF), "%s?url=\"%s\"&priority=%d", ngamsCMD_SUBSCRIBE_STR,
 			tmpEnc, priority);
+	if (written >= sizeof(ngamsMED_BUF)) {
+		goto errExit;
+	}
 	if ((startDate != NULL) && (*startDate != '\0')) {
 		ngamsEncodeUrlVal(startDate, 1, tmpEnc);
-		sprintf(tmpUrl, "&start_date=\"%s\"", tmpEnc);
+		written = snprintf(tmpUrl, sizeof(ngamsMED_BUF), "&start_date=\"%s\"", tmpEnc);
+		if (written >= sizeof(ngamsMED_BUF)) {
+			goto errExit;
+		}
 		strcpy(reqUrl, tmpUrl);
 	}
 	if ((filterPlugIn != NULL) && (*filterPlugIn != '\0')) {
 		ngamsEncodeUrlVal(filterPlugIn, 1, tmpEnc);
-		sprintf(tmpUrl, "&filter_plug_in=\"%s\"", tmpEnc);
+		written = snprintf(tmpUrl, sizeof(ngamsMED_BUF), "&filter_plug_in=\"%s\"", tmpEnc);
+		if (written >= sizeof(ngamsMED_BUF)) {
+			goto errExit;
+		}
 		strcpy(reqUrl, tmpUrl);
 	}
 	if ((filterPlugInPars != NULL) && (*filterPlugInPars != '\0')) {
 		ngamsEncodeUrlVal(filterPlugInPars, 1, tmpEnc);
-		sprintf(tmpUrl, "&plug_in_pars=\"%s\"", tmpEnc);
+		written = snprintf(tmpUrl, sizeof(ngamsMED_BUF), "&plug_in_pars=\"%s\"", tmpEnc);
+		if (written >= sizeof(ngamsMED_BUF)) {
+			goto errExit;
+		}
 		strcpy(reqUrl, tmpUrl);
 	}
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, reqUrl, 1,
@@ -1939,7 +1988,10 @@ ngamsSTAT ngamsUnsubscribe(const char* host, const int port,
 	ngamsLogDebug("Entering ngamsUnsubscribe() ...");
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(url, 1, tmpEnc);
-	sprintf(reqUrl, "%s?url=\"%s\"", ngamsCMD_UNSUBSCRIBE_STR, tmpEnc);
+	int written = snprintf(reqUrl, sizeof(ngamsMED_BUF), "%s?url=\"%s\"", ngamsCMD_UNSUBSCRIBE_STR, tmpEnc);
+	if (written >= sizeof(ngamsMED_BUF)) {
+		goto errExit;
+	}
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, reqUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
@@ -2288,84 +2340,6 @@ void* _connectThread(void* ptr) {
 	return NULL;
 }
 
-ngamsSTAT _ngamsConnect(const int sockFd, const struct sockaddr_in* servAddr) {
-	/*
-	 int stat, creStat = -1, retStat, connected = 0;
-	 pthread_t thrHandle;
-	 pthread_attr_t thrAttr;
-	 _ngamsTHREAD_INFO* thrInfo;
-
-	 ngamsLogDebug("Entering _ngamsConnect() ...");
-	 //	if (_getThreadInfoObj(&thrInfo) == ngamsSTAT_FAILURE) {
-	 //		ngamsLogError("Error obtaining connect thread handle");
-	 //		retStat = ngamsSTAT_FAILURE;
-	 //		goto fctExit;
-	 //	}
-	 //	ngamsLogInfo(1, ">>>>> got handle# %d", thrInfo->handleNumber);
-	 thrInfo->servAddr = (struct sockaddr*)servAddr;
-	 thrInfo->sockFd = sockFd;
-	 //	if (pipe(thrInfo->syncPipe) != 0) {
-	 //		ngamsLogError("Error creating pipe");
-	 //		retStat = ngamsSTAT_FAILURE;
-	 //		goto fctExit;
-	 //	}
-	 thrInfo->parentThreadId = pthread_self();
-	 pthread_attr_init(&thrAttr);
-	 pthread_attr_setdetachstate(&thrAttr, PTHREAD_CREATE_DETACHED);
-	 creStat = pthread_create(&thrHandle, &thrAttr, _connectThread, thrInfo);
-	 if (creStat != 0) {
-	 ngamsLogError("Error creating connect thread");
-	 retStat = ngamsSTAT_FAILURE;
-	 goto fctExit;
-	 }
-	 stat = _pollFd(thrInfo->syncPipe[0], -1);
-	 if (stat == ngamsSTAT_SUCCESS)
-	 read(thrInfo->syncPipe[0], &connected, sizeof(int));
-	 if (connected)
-	 retStat = ngamsSTAT_SUCCESS;
-	 else
-	 retStat = ngamsSTAT_FAILURE;
-	 goto fctExit;
-
-	 fctExit: if (thrInfo->syncPipe[0]) {
-	 close(thrInfo->syncPipe[0]);
-	 close(thrInfo->syncPipe[1]);
-	 }
-	 */
-	/*
-	 //if (!connected && (creStat == 0)) pthread_cancel(thrHandle);
-	 //pthread_mutex_lock(&(thrInfo->syncMutex));
-	 ngamsLogInfo(1, ">>>>> _ngamsConnect(): thrInfo->connectThrLock=%d", thrInfo->connectThrLock);
-	 if (thrInfo->connectThrLock) {
-	 //ngamsLogInfo(1, ">>>>> _ngamsConnect(): before pthread_cancel(thrHandle);");
-	 //pthread_cancel(thrHandle);
-	 //ngamsLogInfo(1, ">>>>> _ngamsConnect(): after pthread_cancel(thrHandle);");
-	 thrInfo->connectThrLock = 0;
-	 }
-	 //ngamsLogInfo(1, ">>>>> _ngamsConnect(): before pthread_mutex_unlock(&(thrInfo->syncMutex));");
-	 pthread_mutex_unlock(&(thrInfo->syncMutex));
-	 //ngamsLogInfo(1, ">>>>> _ngamsConnect(): before thread_attr_destroy(&thrAttr);");
-	 */
-
-	/*
-	 ngamsLogInfo(1, "_ngamsConnect(): connecting socket %d to server (try %d)", sockFd, n);
-	 if( connect(sockFd, (struct sockaddr*)servAddr, sizeof(struct sockaddr_in)) >= 0)
-	 return ngamsSTAT_SUCCESS;
-	 ngamsLogDebug("_ngamsConnect(): Error calling connect(). errno(%d):%s", errno, strerror(errno));
-	 return ngamsSTAT_FAILURE;
-	 */
-	/*
-	 pthread_attr_destroy(&thrAttr);
-	 thrInfo->connectFctLock = 0;
-	 if (retStat == ngamsSTAT_SUCCESS)
-	 ngamsLogDebug("Leaving _ngamsConnect()");
-	 else
-	 ngamsLogDebug("Leaving _ngamsConnect()/FAILURE. Status: %d", retStat);
-	 ngamsLogInfo(1, ">>>>> _ngamsConnect(): before return retStat;");
-	 return retStat;
-	 */
-}
-
 /* Mutex for create a socket and connect it to NGAS. */
 pthread_mutex_t _socketMutex;
 void _ngamsLockSocketGEN() {
@@ -2663,8 +2637,14 @@ int _ngamsHttpGet(const char* host, const int port, const float timeout, const c
 				ngamsGetAuthorization());
 	} else
 		*authHdr = '\0';
-	sprintf(sendLine, "GET %s HTTP/1.0\nUser-Agent: %s%s\015\012\012", path,
+	int written = snprintf(sendLine, sizeof(ngamsHUGE_BUF),
+			"GET %s HTTP/1.0\nUser-Agent: %s%s\015\012\012", path,
 			userAgent, authHdr);
+	if (written >= sizeof(ngamsHUGE_BUF)) {
+		retCode = ngamsERR_WR_DATA;
+		ngamsLogError("Failed assembling GET HTTP status line");
+		goto errExit;
+	}
 	ngamsLogDebug("Submitting HTTP header: %s to host/port: %s/%d", sendLine,
 			host, port);
 	n = strlen(sendLine);
@@ -2877,7 +2857,10 @@ ngamsSTAT ngamsGenSendCmd(const char* host, const int port,
 	for (i = 0; i < parArray->idx; i++) {
 		ngamsEncodeUrlVal(parArray->parArray[i], 1, tmpPar);
 		ngamsEncodeUrlVal(parArray->valArray[i], 1, tmpVal);
-		sprintf(tmpUrl, "%s=%s", tmpPar, tmpVal);
+		int written = snprintf(tmpUrl, sizeof(ngamsMED_BUF), "%s=%s", tmpPar, tmpVal);
+		if (written >= sizeof(ngamsMED_BUF)) {
+			goto errExit;
+		}
 
 		if (i)
 			strcat(url, "&");
@@ -3548,10 +3531,9 @@ void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level,
 	ngamsGenIsoTime(3, isoTime);
 	while (strlen(isoTime) != 23)
 		ngamsGenIsoTime(3, isoTime);
-	vsprintf((char*) tmpLogMsg, format, vaParList);
-	memset(logMsg, 0, sizeof(ngamsHUGE_BUF));
-	sprintf(logMsg, "%s [%s] %s [%lu]\n", isoTime, type, tmpLogMsg,
-			pthread_self());
+	size_t maxsize = sizeof(ngamsHUGE_BUF);
+	int written = sprintf(logMsg, "%s [%s] [%lu] ", isoTime, type, (unsigned long)pthread_self);
+	vsnprintf(tmpLogMsg + written, maxsize - written, format, vaParList);
 
 	_ngamsLockLogWR();
 
@@ -3865,7 +3847,11 @@ ngamsSTAT ngamsCleanUpRotLogFiles(const ngamsLOG_LEVEL tmpLogLevel) {
 	}
 	while ((dirEnt = readdir(dirPtr)) != NULL) {
 		if (strstr(dirEnt->d_name, ngamsLOG_ROT_PREFIX) != NULL) {
-			sprintf(tmpLogFilename, "%s/%s", logFilePath, dirEnt->d_name);
+			int written = snprintf(tmpLogFilename, sizeof(ngamsMED_BUF), "%s/%s", logFilePath, dirEnt->d_name);
+			if (written >= sizeof(ngamsMED_BUF)) {
+				ngamsLogError("Error calculating rotated logfile name");
+				goto errExit;
+			}
 
 			/* The format of the names of the rotated log files is, e.g.:
 			 *
@@ -4424,18 +4410,6 @@ int ngamsIsDir(const char* filename) {
 }
 
 /**
- char* ngamsLicense(void)
-
- Return pointer to buffer containing the NG/AMS License Agreement.
-
- Returns:   Pointer to static buffer containing the license agreement
- for NG/AMS.
- */
-char* ngamsLicense(void) {
-	return _ngamsLicense();
-}
-
-/**
  int ngamsLogCodeInStatus(const ngamsSTATUS*     status,
  const char*            errId)
  Probe if the given log/status code is contained in the ngamsSTAT object.
@@ -4481,17 +4455,6 @@ ngamsSTAT ngamsLoadFile(const char* filename, char* buf, const int maxSize) {
 	ngamsLogInfo(LEV4, "Opened/loaded file: %s", filename);
 
 	return ngamsSTAT_SUCCESS;
-}
-
-/**
- char* ngamsManPage(void)
- Return reference to the man-page of the NG/AMS C-Client.
-
- Returns:    Pointer to static buffer containing the man-page
- for the NG/AMS C-Client.
- */
-char* ngamsManPage(void) {
-	return _ngamsManPage();
 }
 
 /**

@@ -334,7 +334,7 @@ def _checkIfDeliverFile(srvObj,
     fileBackLogBuffered = fileInfo[FILE_BL]
     subs_start = subscrObj.getStartDate()
 
-    if lastSchedule is not None and lastSchedule > lastDelivery:
+    if lastDelivery is not None and lastSchedule is not None and lastSchedule > lastDelivery:
         # assume what have been scheduled are already delivered, this avoids multiple schedules for the same file across multiple main thread iterations
         # (so that we do not have to block the main iteration anymore)
         # if a file is scheduled but fail to deliver, it will be picked up by backlog in the future
@@ -748,6 +748,12 @@ def _deliveryThread(srvObj,
                         hdrs = {NGAMS_HTTP_HDR_CHECKSUM: fileChecksum}
                         if fileInfoObjHdr:
                             hdrs[NGAMS_HTTP_HDR_FILE_INFO] = fileInfoObjHdr
+
+                        sub_auth = srvObj.getCfg().getSubscriptionAuth(
+                            filename=filename, url=sendUrl
+                        )
+                        if sub_auth is not None:
+                            authHdr = sub_auth
                         with open(filename, "rb") as f:
                             reply, msg, hdrs, data = \
                                    ngamsHttpUtils.httpPostUrl(sendUrl, f, fileMimeType,
@@ -765,7 +771,7 @@ def _deliveryThread(srvObj,
 
                 except Exception as e:
                     ex = str(e)
-                    logger.error('%s Message: %s' % (ex, stat.getMessage()))
+                    logger.exception('%s Message: %s' % (ex, stat.getMessage()))
 
                 if ex or reply != NGAMS_HTTP_SUCCESS or stat.getStatus() == NGAMS_FAILURE:
 

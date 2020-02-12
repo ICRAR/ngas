@@ -392,6 +392,7 @@ def genStagingFilename(ngamsCfgObj,
 
         mountPt = trgDiskInfo.getMountPoint()
         staging_dir = os.path.join(mountPt, NGAMS_STAGING_DIR)
+        checkCreatePath(staging_dir)
         stagingFilename = tempfile.mktemp(suffix="-" + tmpFilename, prefix='', dir=staging_dir)
 
         logger.debug("Staging filename is: %s", stagingFilename)
@@ -405,7 +406,6 @@ def genStagingFilename(ngamsCfgObj,
             reqPropFilename = stagingFilename + ".pickle"
 
         logger.debug("Generated staging filename: %s", stagingFilename)
-        checkCreatePath(os.path.dirname(stagingFilename))
         if (genTmpFiles):
             return (tmpStagingFilename, stagingFilename, tmpReqPropFilename,
                     reqPropFilename)

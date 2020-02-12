@@ -49,7 +49,7 @@ from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
     getDiskSpaceAvail, NGAMS_XML_MT, NGAMS_NOTIF_DISK_CHANGE, genLog,\
     NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile,\
     NGAMS_NOTIF_NO_DISKS, mvFile, NGAMS_PICKLE_FILE_EXT,\
-    rmFile, NGAMS_SUCCESS, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
+    rmFile, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
     getHostName, loadPlugInEntryPoint, checkCreatePath, NGAMS_HTTP_HDR_CHECKSUM,\
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE,\
     NGAMS_NOTIF_ERROR
@@ -1050,8 +1050,10 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
 
     cfg = srvObj.getCfg()
 
-    # GET means pull, POST is push
-    if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
+    # GET means pull, POST is push (only for HTTP transfers)
+    if transfer is not None:
+        rfile = None
+    elif (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
         logger.info("Handling archive pull request")
 
         # Default to absolute path file:// scheme if url has no schema
@@ -1070,7 +1072,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
 
     logger.info(genLog("NGAMS_INFO_ARCHIVING_FILE", [reqPropsObj.getFileUri()]), extra={'to_syslog': True})
 
-    if reqPropsObj.getSize() <= 0:
+    if transfer is None and reqPropsObj.getSize() <= 0:
         raise Exception('Content-Length is 0')
 
     mimeType = reqPropsObj.getMimeType()

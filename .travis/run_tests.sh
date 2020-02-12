@@ -40,17 +40,22 @@ then
 	source ${TRAVIS_BUILD_DIR}/osx_venv/bin/activate
 fi
 
-pip install psutil pytest-cov coveralls || fail "Failed to install unit test dependencies"
+# coverage version pinned to avoid issues with latest releases
+# (see https://github.com/nedbat/coveragepy/issues/916, but possibly
+# our problem has not even been reported)
+pip install psutil 'coverage<5' pytest-cov coveralls trustme || fail "Failed to install unit test dependencies"
 
 # Try to simply import the plugin modules
 # This increases our coverage by a not-too-small amount
+import_statements=''
 for f in src/ngamsPlugIns/ngamsPlugIns/*.py; do
 	f=`basename $f`
 	if [[ $f == __init__.py ]]; then
 		continue
 	fi
-	coverage run -p <(echo "import ngamsPlugIns.${f%%.py}") &> /dev/null || fail "Failed to import $f plugin"
+	import_statements+="import ngamsPlugIns.${f%%.py}; "
 done
+coverage run -p <(echo $import_statements) &> /dev/null || fail "Import plugins failed"
 coverage combine || fail "Failed to combine coverage information"
 
 # These are the user/dbname/passwd that we created on run_build
@@ -63,4 +68,4 @@ elif [[ "$DB" == "postgresql" ]]; then
 fi
 export NGAS_TESTDB
 
-py.test --cov --cov-append
+py.test -v --cov --cov-append

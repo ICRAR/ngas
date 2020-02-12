@@ -73,6 +73,7 @@ def ngamsFitsRegPlugIn(srvObj, reqPropsObj, parDic):
             workingFile = workingFile[:-3]
     else:
         workingFile = stageFile
+    reqPropsObj.setStagingFilename(workingFile)
 
     # Check file (size + checksum).
     ngamsFitsPlugIn.checkFitsFileSize(workingFile)
@@ -81,7 +82,7 @@ def ngamsFitsRegPlugIn(srvObj, reqPropsObj, parDic):
         ngamsFitsPlugIn.checkFitsChecksum(reqPropsObj, workingFile)
 
     # Get various information about the file being handled.
-    arcFile, dpId, dateDirName = ngamsFitsPlugIn.getDpIdInfo(workingFile)
+    dpId, dateDirName = ngamsFitsPlugIn.getDpIdInfo(reqPropsObj)
     fileVersion, relPath, relFilename,\
                  complFilename, fileExists =\
                  ngamsPlugInApi.genFileInfoReg(srvObj.getDb(), srvObj.getCfg(),

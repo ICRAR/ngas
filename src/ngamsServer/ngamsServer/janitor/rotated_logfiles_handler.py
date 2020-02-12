@@ -71,7 +71,9 @@ def run(srvObj, stopEvt):
         if cfg.getArchiveRotatedLogfiles():
             file_uri = "file://" + fname
             host, port = srvObj.get_self_endpoint()
-            ngamsPClient.ngamsPClient(host, port).archive(file_uri, 'ngas/nglog')
+            proto = srvObj.get_server_access_proto()
+            ngamsPClient.ngamsPClient(host, port, proto=proto).archive(
+                    file_uri, 'ngas/nglog')
 
         # Do additional things with our logfiles
         for plugin in get_logfile_handler_plugins(cfg):

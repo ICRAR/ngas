@@ -78,7 +78,7 @@ class ngamsPClient:
 
     def __init__(self,
                  host=None, port=None, servers=None, timeout=None, auth=None,
-                 reload_mod=False):
+                 reload_mod=False, proto='http'):
         """
         Constructor.
 
@@ -99,6 +99,7 @@ class ngamsPClient:
         self.timeout = timeout
         self.auth = auth
         self.reload_mod = reload_mod
+        self.proto = proto
 
     @property
     def basic_auth(self):
@@ -586,7 +587,11 @@ class ngamsPClient:
             # of the incoming data as the filename
             fname = targetFile
             if os.path.isdir(fname):
-                cdisp = resp.getheader('Content-Disposition')
+                try:
+                    h = resp.headers
+                    cdisp = h['Content-Disposition']
+                except AttributeError:
+                    cdisp = resp.getheader('Content-Disposition')
                 parts = ngamsLib.parseHttpHdr(cdisp)
                 if 'filename' not in parts:
                     msg = "Missing or invalid Content-Disposition header in HTTP response"
@@ -595,7 +600,10 @@ class ngamsPClient:
 
             # Dump the data into the target file
             with open(fname, 'wb') as f:
-                shutil.copyfileobj(resp, f)
+                if hasattr(resp, 'content'):
+                    f.write(resp.content)
+                else:
+                    shutil.copyfileobj(resp, f)
 
             return ngamsStatus.dummy_success_stat(host_id)
 
@@ -737,10 +745,16 @@ class ngamsPClient:
         raise Exception("Too many redirections, aborting")
 
 
+    def _assemble_url(self, host, port, cmd):
+        return self.proto + '://' + host + ':' + str(port) + '/' + cmd
+
+
     def _do_get(self, host, port, cmd, pars, hdrs):
         start = time.time()
-        res = ngamsHttpUtils.httpGet(host, port, cmd, pars=pars, hdrs=hdrs,
-                               timeout=self.timeout, auth=self.basic_auth)
+        res = ngamsHttpUtils.httpGetUrl(
+            self._assemble_url(host, port, cmd), pars=pars, hdrs=hdrs,
+            timeout=self.timeout, auth=self.basic_auth
+        )
         delta = time.time() - start
         logger.debug("Command: %s to %s:%d handled in %.3f [s]", cmd, host, port, delta)
         return res
@@ -748,8 +762,10 @@ class ngamsPClient:
 
     def _do_post(self, host, port, cmd, mimeType, data, pars):
         start = time.time()
-        res = ngamsHttpUtils.httpPost(host, port, cmd, data, mimeType,
-                                pars=pars, timeout=self.timeout, auth=self.basic_auth)
+        res = ngamsHttpUtils.httpPostUrl(
+            self._assemble_url(host, port, cmd), data, mimeType, pars=pars,
+            timeout=self.timeout, auth=self.basic_auth
+        )
         delta = time.time() - start
         logger.info("Successfully completed command %s in %.3f [s]", cmd, delta)
         return res

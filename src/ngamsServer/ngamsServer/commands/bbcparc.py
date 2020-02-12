@@ -50,12 +50,6 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
     """
     logger.debug("Copying file: %s to filename: %s", srcFilename, targFilename)
 
-    # Make target file writable if existing.
-    if (os.path.exists(targFilename)):
-        os.chmod(targFilename, 420)
-
-    checkCreatePath(os.path.dirname(targFilename))
-
     if bparam.port:
         pt = ['-Z', str(bparam.port)]
     else:
@@ -70,7 +64,8 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
         ns = ['-s', str(bparam.num_streams)]
 
     # bypass password prompt with -oBatchMode=yes this implies you need keys
-    ssh_src = ['-S', 'ssh -x -a -oBatchMode=yes -oFallBackToRsh=no %4 %I -l %U %H bbcp']
+    # also disable kerberos-based (GSSAPI) authentication
+    ssh_src = ['-S', 'ssh -x -a -oBatchMode=yes -oGSSAPIAuthentication=no -oFallBackToRsh=no %4 %I -l %U %H bbcp']
 
     # perform checksum on host and compare to target. If it's different bbcp will fail.
     if not skip_crc and crc_name is not None:
@@ -107,20 +102,18 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
 
 def get_params(request):
 
+    url = request.getFileUri()
+    if url.lower().startswith('ssh://'):
+        url = url[6:]
+    elif url.lower().startswith('ssh:/'):
+        url = url[5:]
+    elif url.lower().startswith('ssh:'):
+        url = url[4:]
+    url = urlparse.urlparse('ssh://' + url)
+
     # exclude pulling files from these locations
     invalid_paths = ('/dev', '/var', '/usr', '/opt', '/etc')
-    uri = request.getFileUri()
-
-    if uri.lower().startswith('ssh://'):
-        uri = uri[6:]
-    elif uri.lower().startswith('ssh:/'):
-        uri = uri[5:]
-    elif uri.lower().startswith('ssh:'):
-        uri = uri[4:]
-
-    uri = 'ssh://' + uri
-    uri_parsed = urlparse.urlparse(uri)
-    if uri_parsed.path.lower().startswith(invalid_paths):
+    if url.path.lower().startswith(invalid_paths):
         raise Exception('Requested to pull file from excluded location')
 
     # Collect BBCP parameters
@@ -144,13 +137,39 @@ def get_params(request):
     return bbcp_param(port, winsize, num_streams, checksum)
 
 
+def get_source_file(request):
+    """
+    Put the NGAS client address as the netloc of the URL in the source file,
+    so that bbcp contacts the host issuing the HTTP request. Carry over any
+    username, if given
+    """
+    url = urlparse.urlsplit(request.getFileUri())
+    if not url.scheme:
+        url = urlparse.urlsplit('file://' + request.getFileUri())
+    if url.username:
+        netloc = url.username + '@' + request.client_addr
+    else:
+        netloc = request.client_addr
+    return netloc + ':' + url.path
+
 def bbcp_transfer(request, out_fname, crc_name, skip_crc):
 
+    # source_file must have the IP of the client, so bbcp can contact it and
+    # launch a copy ot itself.
+    # OTOH, target_file must have the IP through which we received the original
+    # HTTP request to ensure the same network path is used by bbcp
     bparam = get_params(request)
+    source_file = get_source_file(request)
+    target_file = request.getHttpHdr('host') + ':' + out_fname
+
+    # Make target file writable if existing.
+    if (os.path.exists(out_fname)):
+        os.chmod(out_fname, 420)
+    checkCreatePath(os.path.dirname(out_fname))
 
     # perform the bbcp transfer, we will always return the checksum
     start = time.time()
-    checksum = bbcpFile(request.getFileUri(), out_fname, bparam, crc_name, skip_crc)
+    checksum = bbcpFile(source_file, target_file, bparam, crc_name, skip_crc)
     size = getFileSize(out_fname)
     totaltime = time.time() - start
 

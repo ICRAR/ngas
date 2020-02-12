@@ -590,4 +590,13 @@ passwords will be expressed literally.
 		               FilterPlugInPars="5,6,7,8"/>
 	</SubscriptionDef>
 
+	<!--
+	    Authentication to use for subscriptions.
+
+        This section specifies the authentication plugin to use when sending
+        files via the subscription system. See the documentation for more
+        information, or see the example plugin included below.
+	-->
+    <SubscriptionAuth Id="SubscriptionAuth" PlugInName="ngas_sub_auth_plugin"/>
+
 </NgamsCfg>

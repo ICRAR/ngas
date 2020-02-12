@@ -84,8 +84,8 @@ void ngamsCorrectUsage()
  */
 int main (int argc, char *argv[])
 {
-    char             buf[131072];
-    int              crc = 0, fd, len;
+    unsigned char buf[131072];
+    int crc = 0, fd, len;
 
     if (argc != 2)
 	{

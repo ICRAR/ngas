@@ -61,6 +61,7 @@ import xml.dom.minidom
 import astropy.io.fits as pyfits
 import pkg_resources
 import psutil
+import requests
 import six
 from six.moves import zip_longest, socketserver
 
@@ -71,7 +72,6 @@ from ngamsLib.ngamsCore import getHostName, rmFile, \
     checkCreatePath
 from ngamsPClient import ngamsPClient
 from ngamsServer import volumes, ngamsServer
-
 
 logger = logging.getLogger(__name__)
 
@@ -667,7 +667,7 @@ class InMemorySMTPServer(smtpd.SMTPServer):
             self.recv_evt.set()
             self.recv_cond.notify_all()
 
-ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir', 'cfg_file', 'daemon'])
+ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir', 'cfg_file', 'daemon', 'proto'])
 
 class ngamsTestSuite(unittest.TestCase):
     """
@@ -694,21 +694,21 @@ class ngamsTestSuite(unittest.TestCase):
         self._clients = None
         self.smtp_server = None
 
-    def _add_client(self, port):
+    def _add_client(self, port, proto='http'):
         # We overwrite any client that we may have created on that port already
         if self.client is None:
-            self.client = self.get_client(port)
+            self.client = self.get_client(port, proto=proto)
             return
         if self._clients is None:
             old_port = self.client.servers[0][1]
             if old_port == port:
-                self.client = self.get_client(port)
+                self.client = self.get_client(port, proto=proto)
                 return
             self._clients = {self.client.servers[0][1]: self.client,
-                             port: self.get_client(port)}
+                             port: self.get_client(port, proto=proto)}
             self.client = lambda x: self._clients[x]
         else:
-            self._clients[port] = self.get_client(port)
+            self._clients[port] = self.get_client(port, proto=proto)
 
     def _remove_client(self, port):
         if self._clients is not None:
@@ -737,8 +737,10 @@ class ngamsTestSuite(unittest.TestCase):
         cfg.save(cfg_fname, 0)
         return cfg_fname
 
-    def get_client(self, port=8888, auth=None, timeout=60.0):
-        return ngamsPClient.ngamsPClient(port=port, auth=auth, timeout=timeout)
+    def get_client(self, port=8888, auth=None, timeout=60.0, proto='http'):
+        return ngamsPClient.ngamsPClient(
+            port=port, auth=auth, timeout=timeout, proto=proto,
+        )
 
     def _assert_client_call(self, method, *args, **kwargs):
         '''Generic assertion on the NGAS status returned by clients'''
@@ -876,7 +878,8 @@ class ngamsTestSuite(unittest.TestCase):
                    dbCfgName = None,
                    srvModule = None,
                    force=False,
-                   daemon = False):
+                   daemon = False,
+                   cert_file=None):
         """
         Prepare a standard server object, which runs as a separate process and
         serves via the standard HTTP interface.
@@ -980,6 +983,13 @@ class ngamsTestSuite(unittest.TestCase):
         if autoOnline:   execCmd.append("-autoonline")
         if dbCfgName:    execCmd.extend(["-dbcfgid", dbCfgName])
 
+        if cert_file:
+            execCmd.extend(["-cert", cert_file])
+            proto = 'https'
+        else:
+            proto = 'http'
+        logger.info('Using %s for server', proto)
+
         # Make sure spawned servers use the same tmp dir base as we do, since
         # some of them use unit-test-provided code to perform some checks, and
         # sometimes communicate through files in the temporary area
@@ -991,8 +1001,8 @@ class ngamsTestSuite(unittest.TestCase):
             srvProcess = subprocess.Popen(execCmd, shell=False, env=environ)
 
         # We have to wait until the server is serving.
-        server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory(), tmpCfg, daemon)
-        client = self.get_client(port=port, timeout=5)
+        server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory(), tmpCfg, daemon, proto)
+        client = self.get_client(port=port, timeout=5, proto=proto)
 
         def give_up():
             try:
@@ -1036,6 +1046,10 @@ class ngamsTestSuite(unittest.TestCase):
                     logger.debug("Polled server - not yet running ...")
                     time.sleep(0.1)
                     continue
+                elif isinstance(e, requests.ConnectionError):
+                    logger.debug("Polled server - not yet running ...")
+                    time.sleep(0.1)
+                    continue
 
                 # We are having this funny situation in MacOS builds, when
                 # intermittently the client times out while trying to connect
@@ -1073,7 +1087,7 @@ class ngamsTestSuite(unittest.TestCase):
                 raise
 
         self.extSrvInfo.append(server_info)
-        self._add_client(port)
+        self._add_client(port, proto=proto)
         return (cfgObj, dbObj)
 
     def restart_last_server(self, before_restart=None, start=None, **kwargs):
@@ -1091,7 +1105,7 @@ class ngamsTestSuite(unittest.TestCase):
         Terminate an externally running server.
         """
 
-        srvProcess, port, rootDir, cfg_file, daemon = srvInfo
+        srvProcess, port, rootDir, cfg_file, daemon, proto = srvInfo
 
         # Started as a daemon, stopped as a daemon
         # Here we trust that the daemon will shut down all the processes nicely,
@@ -1120,7 +1134,8 @@ class ngamsTestSuite(unittest.TestCase):
 
         logger.debug("Killing externally running NG/AMS Server. PID: %d, Port: %d ", srvProcess.pid, port)
         try:
-            client = self.get_client(port=port, auth=auth, timeout=10)
+            client = self.get_client(
+                port=port, auth=auth, timeout=10, proto=proto)
             stat = client.status()
             if stat.getState() != "OFFLINE":
                 logger.info("Sending OFFLINE command to external server ...")
@@ -1369,7 +1384,9 @@ class ngamsTestSuite(unittest.TestCase):
             logger.info("Error encountered: %s", errMsg.replace("\n", " | "))
             self.fail(errMsg)
 
-    def start_srv_in_cluster(self, multSrvs, comCfgFile, srvInfo):
+    def start_srv_in_cluster(
+        self, multSrvs, comCfgFile, srvInfo, cert_file=None
+    ):
         """
         Starts a given server which is part of a cluster of servers
         """
@@ -1400,11 +1417,12 @@ class ngamsTestSuite(unittest.TestCase):
         # Start server + add reference to server configuration object and
         # server DB object.
         cfg, db = self.prepExtSrv(port=port, delDirs=0, clearDb=0, autoOnline=1,
-                                  cfgFile=tmpCfgFile, root_dir=mtRtDir)
+                                  cfgFile=tmpCfgFile, root_dir=mtRtDir,
+                                  cert_file=cert_file)
         return [srvId, port, cfg, db]
 
     def prepCluster(self, server_list, cfg_file='src/ngamsCfg.xml', createDatabase=True,
-                    cfg_props=()):
+                    cfg_props=(), cert_file=None):
         """
         Prepare a common, simulated cluster. This consists of 1 to N
         servers running on the same node. It is ensured that each of
@@ -1450,13 +1468,15 @@ class ngamsTestSuite(unittest.TestCase):
         multSrvs = len(server_list) > 1
 
         # Start them in parallel now that we have all set up for it
-        res = srv_mgr_pool.map(functools.partial(self.start_srv_in_cluster, multSrvs, cfg_file), server_list)
+        res = srv_mgr_pool.map(functools.partial(self.start_srv_in_cluster, multSrvs, cfg_file, cert_file=cert_file), server_list)
+
+        proto = 'https' if cert_file else 'http'
 
         # srvId: (cfgObj, dbObj), in same input order
         d = collections.OrderedDict()
         for r in res:
             d[r[0]] = (r[2], r[3])
-            self._add_client(r[1])
+            self._add_client(r[1], proto=proto)
 
         return d
 
@@ -1774,6 +1794,5 @@ class ngamsTestSuite(unittest.TestCase):
 
         self.markNodesAsUnsusp(dbConObj, nodes)
         self.fail("Sub-node not woken up within %ds" % timeOut)
-
 
 # EOF

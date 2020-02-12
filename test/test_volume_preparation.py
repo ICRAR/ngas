@@ -21,6 +21,8 @@
 #
 import functools
 import os
+import subprocess
+import sys
 
 from ngamsServer import volumes
 
@@ -58,3 +60,21 @@ class TestVolumePreparation(ngamsTestLib.ngamsTestSuite):
         volumes.prepare_volume_info_file(root, overwrite=True, disk_type=disk_type,
                                          manufacturer=manufacturer,
                                          check_func=check_func)
+
+    def _start_cmdline_tool(self):
+        volume_dir= ngamsTestLib.tmp_path()
+        return subprocess.Popen(
+            [sys.executable, '-m', volumes.__name__, volume_dir],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+    def test_cmdline_tool(self):
+        proc = self._start_cmdline_tool()
+        proc.communicate(b'Y\n')
+        self.assertEqual(0, proc.poll())
+
+    def test_cmdline_tool_type_info(self):
+        proc = self._start_cmdline_tool()
+        out, _ = proc.communicate(b'n\nmy-id\nmy-manufacturer\ny\n')
+        self.assertEqual(0, proc.poll())
+        self.assertIn(b'my-id', out)
+        self.assertIn(b'my-manufacturer', out)

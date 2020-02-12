@@ -59,24 +59,31 @@ else
 fi
 ssh-keygen -t rsa -f ~/.ssh/id_rsa -N "" -q || fail "Failed to create RSA key"
 cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys || fail "Failed to add public key to authorized keys"
-ssh-keyscan -t rsa localhost >> ~/.ssh/known_hosts || fail "Failed to import localhost's RSA key"
+ssh-keyscan localhost >> ~/.ssh/known_hosts || fail "Failed to import localhost's keys"
 cat << EOF >> ~/.ssh/config
-Host localhost
+Host *
      IdentityFile ~/.ssh/id_rsa
-Host `hostname`
-     IdentityFile ~/.ssh/id_rsa
+     NoHostAuthenticationForLocalhost yes
 EOF
 ssh localhost ls || fail "Testing ssh localhost failed"
+ssh 127.0.0.1 ls || fail "Testing ssh 127.0.0.1 failed"
+ssh `hostname` ls || fail "Testing ssh `hostname` failed"
 
 # Install bbcp
 # After compilation we put it in the PATH, then go back to where we were
 cd ../
-git clone http://www.slac.stanford.edu/~abh/bbcp/bbcp.git
+git clone https://www.slac.stanford.edu/~abh/bbcp/bbcp.git
 if [ $? -eq 0 ]; then
 	cd bbcp/src
 	make all || fail "Failed to build bbcp"
 	sudo cp $PWD/../bin/`../MakeSname`/bbcp /usr/local/bin || fail "Failed to copy bbcp to /usr/local/bin"
 	bbcp --help > /dev/null || fail "bbcp failed to run with --help"
+
+	# In MacOS /usr/local/bin is not seen by newly created environments
+	# (e.g., when ssh-ing into localhost, which bbcp does), so let's
+	# do this ourselves
+	echo "export PATH=/usr/local/bin:\$PATH" | cat - ~/.bashrc > ~/.bashrc.mod
+	mv ~/.bashrc.mod ~/.bashrc
 else
 	echo "Failed to clone bbcp, testing proceeding without bbcp" 1>&2
 fi
@@ -90,6 +97,9 @@ cd ${TRAVIS_BUILD_DIR}
 # virtualenv though and manually source it whenever we use it.
 if [ "${TRAVIS_OS_NAME}" = "osx" ]
 then
+	# update-reset seems to be the solution for transient homebrew LoadErrors we have had
+	#  https://stackoverflow.com/questions/54888582/ruby-cannot-load-such-file-active-support-core-ext-object-blank
+	brew update-reset || true
 	brew unlink python || fail "Failed to brew unlink python"
 	brew ls --version python@2 || brew install python@2 || fail "Failed to brew install python@2"
 	brew install berkeley-db@4 || fail "Failed to brew install berkeley-db@4"
@@ -109,14 +119,14 @@ then
 		scutil --get $n
 	done
 	for m in "getfqdn()" \
-		      "gethostname()" \
-		      "gethostbyname(socket.gethostname())" \
-		      "gethostbyname(\"localhost\")" \
-		      "gethostbyname_ex(socket.gethostname())" \
-		      "gethostbyname_ex(\"localhost\")" \
-		      "gethostbyaddr(\"127.0.0.1\")" \
-		      "gethostbyaddr(socket.gethostbyname(socket.gethostname()))" \
-		      "gethostbyaddr(socket.gethostbyname(\"localhost\"))" ; do
+	         "gethostname()" \
+	         "gethostbyname(socket.gethostname())" \
+	         "gethostbyname(\"localhost\")" \
+	         "gethostbyname_ex(socket.gethostname())" \
+	         "gethostbyname_ex(\"localhost\")" \
+	         "gethostbyaddr(\"127.0.0.1\")" \
+	         "gethostbyaddr(socket.gethostbyname(socket.gethostname()))" \
+	         "gethostbyaddr(socket.gethostbyname(\"localhost\"))" ; do
 		echo -n "socket.$m: "
 		python -c "import socket; print(socket.$m)"
 	done
@@ -185,6 +195,18 @@ then
 	export BERKELEYDB_DIR="${db_dir}"
 	export CFLAGS="$CFLAGS -I${db_dir}/include"
 	export LDFLAGS="$LDFLAGS -L${db_dir}/lib"
+
+	# setuptools is not present in homebrew python installations.
+	# It previously got automatically pulled by our dependencies,
+	# but now that they've removed python 2.7 support we need
+	# to explicitly install a previous version
+	PIP_PACKAGES="setuptools<45 $PIP_PACKAGES"
+
+	# Avoid issue in Travis with MacOS 10.13 where the MacOS SDK
+	# doesn't exist (or the wrong one gets picked up), so no headers
+	# are found. Still don't know exactly what's going on, but this
+	# seems to fix it
+	export CFLAGS="$CFLAGS -isysroot /"
 fi
 
 pip install $PIP_PACKAGES || fail "$EPIP"
