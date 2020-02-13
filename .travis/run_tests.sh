@@ -34,12 +34,6 @@ fail() {
 	exit 1
 }
 
-# In OSX we create our own virtualenv, see run_build.sh
-if [ "${TRAVIS_OS_NAME}" = "osx" ]
-then
-	source ${TRAVIS_BUILD_DIR}/osx_venv/bin/activate
-fi
-
 # coverage version pinned to avoid issues with latest releases
 # (see https://github.com/nedbat/coveragepy/issues/916, but possibly
 # our problem has not even been reported)

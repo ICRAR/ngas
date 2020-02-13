@@ -93,8 +93,7 @@ cd ${TRAVIS_BUILD_DIR}
 #
 # Most notably, Travis doesn't support python builds in OSX,
 # but the brew packages that come preinstalled in the virtual machines
-# include python 2.7. We sill need to get ourselves a
-# virtualenv though and manually source it whenever we use it.
+# include python 2.7
 if [ "${TRAVIS_OS_NAME}" = "osx" ]
 then
 	# update-reset seems to be the solution for transient homebrew LoadErrors we have had
@@ -108,10 +107,6 @@ then
 	brew unlink python || fail "Failed to brew unlink python"
 	brew ls --version python@2 || brew install python@2 || fail "Failed to brew install python@2"
 	brew install berkeley-db@4 || fail "Failed to brew install berkeley-db@4"
-
-	# Now create ourselves a virtualenv please and go in there
-	pip install virtualenv && virtualenv ./osx_venv || fail "Failed to create virtual environment"
-	source ./osx_venv/bin/activate
 
 	# Aggresively changing names now...
 	sudo scutil --set HostName `hostname`
