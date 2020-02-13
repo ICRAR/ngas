@@ -47,8 +47,8 @@ create table ngas_cfg
 
 create table ngas_cfg_pars
 (
-    cfg_group_id varchar2(32) constraint nn_ngas_cfg_pars_cfg_group_id null,
-    cfg_par varchar2(128) constraint nn_ngas_cfg_pars_cfg_par null,
+    cfg_group_id varchar2(32) constraint nn_ngas_cfg_pars_cfg_group_id not null,
+    cfg_par varchar2(128) constraint nn_ngas_cfg_pars_cfg_par not null,
     cfg_val varchar2(255) null,
     cfg_comment varchar2(255) null,
     constraint pk_ngas_cfg_pars primary key (cfg_group_id, cfg_par)
