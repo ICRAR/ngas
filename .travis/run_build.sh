@@ -100,6 +100,11 @@ then
 	# update-reset seems to be the solution for transient homebrew LoadErrors we have had
 	#  https://stackoverflow.com/questions/54888582/ruby-cannot-load-such-file-active-support-core-ext-object-blank
 	brew update-reset || true
+
+	# Avoid slow autoupdates and autocleanups when brew installing stuff
+	export HOMEBREW_NO_AUTO_UPDATE=1
+	export HOMEBREW_NO_INSTALL_CLEANUP=1
+
 	brew unlink python || fail "Failed to brew unlink python"
 	brew ls --version python@2 || brew install python@2 || fail "Failed to brew install python@2"
 	brew install berkeley-db@4 || fail "Failed to brew install berkeley-db@4"
