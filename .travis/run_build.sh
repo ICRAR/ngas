@@ -105,7 +105,7 @@ then
 	brew install berkeley-db@4 || fail "Failed to brew install berkeley-db@4"
 
 	# Now create ourselves a virtualenv please and go in there
-	./create_venv.sh ./osx_venv || fail "Failed to create virtual environment"
+	pip install virtualenv && virtualenv ./osx_venv || fail "Failed to create virtual environment"
 	source ./osx_venv/bin/activate
 
 	# Aggresively changing names now...
