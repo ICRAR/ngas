@@ -20,37 +20,6 @@ There are two ways to perform an installation:
   This is the recommended way, if possible, as it automates most of the
   installation steps while still being highly customisable.
 
-In both cases you may want to
-:ref:`create a virtual environment <inst.venv>`.
-
-.. _inst.venv:
-
-Virtual environment creation
-----------------------------
-
-Either if you are installing NGAS :ref:`manually <inst.manual>`
-or :ref:`using Fabric <inst.fabric>`
-you may wish to create
-a `virtual environment <https://virtualenv.readthedocs.org/en/latest/>`_.
-In the case of a manual installation,
-the newly created virtual environment
-can host your NGAS installation.
-In the case of a fabric-based remote installation,
-the new virtual environment will provide you
-with the necessary python packages to run Fabric.
-
-To create the virtual environment,
-go to the NGAS root source directory and run::
-
- ./create_venv.sh [-f] /path/to/the/new/venv
-
-This will check you have an appropriate python version,
-will get the ``virtualenv`` tool
-and create a virtual environment.
-The ``-f`` flag is optional,
-and tells the script to also install
-a set of basic packages needed to use Fabric.
-
 .. _inst.manual:
 
 Manual installation
@@ -60,8 +29,6 @@ Manual installation
  Like any other python package,
  NGAS can be installed in a virtual environment
  or as a system-wide package.
- If you wish to install NGAS on a virtual environment
- you can :ref:`easily create one <inst.venv>`.
 
 To manually install NGAS go to the root directory and simply run::
 
@@ -109,11 +76,6 @@ Via Fabric
 
 .. note::
  The installation via Fabric always installs NGAS in a virtualenv
-
-.. note::
- If you don't have Fabric installed in your system
- you can get one by creating
- :ref:`a local virtual environment <inst.venv>` containing it.
 
 `Fabric <http://www.fabfile.org/>`_ is a tool that allows
 to perform commands in one or more hosts, local or remote (via SSH).
