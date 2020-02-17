@@ -356,7 +356,7 @@ def prepare_ngas_data_dir():
         if 'NGAS_OVERWRITE_ROOT' in env and env.NGAS_OVERWRITE_ROOT:
             cmd.append('-f')
         if 'FAB_TASK' in env and env.FAB_TASK == 'docker_image':
-            cmd.append('-i 0.0.0.0')
+            cmd.append('-a')
         cmd.append(nrd)
         res = run(' '.join(cmd))
         if res.succeeded:
