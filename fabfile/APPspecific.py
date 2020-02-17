@@ -60,12 +60,16 @@ env.APP_ROOT_DIR_NAME = env.APP_NAME.upper()
 env.APP_INSTALL_DIR_NAME = env.APP_NAME.lower() + '_rt'
 
 # Version of Python required for the Application
-env.APP_PYTHON_VERSION = '3.7'
+env.APP_PYTHON_VERSION = '3.6'
 
 # URL to download the correct Python version
-env.APP_PYTHON_URL = 'https://www.python.org/ftp/python/3.7.4/Python-3.7.4.tgz'
+env.APP_PYTHON_URL = 'https://www.python.org/ftp/python/3.6.10/Python-3.6.10.tgz'
 
 env.APP_DATAFILES = ['NGAS']
+
+# By default the fabfileTemplate will remove APP_root but we need it for NGAS
+
+env.DOCKER_KEEP_APP_ROOT = 1
 
 # >>> The following settings are only used within this APPspecific file, but may be
 # >>> passed in through the fab command line as well, which will overwrite the 
@@ -132,6 +136,7 @@ env.pkgs = {
                 'tar',
                 'wget',
                 'zlib-devel',
+                'libffi-devel',
             ],
             'APT_PACKAGES' : [
                 'autoconf',
@@ -350,8 +355,10 @@ def prepare_ngas_data_dir():
         cmd = ['./prepare_ngas_root.sh']
         if 'NGAS_OVERWRITE_ROOT' in env and env.NGAS_OVERWRITE_ROOT:
             cmd.append('-f')
+        if 'FAB_TASK' in env and env.FAB_TASK == 'docker_image':
+            cmd.append('-i 0.0.0.0')
         cmd.append(nrd)
-        res = run(' '.join(cmd), quiet=True)
+        res = run(' '.join(cmd))
         if res.succeeded:
             success("NGAS data directory ready")
             env.tgt_cfg = tgt_cfg

@@ -26,10 +26,11 @@
 function print_usage {
 	echo "Creates and prepares a new NGAS root directory"
 	echo
-	echo "$0 [-h | -?] [-f] [-D] [-C] <NGAS root directory>"
+	echo "$0 [-h | -?] [-f] [-a] [-D] [-C] <NGAS root directory>"
 	echo
 	echo "-h, -?: Show this help"
 	echo "-f: Force creation of NGAS root, even if directory exists"
+        echo "-a: Listen to all interfaces in configuration"
 	echo "-C: Do *not* create a configuration file"
 	echo "-D: Do *not* create an SQLite3 database"
 	echo
@@ -62,15 +63,19 @@ fi
 
 # Command-line option parsing
 FORCE=
+ALL_IF=
 CREATE_DB=yes
 CREATE_CFG=yes
 
-while getopts "fDCh?" opt
+while getopts "fiaDCh?" opt
 do
 	case "$opt" in
 		f)
 			FORCE=yes
 			;;
+                a)
+                        ALL_IF=yes
+                        ;;
 		D)
 			CREATE_DB=no
 			;;
@@ -133,6 +138,12 @@ then
 	echo "Creating and preparing initial configuration file"
 	cp cfg/sample_server_config.xml "${cfg_file}" || error "Failed to create initial configuration file"
 	sed ${extended_regexp} -i -e "s@RootDirectory=\"[^\"]+\"@RootDirectory=\"${root_dir}\"@g" "${cfg_file}" || error "Failed to set RootDirectory setting"
+
+        if [ "${ALL_IF}" = "yes" ]
+        then
+		echo "Changing config to listen to all interfaces"
+                sed ${extended_regexp} -i -e "s@IpAddress=\"[^\"]+\"@IpAddress=\"0.0.0.0\"@g" "${cfg_file}" || error "Failed to set IpAddress to 0.0.0.0"
+        fi
 
 	if [ "${CREATE_DB}" = "yes" ]
 	then
