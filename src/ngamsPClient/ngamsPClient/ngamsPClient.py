@@ -818,7 +818,7 @@ def main():
 
     DUMP_TO_STDOUT = object()
     parser = argparse.ArgumentParser(usage="ngamsPClient [-h] <options> cmd")
-    parser.add_argument('cmd', help='Command to issue')
+    parser.add_argument('cmd', nargs='?', help='Command to issue')
 
     gparser = parser.add_argument_group('General options')
     gparser.add_argument('-L', '--license', help='Show the license information', action='store_true')
@@ -877,10 +877,11 @@ def main():
     if opts.version:
         print(getNgamsVersion())
         return
-
-    if opts.license:
+    elif opts.license:
         print(getNgamsLicense())
         return
+    elif not opts.cmd:
+        parser.error('cmd required but none given')
 
     if opts.servers:
         servers = [(host, int(port)) for s in opts.servers.split(',') for host,port in s.split(':')]
