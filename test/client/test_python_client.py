@@ -559,6 +559,28 @@ class CommandLineTest(ngamsTestSuite):
     def assert_client_fails(self, *args):
         self._assert_client(False, *args)
 
+    def test_client_information(self):
+        self.assert_client_succeeds('--license')
+        self.assert_client_succeeds('--version')
+
+    def test_client_status_document(self):
+        """Test the behavior of the -s flag of ngamsPClient"""
+
+        XML_DOC_START = b'<NgamsStatus>'
+        self.prepExtSrv()
+
+        out, _ = self.assert_client_succeeds('STATUS')
+        self.assertNotIn(XML_DOC_START, out, 'XML status document should not be printed')
+
+        out, _ = self.assert_client_succeeds('STATUS', '-s')
+        self.assertIn(XML_DOC_START, out, 'XML status document should be printed')
+
+        status_file = genTmpFilename()
+        out, _ = self.assert_client_succeeds('STATUS', '-s', status_file)
+        self.assertNotIn(XML_DOC_START, out, 'XML status document should not be printed')
+        with open(status_file, 'rb') as f:
+            self.assertIn(XML_DOC_START, f.read(), 'XML status document should be contained in file')
+
     def test_ars_success(self):
         """Happy paths for an archive/receive/subscribe commands"""
 
