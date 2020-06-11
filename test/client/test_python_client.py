@@ -551,9 +551,10 @@ class CommandLineTest(ngamsTestSuite):
             self.fail('Failure when executing "%s" (exit code %d)\nstdout: %s\n\nstderr:%s' % (cmdline, ecode, out, err))
         elif not success_expected and ecode == 0:
             self.fail('Successfully executed "%s"\nstdout: %s\n\nstderr:%s' % (cmdline, out, err))
+        return out, err
 
     def assert_client_succeeds(self, *args):
-        self._assert_client(True, *args)
+        return self._assert_client(True, *args)
 
     def assert_client_fails(self, *args):
         self._assert_client(False, *args)
