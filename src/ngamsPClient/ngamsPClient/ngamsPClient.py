@@ -817,7 +817,7 @@ def main():
     """
 
     DUMP_TO_STDOUT = object()
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(usage="ngamsPClient [-h] <options> cmd")
     parser.add_argument('cmd', help='Command to issue')
 
     gparser = parser.add_argument_group('General options')
