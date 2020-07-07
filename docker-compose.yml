@@ -1,0 +1,7 @@
+version: '2'
+services:
+    alpine:
+        restart: "no"
+        build: .
+        ports:
+            - 7777:7777

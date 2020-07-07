@@ -38,16 +38,18 @@ setup(
     author_email='',
     url='',
     license='',
+    # packages=find_packages(exclude='contributed/*'),
     packages=find_packages(),
     include_package_data=True,
     package_data = {
-        'ngamsPlugIns' : ['README', '*.css', '*.html', '*.cfg', 'd3/*', 'mwa_compression/*',
-                          'mwa_gleam/ngamsPlugins/*', 'mwa_gleam/rdsi/*', 'mwa_gleam/vo/*',
-                          'mwa_gleam/*.sh', 'mwa_gleam/*.sql', 'mwa_gleam/*.py', 'mwa_mit/*', 'mwa_tapestaging/*',
-                          'subscription_ui/*'],
+        'ngamsPlugIns': ['README', '*.css', '*.html', '*.cfg', 'd3/*', 'subscription_ui/*']
+        # 'ngamsPlugIns' : ['README', '*.css', '*.html', '*.cfg', 'd3/*', 'mwa_compression/*',
+        #                   'mwa_gleam/ngamsPlugins/*', 'mwa_gleam/rdsi/*', 'mwa_gleam/vo/*',
+        #                   'mwa_gleam/*.sh', 'mwa_gleam/*.sql', 'mwa_gleam/*.py', 'mwa_mit/*', 'mwa_tapestaging/*',
+        #                   'subscription_ui/*'],
     },
     install_requires=[
-        'astropy',
+#        'astropy',
         'ngamsCore',
         'ngamsPClient',
         'ngamsServer'

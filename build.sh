@@ -108,7 +108,8 @@ fi
 # which is much faster to install using pip
 # The gleam plug-ins require numpy, but we leave that
 # out of the core dependencies of NGAS
-pip install 'astropy' || warning "Failed to install astropy via pip"
+# pip install 'cython' || warning "Failed to install cython via pip"
+# pip install 'astropy' || warning "Failed to install astropy via pip"
 
 # It would be ideal to install the NGAS modules via pip,
 # but their setup.py currently references the VERSION File
