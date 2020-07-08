@@ -1,7 +1,7 @@
 # we are doing a two-stage build to keep the size of
 # the final image low.
 
-# FROM tiangolo/meinheld-gunicorn:python3.7-alpine3.8
+# First stage build and cleanup
 FROM alpine
 ARG BUILD_ID
 LABEL stage=builder
@@ -14,6 +14,7 @@ RUN /home/ngas/build.sh ; /home/ngas/prepare_ngas_root.sh -f /NGAS
 RUN pip uninstall -y setuptools ; pip uninstall -y pip
 RUN apk del bash alpine-sdk ; cd /home/ngas ; rm -rf * .[egv]* ; find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
 
+# Second stage build taking what's required from first stage
 FROM alpine
 RUN apk add --update python3 db sqlite
 COPY VERSION /home/ngas/VERSION
@@ -23,4 +24,4 @@ COPY --from=0 /usr/bin/. /usr/bin/.
 COPY --from=0 /usr/lib/python3.8/site-packages/. /usr/lib/python3.8/site-packages/.
 COPY --from=0 /NGAS/. /NGAS/.
 RUN sed -i 's/127.0.0.1/0.0.0.0/g' /NGAS/cfg/ngamsServer.conf
-ENTRYPOINT [ "/home/ngas/startServer.sh" ]
+CMD [ "/home/ngas/startServer.sh" ]

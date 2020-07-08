@@ -111,6 +111,8 @@ fi
 # pip install 'cython' || warning "Failed to install cython via pip"
 # pip install 'astropy' || warning "Failed to install astropy via pip"
 
+pip install git+https://github.com/awicenec/printhead.git
+
 # It would be ideal to install the NGAS modules via pip,
 # but their setup.py currently references the VERSION File
 # at the root of this repository. pip on the other hand makes

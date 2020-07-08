@@ -19,14 +19,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-#******************************************************************************
-#
-# "@(#) $Id: ngamsFitsPlugIn.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
-#
-# Who       When        What
-# --------  ----------  -------------------------------------------------------
-# jknudstr  10/05/2001  Created
-#
+
 """
 This Data Archiving Plug-In is used to handle reception and processing
 of FITS files.
@@ -34,6 +27,9 @@ of FITS files.
 Note, that the plug-in is implemented for the usage at ESO. If used in other
 contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
+
+NOTE: This plugin is used by almost all NGAS tests and thus has to stay
+with the core code.
 """
 
 from collections import defaultdict
@@ -70,7 +66,11 @@ def getFitsKeys(fitsFile,
 
                 (dictionary).
     """
-    import astropy.io.fits as pyfits
+    try: 
+        import astropy.io.fits as pyfits
+    except:
+        # this is a fallback in case astropy is not installed
+        import printhead.functions as pyfits  
     keyDic = defaultdict(list)
     try:
         for key in keyList:
