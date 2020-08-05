@@ -33,6 +33,11 @@ The NGAS server can be run in three different modes:
 Selecting which mode will be used
 is done by editing the server configuration file.
 
+Additionally,
+server can be configured to be allowed to perform
+a specific set of actions.
+For details see :ref:`config.permissions`.
+
 
 .. _server.modes.cache:
 

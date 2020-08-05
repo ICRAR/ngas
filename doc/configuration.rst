@@ -49,6 +49,21 @@ Contains the overall server configuration.
   See :ref:`server.request_db` for details.
   Defaults to ``null``.
 
+
+.. _config.permissions:
+
+Permissions
+-----------
+
+This element defines the set of actions
+this server is allowed to perform.
+
+* *AllowArchiveReq*: Whether archiving is allowed on this server.
+* *AllowProcessingReq*: Whether processing is allowed on this server.
+* *AllowRemoveReq*: Whether removal of files is allowed on this server.
+* *AllowRetrieveReq*: Whether retrieval of files is allowed on this server.
+
+
 .. _config.db:
 
 Db
