@@ -242,7 +242,9 @@ The following attributes are available:
  * *Scan*: Whether files should be scanned only (1) or actually checksumed (0).
 
 The following attributes are present in old configuration files
-but are not used anymore: *FileSeq*, *DiskSeq*, *LogSummary*, *Prio*.
+but are not used anymore: *FileSeq*, *DiskSeq*, *LogSummary*, *Prio*,
+*ChecksumPlugIn* (see :ref:`CRCVariant <config.archivehandling>` instead)
+and *ChecksumPlugInPars*.
 
 
 .. _config.caching:
