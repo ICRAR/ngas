@@ -348,3 +348,27 @@ signature:
     :param str url: The url to send the filename to
     :return: An object used by requests to authenticate the connection
     :rtype: requests.auth.AuthBase, None, str
+
+
+.. _config.suspension:
+
+HostSuspension
+--------------
+
+The ``HostSuspension`` element defines
+the behavior of the :ref:`server suspension <server.suspension>`.
+The following attributes are defined:
+
+* *IdleSuspension*: Whether suspension is enabled (``1``) or not (``0``).
+* *IdleSuspensionTime*: The amount of idle time
+  after which a server will suspend itself.
+* *SuspensionPlugIn* and *SuspensionPlugInPars*:
+  The plug-in used to perform suspension, and its parameters.
+* *WakeUpServerHost*: The server in charge
+  of waking up server that are idling.
+* *WakeUpPlugIn* and *WakeUpPlugInPars*:
+  The plug-in used to perform the wake-up, and its parameters.
+* *WakeUpCallTimeOut*: Maximum amount of time
+  that a wake up call should take.
+  If a server cannot be woken up after this timeout
+  it is considered to be still idling.

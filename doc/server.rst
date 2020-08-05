@@ -390,3 +390,37 @@ Details on how to configure logging in NGAS
 can be found in :ref:`config.log`.
 To learn how to write logfile handler plug-ins
 see :doc:`plugins/logging`.
+
+
+.. _server.suspension:
+
+Suspension
+==========
+
+An NGAS server can be configured
+to put itself into suspension mode
+after it detects it has been idle
+(i.e., not serving external requests)
+for a certain amount of time.
+
+Later on, if a request arrives
+that ultimately needs to be served
+by a currently idle server,
+a *Wake Up server* will be contacted
+and tasked with waking up the idle server.
+
+Note that host suspension makes sense in scenarios
+where only a couple of NGAS servers are public-facing
+and acting like proxies
+to a bigger cluster of NGAS server.
+In such setup, idling internal servers in the cluster
+can be safely managed.
+If all servers in the cluster were exposed publicly,
+sending a server into idling
+would not work as expected,
+as direct requests going into that host
+will not automatically cause it to wake up.
+
+Host suspension is configured
+in the server configuration file
+as shown in :ref:`config.suspension`.
