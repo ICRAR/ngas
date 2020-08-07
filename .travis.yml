@@ -29,11 +29,6 @@ language: python
 python: 2.7
 
 #
-# We required sudo to use the hostname addon (see below)
-#
-sudo: required
-
-#
 # The Docker-ized build environment creates a very long hostname
 # (~100 chars long), but the NGAS database schema's host_id column
 # has a maximum width of 32, which is why we set a specific hostname.
@@ -59,7 +54,7 @@ addons:
 # Setting the DB environment variable allows us to keep track later on which
 # database engine this particular run is based on
 #
-matrix:
+jobs:
  include:
   - env: DB=sqlite3
   - env: DB=mysql
