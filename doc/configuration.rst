@@ -9,6 +9,10 @@ unless specified otherwise.
 
 All elements share an *Id* attribute to uniquely identify them.
 
+For a sample configuration file
+see the `sample configuration file <https://github.com/ICRAR/ngas/blob/master/cfg/sample_server_config.xml>`_
+shipped with NGAS.
+
 .. _config.server:
 
 Server
