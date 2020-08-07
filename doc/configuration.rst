@@ -467,3 +467,30 @@ The following attributes are defined:
   that a wake up call should take.
   If a server cannot be woken up after this timeout
   it is considered to be still idling.
+
+
+.. _config.system_plugins:
+
+SystemPlugIns
+-------------
+
+The ``SystemPlugIns`` element defines
+a collection of system-level plug-ins.
+These plug-ins are used for different purposes,
+either by a command or by the core system.
+The ``*PlugIn`` attributes name
+a python module that offers a function with the same name,
+while the ``*PlugInPars`` attributes
+are a comma-separated key=value parameter pairs:
+
+ * *LabelPrinterPlugIn* and *LabelPrinterPlugInPars*:
+   The plug-in that brings hardware-specific capabilities
+   to the ``LABEL`` command.
+ * *OfflinePlugIn* and *OfflinePlugInPars*:
+   The plug-in used to bring the server to ``OFFLINE`` state
+   (see :ref:`server.states`).
+ * *OnlinePlugIn* and *OnelinePlugInPars*:
+   The plug-in used to bring the server to ``ONLINE`` state
+   (see :ref:`server.states`).
+ * *DiskSyncPlugIn* and *DiskSyncPlugInPars*:
+   The plug-in used to perform a full disk sync.
