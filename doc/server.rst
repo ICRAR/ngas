@@ -241,6 +241,21 @@ if their CPUs do not support the SSE 4.2 instruction set.
 (see `<inst>`_ for details).
 
 
+.. _server.processing:
+
+Processing
+==========
+
+When a :ref:`RETRIEVE <commands.retrieve>` request is issued by a client,
+the data sent by the server can optionally be processed on-the-fly
+before serving it back to the client.
+
+This behavior can be provided by users
+with potentially different plug-ins
+used to process different mime-types.
+See :ref:`config.processing` for details.
+
+
 .. _server.archiving_events:
 
 Archiving events

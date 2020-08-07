@@ -241,6 +241,41 @@ see :ref:`server.storage` for reference.
    a warning email is sent (see :ref:`config.notification`).
 
 
+.. _config.processing:
+
+Processing
+----------
+
+The ``Processing`` element defines the behavior
+of the optional :ref:`on-the-fly processing capabilities <server.processing>`
+attached to the :ref:`RETRIEVE <commands.retrieve>` command.
+The following attributes are supported:
+
+* *ProcessingDirectory*: The directory
+  (potentially relative to the NGAS root directory)
+  where a ``processing`` directory will be created on,
+  under which temporary files used during on-the-fly processing
+  will be put under.
+
+Under the ``Processing`` element,
+one or more ``PlugIn`` sub-elements can be placed,
+one per processing plug-in to be declared.
+Each ``PlugIn`` element accepts the following attributes:
+
+* *Name*: The name of the python module
+  (with a similarly-named function)
+  where the plug-in is implemented.
+* *PlugInPars*: A comma-separated list
+  of ``key=value`` parameter definitions
+  to be passed to the plug-in.
+
+Finally, inside each ``PlugIn`` element
+one or more ``MimeType`` elements can be added
+to specify which MIME types will be processed by the plug-in.
+Each ``MimeType`` element needs to have a ``Name`` attribute
+with specifying the MIME type.
+
+
 .. _config.notification:
 
 Notification
