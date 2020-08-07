@@ -211,5 +211,11 @@ then
 	export CFLAGS="$CFLAGS -isysroot /"
 fi
 
+# Install latest setuptools in Xenial,
+# as python 3.6/3.7 fails otherwise
+if [ "${TRAVIS_OS_NAME}" = linux ]; then
+	pip install -U setuptools || fail "Can't install latest setuptools"
+fi
+
 pip install $PIP_PACKAGES || fail "$EPIP"
 ./build.sh -d -c

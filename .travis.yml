@@ -21,10 +21,10 @@
 # MA 02111-1307  USA
 
 #
-# Most tests run on ubuntu trusty with python 2.7
+# Most tests run on ubuntu xenial with python 2.7
 #
 os: linux
-dist: trusty
+dist: xenial
 language: python
 
 #
@@ -81,9 +81,7 @@ jobs:
   - python: "3.5"
   - python: "3.6"
   - python: "3.7"
-    dist: xenial
   - python: "3.7"
-    dist: xenial
     name: Build docs
     install: pip install sphinx sphinx_rtd_theme
     script: make -C doc html SPHINXOPTS="-W --keep-going"
