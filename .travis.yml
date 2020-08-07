@@ -85,6 +85,12 @@ matrix:
   - python: "3.6"
   - python: "3.7"
     dist: xenial
+  - python: "3.7"
+    dist: xenial
+    name: Build docs
+    install: pip install sphinx sphinx_rtd_theme
+    script: make -C doc html SPHINXOPTS="-W --keep-going"
+    after_success: true
 
 #
 # To install we should simply run the build script
