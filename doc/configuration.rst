@@ -338,7 +338,7 @@ signature:
     Provides authentication information needed to send ``filename`` to ``url``.
 
     This function should return an object that can be handled by the ``auth``
-    keyword argument of requests.reqeusts, which is generally either a string,
+    keyword argument of requests.requests, which is generally either a string,
     or an instance of ``requests.auth.AuthBase``. ``None`` can be returned in
     the case where the authentication is not needed.
 
