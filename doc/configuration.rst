@@ -280,6 +280,21 @@ Each ``MimeType`` element needs to have a ``Name`` attribute
 with specifying the MIME type.
 
 
+.. _config.register:
+
+Register
+--------
+
+The ``Register`` element configures
+the plug-ins to be used by the :ref:`REGISTER <commands.register>` command.
+
+Plug-ins are configured per mime-type.
+Like :ref:`config.processing`,
+one or more ``PlugIn`` sub-elements can be placed
+under the ``Register`` element,
+following the same guidelines.
+
+
 .. _config.notification:
 
 Notification

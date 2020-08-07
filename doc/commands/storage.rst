@@ -302,6 +302,8 @@ The actions of the various combinations of these parameters are explained below:
 +---------+---------+--------------+----------------------------------------------------------------------------------------------------------+
 
 
+.. _commands.register:
+
 REGISTER
 --------
 
@@ -316,6 +318,10 @@ Files with other mime-types than specified in this list will be ignored.
 - ``mime_type``: comma separated list of mime-types. A single mime-type can also be specified.
 - ``path``: The root path under which NGAS will look for candidate files to register. It is also possible to specify a complete path to a single file.
 - ``notif_email``: email address to send file registration report.
+
+NGAS can be configured to run specific code
+when registering a file.
+See :ref:`config.register` for details.
 
 
 REARCHIVE
