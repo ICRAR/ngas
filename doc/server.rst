@@ -397,6 +397,21 @@ To learn how to write logfile handler plug-ins
 see :doc:`plugins/logging`.
 
 
+.. _server.notifications:
+
+Email Notifications
+===================
+
+The NGAS server can be configured
+to send emails to different email addresses
+when particular events happen.
+
+For further explanation
+on the full range of options
+and how to configure them,
+see :ref:`config.notification`.
+
+
 .. _server.suspension:
 
 Suspension

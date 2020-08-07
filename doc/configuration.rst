@@ -221,7 +221,87 @@ Contains archiving-related configuration.
    and an optional ``PlugInPars`` attribute
    with a comma-separated ``key=value`` definitions,
    which are passed down to the class constructor as keyword arguments.
+ * *MinFreeSpaceWarningMb*: Minimum amount of free space a disk should have.
+   If a disk has less free space than that
+   a warning email is sent (see :ref:`config.notification`).
 
+
+.. _config.notification:
+
+Notification
+------------
+
+The ``Notification`` element defines the behavior
+of the server :ref:`email notifications <server.notifications>`.
+The following attributes are available:
+
+ * *Active*: Whether notifications are enabled or not.
+   Note that even if disabled, there are some notifications
+   (that are considered too important to be missed)
+   that will still be sent.
+ * *SmtpHost*: The SMTP host to use as the email agent.
+ * *Sender*: The email address that will appear
+   in the ``Sender:`` field of emails sent by this mechanism.
+ * *MaxRetentionTime*: Maximum amount of time
+   an undelivered email will be internally kept for
+   before the system decides not to deliver it.
+ * *MaxRetentionSize*: Maximum amount of undelivered emails
+   the system will keep internally
+   before it starts dropping old emails.
+
+Emails resulting from different events
+can be configured to be sent to one or more
+email addresses.
+This is done
+by defining ``EmailRecipient`` elements,
+each with an ``Address`` attribute
+whose value is the target email address.
+These ``EmailRecipient`` elements are then added as children
+of the following sub-elements of ``Notification``:
+
+* *AlertNotification*: (*Deprecated*) Never sent.
+* *ErrorNotification*: Sent in a number
+  of different error situations.
+* *DiskSpaceNotification*: Sent when, during operations,
+  one or more disk are found to have less free space
+  than the configured amount (see :ref:`config.archivehandling`).
+* *DiskChangeNotification*: Sent when a disk is full,
+  potentially requiring a change.
+* *NoDiskSpaceNotification*: Sent when, during operations,
+  no sufficient space can be found in one or more disks.
+* *DataCheckNotification*: Sent by the :ref:`bg.datacheck_thread`
+  informing about the results of the data checking process.
+  Normally sent only if there are errors to be reported,
+  but can be configured to be always sent
+  (see :ref:`config.datacheck_thread`)
+
+Below is an example
+illustrating a valid configuration:
+
+.. code:: xml
+
+  <Notification Id="Notification"
+                Active="0" MaxRetentionSize="1" MaxRetentionTime="00T00:30:00"
+                Sender="ngas@host.com" SmtpHost="localhost">
+    <AlertNotification>
+      <EmailRecipient Address="address@example.com"/>
+    </AlertNotification>
+    <ErrorNotification>
+      <EmailRecipient Address="address@example.com"/>
+    </ErrorNotification>
+    <DiskSpaceNotification>
+      <EmailRecipient Address="address@example.com"/>
+    </DiskSpaceNotification>
+    <DiskChangeNotification>
+      <EmailRecipient Address="address@example.com"/>
+    </DiskChangeNotification>
+    <NoDiskSpaceNotification>
+      <EmailRecipient Address="address@example.com"/>
+    </NoDiskSpaceNotification>
+    <DataCheckNotification>
+      <EmailRecipient Address="address@example.com"/>
+    </DataCheckNotification>
+  </Notification>
 
 .. _config.janthread:
 
