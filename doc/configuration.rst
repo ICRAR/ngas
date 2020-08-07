@@ -208,7 +208,19 @@ ArchiveHandling
 ---------------
 
 Contains archiving-related configuration.
+For an explanation on most of these terms
+see :ref:`server.storage` for reference.
 
+ * *PathPrefix*: The top-level directory on each volume
+   under which NGAS will store incoming data.
+ * *Replication*: Whether data will be replicated during archiving
+   from the Main disk to a Replication disk
+ * *BackLogBuffering*: whether data stored
+   during a failed ``ARCHIVE`` command
+   *might* be temporarily kept in storage
+   to try to finish its archiving later on in the background.
+ * *BackLogBufferDirectory*: The top-level directory on each volume
+   where backlogged files will be temporarily stored.
  * *CRCVariant*: The CRC algorithm (and implementation) to use
    to calculate the checksum of incoming files.
    See :ref:`server.crc` for details.
@@ -221,6 +233,9 @@ Contains archiving-related configuration.
    and an optional ``PlugInPars`` attribute
    with a comma-separated ``key=value`` definitions,
    which are passed down to the class constructor as keyword arguments.
+ * *FreeSpaceDiskChangeMb*: How much available free space
+   in a disk will trigger an error notification to change that disk
+   (see :ref:`config.notification` for details).
  * *MinFreeSpaceWarningMb*: Minimum amount of free space a disk should have.
    If a disk has less free space than that
    a warning email is sent (see :ref:`config.notification`).
