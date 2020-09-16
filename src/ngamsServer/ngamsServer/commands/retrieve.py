@@ -286,13 +286,21 @@ def _handleCmdRetrieve(srvObj,
                                                  fileVer, include_compression=True)
 
     # If not located the quick way try the normal way.
-    if (not ipAddress):
-        # Locate the file best suiting the query and send it back if possible.
-        location, host, ipAddress, port, mountPoint, filename, fileId,\
-                  fileVersion, mimeType, compression =\
-                  ngamsFileUtils.locateArchiveFile(srvObj, fileId, fileVer,
-                                                   diskId, hostId, reqPropsObj,
-                                                   include_compression=True)
+    if not ipAddress:
+        try:
+            # Locate the file best suiting the query and send it back if possible.
+            location, host, ipAddress, port, mountPoint, filename, fileId, \
+            fileVersion, mimeType, compression = \
+                ngamsFileUtils.locateArchiveFile(srvObj, fileId, fileVer,
+                                                 diskId, hostId, reqPropsObj,
+                                                 include_compression=True)
+        except:
+            # If the file is still not found then try a remote partner site
+            location, host, ipAddress, port, mountPoint, filename, fileId, \
+            fileVersion, mimeType, compression = \
+                ngamsFileUtils.lookup_partner_site_file(srvObj, fileId,
+                                                        fileVer, reqPropsObj,
+                                                        include_compression=True)
 
     # If still not located, try to contact associated NGAS sites to query
     # if the file is available there.
@@ -310,9 +318,8 @@ def _handleCmdRetrieve(srvObj,
         # Perform the possible processing requested.
         procResult, compression = performProcessing(srvObj, reqPropsObj, srcFilename,
                                                     mimeType, compression)
-    elif location in (NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE) and \
-         srvObj.getCfg().getProxyMode():
 
+    elif location == NGAMS_HOST_CLUSTER and srvObj.getCfg().getProxyMode():
         logger.info("NG/AMS Server acting as proxy - requesting file with ID: %s " +\
                      "from NG/AMS Server on host/port: %s/%s",
                      fileId, host, str(port))
@@ -322,6 +329,18 @@ def _handleCmdRetrieve(srvObj,
         # Processing Area.
         timeout = float(reqPropsObj['timeout']) if 'timeout' in reqPropsObj else 60
         httpRef.proxy_request(host, ipAddress, port, timeout=timeout)
+        return
+
+    elif location == NGAMS_HOST_REMOTE and srvObj.is_partner_sites_proxy_mode():
+        logger.info("NG/AMS Server acting as remote proxy - requesting file with ID: %s " + \
+                    "from NG/AMS Server on host/port: %s/%s",
+                    fileId, host, str(port))
+
+        # Act as a remote proxy - get the file from the remote NGAS host
+        # specified and send back the contents. The file is temporarily stored
+        # in the Processing Area.
+        timeout = float(reqPropsObj['timeout']) if 'timeout' in reqPropsObj else 300
+        httpRef.remote_proxy_request(reqPropsObj, host, port, timeout=timeout)
         return
 
     else:
@@ -334,8 +353,8 @@ def _handleCmdRetrieve(srvObj,
 
 
 def handleCmd(srvObj,
-                      reqPropsObj,
-                      httpRef):
+              reqPropsObj,
+              httpRef):
     """
     Handle a RETRIEVE command.
 

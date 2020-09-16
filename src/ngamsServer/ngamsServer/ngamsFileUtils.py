@@ -72,6 +72,169 @@ logger = logging.getLogger(__name__)
 # `from_bytes` functions need to be aligned.
 checksum_info = collections.namedtuple('crc_info', 'init method final from_bytes equals')
 
+
+def lookup_partner_site_file_status(ngas_server,
+                                    file_id,
+                                    file_version,
+                                    request_properties):
+    """
+    Lookup the file indicated by the File ID using a NGAS partner site (if one
+    is specified in the configuration). Returns a tuple of status objects.
+
+    Parameters:
+
+    ngas_server:        Reference to NG/AMS server class object (ngamsServer).
+
+    file_id:            File ID of file to locate (string).
+
+    file_version:       Version of the file (integer).
+
+    request_properties: Request Property object to keep track of actions done
+                        during the request handling (ngamsReqProps|None).
+
+    Returns:
+
+    host:           Partner site host name (or IP address)
+
+    port:           Partner site port number
+
+    status_info:    Status response object (ngamsStatus)
+
+    disk_info:      Status response disk information object (ngamsDiskInfo)
+
+    file_info:      Status response file information object (ngamsFileInfo)
+    """
+    # If the request came from a partner site. We will not continue to
+    # propagate the request to avoid a death loop scenario. We will raise an
+    # exception.
+    if request_properties.hasHttpPar("partner_site_redirect"):
+        error_message = genLog("NGAMS_ER_UNAVAIL_FILE", [file_id])
+        logger.debug(error_message)
+        raise Exception(error_message)
+
+    # Check partner sites is enabled are available from the configuration
+    if not ngas_server.is_partner_sites_proxy_mode()\
+            or not ngas_server.get_partner_sites_address_list():
+        error_message = genLog("NGAMS_ER_UNAVAIL_FILE", [file_id])
+        logger.debug(error_message)
+        raise Exception(error_message)
+
+    # Lets query the partner sites for the availability of the requested file
+    authentication_header = ngamsSrvUtils.genIntAuthHdr(ngas_server)
+    parameter_list = [["file_id", file_id]]
+    if file_version != -1:
+        parameter_list.append(["file_version", file_version])
+    parameter_list.append(["partner_site_redirect", 1])
+
+    host, port, status_info, disk_info, file_info = None, None, None, None, None
+    for partner_site in ngas_server.get_partner_sites_address_list():
+        partner_address = partner_site.split(":")[0]
+        partner_port = int(partner_site.split(":")[-1])
+        try:
+            logger.info("Looking up file ID %s on partner site %s", file_id,
+                        partner_site)
+            response = ngamsHttpUtils.httpGet(partner_address, partner_port,
+                                              NGAMS_STATUS_CMD,
+                                              parameter_list,
+                                              auth=authentication_header)
+            with contextlib.closing(response):
+                response_info = response.read()
+        except:
+            # We ignore this error, and try the next partner site, if any
+            continue
+
+        status_info = ngamsStatus.ngamsStatus().unpackXmlDoc(response_info, 1)
+        logger.info("Result of File Access Query: {}".format(re.sub("\n", "",
+                        str(status_info.genXml().toprettyxml('  ', '\n')))))
+        if status_info.getStatus() == "FAILURE":
+            logger.info(genLog("NGAMS_INFO_FILE_NOT_AVAIL", [file_id, partner_address]))
+        else:
+            logger.info(genLog("NGAMS_INFO_FILE_AVAIL", [file_id, partner_address]))
+            disk_info = status_info.getDiskStatusList()[0]
+            file_info = disk_info.getFileObjList()[0]
+            host = partner_address
+            port = partner_port
+            break
+
+    if status_info is None:
+        # Failed to find file on a partner site
+        error_message = genLog("NGAMS_ER_UNAVAIL_FILE", [file_id])
+        logger.debug(error_message)
+        raise Exception(error_message)
+
+    return host, port, status_info, disk_info, file_info
+
+
+def lookup_partner_site_file(ngas_server,
+                             file_id,
+                             file_version,
+                             request_properties,
+                             include_compression):
+    """
+    Lookup the file indicated by the File ID using a NGAS partner site (if one
+    is specified in the configuration). Returns a list containing the necessary
+    information for retrieving the file:
+
+      [<Location>, <File Host>, <IP Address>, <Port No>, <Mount Point>,
+      <Filename>, <File ID>, <File Version>, <Mime-Type>]
+
+    - whereby:
+
+       <Location>     = Location of the file (NGAMS_HOST_LOCAL,
+                        NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN,
+                        NGAMS_HOST_REMOTE).
+       <File Host>    = Host ID of host to be contacted to get access to the
+                        file.
+       <IP Address>   = IP Address of host to be contacted to get access to the
+                        file.
+       <Port No>      = Port number used by the NG/AMS Server.
+       <Mount Point>  = Mount point at which the file is residing.
+       <Filename>     = Name of file relative to mount point.
+       <File ID>      = ID of file.
+       <File Version> = Version of file.
+       <Mime-Type>    = Mime-type of file (as registered in NGAS).
+
+    ngas_server:        Reference to NG/AMS server class object (ngamsServer).
+
+    file_id:            File ID of file to locate (string).
+
+    file_version:       Version of the file (integer).
+
+    request_properties: Request Property object to keep track of actions done
+                        during the request handling (ngamsReqProps|None).
+
+    Returns:            List with information about file location (list).
+    """
+    host, port, status_info, disk_info, file_info = \
+        lookup_partner_site_file_status(ngas_server, file_id, file_version,
+                                        request_properties)
+
+    location = NGAMS_HOST_REMOTE
+    ip_address = None
+
+    # The file was found, get the info necessary for the acquiring the file.
+    file_attribute_list = [ location, host, ip_address, port,
+                            disk_info.getMountPoint(),
+                            file_info.getFilename(),
+                            file_info.getFileId(),
+                            file_info.getFileVersion(),
+                            file_info.getFormat() ]
+
+    if include_compression:
+        file_attribute_list.append(file_info.getCompression())
+
+    message = "Located suitable file for request - File ID: %s. " \
+              + "Info for file found - Location: %s - Host ID/IP: %s/%s - " \
+              + "Port Number: %s - File Version: %d - Filename: %s - " \
+              + "Mime-type: %s"
+    logger.debug(message, file_id, location, host, ip_address, port,
+                 file_info.getFileVersion(),
+                 file_info.getFilename(),
+                 file_info.getFormat())
+
+    return file_attribute_list
+
+
 def _locateArchiveFile(srvObj,
                        fileId,
                        fileVersion,

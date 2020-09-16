@@ -344,7 +344,6 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def send_status(self, message, status=NGAMS_SUCCESS, code=None, http_message=None, hdrs={}):
         """Creates and sends an NGAS status XML document back to the client"""
 
-
         if code is None:
             code = 200 if status == NGAMS_SUCCESS else 400
 
@@ -436,6 +435,68 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         self.send_data(data, mime_type, code=code, hdrs=hdrs)
 
+    def remote_proxy_request(self, request, host, port, timeout=300):
+        """Proxy the current request to remote host ``host``:``port``"""
+
+        url = 'http://{0}:{1}/RETRIEVE'.format(host, port)
+        logger.info("Proxying request for /RETRIEVE to %s:%d", host, port)
+
+        parameter_list = []
+        for parameter in request.getHttpParNames():
+            if parameter.lower() == "initiator":
+                continue
+            else:
+                parameter_list.append([parameter, request.getHttpPar(parameter)])
+
+        start_byte = 0
+        header_list = []
+        for header in request.getHttpHdrs():
+            header_list.append([header, request.getHttpHdr(header)])
+            if header.lower() == "range":
+                value = request.getHttpHdr(header)
+                start_byte = int(value.replace("bytes=", "").split("-")[0])
+
+        block_size = self.ngasServer.getCfg().getBlockSize()
+
+        # Make sure the time_out parameters is within proper boundaries
+        timeout = min(max(timeout, 0), 1200)
+
+        authorization_header = ngamsSrvUtils.genIntAuthHdr(self.ngasServer)
+
+        response = ngamsHttpUtils.httpGetUrl(url, parameter_list, header_list,
+                                             timeout, authorization_header)
+
+        logger.info("Received remote partner site proxy response from %s:%d, sending to client", host, port)
+        response_headers = {header[0]: header[1] for header in response.getheaders()}
+        logger.info("Headers from remote partner site proxy response: %r", response_headers)
+
+        with contextlib.closing(response):
+            size = int(response.getheader("content-length"))
+            self.write_stream_data(response, response_headers, size, start_byte, block_size)
+
+    def write_stream_data(self, response, headers, size, start_byte=0, block_size=65536):
+        """Streams the data from the remote host"""
+
+        logger.info("Sending %d bytes of data and headers %r", size, headers)
+
+        self.send_response(response.status, hdrs=headers)
+        self.end_headers()
+
+        logger.info("Sending %d bytes to client, starting at byte %d", size, start_byte)
+        data_sent = start_byte
+        data_to_send = size
+        start_time = time.time()
+
+        # TODO: Should we do something about https here?
+        self.wfile.flush()
+        while data_sent < data_to_send:
+            stream_buffer = response.read(block_size)
+            self.wfile.write(stream_buffer)
+            data_sent += len(stream_buffer)
+
+        elapsed_time = time.time() - start_time
+        size_mb = size / 1024. / 1024.
+        logger.info("Sent data stream at %.3f [MB/s]", size_mb / elapsed_time)
 
 
 class logging_config(object):
@@ -504,6 +565,10 @@ class ngamsServer(object):
         self.__sysMtPtDic             = {}
         self._pid_file_created         = False
         self._cert                     = _cert
+
+        # Handling partner sites proxy mode feature
+        self.partner_sites_proxy_mode = False
+        self.partner_site_address_list = []
 
         # Keep track of how many requests are being served,
         # This is slightly different from keeping track of the server's
@@ -686,7 +751,7 @@ class ngamsServer(object):
             try:
                 s(evt)
             except:
-                msg = ("Error while trigerring archiving event subscriber, "
+                msg = ("Error while triggering archiving event subscriber, "
                        "will continue with the rest anyway")
                 logger.exception(msg)
 
@@ -1426,6 +1491,24 @@ class ngamsServer(object):
         return self.__srvListDic
 
 
+    def is_partner_sites_proxy_mode(self):
+        """
+        Return reference to the Partner Sites Proxy Mode.
+
+        Returns:  Reference to Partner Sites Proxy Mode.
+        """
+        return self.partner_sites_proxy_mode
+
+
+    def get_partner_sites_address_list(self):
+        """
+        Return reference to the Partner Site Address List.
+
+        Returns:  Reference to Partner Site Address List.
+        """
+        return self.partner_site_address_list
+
+
     def setDiskDic(self,
                    diskDic):
         """
@@ -2034,6 +2117,22 @@ class ngamsServer(object):
         if allowProcessingReq:
             checkCreatePath(self.cfg.getProcessingDirectory())
 
+        # Extract partner site proxy mode setting
+        value = self.getCfg().getVal("PartnerSites[1].ProxyMode")
+        if value == "1":
+            self.partner_sites_proxy_mode = True
+
+        # Extract partner site address list
+        idx = 1
+        while True:
+            address_key = "PartnerSites[1].PartnerSite[{0}].Address".format(idx)
+            partner_site_address = self.getCfg().getVal(address_key)
+            if partner_site_address is None:
+                break
+            else:
+                logger.info("Registering partner site address: %s", partner_site_address)
+                self.partner_site_address_list.append(partner_site_address)
+            idx += 1
 
         # Check if there is already a PID file.
         logger.debug("Check if NG/AMS PID file is existing ...")
