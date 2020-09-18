@@ -63,8 +63,8 @@ from ngamsLib.ngamsCore import genLog, getNgamsVersion, \
     NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, \
     NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR,\
-    NGAMS_NOT_SET, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
-    toiso8601
+    NGAMS_NOT_SET, NGAMS_XML_MT, NGAMS_RETRIEVE_CMD, loadPlugInEntryPoint,\
+    isoTime2Secs, toiso8601
 from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils,\
     utils, logutils
 from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps, pysendfile
@@ -438,8 +438,9 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def remote_proxy_request(self, request, host, port, timeout=300):
         """Proxy the current request to remote host ``host``:``port``"""
 
-        url = 'http://{0}:{1}/RETRIEVE'.format(host, port)
-        logger.info("Proxying request for /RETRIEVE to %s:%d", host, port)
+        url = 'http://{0}:{1}/{2}'.format(host, port, NGAMS_RETRIEVE_CMD)
+        logger.info("Proxying request for /%s to %s:%d", NGAMS_RETRIEVE_CMD,
+                    host, port)
 
         parameter_list = []
         for parameter in request.getHttpParNames():
@@ -495,6 +496,9 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             data_sent += len(stream_buffer)
 
         elapsed_time = time.time() - start_time
+        # Avoid divide by zeros later on, let's say it took us 1 [us] to do this
+        if elapsed_time == 0:
+            elapsed_time = 0.000001
         size_mb = size / 1024. / 1024.
         logger.info("Sent data stream at %.3f [MB/s]", size_mb / elapsed_time)
 

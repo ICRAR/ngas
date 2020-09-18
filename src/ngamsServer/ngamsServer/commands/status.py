@@ -536,8 +536,6 @@ def handleCmd(srvObj,
                 raise Exception(errMsg)
             diskObj.addFileObj(fileObj)
             status.addDiskStatus(diskObj)
-            genDiskStatus = 1
-            genFileStatus = 1
         except:
             # The file was not found in the database. Check if it is available
             # on a remote partner site.
@@ -548,8 +546,8 @@ def handleCmd(srvObj,
             # Update status reply using the disk status and file status
             # information retrieved from the partner site
             status.addDiskStatus(disk_info)
-            genDiskStatus = 1
-            genFileStatus = 1
+        genDiskStatus = 1
+        genFileStatus = 1
     elif (requestId):
         logger.debug("Checking status of request with ID: %s", requestId)
         reqPropsObjRef = srvObj.getRequest(requestId)
