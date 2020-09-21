@@ -160,8 +160,23 @@ def _http_response(host, port, method, cmd,
     return response
 
 
-def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
+def _httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
              timeout=None, contDisp=None, auth=None):
+
+    logger.debug("About to POST to %s:%d/%s", host, port, cmd)
+
+    # Prepare all headers that need to be sent
+    hdrs = dict(hdrs)
+    hdrs["Content-Type"] = mimeType
+    if contDisp:
+        hdrs["Content-Disposition"] = contDisp
+    if auth:
+        hdrs["Authorization"] = auth.strip()
+
+    return _http_response(host, port, 'POST', cmd, data, timeout, pars, hdrs)
+
+
+def httpPost(*args, **kwargs):
     """
     Sends `data` via HTTP POST to http://host:port/cmd.
 
@@ -174,19 +189,7 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
     via `pars`.
     Additional headers can be passed as a dictionary via `hdrs`.
     """
-
-    logger.debug("About to POST to %s:%d/%s", host, port, cmd)
-
-    # Prepare all headers that need to be sent
-    hdrs = dict(hdrs)
-    hdrs["Content-Type"] = mimeType
-    if contDisp:
-        hdrs["Content-Disposition"] = contDisp
-    if auth:
-        hdrs["Authorization"] = auth.strip()
-
-    resp = _http_response(host, port, 'POST', cmd, data, timeout, pars, hdrs)
-    with contextlib.closing(resp):
+    with contextlib.closing(_httpPost(*args, **kwargs)) as resp:
 
         # Receive + unpack reply.
         reply, msg, hdrs = resp.status, resp.reason, resp.getheaders()
@@ -219,12 +222,16 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
         return [reply, msg, hdrs, data]
 
 
-def httpPostUrl(url, data, mimeType, hdrs={},
-                timeout=None, contDisp=None, auth=None, pars=[]):
+def httpPost2(*args, **kwargs):
     """
-    Like `httpPost` but specifies a HTTP url instead of a combination of
-    host, port and command.
+    Like `httpPost`, but returns the HTTP response object for direct manipulation
+    instead of accumulating the response body.
     """
+    return _httpPost(*args, **kwargs)
+
+
+def _httpPostUrl(post_function, url, data, mimeType, hdrs={},
+                 timeout=None, contDisp=None, auth=None, pars=[]):
     split_url = urlparse.urlparse(url)
 
     if split_url.scheme == 'https':
@@ -253,9 +260,23 @@ def httpPostUrl(url, data, mimeType, hdrs={},
     allpars = [] if not split_url.query else urlparse.parse_qsl(split_url.query)
 
     allpars.extend(pars)
-    return httpPost(split_url.hostname, split_url.port, split_url.path, data,
+    return post_function(split_url.hostname, split_url.port, split_url.path, data,
             mimeType, pars=allpars, hdrs=hdrs, timeout=timeout,
             contDisp=contDisp, auth=auth)
+
+def httpPostUrl(*args, **kwargs):
+    """
+    Like `httpPost` but specifies a HTTP url instead of a combination of
+    host, port and command.
+    """
+    return _httpPostUrl(httpPost, *args, **kwargs)
+
+def httpPostUrl2(*args, **kwargs):
+    """
+    Like `httpPost2` but specifies a HTTP url instead of a combination of
+    host, port and command.
+    """
+    return _httpPostUrl(httpPost2, *args, **kwargs)
 
 
 def httpGet(host, port, cmd, pars=[], hdrs={},
