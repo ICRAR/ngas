@@ -489,11 +489,15 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         start_time = time.time()
 
         # TODO: Should we do something about https here?
-        self.wfile.flush()
         while data_sent < data_to_send:
             stream_buffer = response.read(block_size)
+            stream_buffer_size = len(stream_buffer)
             self.wfile.write(stream_buffer)
-            data_sent += len(stream_buffer)
+            data_sent += stream_buffer_size
+            if stream_buffer_size == 0 and data_sent < data_to_send:
+                logger.error("Data stream is incomplete. Only received %d bytes, expected %d bytes.",
+                             data_sent, data_to_send)
+                break
 
         elapsed_time = time.time() - start_time
         # Avoid divide by zeros later on, let's say it took us 1 [us] to do this
