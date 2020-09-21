@@ -408,15 +408,12 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                      'accept-encoding', 'transfer-encoding', 'authorization')
         hdrs = {k: v for k, v in self.headers.items() if k.lower() not in _STD_HDRS}
 
-        # Forward GET or POST request, get back code/msg/hdrs/data
+        # Forward GET or POST request
         if self.command == 'GET':
             resp = ngamsHttpUtils.httpGetUrl(url, hdrs=hdrs, timeout=timeout,
                                              auth=authHttpHdrVal)
-            with contextlib.closing(resp):
-                code, data = resp.status, resp.read()
-            hdrs = {h[0]: h[1] for h in resp.getheaders()}
-
         else:
+            assert self.command == 'POST'
             # During HTTP post we need to pass down a EOF-aware,
             # read()-able object
             data = ngamsHttpUtils.sizeaware(self.rfile, int(self.headers['content-length']))
@@ -424,33 +421,15 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             mime_type = ''
             if 'content-type' in self.headers:
                 mime_type = self.headers['content-type']
+            resp = ngamsHttpUtils.httpPostUrl2(url, data, mime_type,
+                                               hdrs=hdrs,
+                                               timeout=timeout,
+                                               auth=authHttpHdrVal)
 
-            code, _, hdrs, data = ngamsHttpUtils.httpPostUrl(url, data, mime_type,
-                                                             hdrs=hdrs,
-                                                             timeout=timeout,
-                                                             auth=authHttpHdrVal)
-
-        # Our code calculates the content length already, let's not send it twice
-        # Similarly, let's avoid Content-Type rewriting
-        # Here "hdrs" is not a one of the nice email.message.Message objects
-        # which allows for case-insensitive lookup, but simply a dictionary,
-        # so we are forced to perform a case-sensitive lookup
         logger.info("Received response from %s:%d, sending to client", host, port)
-        logger.info("Headers from response: %r", hdrs)
-        if 'content-length' in hdrs:
-            del hdrs['content-length']
-        if 'Content-Length' in hdrs:
-            del hdrs['Content-Length']
-        mime_type = ''
-        if 'content-type' in hdrs:
-            mime_type = hdrs['content-type']
-            del hdrs['content-type']
-        if 'Content-Type' in hdrs:
-            mime_type = hdrs['Content-Type']
-            del hdrs['Content-Type']
-
-        self.send_data(data, mime_type, code=code, hdrs=hdrs)
-
+        with contextlib.closing(resp):
+            self.write_headers(code=resp.status, hdrs=dict(resp.getheaders()))
+            self.write_data(resp)
 
 
 class logging_config(object):
