@@ -328,6 +328,36 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.end_headers()
         self.write_data(data)
 
+    def write_headers(self, length=None, mime_type=None, code=200, message=None, fname=None, hdrs={}):
+        """
+        Writes `length`, `mime_type` and `fname` (when given) into their
+        corresponding HTTP headers, initiating an HTTP response. After a
+        succesful call the body of the response should be written.
+        If `lenght` is not given, the corresponding header must be set already.
+        """
+        # Check length is somehow given to us, and not twice
+        # We pop to make sure only one Content-Length is sent
+        hdr_length = hdrs.pop('Content-Length', None)
+        if hdr_length is None:
+            hdr_length = hdrs.pop('content-length', None)
+        if length is None:
+            length = hdr_length
+        if length is None:
+            raise ValueError('No length information given for response')
+        elif hdr_length is not None and length != hdr_length:
+            raise ValueError('Length information given twice (%d v/s %d)' % (length, hdr_length))
+
+        hdrs = dict(hdrs)
+        hdrs['Content-Length'] = length
+        if mime_type:
+            hdrs['Content-Type'] = mime_type
+        if fname:
+            hdrs['Content-Disposition'] = 'attachment; filename="%s"' % fname
+
+        logger.info("Sending %d bytes of data of type %s and headers %r", length, mime_type, hdrs)
+        self.send_response(code, message=message, hdrs=hdrs)
+        self.end_headers()
+
     def write_data(self, data):
         """Writes ``data`` into the HTTP response body"""
 
