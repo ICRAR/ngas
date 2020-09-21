@@ -279,17 +279,12 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         """Sends the headers advertising file ``fname``, but without its data.
         Headers set by this method take precedence over values given by the
         caller via the ``hdrs`` optional argument"""
-
-        _hdrs = {'Content-Type': mime_type,
-                'Content-Disposition': 'attachment; filename="%s"' % fname,
-                'Content-Length': str(size - start_byte)}
+        hdrs = dict(hdrs)
         if start_byte:
-            _hdrs['Accept-Ranges'] = 'bytes'
-            _hdrs["Content-Range"] = "bytes %d-%d/%d" % (start_byte, size - 1, size)
-
-        hdrs.update(_hdrs)
-        self.send_response(200, hdrs=hdrs)
-        self.end_headers()
+            hdrs['Accept-Ranges'] = 'bytes'
+            hdrs["Content-Range"] = "bytes %d-%d/%d" % (start_byte, size - 1, size)
+        self.write_headers(length=(size - start_byte), mime_type=mime_type,
+                           code=200, fname=fname, hdrs=hdrs)
 
     def write_file_data(self, f, size, start_byte=0):
         """sends file ``f``, hopefully using ``sendfile(2)``"""
@@ -314,18 +309,8 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         Sends back ``data``, which is of type ``mime_type``. If ``fname`` is given
         then the data is sent as an attachment.
         """
-
-        size = len(data)
-        hdrs = dict(hdrs)
-        logger.info("Sending %d bytes of data of type %s and headers %r", size, mime_type, hdrs)
-
-        hdrs['Content-Type'] = mime_type
-        hdrs['Content-Length'] = size
-        if fname:
-            hdrs['Content-Disposition'] = 'attachment; filename="%s"' % fname
-
-        self.send_response(code, message=message, hdrs=hdrs)
-        self.end_headers()
+        self.write_headers(length=len(data), mime_type=mime_type, code=code,
+                           message=message, fname=fname, hdrs=hdrs)
         self.write_data(data)
 
     def write_headers(self, length=None, mime_type=None, code=200, message=None, fname=None, hdrs={}):
