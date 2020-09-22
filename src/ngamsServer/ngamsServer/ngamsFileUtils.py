@@ -113,14 +113,12 @@ def lookup_partner_site_file_status(ngas_server,
     # exception.
     if request_properties.hasHttpPar("partner_site_redirect"):
         error_message = genLog("NGAMS_ER_UNAVAIL_FILE", [file_reference])
-        logger.debug(error_message)
         raise Exception(error_message)
 
     # Check partner sites is enabled are available from the configuration
     if not ngas_server.is_partner_sites_proxy_mode()\
             or not ngas_server.get_partner_sites_address_list():
         error_message = genLog("NGAMS_ER_UNAVAIL_FILE", [file_reference])
-        logger.debug(error_message)
         raise Exception(error_message)
 
     # Lets query the partner sites for the availability of the requested file
@@ -160,10 +158,9 @@ def lookup_partner_site_file_status(ngas_server,
             port = partner_port
             break
 
-    if status_info is None:
+    if status_info is None or status_info.getStatus() == "FAILURE":
         # Failed to find file on a partner site
         error_message = genLog("NGAMS_ER_UNAVAIL_FILE", [file_reference])
-        logger.debug(error_message)
         raise Exception(error_message)
 
     return host, port, status_info, disk_info, file_info

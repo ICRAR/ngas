@@ -1484,7 +1484,8 @@ class ngamsTestSuite(unittest.TestCase):
         # Exceptional handling for SQLite.
         if 'sqlite' in cfgObj.getDbInterface().lower():
 
-            sqlite_file = os.path.join(tmp_root, 'ngas.sqlite')
+            # sqlite_file = os.path.join(tmp_root, 'ngas.sqlite')
+            sqlite_file = genTmpFilename(suffix='.sqlite')
             if create:
                 rmFile(sqlite_file)
                 import sqlite3
