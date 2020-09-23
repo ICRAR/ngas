@@ -1126,8 +1126,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         ports = range(8001, 8005)
         cfg_file, cfg_props = self._genArchProxyCfg(ports)
-        self.prepExtSrv(port=8000, cfgFile=cfg_file, cfgProps=cfg_props)
-        self.prepCluster(ports, createDatabase = False)
+        sqlite_file = tmp_path('ngas.sqlite')
+        self.prepExtSrv(port=8000, cfgFile=cfg_file, cfgProps=cfg_props, sqlite_file=sqlite_file)
+        self.prepCluster(ports, createDatabase = False, sqlite_file=sqlite_file)
         noOfNodes = len(ports)
         nodeCount = 0
         counts = {p: 0 for p in ports}
@@ -1228,8 +1229,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         ports = range(8001, 8005)
         cfg_file, cfg_props = self._genArchProxyCfg(ports)
-        _, dbObj = self.prepExtSrv(port=8000, cfgFile=cfg_file, cfgProps=cfg_props)
-        self.prepCluster(ports, createDatabase = False)
+        sqlite_file = tmp_path('ngas.sqlite')
+        _, dbObj = self.prepExtSrv(port=8000, cfgFile=cfg_file, cfgProps=cfg_props, sqlite_file=sqlite_file)
+        self.prepCluster(ports, createDatabase = False, sqlite_file=sqlite_file)
         # Set all Disks in unit <Host>:8002 to completed.
         dbObj.query2("UPDATE ngas_disks SET completed=1 WHERE host_id={0}", args=("%s:8002" % getHostName(),))
         # Set <Host>:8004 to Offline.

@@ -28,7 +28,7 @@ class DbTests(ngamsTestLib.ngamsTestSuite):
     def setUp(self):
         super(DbTests, self).setUp()
         cfg = self.env_aware_cfg()
-        self.point_to_sqlite_database(cfg, True)
+        self.point_to_sqlite_database(cfg, ngamsTestLib.tmp_path('ngas.sqlite'))
         self.db = ngamsDb.from_config(cfg, maxpool=1)
         ngamsTestLib.delNgasTbls(self.db)
 
