@@ -40,7 +40,7 @@ import unittest
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsXmlMgr
 from .ngamsTestLib import delNgasTbls, ngamsTestSuite, \
-    save_to_tmp
+    save_to_tmp, tmp_path
 
 
 dbIdAttr = 'Db-Test'
@@ -130,7 +130,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         revAttr = "NgamsCfg.Header[1].Revision"
         cfgObj.storeVal(revAttr, "TEST-REVISION", "ngamsCfg-Test")
 
-        self.point_to_sqlite_database(cfgObj, createDatabase)
+        self.point_to_sqlite_database(cfgObj, tmp_path('ngas.sqlite'), create=createDatabase)
         dbObj = ngamsDb.from_config(cfgObj, maxpool=1)
         if (delDbTbls): delNgasTbls(dbObj)
         cfgObj.writeToDb(dbObj)
