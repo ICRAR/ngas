@@ -52,6 +52,11 @@ class NgasPartnerSiteTest(ngamsTestSuite):
         return self.prepCluster(server_list)
 
     def test_archive_status_retrieve_sequence(self):
+
+        cfg = self.env_aware_cfg()
+        if 'sqlite' not in cfg.getDbInterface():
+            self.skipTest("This test works only against the sqlite db")
+
         host_name = getHostName()
         sample_file_name = "SmallFile.fits"
         sample_file_path = os.path.join("src", sample_file_name)
