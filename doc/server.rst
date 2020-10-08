@@ -33,6 +33,11 @@ The NGAS server can be run in three different modes:
 Selecting which mode will be used
 is done by editing the server configuration file.
 
+Additionally,
+server can be configured to be allowed to perform
+a specific set of actions.
+For details see :ref:`config.permissions`.
+
 
 .. _server.modes.cache:
 
@@ -236,6 +241,21 @@ if their CPUs do not support the SSE 4.2 instruction set.
 (see `<inst>`_ for details).
 
 
+.. _server.processing:
+
+Processing
+==========
+
+When a :ref:`RETRIEVE <commands.retrieve>` request is issued by a client,
+the data sent by the server can optionally be processed on-the-fly
+before serving it back to the client.
+
+This behavior can be provided by users
+with potentially different plug-ins
+used to process different mime-types.
+See :ref:`config.processing` for details.
+
+
 .. _server.archiving_events:
 
 Archiving events
@@ -390,3 +410,52 @@ Details on how to configure logging in NGAS
 can be found in :ref:`config.log`.
 To learn how to write logfile handler plug-ins
 see :doc:`plugins/logging`.
+
+
+.. _server.notifications:
+
+Email Notifications
+===================
+
+The NGAS server can be configured
+to send emails to different email addresses
+when particular events happen.
+
+For further explanation
+on the full range of options
+and how to configure them,
+see :ref:`config.notification`.
+
+
+.. _server.suspension:
+
+Suspension
+==========
+
+An NGAS server can be configured
+to put itself into suspension mode
+after it detects it has been idle
+(i.e., not serving external requests)
+for a certain amount of time.
+
+Later on, if a request arrives
+that ultimately needs to be served
+by a currently idle server,
+a *Wake Up server* will be contacted
+and tasked with waking up the idle server.
+
+Note that host suspension makes sense in scenarios
+where only a couple of NGAS servers are public-facing
+and acting like proxies
+to a bigger cluster of NGAS server.
+In such setup, idling internal servers in the cluster
+can be safely managed.
+If all servers in the cluster were exposed publicly,
+sending a server into idling
+would not work as expected,
+as direct requests going into that host
+will not automatically cause it to wake up.
+
+Host suspension is configured
+in the server configuration file
+as shown in :ref:`config.suspension`.

@@ -34,6 +34,7 @@ This module contains the Test Suite for the DB Snapshot Feature.
 import glob
 import os
 import subprocess
+import sys
 import time
 
 from ngamsLib import utils
@@ -132,7 +133,7 @@ def _checkContDbSnapshot(testSuiteObj,
             time.sleep(0.200)
         testSuiteObj.assertTrue(os.path.exists(complName),
                                 "DB Snapshot missing: " + complName)
-        out = utils.b2s(subprocess.check_output(['ngamsDumpDbSnapshot', complName]))
+        out = utils.b2s(subprocess.check_output([sys.executable, '-m', 'ngamsServer.ngamsDumpDbSnapshot', complName]))
         if (filterContents):
             snapshotDump = _parseDbSnapshot(out)
         else:

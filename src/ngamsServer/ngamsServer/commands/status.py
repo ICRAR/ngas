@@ -41,7 +41,7 @@ import types
 
 import six
 
-from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL,\
+from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_REMOTE,\
     getHostName, genLog, genUniqueId, rmFile,\
     compressFile, NGAMS_GZIP_XML_MT, getNgamsVersion,\
     NGAMS_SUCCESS, NGAMS_XML_MT, fromiso8601, toiso8601
@@ -87,12 +87,23 @@ def _checkFileAccess(srvObj,
 
     # Check if the file is located on this host, or if the request should be
     # forwarded (if this server should act as proxy).
-    location, fileHost, ipAddress, filePortNo, mountPoint, filename, fileId,\
-              fileVersion, mimeType =\
-              ngamsFileUtils.locateArchiveFile(srvObj, fileId, fileVersion,
-                                               diskId)
+    try:
+        location, fileHost, ipAddress, filePortNo, mountPoint, filename, \
+        fileId, fileVersion, mimeType = \
+            ngamsFileUtils.locateArchiveFile(srvObj, fileId, fileVersion,
+                                             diskId, reqPropsObj=reqPropsObj)
+    except:
+        # If the file is still not found then try a remote partner site
+        location, fileHost, ipAddress, filePortNo, mountPoint, filename, \
+        fileId, fileVersion, mimeType = \
+            ngamsFileUtils.lookup_partner_site_file(srvObj, fileId,
+                                                    fileVersion, reqPropsObj)
 
-    if (location != NGAMS_HOST_LOCAL):
+    if location == NGAMS_HOST_REMOTE:
+        fileHost = "{0}:{1}".format(fileHost, filePortNo)
+        return genLog("NGAMS_INFO_FILE_AVAIL", [fileId + "/Version: " + str(fileVersion), fileHost])
+
+    elif location != NGAMS_HOST_LOCAL:
         # Go and get it!
         host, port = srvObj.get_remote_server_endpoint(fileHost)
         pars = (('file_access', fileId), ('file_version', fileVersion), ('disk_id', diskId))
@@ -387,8 +398,8 @@ def _handleFileListReply(srvObj,
 
 
 def handleCmd(srvObj,
-                    reqPropsObj,
-                    httpRef):
+              reqPropsObj,
+              httpRef):
     """
     Handle STATUS command.
 
@@ -403,12 +414,11 @@ def handleCmd(srvObj,
     Returns:        Void.
     """
     status = ngamsStatus.ngamsStatus()
-    status.\
-             setDate(toiso8601()).\
-             setVersion(getNgamsVersion()).setHostId(srvObj.getHostId()).\
-             setStatus(NGAMS_SUCCESS).\
-             setMessage("Successfully handled command STATUS").\
-             setState(srvObj.getState()).setSubState(srvObj.getSubState())
+    status.setDate(toiso8601()).\
+           setVersion(getNgamsVersion()).setHostId(srvObj.getHostId()).\
+           setStatus(NGAMS_SUCCESS).\
+           setMessage("Successfully handled command STATUS").\
+           setState(srvObj.getState()).setSubState(srvObj.getSubState())
 
     reqPropsObjRef = reqPropsObj
 
@@ -515,17 +525,27 @@ def handleCmd(srvObj,
         genDiskStatus = 1
     elif (fileId):
         if (not fileVersion): fileVersion = -1
-        fileObj = ngamsFileInfo.ngamsFileInfo()
-        fileObj.read(srvObj.getHostId(), srvObj.getDb(), fileId, fileVersion)
-        diskObj = ngamsDiskInfo.ngamsDiskInfo()
         try:
-            diskObj.read(srvObj.getDb(), fileObj.getDiskId())
+            fileObj = ngamsFileInfo.ngamsFileInfo()
+            fileObj.read(srvObj.getHostId(), srvObj.getDb(), fileId, fileVersion)
+            diskObj = ngamsDiskInfo.ngamsDiskInfo()
+            try:
+                diskObj.read(srvObj.getDb(), fileObj.getDiskId())
+            except:
+                errMsg = "Illegal Disk ID found: {0} for file with ID: {1}".format(fileObj.getDiskId(), fileId)
+                raise Exception(errMsg)
+            diskObj.addFileObj(fileObj)
+            status.addDiskStatus(diskObj)
         except:
-            errMsg = "Illegal Disk ID found: %s for file with ID: %s" %\
-                     (fileObj.getDiskId(), fileId)
-            raise Exception(errMsg)
-        diskObj.addFileObj(fileObj)
-        status.addDiskStatus(diskObj)
+            # The file was not found in the database. Check if it is available
+            # on a remote partner site.
+            host, port, status_info, disk_info, file_info = \
+                ngamsFileUtils.lookup_partner_site_file_status(srvObj, fileId,
+                                                               fileVersion,
+                                                               reqPropsObj)
+            # Update status reply using the disk status and file status
+            # information retrieved from the partner site
+            status.addDiskStatus(disk_info)
         genDiskStatus = 1
         genFileStatus = 1
     elif (requestId):

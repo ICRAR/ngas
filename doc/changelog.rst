@@ -69,6 +69,9 @@ Changelog
   in the incoming FITS file if the ``ignore_arcfile=1`` option is given in the
   HTTP parameters. This is useful for archiving FITS files that don't have this
   keyword, but that want to use the default FITS plug-in.
+* Removing the ``create_venv.sh`` script from the sources,
+  in favour of letting users create one by themselves if they want,
+  or let the fabric tasks create one.
 
 .. rubric:: 11.0.2
 

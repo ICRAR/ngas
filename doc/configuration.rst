@@ -9,6 +9,10 @@ unless specified otherwise.
 
 All elements share an *Id* attribute to uniquely identify them.
 
+For a sample configuration file
+see the `sample configuration file <https://github.com/ICRAR/ngas/blob/master/cfg/sample_server_config.xml>`_
+shipped with NGAS.
+
 .. _config.server:
 
 Server
@@ -48,6 +52,21 @@ Contains the overall server configuration.
   Allowed values are ``memory``, ``bsddb`` and ``null``.
   See :ref:`server.request_db` for details.
   Defaults to ``null``.
+
+
+.. _config.permissions:
+
+Permissions
+-----------
+
+This element defines the set of actions
+this server is allowed to perform.
+
+* *AllowArchiveReq*: Whether archiving is allowed on this server.
+* *AllowProcessingReq*: Whether processing is allowed on this server.
+* *AllowRemoveReq*: Whether removal of files is allowed on this server.
+* *AllowRetrieveReq*: Whether retrieval of files is allowed on this server.
+
 
 .. _config.db:
 
@@ -193,7 +212,19 @@ ArchiveHandling
 ---------------
 
 Contains archiving-related configuration.
+For an explanation on most of these terms
+see :ref:`server.storage` for reference.
 
+ * *PathPrefix*: The top-level directory on each volume
+   under which NGAS will store incoming data.
+ * *Replication*: Whether data will be replicated during archiving
+   from the Main disk to a Replication disk
+ * *BackLogBuffering*: whether data stored
+   during a failed ``ARCHIVE`` command
+   *might* be temporarily kept in storage
+   to try to finish its archiving later on in the background.
+ * *BackLogBufferDirectory*: The top-level directory on each volume
+   where backlogged files will be temporarily stored.
  * *CRCVariant*: The CRC algorithm (and implementation) to use
    to calculate the checksum of incoming files.
    See :ref:`server.crc` for details.
@@ -206,7 +237,140 @@ Contains archiving-related configuration.
    and an optional ``PlugInPars`` attribute
    with a comma-separated ``key=value`` definitions,
    which are passed down to the class constructor as keyword arguments.
+ * *FreeSpaceDiskChangeMb*: How much available free space
+   in a disk will trigger an error notification to change that disk
+   (see :ref:`config.notification` for details).
+ * *MinFreeSpaceWarningMb*: Minimum amount of free space a disk should have.
+   If a disk has less free space than that
+   a warning email is sent (see :ref:`config.notification`).
 
+
+.. _config.processing:
+
+Processing
+----------
+
+The ``Processing`` element defines the behavior
+of the optional :ref:`on-the-fly processing capabilities <server.processing>`
+attached to the :ref:`RETRIEVE <commands.retrieve>` command.
+The following attributes are supported:
+
+* *ProcessingDirectory*: The directory
+  (potentially relative to the NGAS root directory)
+  where a ``processing`` directory will be created on,
+  under which temporary files used during on-the-fly processing
+  will be put under.
+
+Under the ``Processing`` element,
+one or more ``PlugIn`` sub-elements can be placed,
+one per processing plug-in to be declared.
+Each ``PlugIn`` element accepts the following attributes:
+
+* *Name*: The name of the python module
+  (with a similarly-named function)
+  where the plug-in is implemented.
+* *PlugInPars*: A comma-separated list
+  of ``key=value`` parameter definitions
+  to be passed to the plug-in.
+
+Finally, inside each ``PlugIn`` element
+one or more ``MimeType`` elements can be added
+to specify which MIME types will be processed by the plug-in.
+Each ``MimeType`` element needs to have a ``Name`` attribute
+with specifying the MIME type.
+
+
+.. _config.register:
+
+Register
+--------
+
+The ``Register`` element configures
+the plug-ins to be used by the :ref:`REGISTER <commands.register>` command.
+
+Plug-ins are configured per mime-type.
+Like :ref:`config.processing`,
+one or more ``PlugIn`` sub-elements can be placed
+under the ``Register`` element,
+following the same guidelines.
+
+
+.. _config.notification:
+
+Notification
+------------
+
+The ``Notification`` element defines the behavior
+of the server :ref:`email notifications <server.notifications>`.
+The following attributes are available:
+
+ * *Active*: Whether notifications are enabled or not.
+   Note that even if disabled, there are some notifications
+   (that are considered too important to be missed)
+   that will still be sent.
+ * *SmtpHost*: The SMTP host to use as the email agent.
+ * *Sender*: The email address that will appear
+   in the ``Sender:`` field of emails sent by this mechanism.
+ * *MaxRetentionTime*: Maximum amount of time
+   an undelivered email will be internally kept for
+   before the system decides not to deliver it.
+ * *MaxRetentionSize*: Maximum amount of undelivered emails
+   the system will keep internally
+   before it starts dropping old emails.
+
+Emails resulting from different events
+can be configured to be sent to one or more
+email addresses.
+This is done
+by defining ``EmailRecipient`` elements,
+each with an ``Address`` attribute
+whose value is the target email address.
+These ``EmailRecipient`` elements are then added as children
+of the following sub-elements of ``Notification``:
+
+* *AlertNotification*: (*Deprecated*) Never sent.
+* *ErrorNotification*: Sent in a number
+  of different error situations.
+* *DiskSpaceNotification*: Sent when, during operations,
+  one or more disk are found to have less free space
+  than the configured amount (see :ref:`config.archivehandling`).
+* *DiskChangeNotification*: Sent when a disk is full,
+  potentially requiring a change.
+* *NoDiskSpaceNotification*: Sent when, during operations,
+  no sufficient space can be found in one or more disks.
+* *DataCheckNotification*: Sent by the :ref:`bg.datacheck_thread`
+  informing about the results of the data checking process.
+  Normally sent only if there are errors to be reported,
+  but can be configured to be always sent
+  (see :ref:`config.datacheck_thread`)
+
+Below is an example
+illustrating a valid configuration:
+
+.. code:: xml
+
+  <Notification Id="Notification"
+                Active="0" MaxRetentionSize="1" MaxRetentionTime="00T00:30:00"
+                Sender="ngas@host.com" SmtpHost="localhost">
+    <AlertNotification>
+      <EmailRecipient Address="address@example.com"/>
+    </AlertNotification>
+    <ErrorNotification>
+      <EmailRecipient Address="address@example.com"/>
+    </ErrorNotification>
+    <DiskSpaceNotification>
+      <EmailRecipient Address="address@example.com"/>
+    </DiskSpaceNotification>
+    <DiskChangeNotification>
+      <EmailRecipient Address="address@example.com"/>
+    </DiskChangeNotification>
+    <NoDiskSpaceNotification>
+      <EmailRecipient Address="address@example.com"/>
+    </NoDiskSpaceNotification>
+    <DataCheckNotification>
+      <EmailRecipient Address="address@example.com"/>
+    </DataCheckNotification>
+  </Notification>
 
 .. _config.janthread:
 
@@ -242,7 +406,9 @@ The following attributes are available:
  * *Scan*: Whether files should be scanned only (1) or actually checksumed (0).
 
 The following attributes are present in old configuration files
-but are not used anymore: *FileSeq*, *DiskSeq*, *LogSummary*, *Prio*.
+but are not used anymore: *FileSeq*, *DiskSeq*, *LogSummary*, *Prio*,
+*ChecksumPlugIn* (see :ref:`CRCVariant <config.archivehandling>` instead)
+and *ChecksumPlugInPars*.
 
 
 .. _config.caching:
@@ -338,7 +504,7 @@ signature:
     Provides authentication information needed to send ``filename`` to ``url``.
 
     This function should return an object that can be handled by the ``auth``
-    keyword argument of requests.reqeusts, which is generally either a string,
+    keyword argument of requests.requests, which is generally either a string,
     or an instance of ``requests.auth.AuthBase``. ``None`` can be returned in
     the case where the authentication is not needed.
 
@@ -346,3 +512,54 @@ signature:
     :param str url: The url to send the filename to
     :return: An object used by requests to authenticate the connection
     :rtype: requests.auth.AuthBase, None, str
+
+
+.. _config.suspension:
+
+HostSuspension
+--------------
+
+The ``HostSuspension`` element defines
+the behavior of the :ref:`server suspension <server.suspension>`.
+The following attributes are defined:
+
+* *IdleSuspension*: Whether suspension is enabled (``1``) or not (``0``).
+* *IdleSuspensionTime*: The amount of idle time
+  after which a server will suspend itself.
+* *SuspensionPlugIn* and *SuspensionPlugInPars*:
+  The plug-in used to perform suspension, and its parameters.
+* *WakeUpServerHost*: The server in charge
+  of waking up server that are idling.
+* *WakeUpPlugIn* and *WakeUpPlugInPars*:
+  The plug-in used to perform the wake-up, and its parameters.
+* *WakeUpCallTimeOut*: Maximum amount of time
+  that a wake up call should take.
+  If a server cannot be woken up after this timeout
+  it is considered to be still idling.
+
+
+.. _config.system_plugins:
+
+SystemPlugIns
+-------------
+
+The ``SystemPlugIns`` element defines
+a collection of system-level plug-ins.
+These plug-ins are used for different purposes,
+either by a command or by the core system.
+The ``*PlugIn`` attributes name
+a python module that offers a function with the same name,
+while the ``*PlugInPars`` attributes
+are a comma-separated key=value parameter pairs:
+
+ * *LabelPrinterPlugIn* and *LabelPrinterPlugInPars*:
+   The plug-in that brings hardware-specific capabilities
+   to the ``LABEL`` command.
+ * *OfflinePlugIn* and *OfflinePlugInPars*:
+   The plug-in used to bring the server to ``OFFLINE`` state
+   (see :ref:`server.states`).
+ * *OnlinePlugIn* and *OnelinePlugInPars*:
+   The plug-in used to bring the server to ``ONLINE`` state
+   (see :ref:`server.states`).
+ * *DiskSyncPlugIn* and *DiskSyncPlugInPars*:
+   The plug-in used to perform a full disk sync.

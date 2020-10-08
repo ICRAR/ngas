@@ -879,7 +879,8 @@ class ngamsTestSuite(unittest.TestCase):
                    srvModule = None,
                    force=False,
                    daemon = False,
-                   cert_file=None):
+                   cert_file=None,
+                   sqlite_file=None):
         """
         Prepare a standard server object, which runs as a separate process and
         serves via the standard HTTP interface.
@@ -942,10 +943,16 @@ class ngamsTestSuite(unittest.TestCase):
 
         cfgObj = self.env_aware_cfg(cfgFile)
 
+        # Calculate root directory and clear if needed
+        root_dir = root_dir or tmp_path('NGAS')
+        if delDirs:
+            shutil.rmtree(root_dir, True)
+
         # Change what needs to be changed, like the position of the Sqlite
         # database file when necessary, the custom configuration items, and the
         # port number
-        self.point_to_sqlite_database(cfgObj, not dbCfgName and clearDb)
+        sqlite_file = sqlite_file or os.path.join(root_dir, 'ngas.sqlite')
+        self.point_to_sqlite_database(cfgObj, sqlite_file, create=(not dbCfgName and clearDb))
         if (cfgProps):
             for cfgProp in cfgProps:
                 # TODO: Handle Cfg. Group ID.
@@ -956,10 +963,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         # Now connect to the database and perform any cleanups before we start
         # the server, like removing existing NGAS dirs and clearing tables
-        root_dir = root_dir or tmp_path('NGAS')
         dbObj = ngamsDb.from_config(cfgObj, maxpool=1)
-        if delDirs:
-            shutil.rmtree(root_dir, True)
         if (clearDb):
             logger.debug("Clearing NGAS DB ...")
             delNgasTbls(dbObj)
@@ -1422,7 +1426,7 @@ class ngamsTestSuite(unittest.TestCase):
         return [srvId, port, cfg, db]
 
     def prepCluster(self, server_list, cfg_file='src/ngamsCfg.xml', createDatabase=True,
-                    cfg_props=(), cert_file=None):
+                    cfg_props=(), cert_file=None, sqlite_file=None):
         """
         Prepare a common, simulated cluster. This consists of 1 to N
         servers running on the same node. It is ensured that each of
@@ -1457,7 +1461,8 @@ class ngamsTestSuite(unittest.TestCase):
 
         # Create the shared database first of all and generate a new config file
         tmpCfg = self.env_aware_cfg(cfg_file)
-        self.point_to_sqlite_database(tmpCfg, createDatabase)
+        sqlite_file = sqlite_file or tmp_path('ngas.sqlite')
+        self.point_to_sqlite_database(tmpCfg, sqlite_file, create=createDatabase)
         if createDatabase:
             with contextlib.closing(ngamsDb.from_config(tmpCfg, maxpool=1)) as db:
                 delNgasTbls(db)
@@ -1480,13 +1485,13 @@ class ngamsTestSuite(unittest.TestCase):
 
         return d
 
-    def point_to_sqlite_database(self, cfgObj, create):
+    def point_to_sqlite_database(self, cfgObj, sqlite_file, create=True):
         # Exceptional handling for SQLite.
         if 'sqlite' in cfgObj.getDbInterface().lower():
 
-            sqlite_file = os.path.join(tmp_root, 'ngas.sqlite')
             if create:
                 rmFile(sqlite_file)
+                checkCreatePath(os.path.dirname(sqlite_file))
                 import sqlite3
                 fname = 'ngamsCreateTables-SQLite.sql'
                 script = utils.b2s(pkg_resources.resource_string('ngamsSql', fname))  # @UndefinedVariable

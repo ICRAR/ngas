@@ -31,7 +31,6 @@
 Contains various functions for handling commands.
 """
 
-import imp
 import importlib
 import logging
 import sys
@@ -53,9 +52,10 @@ _builtin_cmds = {
 if sys.version_info[0] < 3:
     from __builtin__ import reload
 elif sys.version_info[0:2] < (3, 4):
-    reload = imp.reload
+    from imp import reload
 else:
     reload = importlib.reload
+
 
 def handle_cmd(srvObj, reqPropsObj, httpRef):
     """Passes down the request to the corresponding command handling module"""
@@ -94,34 +94,22 @@ def _get_module(server, request):
     # Reload the module if requested.
     reload_mod = 'reload' in request and int(request['reload']) == 1
 
-    # Need to acquire the importing lock if we want to check the sys.modules
-    # dictionary to short-cut the call to importlib.import_module. This is
-    # because the modules are put into sys.modules by the import machinery
-    # *before* they are fully loaded (probably to detect circular dependencies)
-    # For details on a similar issue found in the pickle module see
-    # https://bugs.python.org/issue12680
-    #
-    # In python 3.3+ this shoudn't be necessary anymore, as the locking scheme
-    # has been changed to per-module locks. This function has been marked as
-    # deprecated, and therefore we probably don't need it anymore
-    imp.acquire_lock()
+    # We previously checked sys.modules before doing import_module, but that's
+    # unnecessary, and moreover thread-usafe, since modules are put in sys.modules
+    # before they are fully built (leading to errors like "module 'ngamsServer.commands.qarchive'
+    # has no attribute 'handleCmd'", which it definitly has)
+    logger.debug("Importing dynamic command module: %s", modname)
     try:
-        mod = sys.modules.get(modname, None)
-        if mod is None:
-            logger.debug("Importing dynamic command module: %s", modname)
-            try:
-                mod = importlib.import_module(modname)
-            except ImportError:
-                logger.error("No module %s found", modname)
-                raise NoSuchCommand()
-            except:
-                logger.exception("Error while importing %s", modname)
-                raise
-        elif reload_mod:
-            logger.debug("Re-loading dynamic command module: %s", modname)
-            mod = reload(mod)
-        return mod
-    finally:
-        imp.release_lock()
+        mod = importlib.import_module(modname)
+    except ImportError:
+        logger.error("No module %s found", modname)
+        raise NoSuchCommand()
+    except:
+        logger.exception("Error while importing %s", modname)
+        raise
+    if reload_mod:
+        logger.debug("Re-loading dynamic command module: %s", modname)
+        mod = reload(mod)
+    return mod
 
 # EOF

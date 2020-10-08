@@ -21,10 +21,12 @@
 #
 """Deals with logging rotation files, archiving them, and removing old ones"""
 
+import errno
 import functools
 import glob
 import logging
 import os
+import socket
 
 from ngamsLib.ngamsCore import rmFile, mvFile, loadPlugInEntryPoint
 from ngamsLib import ngamsLib
@@ -52,6 +54,17 @@ def get_logfile_handler_plugins(cfg):
 
     return _lh_plugins
 
+
+def try_archiving(cfg, srv, fname):
+    if not cfg.getArchiveRotatedLogfiles():
+        return
+    file_uri = "file://" + fname
+    host, port = srv.get_self_endpoint()
+    proto = srv.get_server_access_proto()
+    ngamsPClient.ngamsPClient(host, port, proto=proto).archive(
+        file_uri, 'ngas/nglog')
+
+
 def run(srvObj, stopEvt):
 
     cfg = srvObj.getCfg()
@@ -61,19 +74,21 @@ def run(srvObj, stopEvt):
     # ngamsServer.NgasRotatingFileHandler class, which is the file handler
     # attached to the root logger in the server process
     logger.debug("Checking if there are unsaved rotated logfiles")
-    for unsaved in glob.glob(os.path.join(logdir, 'LOG-ROTATE-*.nglog.unsaved')):
+    for unsaved in sorted(glob.glob(os.path.join(logdir, 'LOG-ROTATE-*.nglog.unsaved'))):
 
         # Remove the .unsaved bit, leave the rest
         fname = '.'.join(unsaved.split('.')[:-1])
-        mvFile(unsaved, fname)
-
-        # Connect to the server and send a pull ARCHIVE request
-        if cfg.getArchiveRotatedLogfiles():
-            file_uri = "file://" + fname
-            host, port = srvObj.get_self_endpoint()
-            proto = srvObj.get_server_access_proto()
-            ngamsPClient.ngamsPClient(host, port, proto=proto).archive(
-                    file_uri, 'ngas/nglog')
+        try:
+            mvFile(unsaved, fname)
+            try_archiving(cfg, srvObj, fname)
+        except Exception as e:
+            mvFile(fname, unsaved)
+            if isinstance(e, socket.error) and e.errno == errno.ECONNREFUSED:
+                # this is expected when the server is just starting up,
+                # let's ignore for now
+                logger.warning("Server not up yet, postponing processing of %s", unsaved)
+                continue
+            raise
 
         # Do additional things with our logfiles
         for plugin in get_logfile_handler_plugins(cfg):

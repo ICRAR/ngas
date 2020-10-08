@@ -816,13 +816,16 @@ def main():
     Entry point for the ngamsPClient script
     """
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('cmd', help='Command to issue')
+    DUMP_TO_STDOUT = object()
+    parser = argparse.ArgumentParser(usage="ngamsPClient [-h] <options> cmd")
+    parser.add_argument('cmd', nargs='?', help='Command to issue')
 
     gparser = parser.add_argument_group('General options')
     gparser.add_argument('-L', '--license', help='Show the license information', action='store_true')
     gparser.add_argument('-V', '--version', help='Show the version and exit', action='store_true')
     gparser.add_argument('-v', '--verbose', help='Increase verbosity. More -v is more verbose', action='count', default=3)
+    gparser.add_argument('-s', '--status',  metavar="FILE", nargs='?', const=DUMP_TO_STDOUT,
+                         help='Display the XML status document of the command. If FILE is given the document written to disk', )
 
     cparser = parser.add_argument_group('Connection options')
     cparser.add_argument('-H', '--host',    help='Host to connect to', default="127.0.0.1")
@@ -834,7 +837,6 @@ def main():
     parser.add_argument('-r', '--reload',       help='Reload the module implementing the command', action='store_true')
 
     parser.add_argument('-m', '--mime-type',    help='The mime-type', default='application/octet-stream')
-    parser.add_argument('-s', '--show-status',  help='Display the status of the command', action='store_true')
     parser.add_argument('-o', '--output',       help='File/directory where to store the retrieved data')
 
     parser.add_argument('-a', '--async',         help='Run command asynchronously', action='store_true', dest='asynchronous')
@@ -875,10 +877,11 @@ def main():
     if opts.version:
         print(getNgamsVersion())
         return
-
-    if opts.license:
+    elif opts.license:
         print(getNgamsLicense())
         return
+    elif not opts.cmd:
+        parser.error('cmd required but none given')
 
     if opts.servers:
         servers = [(host, int(port)) for s in opts.servers.split(',') for host,port in s.split(':')]
@@ -965,9 +968,13 @@ def main():
         if opts.verbose > 4 and stat.getData():
             print(stat.getData())
 
-    if opts.show_status:
-        print(stat.genXml(0, 1, 1, 1).toprettyxml('  ', '\n')[0:-1])
-        print(stat.getStatus())
+    if opts.status:
+        xml = stat.genXml(0, 1, 1, 1).toprettyxml('  ', '\n')[0:-1]
+        if opts.status == DUMP_TO_STDOUT:
+            print(xml)
+        else:
+            with open(opts.status, 'w') as f:
+                f.write(xml)
 
     if stat.getStatus() == NGAMS_FAILURE:
         sys.exit(1)

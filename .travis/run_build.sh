@@ -93,20 +93,20 @@ cd ${TRAVIS_BUILD_DIR}
 #
 # Most notably, Travis doesn't support python builds in OSX,
 # but the brew packages that come preinstalled in the virtual machines
-# include python 2.7. We sill need to get ourselves a
-# virtualenv though and manually source it whenever we use it.
+# include python 2.7
 if [ "${TRAVIS_OS_NAME}" = "osx" ]
 then
 	# update-reset seems to be the solution for transient homebrew LoadErrors we have had
 	#  https://stackoverflow.com/questions/54888582/ruby-cannot-load-such-file-active-support-core-ext-object-blank
 	brew update-reset || true
+
+	# Avoid slow autoupdates and autocleanups when brew installing stuff
+	export HOMEBREW_NO_AUTO_UPDATE=1
+	export HOMEBREW_NO_INSTALL_CLEANUP=1
+
 	brew unlink python || fail "Failed to brew unlink python"
 	brew ls --version python@2 || brew install python@2 || fail "Failed to brew install python@2"
 	brew install berkeley-db@4 || fail "Failed to brew install berkeley-db@4"
-
-	# Now create ourselves a virtualenv please and go in there
-	./create_venv.sh ./osx_venv || fail "Failed to create virtual environment"
-	source ./osx_venv/bin/activate
 
 	# Aggresively changing names now...
 	sudo scutil --set HostName `hostname`
@@ -145,7 +145,9 @@ EPIP="Failed to install pip packages"
 # pulled out automatically during package installation, but in source-code form,
 # which in some cases, like astropy, can take some time to build and doesn't get
 # cached.
-PIP_PACKAGES="bsddb3 python-daemon astropy"
+# Additionally, in later python versions installing C extensiosn
+# seems to yield unloadable modules (e.g., netifaces.AF_INET could not be loaded).
+PIP_PACKAGES="bsddb3 python-daemon astropy netifaces"
 
 # We need to prepare the database for what's to come later on, and to install
 # the corresponding python module so NGAS can talk to the database
@@ -207,6 +209,12 @@ then
 	# are found. Still don't know exactly what's going on, but this
 	# seems to fix it
 	export CFLAGS="$CFLAGS -isysroot /"
+fi
+
+# Install latest setuptools in Xenial,
+# as python 3.6/3.7 fails otherwise
+if [ "${TRAVIS_OS_NAME}" = linux ]; then
+	pip install -U setuptools || fail "Can't install latest setuptools"
 fi
 
 pip install $PIP_PACKAGES || fail "$EPIP"
