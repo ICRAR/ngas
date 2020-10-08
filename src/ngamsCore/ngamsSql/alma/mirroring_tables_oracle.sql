@@ -59,6 +59,7 @@ create table ngas_mirroring_bookkeeping
     source_ingestion_date date default sysdate constraint nn_ngas_mirroring_bookkeeping_source_ingestion_date not null,
     constraint pk_ngas_mirroring_bookkeeping primary key (file_id, file_version, iteration)
 );
+
 create index idx_ngas_mirroring_bookkeeping_target_cluster_target_host_status_source_host on ngas_mirroring_bookkeeping (target_cluster, target_host, status, source_host);
 create index idx_ngas_mirroring_bookkeeping_file_size on ngas_mirroring_bookkeeping (file_size);
 create index idx_ngas_mirroring_bookkeeping_iteration_status on ngas_mirroring_bookkeeping (iteration, status);

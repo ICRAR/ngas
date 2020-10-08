@@ -91,6 +91,7 @@ create table ngas_disks
     last_host_id varchar2(128) null,
     constraint pk_ngas_disks primary key (disk_id)
 );
+
 create index idx_ngas_disks_hostid on ngas_disks (host_id);
 
 create table ngas_disks_hist
@@ -103,6 +104,7 @@ create table ngas_disks_hist
     hist_descr varchar2(4000) null,
     constraint pk_ngas_disks_hist primary key (disk_id)
 );
+
 create index idx_ngas_disks_hist_disk_id_hist_date_hist_origin on ngas_disks_hist (disk_id, hist_date, hist_origin);
 
 create table ngas_files
@@ -127,11 +129,14 @@ create table ngas_files
     constraint pk_ngas_files primary key (file_id, file_version, disk_id),
     constraint fk_ngas_files_container_id foreign key (container_id) references ngas_containers (container_id)
 );
+
 create index idx_ngas_files_disk_id_file_ignore on ngas_files (disk_id, file_ignore);
 create index idx_ngas_files_file_size on ngas_files (file_size);
 create index idx_ngas_files_ingestion_date_1 on ngas_files (substr(ingestion_date, 1, 10));
-create index idx_ngas_files_ingestion_date_2 on ngas_files (to_date(substr(replace(ingestion_date, 't', ' '), 1, 16), 'yyyy-mm-dd hh24:mi'));
-create bitmap index idx_ngas_files_disk_id on ngas_files (disk_id);
+create index idx_ngas_files_ingestion_date_2 on ngas_files (to_date(substr(replace(ingestion_date, 'T', ' '), 1, 16), 'YYYY-MM-DD HH24:MI'));
+
+-- Please check bit-mapped indexes are supported in your Oracle DB before uncommenting
+-- create bitmap index idx_ngas_files_disk_id on ngas_files (disk_id);
 
 create table ngas_hosts
 (
@@ -165,6 +170,7 @@ create table ngas_hosts
     srv_req_wake_up_time varchar2(23) null,
     constraint pk_ngas_hosts primary key (host_id, srv_port)
 );
+
 create index idx_ngas_hosts_cluster_name_srv_archive_srv_state on ngas_hosts (cluster_name, srv_archive, srv_state, substr(host_id, 0, instr(host_id || ':', ':')) || '.' || domain || ':' || to_char(srv_port));
 
 create table ngas_subscribers
@@ -181,6 +187,7 @@ create table ngas_subscribers
     concurrent_threads number(*, 0) default 1 null,
     constraint pk_ngas_subscribers primary key (host_id, srv_port)
 );
+
 create unique index idx_ngas_subscribers_subscr_id on ngas_subscribers (subscr_id);
 --create unique index idx_ngas_subscribers_host_id_srv_port on ngas_subscribers (host_id, srv_port);
 
