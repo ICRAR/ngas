@@ -37,7 +37,13 @@ fail() {
 # coverage version pinned to avoid issues with latest releases
 # (see https://github.com/nedbat/coveragepy/issues/916, but possibly
 # our problem has not even been reported)
-pip install psutil 'coverage<5' pytest-cov coveralls trustme || fail "Failed to install unit test dependencies"
+#
+# pytest version pinned to avoid issues with python2-based builds,
+# which require an old version of astropy, which in turn requires an old
+# version of pytest, and pip now complains about this.
+#
+# pytest-cov is pinned to work against pytest<3.7.
+pip install psutil 'coverage<5' 'pytest<3.7' 'pytest-cov<2.10' coveralls trustme || fail "Failed to install unit test dependencies"
 
 # Try to simply import the plugin modules
 # This increases our coverage by a not-too-small amount
