@@ -30,6 +30,7 @@ import os
 
 from ngamsLib import ngamsHttpUtils, ngamsStatus
 from ngamsLib.ngamsCore import getHostName
+from ngamsServer import ngamsFileUtils
 from .ngamsTestLib import ngamsTestSuite, tmp_path
 
 class NgasPartnerSiteTest(ngamsTestSuite):
@@ -50,6 +51,13 @@ class NgasPartnerSiteTest(ngamsTestSuite):
             server_list.append((port, property_list))
 
         return self.prepCluster(server_list)
+
+    def test_parse_host_id(self):
+        host_id = "ngas.example.com:7777"
+        host_name, domain_name, port = ngamsFileUtils.parse_host_id(host_id)
+        self.assertEqual(host_name, "ngas.example.com")
+        self.assertEqual(domain_name, "example.com")
+        self.assertEqual(port, 7777)
 
     def test_archive_status_retrieve_sequence(self):
 
