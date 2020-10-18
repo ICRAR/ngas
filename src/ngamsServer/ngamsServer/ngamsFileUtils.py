@@ -89,15 +89,12 @@ def parse_host_id(host_id):
 
     port:           NGAS server port number
     """
-    try:
-        host = host_id.split(":")[0]
-        domain = None
-        if "." in host:
-            domain = host.split(".", 1)[-1]
-        port = int(host_id.split(":")[-1])
-        return host, domain, port
-    except IndexError:
-        return None, None, None
+    host = host_id.split(":")[0]
+    domain = None
+    if "." in host:
+        domain = host.split(".", 1)[-1]
+    port = int(host_id.split(":")[-1])
+    return host, domain, port
 
 
 def lookup_partner_site_file_status(ngas_server,
