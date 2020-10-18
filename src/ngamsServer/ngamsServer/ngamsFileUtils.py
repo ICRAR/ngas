@@ -185,7 +185,7 @@ def lookup_partner_site_file_status(ngas_server,
             # the partner site address. This should work because they are
             # part of the same cluster.
             host, domain, port = parse_host_id(disk_info.getHostId())
-            if domain is None:
+            if domain is None and partner_domain is not None:
                 host = host + "." + partner_domain
             break
 
