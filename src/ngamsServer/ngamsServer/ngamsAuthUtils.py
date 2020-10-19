@@ -64,11 +64,29 @@ def cmdPermitted(cfg, reqPropsObj, reqUser):
     return reqPropsObj.getCmd().strip() in commands.split(',')
 
 
+def isCommandExcluded(cfg, command):
+    """Check if the requested command is excluded from authorization"""
+
+    exclude_command_list = cfg.getAuthExcludeCommandList()
+    if exclude_command_list is None:
+        return False
+    if "*" in exclude_command_list or command in exclude_command_list:
+        return True
+    return False
+
+
 def authorize(cfg, reqPropsObj):
     """Check if the request is authorized for the authenticated user, if any"""
 
     if not cfg.getAuthorize():
         logger.debug("Authorization is disabled, continuing anonymously")
+        return
+
+    # Check if the requested command is excluded from authorization
+    requested_command = reqPropsObj.getCmd().strip()
+    if isCommandExcluded(cfg, requested_command):
+        logger.debug("Authorization is disabled for the '%s' command, continuing anonymously",
+                     requested_command)
         return
 
     # For now only Basic HTTP Authentication is implemented.

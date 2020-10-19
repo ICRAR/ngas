@@ -69,10 +69,14 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         self.prepExtSrv()
         self._assert_code(200)
 
-    def _authorization_cfg(self, user_specs):
-        uspecs = [(('Name', u[0]), ('Password', utils.b2s(base64.b64encode(u[1]))), ('Commands', u[2]))
+    def _authorization_cfg(self, user_specs, exclude_commands=None):
+        uspecs = [(('Name', u[0]),
+                   ('Password', utils.b2s(base64.b64encode(u[1]))),
+                   ('Commands', u[2]))
                   for u in user_specs]
         cfg = [('Enable', '1')]
+        if exclude_commands is not None:
+            cfg.append(('Exclude', exclude_commands))
         for i, u in enumerate(uspecs):
             cfg += [('User[%d].%s' % (i, name), str(val)) for name, val in u]
         cfg = [("NgamsCfg.Authorization[1].%s" % name, val) for name, val in cfg]
@@ -142,3 +146,52 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         self._assert_code(401, bauth=(b'test1:' + passwd))
         self._assert_code(401, bauth=(b'test:' + passwd_wrong))
         self.termExtSrv(self.extSrvInfo.pop(), auth=correct_auth)
+
+    def test_excluded_commands(self):
+        """
+        Authorization/authentication is enabled, commands are restricted but
+        some are excluded
+        """
+
+        # Start the server with a set of configured users
+        pass1, pass2, pass3, pass4 = [os.urandom(16) for _ in range(4)]
+        auth_user_list = ('test1', pass1, '*'),\
+                         ('test2', pass2, 'STATUS'), \
+                         ('test3', pass3, 'INIT'),\
+                         ('test4', pass4, '')
+        auth_exclude_commands = "STATUS"
+        auth_config_element = self._authorization_cfg(auth_user_list, auth_exclude_commands)
+        self.prepExtSrv(cfgProps=auth_config_element)
+
+        auth1 = b'test1:' + pass1
+        auth2 = b'test2:' + pass2
+        auth3 = b'test3:' + pass3
+        auth4 = b'test4:' + pass4
+
+        # No authentication
+        self._assert_code(200, cmd="STATUS")
+        self._assert_code(401, cmd="INIT")
+
+        self._assert_code(200, bauth=auth1, cmd="STATUS")
+        self._assert_code(200, bauth=auth1, cmd="INIT")
+
+        self._assert_code(200, bauth=auth2, cmd="STATUS")
+        self._assert_code(403, bauth=auth2, cmd="INIT")
+
+        self._assert_code(200, bauth=auth3, cmd="STATUS")
+        self._assert_code(200, bauth=auth3, cmd="INIT")
+
+        self._assert_code(200, bauth=auth4, cmd="STATUS")
+        self._assert_code(403, bauth=auth4, cmd="INIT")
+
+        # User 1 is allowed to send the DOESNT_EXIST command
+        # We get 404s here because the command actually doesn't exist, which
+        # yields that HTTP code, and also because HTTP authentication happens
+        # before command processing
+        self._assert_code(404, bauth=auth1, cmd='DOES_NOT_EXIST')
+        self._assert_code(403, bauth=auth2, cmd='DOES_NOT_EXIST')
+
+        # Manually shut down the server
+        # This is merely so the tearDown() method doesn't kill it wih -9, which
+        # in turn means we get no coverage measurement of what we actually tested
+        self.termExtSrv(self.extSrvInfo.pop(), auth=auth1)

@@ -1648,7 +1648,6 @@ class ngamsConfig:
         par = "FileStagingDef[1].PlugIn"
         return self.getVal(par)
 
-
     def getAuthorize(self):
         """
         Return the authorization flag.
@@ -1658,6 +1657,20 @@ class ngamsConfig:
         par = "Authorization[1].Enable"
         return getInt(par, self.getVal(par))
 
+    def getAuthExcludeCommandList(self):
+        """
+        Return the list of commands excluded from authorization
+
+        Returns:    comma separated commands (string).
+                    e.g. ARCHIVE,CHECKFILE,RETRIEVE,STATUS
+                    A "*" is a wildcard for all commands
+        """
+        attribute = "Authorization[1].Exclude"
+        exclude_commands = self.getVal(attribute)
+        if exclude_commands is not None:
+            return exclude_commands.split(",")
+        else:
+            return None
 
     def addAuthUser(self,
                     user,
