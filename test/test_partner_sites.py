@@ -68,14 +68,17 @@ class NgasPartnerSiteTest(ngamsTestSuite):
 
         host_name = getHostName()
         domain_name = getDomain()
-        host_name_fqdn = "{0}.{1}".format(host_name, domain_name)
+        host_name_fqdn = host_name
+        if domain_name is not None:
+            host_name_fqdn = "{0}.{1}".format(host_name, domain_name)
         sample_file_name = "SmallFile.fits"
         sample_file_path = os.path.join("src", sample_file_name)
 #        sample_file_size = os.path.getsize(sample_file_path)
         sample_mime_type = "application/octet-stream"
 
-        # We create two cluster each container two NGAS nodes
-        # We configure the first cluster to use the second cluster as a partner site
+        # We create two NGAS clusters each containing a single NGAS node
+        # We configure the first NGAS cluster to use the second NGAS cluster
+        # as a partner site
         partner_host_id = "{0}:9011".format(host_name_fqdn)
         config_list_1 = [("NgamsCfg.Server[1].RootDirectory", "/tmp/ngas1"),
                          ("NgamsCfg.Server[1].IpAddress", "0.0.0.0"),
@@ -114,13 +117,16 @@ class NgasPartnerSiteTest(ngamsTestSuite):
     def test_status_retrieve_sequence(self):
         host_name = getHostName()
         domain_name = getDomain()
-        host_name_fqdn = "{0}.{1}".format(host_name, domain_name)
-        sample_file_name = "SmallFile.fits"
-        sample_file_path = os.path.join("src", sample_file_name)
+        host_name_fqdn = host_name
+        if domain_name is not None:
+            host_name_fqdn = "{0}.{1}".format(host_name, domain_name)
+#        sample_file_name = "SmallFile.fits"
+#        sample_file_path = os.path.join("src", sample_file_name)
         bad_file_name = "dummy.fits"
 
-        # We create two cluster each container two NGAS nodes
-        # We configure the first cluster to use the second cluster as a partner site
+        # We create two NGAS clusters each containing a single NGAS node
+        # We configure the first NGAS cluster to use the second NGAS cluster
+        # as a partner site
         partner_host_id = "{0}:9011".format(host_name_fqdn)
         config_list_1 = [("NgamsCfg.Server[1].RootDirectory", "/tmp/ngas1"),
                          ("NgamsCfg.Server[1].IpAddress", "0.0.0.0"),
