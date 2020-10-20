@@ -479,6 +479,9 @@ For details see :ref:`server.authorization`.
 The ``Authorization`` element has an ``Enable`` attribute
 which determines whether authentication and authorization
 is enabled (``1``) or not (``0``).
+The ``Authorization`` element also has an ``Exclude`` attribute
+for defining a list of commands that are to be excluded from
+authoriztion.
 Zero or more ``User`` XML sub-elements
 also describe a different user recognized by NGAS.
 Each ``User`` element should have the following attributes:

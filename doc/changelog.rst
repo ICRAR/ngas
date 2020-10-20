@@ -72,6 +72,8 @@ Changelog
 * Removing the ``create_venv.sh`` script from the sources,
   in favour of letting users create one by themselves if they want,
   or let the fabric tasks create one.
+* Added `Exclude` attribute to the `Authorization` element for defining
+  a list of commands that are to be excluded from authorization
 
 .. rubric:: 11.0.2
 
