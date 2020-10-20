@@ -94,7 +94,7 @@ class NgasPartnerSiteTest(ngamsTestSuite):
         self.archive(9011, sample_file_path, mimeType=sample_mime_type)
 
         # We check the status of a file ID found on the partner site cluster
-        command_status = functools.partial(ngamsHttpUtils.httpGet, host_name, 9001, "STATUS", timeout=5)
+        command_status = functools.partial(ngamsHttpUtils.httpGet, "localhost", 9001, "STATUS", timeout=5)
         argument_list = {"file_id": sample_file_name}
         with contextlib.closing(command_status(pars=argument_list)) as response:
             self.assertEqual(response.status, 200)
@@ -139,7 +139,7 @@ class NgasPartnerSiteTest(ngamsTestSuite):
         self._prepare_partner_site_cluster((9011, config_list_2))
 
         # We check the status of a file ID found on the partner site cluster
-        command_status = functools.partial(ngamsHttpUtils.httpGet, host_name, 9001, "STATUS", timeout=1000)
+        command_status = functools.partial(ngamsHttpUtils.httpGet, "localhost", 9001, "STATUS", timeout=1000)
         argument_list = {"file_id": bad_file_name}
         with contextlib.closing(command_status(pars=argument_list)) as response:
             self.assertEqual(response.status, 400)
