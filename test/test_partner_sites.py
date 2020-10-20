@@ -79,7 +79,7 @@ class NgasPartnerSiteTest(ngamsTestSuite):
         # We create two NGAS clusters each containing a single NGAS node
         # We configure the first NGAS cluster to use the second NGAS cluster
         # as a partner site
-        partner_host_id = "{0}:9011".format(host_name_fqdn)
+        partner_host_id = "{0}:9011".format("localhost")
         config_list_1 = [("NgamsCfg.Server[1].RootDirectory", "/tmp/ngas1"),
                          ("NgamsCfg.Server[1].IpAddress", "0.0.0.0"),
                          ("NgamsCfg.PartnerSites[1].ProxyMode", "1"),
@@ -127,7 +127,7 @@ class NgasPartnerSiteTest(ngamsTestSuite):
         # We create two NGAS clusters each containing a single NGAS node
         # We configure the first NGAS cluster to use the second NGAS cluster
         # as a partner site
-        partner_host_id = "{0}:9011".format(host_name_fqdn)
+        partner_host_id = "{0}:9011".format("localhost")
         config_list_1 = [("NgamsCfg.Server[1].RootDirectory", "/tmp/ngas1"),
                          ("NgamsCfg.Server[1].IpAddress", "0.0.0.0"),
                          ("NgamsCfg.PartnerSites[1].ProxyMode", "1"),
