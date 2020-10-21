@@ -72,6 +72,9 @@ Changelog
 * Removing the ``create_venv.sh`` script from the sources,
   in favour of letting users create one by themselves if they want,
   or let the fabric tasks create one.
+* Added new partner sites feature that provides the capability of configuring
+  a remote NGAS cluster as a proxy for retrieving files that are not available
+  in the local NGAS cluster.
 
 .. rubric:: 11.0.2
 
