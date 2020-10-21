@@ -73,6 +73,30 @@ logger = logging.getLogger(__name__)
 checksum_info = collections.namedtuple('crc_info', 'init method final from_bytes equals')
 
 
+def parse_host_id(host_id):
+    """
+    Parses an NGAS server host ID containing '<hostname>:<port>'
+
+    Parameters:
+
+    host_id:        NGAS server host ID
+
+    Returns:
+
+    host:           NGAS server host name (or IP address)
+
+    domain:         NGAS server domain name (or IP address)
+
+    port:           NGAS server port number
+    """
+    host = host_id.split(":")[0]
+    domain = None
+    if "." in host:
+        domain = host.split(".", 1)[-1]
+    port = int(host_id.split(":")[-1])
+    return host, domain, port
+
+
 def lookup_partner_site_file_status(ngas_server,
                                     file_id,
                                     file_version,
@@ -130,8 +154,7 @@ def lookup_partner_site_file_status(ngas_server,
 
     host, port, status_info, disk_info, file_info = None, None, None, None, None
     for partner_site in ngas_server.get_partner_sites_address_list():
-        partner_address = partner_site.split(":")[0]
-        partner_port = int(partner_site.split(":")[-1])
+        partner_address, partner_domain, partner_port = parse_host_id(partner_site)
         try:
             logger.info("Looking up file ID %s on partner site %s", file_id,
                         partner_site)
@@ -154,8 +177,13 @@ def lookup_partner_site_file_status(ngas_server,
             logger.info(genLog("NGAMS_INFO_FILE_AVAIL", [file_id, partner_address]))
             disk_info = status_info.getDiskStatusList()[0]
             file_info = disk_info.getFileObjList()[0]
-            host = partner_address
-            port = partner_port
+            # This is a bit of a hack because the host ID may not contain
+            # the fully qualified address. We append the domain name from
+            # the partner site address. This should work because they are
+            # part of the same cluster.
+            host, domain, port = parse_host_id(disk_info.getHostId())
+            if domain is None and partner_domain is not None:
+                host = host + "." + partner_domain
             break
 
     if status_info is None or status_info.getStatus() == "FAILURE":

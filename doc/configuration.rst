@@ -566,3 +566,16 @@ are a comma-separated key=value parameter pairs:
    (see :ref:`server.states`).
  * *DiskSyncPlugIn* and *DiskSyncPlugInPars*:
    The plug-in used to perform a full disk sync.
+
+PartnerSites
+------------
+
+The ``PartnerSites`` element defines a list of alternative
+(remote) NGAS servers belonging to separate NGAS archive
+installations. When a request to retrieve a file cannot be
+found on the local NGAS archive the request is redirected
+to the NGAS servers included in the partner sites list.
+The ``ProxyMode`` attribute can be used to enable/disable
+partner sites.
+Several ``PartnerSite`` child elements can be added containing
+the ``Address`` attribute for the remote NGAS server address.

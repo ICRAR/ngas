@@ -30,6 +30,8 @@ import os
 
 from ngamsLib import ngamsHttpUtils, ngamsStatus
 from ngamsLib.ngamsCore import getHostName
+from ngamsLib.ngamsLib import getDomain
+from ngamsServer import ngamsFileUtils
 from .ngamsTestLib import ngamsTestSuite, tmp_path
 
 class NgasPartnerSiteTest(ngamsTestSuite):
@@ -51,6 +53,13 @@ class NgasPartnerSiteTest(ngamsTestSuite):
 
         return self.prepCluster(server_list)
 
+    def test_parse_host_id(self):
+        host_id = "ngas.example.com:7777"
+        host_name, domain_name, port = ngamsFileUtils.parse_host_id(host_id)
+        self.assertEqual(host_name, "ngas.example.com")
+        self.assertEqual(domain_name, "example.com")
+        self.assertEqual(port, 7777)
+
     def test_archive_status_retrieve_sequence(self):
 
         cfg = self.env_aware_cfg()
@@ -58,19 +67,27 @@ class NgasPartnerSiteTest(ngamsTestSuite):
             self.skipTest("This test works only against the sqlite db")
 
         host_name = getHostName()
+        domain_name = getDomain()
+        host_name_fqdn = host_name
+        if domain_name is not None:
+            host_name_fqdn = "{0}.{1}".format(host_name, domain_name)
         sample_file_name = "SmallFile.fits"
         sample_file_path = os.path.join("src", sample_file_name)
 #        sample_file_size = os.path.getsize(sample_file_path)
         sample_mime_type = "application/octet-stream"
 
-        # We create two cluster each container two NGAS nodes
-        # We configure the first cluster to use the second cluster as a partner site
+        # We create two NGAS clusters each containing a single NGAS node
+        # We configure the first NGAS cluster to use the second NGAS cluster
+        # as a partner site
+        partner_host_id = "{0}:9011".format("localhost")
         config_list_1 = [("NgamsCfg.Server[1].RootDirectory", "/tmp/ngas1"),
+                         ("NgamsCfg.Server[1].IpAddress", "0.0.0.0"),
                          ("NgamsCfg.PartnerSites[1].ProxyMode", "1"),
-                         ("NgamsCfg.PartnerSites[1].PartnerSite[1].Address", "localhost:9011")]
+                         ("NgamsCfg.PartnerSites[1].PartnerSite[1].Address", partner_host_id)]
         self._prepare_partner_site_cluster((9001, config_list_1))
 
-        config_list_2 = [("NgamsCfg.Server[1].RootDirectory", "/tmp/ngas2")]
+        config_list_2 = [("NgamsCfg.Server[1].RootDirectory", "/tmp/ngas2"),
+                         ("NgamsCfg.Server[1].IpAddress", "0.0.0.0")]
         self._prepare_partner_site_cluster((9011, config_list_2))
 
         # We archive a test sample file on the partner site cluster
@@ -98,18 +115,27 @@ class NgasPartnerSiteTest(ngamsTestSuite):
 #        self.assertEqual(sample_file_size, retrieve_file_size)
 
     def test_status_retrieve_sequence(self):
-        sample_file_name = "SmallFile.fits"
-        sample_file_path = os.path.join("src", sample_file_name)
+        host_name = getHostName()
+        domain_name = getDomain()
+        host_name_fqdn = host_name
+        if domain_name is not None:
+            host_name_fqdn = "{0}.{1}".format(host_name, domain_name)
+#        sample_file_name = "SmallFile.fits"
+#        sample_file_path = os.path.join("src", sample_file_name)
         bad_file_name = "dummy.fits"
 
-        # We create two cluster each container two NGAS nodes
-        # We configure the first cluster to use the second cluster as a partner site
+        # We create two NGAS clusters each containing a single NGAS node
+        # We configure the first NGAS cluster to use the second NGAS cluster
+        # as a partner site
+        partner_host_id = "{0}:9011".format("localhost")
         config_list_1 = [("NgamsCfg.Server[1].RootDirectory", "/tmp/ngas1"),
+                         ("NgamsCfg.Server[1].IpAddress", "0.0.0.0"),
                          ("NgamsCfg.PartnerSites[1].ProxyMode", "1"),
-                         ("NgamsCfg.PartnerSites[1].PartnerSite[1].Address", "localhost:9011")]
+                         ("NgamsCfg.PartnerSites[1].PartnerSite[1].Address", partner_host_id)]
         self._prepare_partner_site_cluster((9001, config_list_1))
 
-        config_list_2 = [("NgamsCfg.Server[1].RootDirectory", "/tmp/ngas2")]
+        config_list_2 = [("NgamsCfg.Server[1].RootDirectory", "/tmp/ngas2"),
+                         ("NgamsCfg.Server[1].IpAddress", "0.0.0.0")]
         self._prepare_partner_site_cluster((9011, config_list_2))
 
         # We check the status of a file ID found on the partner site cluster

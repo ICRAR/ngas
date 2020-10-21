@@ -452,10 +452,14 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         start_byte = 0
         header_list = []
         for header in request.getHttpHdrs():
-            header_list.append([header, request.getHttpHdr(header)])
             if header.lower() == "range":
                 value = request.getHttpHdr(header)
                 start_byte = int(value.replace("bytes=", "").split("-")[0])
+            if header.lower() == "host":
+                # Update the host to the partner site server
+                header_list.append(["host", "{0}:{1}".format(host, port)])
+            else:
+                header_list.append([header, request.getHttpHdr(header)])
 
         block_size = self.ngasServer.getCfg().getBlockSize()
 

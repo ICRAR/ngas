@@ -74,6 +74,9 @@ Changelog
   or let the fabric tasks create one.
 * Added `Exclude` attribute to the `Authorization` element for defining
   a list of commands that are to be excluded from authorization
+* Added new partner sites feature that provides the capability of configuring
+  a remote NGAS cluster as a proxy for retrieving files that are not available
+  in the local NGAS cluster.
 
 .. rubric:: 11.0.2
 
