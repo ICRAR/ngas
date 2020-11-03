@@ -449,12 +449,8 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             else:
                 parameter_list.append([parameter, request.getHttpPar(parameter)])
 
-        start_byte = 0
         header_list = []
         for header in request.getHttpHdrs():
-            if header.lower() == "range":
-                value = request.getHttpHdr(header)
-                start_byte = int(value.replace("bytes=", "").split("-")[0])
             if header.lower() == "host":
                 # Update the host to the partner site server
                 header_list.append(["host", "{0}:{1}".format(host, port)])
@@ -477,7 +473,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         with contextlib.closing(response):
             size = int(response.getheader("content-length"))
-            self.write_stream_data(response, response_headers, size, start_byte, block_size)
+            self.write_stream_data(response, response_headers, size, 0, block_size)
 
     def write_stream_data(self, response, headers, size, start_byte=0, block_size=65536):
         """Streams the data from the remote host"""
