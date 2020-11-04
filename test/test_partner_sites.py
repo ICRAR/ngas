@@ -68,7 +68,7 @@ class NgasPartnerSiteTest(ngamsTestSuite):
 
         host_name = getHostName()
         sample_file_name = "SmallFile.fits"
-        sample_file_path = os.path.join("src", sample_file_name)
+        sample_file_path = self.resource(os.path.join("src", sample_file_name))
         sample_file_size = os.path.getsize(sample_file_path)
         sample_mime_type = "application/octet-stream"
 
