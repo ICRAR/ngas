@@ -37,6 +37,7 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
+from datetime import date
 import logging
 import os
 
@@ -139,8 +140,6 @@ def ngamsSdmMultipart(srvObj,
                   (ngamsDapiStatus).
     """
 
-
-
     # For now the exception handling is pretty basic:
     # If something goes wrong during the handling it is tried to
     # move the temporary file to the Bad Files Area of the disk.
@@ -152,6 +151,9 @@ def ngamsSdmMultipart(srvObj,
 
     fo = open(stagingFilename, "r")
     (fileId, finalName, format) = specificTreatment(fo)
+
+    if reqPropsObj.hasHttpPar('file_id'):
+        fileId = reqPropsObj.getHttpPar('file_id')
 
     fo.close()
     try:
@@ -175,14 +177,14 @@ def ngamsSdmMultipart(srvObj,
         # ToDo: Handling of non-existing fileId
 #        if (fileId == -1):
 #            fileId = ngamsPlugInApi.genNgasId(srvObj.getCfg())
-        date = DateTime.now().date
+        today = date.today().isoformat()
         fileVersion, relPath, relFilename,\
                      complFilename, fileExists =\
                      ngamsPlugInApi.genFileInfo(srvObj.getDb(),
                                                 srvObj.getCfg(),
                                                 reqPropsObj, diskInfo,
                                                 stagingFilename, fileId,
-                                                finalName, [date])
+                                                finalName, [today])
 
         # Generate status.
         logger.debug("Generating status ...")
@@ -208,18 +210,15 @@ def ngamsSdmMultipart(srvObj,
                          _PLUGIN_ID, str(err)])
         raise Exception(errMsg)
 
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
         print("Usage: ngamsSdmMultipart.py <test_file>")
         sys.exit()
     try:
-        fo = open(sys.argv[1],'r')
-        (file_id,fileName, type) = specificTreatment(fo)
-        print(file_id, fileName, type)
-    except:
+        test_file = open(sys.argv[1], 'r')
+        (file_id, file_name, file_type) = specificTreatment(test_file)
+        print(file_id, file_name, file_type)
+    except Exception:
         raise
-
-
-#
-# ___oOo___
