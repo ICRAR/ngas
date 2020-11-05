@@ -67,13 +67,9 @@ class NgasPartnerSiteTest(ngamsTestSuite):
             self.skipTest("This test works only against the sqlite db")
 
         host_name = getHostName()
-        domain_name = getDomain()
-        host_name_fqdn = host_name
-        if domain_name is not None:
-            host_name_fqdn = "{0}.{1}".format(host_name, domain_name)
         sample_file_name = "SmallFile.fits"
-        sample_file_path = os.path.join("src", sample_file_name)
-#        sample_file_size = os.path.getsize(sample_file_path)
+        sample_file_path = self.resource(os.path.join("src", sample_file_name))
+        sample_file_size = os.path.getsize(sample_file_path)
         sample_mime_type = "application/octet-stream"
 
         # We create two NGAS clusters each containing a single NGAS node
@@ -111,17 +107,17 @@ class NgasPartnerSiteTest(ngamsTestSuite):
         # Retrieve a file found on the partner site cluster
         retrieve_file_path = tmp_path(sample_file_name)
         self.retrieve(9001, sample_file_name, targetFile=retrieve_file_path)
-#        retrieve_file_size = os.path.getsize(retrieve_file_path)
-#        self.assertEqual(sample_file_size, retrieve_file_size)
+        retrieve_file_size = os.path.getsize(retrieve_file_path)
+        self.assertEqual(sample_file_size, retrieve_file_size)
+
+        # Retrieve a file with a 100 bytes offset
+        headers = {"range": "bytes=100-"}
+        self.retrieve(9001, sample_file_name, targetFile=retrieve_file_path, hdrs=headers)
+        retrieve_file_size = os.path.getsize(retrieve_file_path)
+        self.assertEqual(sample_file_size - 100, retrieve_file_size)
+
 
     def test_status_retrieve_sequence(self):
-        host_name = getHostName()
-        domain_name = getDomain()
-        host_name_fqdn = host_name
-        if domain_name is not None:
-            host_name_fqdn = "{0}.{1}".format(host_name, domain_name)
-#        sample_file_name = "SmallFile.fits"
-#        sample_file_path = os.path.join("src", sample_file_name)
         bad_file_name = "dummy.fits"
 
         # We create two NGAS clusters each containing a single NGAS node
