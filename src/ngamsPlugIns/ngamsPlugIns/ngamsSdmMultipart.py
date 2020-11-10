@@ -37,19 +37,22 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
+import cgi
 from datetime import date
 import logging
 import os
+import re
+import rfc822
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import genLog
 
-
+# _EXT = '.msg'
+_PLUGIN_ID = __name__
 logger = logging.getLogger(__name__)
 
-_PLUGIN_ID = __name__
 
-def specificTreatment(fo):
+def specific_treatment(file_object):
     """
     Method contains the specific treatment of the file passed from NG/AMS.
 
@@ -59,166 +62,151 @@ def specificTreatment(fo):
                 The finalFileName is a string containing the name of the final
                 file without extension. type is the mime-type from the header.
     """
-    import rfc822, cgi, re
-    _EXT = '.msg'
 
-    filename = fo.name
-
-#    uidTempl = re.compile("[xX][0-9,a-f]{3,}/[xX][0-9,a-f]{1,}$")
-# This matches the old UID of type    X0123456789abcdef/X01234567
-
-#    uidTempl = re.compile("^[uU][iI][dD]:/(/[xX][0-9,a-f,A-F]+){3}(#\w{1,}|/\w{0,}){0,}$")
-# This matches the new UID structure uid://X1/X2/X3#kdgflf
-
-    # update for the new assignment of archiveIds (backwards compatible)
-    uidTempl = re.compile("^[uU][iI][dD]://[aAbBcCzZxX][0-9,a-z,A-Z]+(/[xX][0-9,a-z,A-Z]+){2}(#\w{1,}|/\w{0,}){0,}$")
+    filename = file_object.name
+    try:
+        message = rfc822.Message(file_object)
+        file_type, file_type_parameters = cgi.parse_header(message["Content-Type"])
+    except Exception as ex:
+        error = "Parsing of mime message failed: " + str(ex)
+        error_message = genLog("NGAMS_ER_DAPI_BAD_FILE",
+                               [os.path.basename(filename), _PLUGIN_ID, error])
+        raise Exception(error_message)
 
     try:
-        message = rfc822.Message(fo)
-        type, tparams = cgi.parse_header(message["Content-Type"])
-    except Exception as e:
-        err = "Parsing of mime message failed: " + str(e)
-        errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
-                                                   _PLUGIN_ID, err])
-        raise Exception(errMsg)
-    try:
-        # CAUTION!!! parse_header returns stuff in lower case that's why it is not used here
-        almaUid = message["alma-uid"]
-    except:
+        # CAUTION!!! Parsing the_header returns stuff in lower case
+        # That is why it is not used here
+        alma_uid = message["alma-uid"]
+    except Exception:
         try:
-            almaUid = message["Content-Location"]
-        except:
-            err = "Mandatory alma-uid or Content-Location parameter not found in mime header!"
-            errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
-                                               _PLUGIN_ID, err])
-            raise Exception(errMsg)
+            alma_uid = message["Content-Location"]
+        except Exception:
+            error = "Mandatory alma-uid or Content-Location parameter not found in mime header!"
+            error_message = genLog("NGAMS_ER_DAPI_BAD_FILE",
+                            [os.path.basename(filename), _PLUGIN_ID, error])
+            raise Exception(error_message)
 
-    if not uidTempl.match(almaUid):
-        err = "Invalid alma-uid found in Content-Location: " + almaUid
-        errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
-                                               _PLUGIN_ID, err])
-        raise Exception(errMsg)
+    # This matches the old UID of type X0123456789abcdef/X01234567
+    # uid_expression = re.compile("[xX][0-9,a-f]{3,}/[xX][0-9,a-f]{1,}$")
 
-# Now, build final filename. We do that by looking for the UID in
-# the message mime-header.
+    # This matches the new UID structure uid://X1/X2/X3#kdgflf
+    # uid_expression = re.compile("^[uU][iI][dD]:/(/[xX][0-9,a-f,A-F]+){3}(#\w{1,}|/\w{0,}){0,}$")
 
-# The final filename is built as follows: <almaUidR>.<ext>
-# where almaUidR has the slash character in the UID replaced by colons.
+    # Update for the new assignment of archiveIds (backwards compatible)
+    uid_expression = re.compile("^[uU][iI][dD]://[aAbBcCzZxX][0-9,a-z,A-Z]+(/[xX][0-9,a-z,A-Z]+){2}(#\w{1,}|/\w{0,}){0,}$")
+
+    if not uid_expression.match(alma_uid):
+        error = "Invalid alma-uid found in Content-Location: " + alma_uid
+        error_message = genLog("NGAMS_ER_DAPI_BAD_FILE",
+                               [os.path.basename(filename), _PLUGIN_ID, error])
+        raise Exception(error_message)
+
+    # Now, build final filename. We do that by looking for the UID in
+    # the message mime-header.
+    #
+    # The final filename is built as follows: <almaUidR>.<ext>
+    # where almaUidR has the slash character in the UID replaced by colons.
     try:
-        # get rid of the 'uid://' and of anything following a '#' sign
-        almaUid = almaUid.split('//',2)[1].split('#')[0]
-        if almaUid[-1] == '/': almaUid = almaUid[:-1]  #remove trailing /
+        # Get rid of the 'uid://' and of anything following a '#' sign
+        alma_uid = alma_uid.split('//', 2)[1].split('#')[0]
 
-        fileId = almaUid
-        finalFileName = almaUid.replace('/',':')
-# Have no idea why, but the extension is added somewhere else...
-#        if os.path.splitext(finalFileName)[-1] != _EXT:
-#            finalFileName += _EXT
+        # Remove trailing '/'
+        if alma_uid[-1] == '/':
+            alma_uid = alma_uid[:-1]
 
-    except Exception as e:
-        err = "Problem constructing final file name: " + str(e)
-        errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
-                                               _PLUGIN_ID, err])
-        raise Exception(errMsg)
+        file_id = alma_uid
+        final_filename = alma_uid.replace('/', ':')
+
+        # Have no idea why, but the extension is added somewhere else
+        # if os.path.splitext(final_filename)[-1] != _EXT:
+        #     final_filename += _EXT
+    except Exception as ex:
+        error = "Problem constructing final file name: " + str(ex)
+        error_message = genLog("NGAMS_ER_DAPI_BAD_FILE",
+                        [os.path.basename(filename), _PLUGIN_ID, error])
+        raise Exception(error_message)
+
+    return file_id, final_filename, file_type
 
 
-    return (fileId, finalFileName, type)
-
-
-def ngamsSdmMultipart(srvObj,
-                     reqPropsObj):
+def ngamsSdmMultipart(server_object, request_object):
     """
     Data Archiving Plug-In to handle archiving of SDM multipart related
     message files containing ALMA UIDs in the Content-Location mime parameter.
 
-    srvObj:       Reference to NG/AMS Server Object (ngamsServer).
+    server_object:  Reference to NG/AMS Server Object (ngamsServer).
 
-    reqPropsObj:  NG/AMS request properties object (ngamsReqProps).
+    request_object: NG/AMS request properties object (ngamsReqProps)
 
-    Returns:      Standard NG/AMS Data Archiving Plug-In Status
-                  as generated by: ngamsPlugInApi.genDapiSuccessStat()
-                  (ngamsDapiStatus).
+    Returns:        Standard NG/AMS Data Archiving Plug-In Status
+                    as generated by: ngamsPlugInApi.genDapiSuccessStat()
+                    (ngamsDapiStatus)
     """
 
     # For now the exception handling is pretty basic:
     # If something goes wrong during the handling it is tried to
     # move the temporary file to the Bad Files Area of the disk.
     logger.info("Plug-In handling data for file: %s",
-         os.path.basename(reqPropsObj.getFileUri()))
-    diskInfo = reqPropsObj.getTargDiskInfo()
-    stagingFilename = reqPropsObj.getStagingFilename()
-    ext = os.path.splitext(stagingFilename)[1][1:]
+                os.path.basename(request_object.getFileUri()))
+    disk_info = request_object.getTargDiskInfo()
+    staging_filename = request_object.getStagingFilename()
+    # extension = os.path.splitext(staging_filename)[1][1:]
 
-    fo = open(stagingFilename, "r")
-    (fileId, finalName, format) = specificTreatment(fo)
+    file_object = open(staging_filename, "r")
+    file_id, final_filename, file_format = specific_treatment(file_object)
 
-    if reqPropsObj.hasHttpPar('file_id'):
-        fileId = reqPropsObj.getHttpPar('file_id')
+    if request_object.hasHttpPar('file_id'):
+        file_id = request_object.getHttpPar('file_id')
 
-    fo.close()
+    file_object.close()
     try:
-        # Compress the file.
-        uncomprSize = ngamsPlugInApi.getFileSize(stagingFilename)
+        # Compress the file
+        uncompressed_size = ngamsPlugInApi.getFileSize(staging_filename)
         compression = ""
-#        info(2,"Compressing file using: %s ..." % compression)
-#        exitCode, stdOut = ngamsPlugInApi.execCmd("%s %s" %\
-#                                                  (compression,
-#                                                   stagingFilename))
-#        if (exitCode != 0):
-#            errMsg = _PLUGIN_ID+": Problems during archiving! " +\
-#                     "Compressing the file failed"
-#            raise Exception, errMsg
-#        stagingFilename = stagingFilename + ".Z"
-        # Remember to update the Temporary Filename in the Request
-        # Properties Object.
-        reqPropsObj.setStagingFilename(stagingFilename)
-#        info(2,"File compressed")
 
-        # ToDo: Handling of non-existing fileId
-#        if (fileId == -1):
-#            fileId = ngamsPlugInApi.genNgasId(srvObj.getCfg())
+        # logger.info("Compressing file %s using %s compression",
+        #             staging_filename, compression)
+        # exit_code, std_out = ngamsPlugInApi.execCmd("{0} {1}".format(
+        #     compression, staging_filename))
+        # if exit_code != 0:
+        #     error_message = _PLUGIN_ID + ": Problems during archiving! " + \
+        #                     "Compressing the file failed"
+        #     raise Exception(error_message)
+        # staging_filename = staging_filename + ".Z"
+        # logger.info("Finished compressing staging file %s", staging_filename)
+
+        # Remember to update the temporary file name in the request
+        # properties object
+        request_object.setStagingFilename(staging_filename)
+
+        # # ToDo: Handling of non-existing fileId
+        # if file_id == -1:
+        #     file_id = ngamsPlugInApi.genNgasId(server_object.getCfg())
+
         today = date.today().isoformat()
-        fileVersion, relPath, relFilename,\
-                     complFilename, fileExists =\
-                     ngamsPlugInApi.genFileInfo(srvObj.getDb(),
-                                                srvObj.getCfg(),
-                                                reqPropsObj, diskInfo,
-                                                stagingFilename, fileId,
-                                                finalName, [today])
+        file_version, relative_path, relative_filename, complete_filename,\
+        file_exists = ngamsPlugInApi.genFileInfo(server_object.getDb(),
+                                                 server_object.getCfg(),
+                                                 request_object, disk_info,
+                                                 staging_filename, file_id,
+                                                 final_filename, [today])
 
-        # Generate status.
         logger.debug("Generating status ...")
-        if not format:
-            format = ngamsPlugInApi.determineMimeType(srvObj.getCfg(),
-                                                  stagingFilename)
-        fileSize = ngamsPlugInApi.getFileSize(stagingFilename)
-        return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(),
-                                                 relFilename,
-                                                 fileId, fileVersion, format,
-                                                 fileSize, uncomprSize,
-                                                 compression, relPath,
-                                                 diskInfo.getSlotId(),
-                                                 fileExists, complFilename)
-    except Exception as err:
-        # mbauhofe: replaced missing variables
-        # old code:
-        # errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
-        #                                            _PLUGIN_ID, err])
+        if not file_format:
+            file_format = ngamsPlugInApi.determineMimeType(server_object.getCfg(),
+                                                           staging_filename)
 
-        errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE",
-                        [os.path.basename(stagingFilename),
-                         _PLUGIN_ID, str(err)])
-        raise Exception(errMsg)
-
-
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 2:
-        print("Usage: ngamsSdmMultipart.py <test_file>")
-        sys.exit()
-    try:
-        test_file = open(sys.argv[1], 'r')
-        (file_id, file_name, file_type) = specificTreatment(test_file)
-        print(file_id, file_name, file_type)
-    except Exception:
-        raise
+        file_size = ngamsPlugInApi.getFileSize(staging_filename)
+        return ngamsPlugInApi.genDapiSuccessStat(disk_info.getDiskId(),
+                                                 relative_filename, file_id,
+                                                 file_version, file_format,
+                                                 file_size, uncompressed_size,
+                                                 compression, relative_path,
+                                                 disk_info.getSlotId(),
+                                                 file_exists,
+                                                 complete_filename)
+    except Exception as ex:
+        error_message = genLog("NGAMS_ER_DAPI_BAD_FILE",
+                               [os.path.basename(staging_filename),
+                                _PLUGIN_ID, str(ex)])
+        raise Exception(error_message)
