@@ -36,9 +36,8 @@ class NgamsSdmMultipartTest(ngamsTestLib.ngamsTestSuite):
         sample_file_name = "A002_X9896b4_X10f"
         sample_file_path = self.resource(os.path.join("src", sample_file_name))
 
-        test_file = open(sample_file_path, 'r')
         file_id, file_name, file_type = \
-            ngamsSdmMultipart.specific_treatment(test_file)
+            ngamsSdmMultipart.specific_treatment(sample_file_path)
         self.assertEqual(file_id, "A002/X9896b4/X10f")
         self.assertEqual(file_name, "A002:X9896b4:X10f")
         self.assertEqual(file_type, "multipart/mixed")

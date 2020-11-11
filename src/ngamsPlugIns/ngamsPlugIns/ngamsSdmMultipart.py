@@ -37,68 +37,65 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
-import cgi
 from datetime import date
+import email
 import logging
 import os
 import re
-import rfc822
 
-from ngamsLib import ngamsPlugInApi
+from ngamsLib import ngamsCore, ngamsPlugInApi
 from ngamsLib.ngamsCore import genLog
 
 # _EXT = '.msg'
 _PLUGIN_ID = __name__
 logger = logging.getLogger(__name__)
 
+# This matches the old UID of type X0123456789abcdef/X01234567
+# UID_EXPRESSION = re.compile("[xX][0-9,a-f]{3,}/[xX][0-9,a-f]{1,}$")
 
-def specific_treatment(file_object):
+# This matches the new UID structure uid://X1/X2/X3#kdgflf
+# UID_EXPRESSION = re.compile("^[uU][iI][dD]:/(/[xX][0-9,a-f,A-F]+){3}(#\w{1,}|/\w{0,}){0,}$")
+
+# Update for the new assignment of archiveIds (backwards compatible)
+UID_EXPRESSION = re.compile(r"^[uU][iI][dD]://[aAbBcCzZxX][0-9,a-z,A-Z]+(/[xX][0-9,a-z,A-Z]+){2}(#\w{1,}|/\w{0,}){0,}$")
+
+
+def specific_treatment(file_path):
     """
     Method contains the specific treatment of the file passed from NG/AMS.
 
-    fo:         File object
+    file_path:  File path
 
     Returns:    (file_id, finalFileName, type);
                 The finalFileName is a string containing the name of the final
                 file without extension. type is the mime-type from the header.
     """
-
-    filename = file_object.name
+    filename = os.path.basename(file_path)
     try:
-        message = rfc822.Message(file_object)
-        file_type, file_type_parameters = cgi.parse_header(message["Content-Type"])
+        with open(file_path, 'rb') as file_object:
+            message = email.message_from_file(file_object)
+            file_type = message.get_content_type()
     except Exception as ex:
         error = "Parsing of mime message failed: " + str(ex)
-        error_message = genLog("NGAMS_ER_DAPI_BAD_FILE",
-                               [os.path.basename(filename), _PLUGIN_ID, error])
+        error_message = genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, _PLUGIN_ID, error])
         raise Exception(error_message)
 
-    try:
-        # CAUTION!!! Parsing the_header returns stuff in lower case
-        # That is why it is not used here
-        alma_uid = message["alma-uid"]
-    except Exception:
-        try:
-            alma_uid = message["Content-Location"]
-        except Exception:
-            error = "Mandatory alma-uid or Content-Location parameter not found in mime header!"
-            error_message = genLog("NGAMS_ER_DAPI_BAD_FILE",
-                            [os.path.basename(filename), _PLUGIN_ID, error])
-            raise Exception(error_message)
+    # First we try looking up the 'alma-uid' header
+    alma_uid = message["alma-uid"]
 
-    # This matches the old UID of type X0123456789abcdef/X01234567
-    # uid_expression = re.compile("[xX][0-9,a-f]{3,}/[xX][0-9,a-f]{1,}$")
+    # Then we try looking up the 'Content-Location' header
+    if alma_uid is None:
+        alma_uid = message["Content-Location"]
 
-    # This matches the new UID structure uid://X1/X2/X3#kdgflf
-    # uid_expression = re.compile("^[uU][iI][dD]:/(/[xX][0-9,a-f,A-F]+){3}(#\w{1,}|/\w{0,}){0,}$")
+    # Otherwise we throw an exception
+    if alma_uid is None:
+        error = "Mandatory alma-uid or Content-Location parameter not found in mime header!"
+        error_message = genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, _PLUGIN_ID, error])
+        raise Exception(error_message)
 
-    # Update for the new assignment of archiveIds (backwards compatible)
-    uid_expression = re.compile("^[uU][iI][dD]://[aAbBcCzZxX][0-9,a-z,A-Z]+(/[xX][0-9,a-z,A-Z]+){2}(#\w{1,}|/\w{0,}){0,}$")
-
-    if not uid_expression.match(alma_uid):
-        error = "Invalid alma-uid found in Content-Location: " + alma_uid
-        error_message = genLog("NGAMS_ER_DAPI_BAD_FILE",
-                               [os.path.basename(filename), _PLUGIN_ID, error])
+    if not UID_EXPRESSION.match(alma_uid):
+        error = "Invalid alma-uid found in Content-Location: " + str(alma_uid)
+        error_message = genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, _PLUGIN_ID, error])
         raise Exception(error_message)
 
     # Now, build final filename. We do that by looking for the UID in
@@ -111,8 +108,7 @@ def specific_treatment(file_object):
         alma_uid = alma_uid.split('//', 2)[1].split('#')[0]
 
         # Remove trailing '/'
-        if alma_uid[-1] == '/':
-            alma_uid = alma_uid[:-1]
+        alma_uid = alma_uid.rstrip("/")
 
         file_id = alma_uid
         final_filename = alma_uid.replace('/', ':')
@@ -122,8 +118,7 @@ def specific_treatment(file_object):
         #     final_filename += _EXT
     except Exception as ex:
         error = "Problem constructing final file name: " + str(ex)
-        error_message = genLog("NGAMS_ER_DAPI_BAD_FILE",
-                        [os.path.basename(filename), _PLUGIN_ID, error])
+        error_message = genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, _PLUGIN_ID, error])
         raise Exception(error_message)
 
     return file_id, final_filename, file_type
@@ -152,13 +147,11 @@ def ngamsSdmMultipart(server_object, request_object):
     staging_filename = request_object.getStagingFilename()
     # extension = os.path.splitext(staging_filename)[1][1:]
 
-    file_object = open(staging_filename, "r")
-    file_id, final_filename, file_format = specific_treatment(file_object)
+    file_id, final_filename, file_format = specific_treatment(staging_filename)
 
     if request_object.hasHttpPar('file_id'):
         file_id = request_object.getHttpPar('file_id')
 
-    file_object.close()
     try:
         # Compress the file
         uncompressed_size = ngamsPlugInApi.getFileSize(staging_filename)
