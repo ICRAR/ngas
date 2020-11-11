@@ -75,7 +75,7 @@ env.DOCKER_KEEP_APP_ROOT = 1
 # >>> passed in through the fab command line as well, which will overwrite the 
 # >>> defaults below.
 
-defaults = {
+#%%defaults = {
 # Do not compile C Client
 'NGAS_NO_CLIENT': False,
 
@@ -383,4 +383,6 @@ env.APP_start_check_function = start_APP_and_check_status
 env.sysinitAPP_start_check_function = sysinitstart_NGAS_and_check_status
 env.prepare_APP_data_dir = prepare_ngas_data_dir
 env.APP_extra_sudo_function = install_docker_compose
+
+
 
