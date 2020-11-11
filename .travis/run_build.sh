@@ -36,6 +36,7 @@ fail() {
 	exit 1
 }
 
+if [ -z "${SKIP_BBCP}" ]; then
 
 # Make ourselves resolvable
 # NGAS itself doesn't need this because it always internally resolves
@@ -55,11 +56,12 @@ fi
 if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
 	sudo systemsetup -setremotelogin on
 else
-	sudo start ssh
+	sudo start ssh || sudo systemctl start ssh || echo "couldn't start ssh" 1>&2
 fi
 ssh-keygen -t rsa -f ~/.ssh/id_rsa -N "" -q || fail "Failed to create RSA key"
 cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys || fail "Failed to add public key to authorized keys"
 ssh-keyscan localhost >> ~/.ssh/known_hosts || fail "Failed to import localhost's keys"
+chmod 600 ~/.ssh/authorized_keys ~/.ssh/known_hosts
 cat << EOF >> ~/.ssh/config
 Host *
      IdentityFile ~/.ssh/id_rsa
@@ -89,6 +91,8 @@ else
 fi
 cd ${TRAVIS_BUILD_DIR}
 
+fi
+
 # In OSX we need to brew install some things
 #
 # Most notably, Travis doesn't support python builds in OSX,
@@ -112,25 +116,36 @@ then
 	sudo scutil --set HostName `hostname`
 
 	# Let's check what hostnames are reported in MacOS...
-	echo -n "hostname: "
-	hostname
 	for n in HostName LocalHostName ComputerName; do
 		echo -n "scutil --get $n: "
 		scutil --get $n
 	done
-	for m in "getfqdn()" \
-	         "gethostname()" \
-	         "gethostbyname(socket.gethostname())" \
-	         "gethostbyname(\"localhost\")" \
-	         "gethostbyname_ex(socket.gethostname())" \
-	         "gethostbyname_ex(\"localhost\")" \
-	         "gethostbyaddr(\"127.0.0.1\")" \
-	         "gethostbyaddr(socket.gethostbyname(socket.gethostname()))" \
-	         "gethostbyaddr(socket.gethostbyname(\"localhost\"))" ; do
-		echo -n "socket.$m: "
-		python -c "import socket; print(socket.$m)"
-	done
 fi
+
+# Let's check what hostnames are reported in MacOS...
+fqdn=`hostname --fqdn`
+echo "FQDN: '$fqdn'"
+cat /etc/hosts
+sudo sed -i "s/\\([^ ]\\+\\) .*$fqdn.*/\\1 my-ngas-host my-ngas-host.localdomain/" /etc/hosts
+cat /etc/hosts
+sudo hostname my-ngas-host
+sudo domainname localdomain
+echo -n "hostname: "
+hostname
+echo -n "domainname: "
+domainname
+for m in "getfqdn()" \
+         "gethostname()" \
+         "gethostbyname(socket.gethostname())" \
+         "gethostbyname(\"localhost\")" \
+         "gethostbyname_ex(socket.gethostname())" \
+         "gethostbyname_ex(\"localhost\")" \
+         "gethostbyaddr(\"127.0.0.1\")" \
+         "gethostbyaddr(socket.gethostbyname(socket.gethostname()))" \
+         "gethostbyaddr(socket.gethostbyname(\"localhost\"))" ; do
+	echo -n "socket.$m: "
+	python -c "import socket; print(socket.$m)"
+done
 
 EUSER="Failed to create database user ngas"
 EPASS="Failed to change password"
@@ -149,21 +164,22 @@ EPIP="Failed to install pip packages"
 # and the python installation in Travis doesn't come with the bsddb built-in module.
 # Additionally, in later python versions installing C extensiosn
 # seems to yield unloadable modules (e.g., netifaces.AF_INET could not be loaded).
-PIP_PACKAGES="bsddb3!=6.2.8 python-daemon<=2.3.0 astropy netifaces"
+PIP_PACKAGES="bsddb3!=6.2.8 python-daemon<=2.3.0 astropy netifaces certifi==2020.4.5.1"
 
 # We need to prepare the database for what's to come later on, and to install
 # the corresponding python module so NGAS can talk to the database
+DB_HOST=${DB_HOST:-127.0.0.1}
 if [[ "$DB" == "mysql" ]]; then
 
 	# Create ngas database, we keep using the "travis" user
 	# (who might have already all priviledges over its newly created database)
-	mysql_cmd="mysql -uroot -e"
+	mysql_cmd="mysql -h ${DB_HOST} -u root --password=mysql -e"
 	$mysql_cmd "CREATE USER 'ngas'@'%' IDENTIFIED BY 'ngas';" || fail "$EUSER"
 	$mysql_cmd "CREATE DATABASE ngas;" || fail "$EDB"
 	$mysql_cmd "GRANT ALL ON ngas.* TO 'ngas'@'%';" || fail "$EPERM"
 
 	# Create ngas database schema
-	mysql -ungas -D ngas -h 127.0.0.1 -pngas \
+	mysql -ungas -D ngas -h ${DB_HOST} -pngas \
 	    < src/ngamsCore/ngamsSql/ngamsCreateTables-mySQL.sql \
 		 || fail "$ECREAT"
 
@@ -176,13 +192,15 @@ if [[ "$DB" == "mysql" ]]; then
 elif [[ "$DB" == "postgresql" ]]; then
 
 	# Create database and user
-	psql_cmd="psql -c"
+	export PGPASSWORD=postgres
+	psql_cmd="psql -W -U postgres -h ${DB_HOST} -c"
 	$psql_cmd "CREATE USER ngas WITH PASSWORD 'ngas';" || fail "$EUSER"
 	$psql_cmd 'CREATE DATABASE ngas;' || fail "$EDB"
 	$psql_cmd 'GRANT ALL PRIVILEGES ON DATABASE ngas TO ngas;' || fail "$EPERM"
+	$psql_cmd 'GRANT ALL ON SCHEMA public TO ngas;' -d ngas || fail "$EPERM"
 
 	# Create ngas database schema
-	PGPASSWORD=ngas psql -U ngas -d ngas -h localhost \
+	PGPASSWORD=ngas psql -U ngas -d ngas -h ${DB_HOST} \
 	    < src/ngamsCore/ngamsSql/ngamsCreateTables-PostgreSQL.sql \
 		 || fail "$ECREAT"
 
