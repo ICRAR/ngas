@@ -8,10 +8,9 @@ LABEL stage=builder
 LABEL build=$BUILD_ID
 RUN mkdir -p /home/ngas
 COPY . /home/ngas/.
-RUN apk add --update bash python3-dev alpine-sdk db-dev sqlite linux-headers
-RUN ln -s /usr/bin/python3 /usr/bin/python ; ln -s /usr/bin/pip3 /usr/bin/pip
+RUN apk add --update bash python3-dev py3-pip alpine-sdk db-dev sqlite linux-headers
+RUN ln -s /usr/bin/python3 /usr/bin/python
 RUN /home/ngas/build.sh ; /home/ngas/prepare_ngas_root.sh -f /NGAS
-RUN pip uninstall -y setuptools ; pip uninstall -y pip
 RUN apk del bash alpine-sdk ; cd /home/ngas ; rm -rf * .[egv]* ; find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
 
 # Second stage build taking what's required from first stage

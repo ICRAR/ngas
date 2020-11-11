@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "/Users/awicenec/.pyenv/versions/dlg/bin/python"
+    "python.pythonPath": "/Users/awicenec/.pyenv/versions/dlg/bin/python",
+    "cmake.configureOnOpen": false
 }
