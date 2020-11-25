@@ -184,12 +184,10 @@ create table ngas_subscribers
     subscr_filter_plugin varchar2(64) null,
     subscr_filter_plugin_pars varchar2(128) null,
     last_file_ingestion_date varchar2(23) null,
-    concurrent_threads number(*, 0) default 1 null,
-    constraint pk_ngas_subscribers primary key (host_id, srv_port)
+    concurrent_threads number(*, 0) default 1 null
 );
 
 create unique index idx_ngas_subscribers_subscr_id on ngas_subscribers (subscr_id);
---create unique index idx_ngas_subscribers_host_id_srv_port on ngas_subscribers (host_id, srv_port);
 
 --Check the primary key is correct for this table
 create table ngas_subscr_back_log
