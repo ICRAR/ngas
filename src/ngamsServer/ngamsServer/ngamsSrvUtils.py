@@ -83,7 +83,7 @@ def _create_remote_subscriptions(srvObj, stop_evt):
     """
 
     subscriptions_in_cfg = srvObj.cfg.getSubscriptionsDic()
-    subscriptions = [v for _,v in subscriptions_in_cfg.items()]
+    subscriptions = [v for _, v in subscriptions_in_cfg.items()]
     subscriptions_created = 0
 
     while True:
@@ -115,7 +115,7 @@ def _create_remote_subscriptions(srvObj, stop_evt):
             url = 'http://%s:%d/%s' % (our_host, our_port, subscrObj.getUrl() or 'QARCHIVE')
             logger.info("Creating subscription to %s:%d with url=%s", subs_host, subs_port, url)
 
-            pars = [["subscr_id", url],
+            pars = [["subscr_id", subscrObj.getId()],
                     ["priority", subscrObj.getPriority()],
                     ["url",      url],
                     ["start_date", toiso8601(local=True)]]
@@ -221,7 +221,7 @@ def handleOnline(srvObj,
 
     # TODO: unify this "db-to-object" reading (there is something similar elsewhere,
     #       I'm pretty sure, and hide these low-level details from here
-    logger.info("Creating %d subscrption objects from subscription DB info", len(subscrList))
+    logger.info("Creating %d subscription objects from subscription DB info", len(subscrList))
     for subscrInfo in subscrList:
         start_date = fromiso8601(subscrInfo[5], local=True) if subscrInfo[5] else None
         last_ingested_date = fromiso8601(subscrInfo[8], local=True) if subscrInfo[8] else None
