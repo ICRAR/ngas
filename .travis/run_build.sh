@@ -145,9 +145,11 @@ EPIP="Failed to install pip packages"
 # pulled out automatically during package installation, but in source-code form,
 # which in some cases, like astropy, can take some time to build and doesn't get
 # cached.
+# bsddb3 is constrained because 6.2.8 fails to install in python 2.7,
+# and the python installation in Travis doesn't come with the bsddb built-in module.
 # Additionally, in later python versions installing C extensiosn
 # seems to yield unloadable modules (e.g., netifaces.AF_INET could not be loaded).
-PIP_PACKAGES="bsddb3 python-daemon astropy netifaces"
+PIP_PACKAGES="bsddb3!=6.2.8 python-daemon astropy netifaces"
 
 # We need to prepare the database for what's to come later on, and to install
 # the corresponding python module so NGAS can talk to the database
