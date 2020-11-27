@@ -571,8 +571,8 @@ passwords will be expressed literally.
 	    the official source of subscription information) then no action is taken. Otherwise they
 	    are added to the database, and will start being used immediately.
 
-	    This is an old option, and shouldn't be used as it is less flexible than using the
-	    SUBSCRIBE/USUBSCRIBE command (it offers less flexibility on the details).
+	    Note that these elements define data flowing INTO our server from the server in
+	    <HostId>:<PortNo> rather than the other way around.
 	-->
 	<SubscriptionDef Id="SubscriptionDef" AutoUnsubscribe="1" BackLogExpTime="28T00:00:00"
 	                 Enable="0" SuspensionTime="0T00:03:00">
@@ -593,10 +593,10 @@ passwords will be expressed literally.
 	<!--
 	    Authentication to use for subscriptions.
 
-        This section specifies the authentication plugin to use when sending
-        files via the subscription system. See the documentation for more
-        information, or see the example plugin included below.
+	     This section specifies the authentication plugin to use when sending
+	     files via the subscription system. See the documentation for more
+	     information, or see the example plugin included below.
 	-->
-    <SubscriptionAuth Id="SubscriptionAuth" PlugInName="ngas_sub_auth_plugin"/>
+	<SubscriptionAuth Id="SubscriptionAuth" PlugInName="ngas_sub_auth_plugin"/>
 
 </NgamsCfg>
