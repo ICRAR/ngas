@@ -107,12 +107,17 @@ def _create_remote_subscriptions(srvObj, stop_evt):
                 logger.warning("Skipping subscription to %s:%d because that's us", subs_host, subs_port)
                 continue
 
-            # Create the URL that needs to be set on the remote end so we
-            # get subscribed to it.
-            # TODO: include reverse proxy information when we add support
-            # TODO: hardcoded http will need to be changed when we add support
-            #       for https
-            url = 'http://%s:%d/%s' % (our_host, our_port, subscrObj.getUrl() or 'QARCHIVE')
+            # Because propertly supporting the "Command" configuration mechansim
+            # still requires some more work, we prefer the "SubscriberUrl"
+            # attribute as the main source of URL information.
+            # We still support "Command", but with the following caveats:
+            #  * TODO: include reverse proxy information when we add support
+            #  * TODO: hardcoded http will need to be changed when we add support
+            #          for https
+            #  * TODO: fails with IpAddress == '0.0.0.0'
+            url = subscrObj.getUrl()
+            if not url:
+                url = 'http://%s:%d/%s' % (our_host, our_port, subscrObj.command or 'QARCHIVE')
             logger.info("Creating subscription to %s:%d with url=%s", subs_host, subs_port, url)
 
             pars = [["subscr_id", subscrObj.getId()],

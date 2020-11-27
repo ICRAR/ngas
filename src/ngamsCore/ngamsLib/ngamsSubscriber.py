@@ -89,6 +89,7 @@ class ngamsSubscriber:
         self.setConcurrentThreads(1) # by default only uses 1 thread for each subscriber
         self._AND_DELIMIT = '____' # urllib.quote('&&')
         self._OR_DELIMIT = '----' # urllib.quote('||')
+        self.command = ''
 
 
     def setHostId(self,
@@ -189,9 +190,7 @@ class ngamsSubscriber:
 
         Returns:    Reference to object itself.
         """
-        if not url:
-            raise Exception('Invalid subscriber url: %s' % url)
-        self.__url = url.strip()
+        self.__url = url
         return self
 
 
