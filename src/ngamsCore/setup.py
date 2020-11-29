@@ -59,7 +59,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data = {
-        'ngamsSql' : ['*.sql'],
+        'ngamsSql' : ['*.sql', 'alma/*.sql'],
         'ngamsData': ['*.fnt', '*.xml', '*.dtd', 'COPYRIGHT', 'LICENSE', 'VERSION'],
         'ngamsLib' : ['README']
     },
