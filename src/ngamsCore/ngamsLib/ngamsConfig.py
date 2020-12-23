@@ -492,22 +492,23 @@ class ngamsConfig:
                 if subscr_id == None:
                     subscr_id = ""
 
-                # Still support the old SubscriberUrl, but prefer Command
-                url_tag = fm % (idx, "SubscriberUrl")
-                cmd_tag = fm % (idx, "Command")
-                if self.getVal(url_tag) and not self.getVal(cmd_tag):
-                    logger.warning("%s is deprecated. Use %s instead", url_tag, cmd_tag)
-                    cmd_tag = url_tag
-
                 tmpSubscrObj = ngamsSubscriber.ngamsSubscriber(\
                     self.getVal(fm % (idx, "HostId")),
                     self.getVal(fm % (idx, "PortNo")),
                     self.getVal(fm % (idx, "Priority")),
-                    self.getVal(cmd_tag),
+                    self.getVal(fm % (idx, "SubscriberUrl")),
                     "",
                     self.getVal(fm % (idx, "FilterPlugIn")),
                     self.getVal(fm % (idx, "FilterPlugInPars")),
                     subscrId=subscr_id)
+
+                # Support Command, but prefer the old SubscriberUrl
+                command = self.getVal(fm % (idx, "Command"))
+                if command:
+                    if tmpSubscrObj.getUrl():
+                        logger.warning("SubscriptionUrl and Command both specified, SubscriptionUrl takes precedence")
+                    tmpSubscrObj.command = command
+
                 self.getSubscriptionsDic()[tmpSubscrObj.getId()] = tmpSubscrObj
 
         # Process the Authentication Users.

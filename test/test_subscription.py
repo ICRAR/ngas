@@ -258,7 +258,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             status = self.subscribe_fail(url)
             self.assertIn('only http or https scheme allowed', status.getMessage().lower())
 
-    def test_create_remote_subscriptions(self):
+    def _test_create_remote_subscriptions(self, url, command):
         """
         Starts two servers A and B, and configures B to automatically create a
         subscription to A when it starts. Then, archiving a file into A should
@@ -268,7 +268,8 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         subscription_pars = (('NgamsCfg.SubscriptionDef[1].Enable', '1'),
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].HostId', 'localhost'),
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].PortNo', '8888'),
-                             ('NgamsCfg.SubscriptionDef[1].Subscription[1].Command', 'QARCHIVE'))
+                             ('NgamsCfg.SubscriptionDef[1].Subscription[1].SubscriberUrl', url or ''),
+                             ('NgamsCfg.SubscriptionDef[1].Subscription[1].Command', command or ''))
         self._prep_subscription_cluster(8888, (8889, subscription_pars, True))
 
         # Listen for archives on server B (B is configured to send us notifications)
@@ -284,6 +285,12 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # Double-check that the file is in B
         self.retrieve(8889, 'SmallFile.fits', targetFile=tmp_path())
+
+    def test_create_remote_subscriptions_with_url(self):
+        self._test_create_remote_subscriptions('http://127.0.0.1:8889/QARCHIVE', None)
+
+    def test_create_remote_subscriptions_with_command(self):
+        self._test_create_remote_subscriptions(None, 'QARCHIVE')
 
     def test_continuous_subscription(self):
         """
