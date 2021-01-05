@@ -383,7 +383,8 @@ def generate_source_files_query(srvObj,startDate, db_link,
     # ignore certain mime types
     query += "nf.format not in ('application/octet-stream', 'text/log-file', 'unknown') and "
     # no longer ignore files where the file_status is not 0. Always replicate to the ARCs.
-    query += "nf.ignore=0 and "
+    colname = 'file_ignore' if srvObj.getCfg().getDbUseFileIgnore() else 'ignore'
+    query += "nf.%s=0 and " % (colname)
     # Query join conditions to reach host_id (common) and check cluster name
     query += "nh.cluster_name='" + cluster_name + "' "
     if startDate is not None and startDate != "None":
@@ -427,7 +428,7 @@ def generate_target_files_query(srvObj, startDate,
     # ICT-1988 - cannot take file_status into consideration
     # query += "nf.ignore=0 and nf.file_status=0 and "
     colname = 'file_ignore' if srvObj.getCfg().getDbUseFileIgnore() else 'ignore'
-    query += "nf.%s=0 and " % (colname,)
+    query += "nf.%s=0 and " % (colname)
     # Query join conditions to reach host_id (common) and check cluster name
     query += "nh.cluster_name='" + cluster_name + "' "
     if startDate is not None and startDate != "None":
