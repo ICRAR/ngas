@@ -68,7 +68,10 @@ class ClientWrapper(object):
     """A simple wrapper around an NGAS client that only throws ClientException"""
 
     def __init__(self, host, port, servers):
-        self._client = ngamsPClient.ngamsPClient(host, port, servers)
+        if servers:
+            self._client = ngamsPClient.ngamsPClient(servers=servers)
+        else:
+            self._client = ngamsPClient.ngamsPClient(host, port)
 
     def client(self, what, *args, **kwargs):
         method = getattr(self._client, what)

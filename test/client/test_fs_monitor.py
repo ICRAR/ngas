@@ -167,3 +167,13 @@ class FsMonitorTests(ngamsTestSuite):
         self.assertIsNotNone(proc)
         time.sleep(1)
         self.assertEqual(0, terminate_or_kill(proc, 5))
+
+    def test_cmdline_tool_with_servers(self):
+        """Make sure the command line tool starts correctly with --servers"""
+        cmdline = [sys.executable, '-m', 'ngamsPClient.fs_monitor',
+                   '-w', tmp_path('fs-monitor-workdir'), '--log-level', 'DEBUG',
+                   '-s', '1', '--servers', '127.0.0.1:8888']
+        proc = subprocess.Popen(cmdline, shell=False)
+        self.assertIsNotNone(proc)
+        time.sleep(1)
+        self.assertEqual(0, terminate_or_kill(proc, 5))
