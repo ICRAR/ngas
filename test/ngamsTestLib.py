@@ -616,56 +616,7 @@ class notification_listener(object):
     __del__ = close
 
 
-_to_email_message = email.message_from_string
-if six.PY3:
-    _to_email_message = email.message_from_bytes
-
-class InMemorySMTPServer(smtpd.SMTPServer):
-    """In-memory SMTP server, saves messages into a public list"""
-
-    message = collections.namedtuple('message', 'mailfrom rcpts data')
-
-    def __init__(self, port):
-
-        # decode_data is new in 3.5, defaults to True in 3.5, False in 3.6+
-        # Thus, we need to explicitly give it to reliably use message_from_bytes
-        # later
-        kwargs = {}
-        if sys.version_info[0:2] >= (3, 5):
-            kwargs['decode_data'] = False
-        smtpd.SMTPServer.__init__(self, ('127.0.0.1', port), None, **kwargs)
-        self.port = port
-        self.messages = []
-        # email sending on the server can be asynchronous from the instructions
-        # used to trigger them in the tests. We tried using only a Condition
-        # instead of a Condition/event pair, but Condition.wait() didn't signal
-        # timeouts until python 3.2
-        self.recv_cond = threading.Condition()
-        self.recv_evt = threading.Event()
-        self.thread = threading.Thread(target=asyncore.loop, args=(0.1,))
-        self.thread.daemon = True
-        self.thread.start()
-
-    def pop(self, timeout=10):
-        with self.recv_cond:
-            while not self.messages:
-                self.recv_cond.wait(timeout=timeout)
-                if not self.recv_evt.is_set():
-                    raise RuntimeError('email expected but none arrived')
-                self.recv_evt.clear()
-            return _to_email_message(self.messages.pop().data)
-
-    def close(self):
-        smtpd.SMTPServer.close(self)
-        self.thread.join(timeout=1)
-        if self.thread.is_alive():
-            raise RuntimeError('asyncore loop still running')
-
-    def process_message(self, peer, mailfrom, rcpttos, data, **_):
-        with self.recv_cond:
-            self.messages.append(InMemorySMTPServer.message(mailfrom, rcpttos, data))
-            self.recv_evt.set()
-            self.recv_cond.notify_all()
+from .smtp_server import InMemorySMTPServer
 
 ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir', 'cfg_file', 'daemon', 'proto'])
 
