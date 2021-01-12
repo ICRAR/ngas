@@ -19,6 +19,10 @@ Changelog
   This shouldn't affect operational installations,
   and most database drivers happily worked with the previous code,
   but the Sybase driver caught this one.
+* HTTP requests for archival with ``Content-Length`` equals to 0,
+  or with missing ``Content-Length``,
+  now return an 411 HTTP status code
+  instead of the more generic 400 HTTP status code.
 * Cleaned up and aligned the way in which volume information
   is created and processed by NGAS.
   The code around volume creation and scanning has been revised,

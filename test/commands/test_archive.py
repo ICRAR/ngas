@@ -1320,6 +1320,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         for method in ('archive_fail', 'qarchive_fail'):
             status = getattr(self, method)(zerofile, 'application/octet-stream')
             self.assertIn('Content-Length is 0', status.getMessage())
+            self.assertEqual(411, status.http_status)
 
 
     def test_unknown_mimetype(self):
@@ -1355,15 +1356,6 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.assertEqual(resp.status, 400)
             self.assertEqual(b'NGAMS_ER_UNKNOWN_MIME_TYPE' in resp.read(), True)
-
-        # File is zero-length
-        test_file = tmp_path('zerofile.fits')
-        open(test_file, 'a').close()
-        params = {'filename': test_file,
-                  'mime_type': 'application/octet-stream'}
-        with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
-            self.assertEqual(resp.status, 400)
-            self.assertEqual(b'Content-Length is 0' in resp.read(), True)
 
         # All is fine
         params = {'filename': self.resource('src/SmallFile.fits'),

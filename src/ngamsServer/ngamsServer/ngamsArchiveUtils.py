@@ -98,6 +98,9 @@ def _stream_target_volume(srvObj, mimeType, file_uri, size):
                                   "NO DISKS AVAILABLE", errMsg)
         raise
 
+class unknown_message_length(Exception):
+    """Thrown when the HTTP request body length isn't known"""
+    pass
 
 class eof_found(Exception):
     """Throw by archive_contents if the EOF is found while reading the incoming data"""
@@ -1038,6 +1041,10 @@ def dataHandler(srv, request, httpRef, volume_strategy=VOLUME_STRATEGY_STREAMS,
         srv.setSubState(NGAMS_IDLE_SUBSTATE)
         httpRef.send_status('No module named %s' % e.args[0], status=NGAMS_FAILURE)
         return
+    except unknown_message_length:
+        srv.setSubState(NGAMS_IDLE_SUBSTATE)
+        httpRef.send_status('Content-Length is 0 or unknown', status=NGAMS_FAILURE, code=411)
+        return
     except Exception as e:
         try:
             errMsg = genLog("NGAMS_ER_ARCHIVE_PUSH_REQ",
@@ -1076,7 +1083,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     logger.info(genLog("NGAMS_INFO_ARCHIVING_FILE", [reqPropsObj.getFileUri()]), extra={'to_syslog': True})
 
     if transfer is None and reqPropsObj.getSize() <= 0:
-        raise Exception('Content-Length is 0')
+        raise unknown_message_length()
 
     mimeType = reqPropsObj.getMimeType()
     archiving_start = time.time()
