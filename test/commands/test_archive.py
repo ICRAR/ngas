@@ -1322,6 +1322,14 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.assertIn('Content-Length is 0', status.getMessage())
 
 
+    def test_unknown_mimetype(self):
+        """Using an unknown mime type yields a useful error message"""
+        self.prepExtSrv()
+        mime_type = 'application/unknown_mime_type'
+        status = self.archive_data_fail(generated_file(1), 'dummy_name.bin',
+                                        mimeType=mime_type, cmd='QARCHIVE')
+        self.assertIn(mime_type, status.getMessage())
+
     def test_QArchive(self):
         """
         Synopsis:

@@ -1001,12 +1001,15 @@ def archiveInitHandling(srvObj, reqPropsObj, httpRef, do_probe=False, try_to_pro
 
     # Act possibly as proxy for the Achive Request?
     # TODO: Support maybe HTTP redirection also for Archive Requests.
-    if (try_to_proxy and
-        srvObj.getCfg().getStreamFromMimeType(mimeType).getHostIdList()):
-        host_id, host, port = findTargetNode(srvObj, mimeType)
-        if host_id != srvObj.getHostId():
-            httpRef.proxy_request(host_id, host, port)
-            return None
+    if try_to_proxy:
+        stream = srvObj.cfg.getStreamFromMimeType(mimeType)
+        if not stream:
+            raise Exception("Unknown mime type: " + mimeType)
+        if stream.getHostIdList():
+            host_id, host, port = findTargetNode(stream, srvObj, mimeType)
+            if host_id != srvObj.getHostId():
+                httpRef.proxy_request(host_id, host, port)
+                return None
 
     return mimeType
 
@@ -1245,7 +1248,7 @@ def finish_archive_request(srv, req, http_ref, plugin_result, disk_info):
     # After a successful archiving we notify the archive event subscribers
     srv.fire_archive_event(plugin_result.getFileId(), plugin_result.getFileVersion())
 
-def findTargetNode(srvObj, mimeType):
+def findTargetNode(stream, srvObj, mimeType):
     """
     Finds the NGAS server that should handle the archiving of a file of type
     `mimeType`. The node to archive onto is determined randomly, and only if
@@ -1262,12 +1265,11 @@ def findTargetNode(srvObj, mimeType):
     ngamsCfgObj = srvObj.getCfg()
     dbConObj = srvObj.getDb()
 
-    hostIds = list(ngamsCfgObj.getStreamFromMimeType(mimeType).getHostIdList())
+    hostIds = list(stream.getHostIdList())
 
     # If there are Storage Sets defined for the mime-type, also the local
     # host is a candidate.
-    locStoSetList = ngamsCfgObj.getStreamFromMimeType(mimeType).\
-                    getStorageSetIdList()
+    locStoSetList = stream.getStorageSetIdList()
     if locStoSetList:
         hostIds.append(srvObj.getHostId())
 
