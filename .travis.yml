@@ -76,8 +76,6 @@ jobs:
       - libdb-dev
     services: postgresql
   # The rest use all sqlite3, but in more diverse environments
-  - os: osx
-    language: generic
   - python: "3.5"
   - python: "3.6"
   - python: "3.7"
