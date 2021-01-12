@@ -191,10 +191,9 @@ def __handleCmd(srvObj, reqPropsObj):
         logger.info("Saving in staging file: %s", stgFilename)
         stagingInfo = saveInStagingFile(srvObj, srvObj.getCfg(), reqPropsObj,
                                         stgFilename, startByte)
-
-        reqPropsObj.incIoTime(stagingInfo.rtime + stagingInfo.wtime)
-        # reqPropsObj.setBytesReceived(stagingInfo.size)
-        ingest_rate = stagingInfo.size / stagingInfo.totaltime / 1024.0 / 1024.0
+        reqPropsObj.incIoTime(stagingInfo.rtime)
+        reqPropsObj.incIoTime(stagingInfo.wtime)
+        ingest_rate = int(reqPropsObj.getSize() // stagingInfo.totaltime)
     except (ngamsFailedDownloadException.FailedDownloadException, ngamsFailedDownloadException.PostponeException):
         raise
     except Exception as e:
@@ -221,8 +220,8 @@ def __handleCmd(srvObj, reqPropsObj):
 
     # Move file to final destination.
     logger.info("Moving file to final destination: %s", resDapi.getCompleteFilename())
-    ioTime = mvFile(reqPropsObj.getStagingFilename(), resDapi.getCompleteFilename())
-    reqPropsObj.incIoTime(ioTime)
+    mtime = mvFile(reqPropsObj.getStagingFilename(), resDapi.getCompleteFilename())
+    reqPropsObj.incIoTime(mtime)
 
     # Check/generate remaining file info + update in DB.
     logger.info("Creating db entry")
@@ -232,6 +231,7 @@ def __handleCmd(srvObj, reqPropsObj):
     srvObj.getDb().query2(sqlUpdate, args=(resDapi.getFileSize(), resDapi.getFileSize(), resDapi.getDiskId()))
 
     ts = srvObj.getDb().convertTimeStamp(time.time())
+    io_time = int(reqPropsObj.getIoTime() * 1000)
     sqlQuery = "INSERT INTO ngas_files " +\
                "(disk_id, file_name, file_id, " +\
                "file_version, format, file_size, " +\
@@ -250,7 +250,7 @@ def __handleCmd(srvObj, reqPropsObj):
             file_version, str(resDapi.getFormat()), resDapi.getFileSize(),
             resDapi.getUncomprSize(), str(resDapi.getCompression()), ts,
             str(stagingInfo.crc), stagingInfo.crcname, NGAMS_FILE_STATUS_OK,
-            creDate, reqPropsObj.getIoTime(), ingest_rate)
+            creDate, io_time, ingest_rate)
     logger.info("Will try to insert the file information: %s / %r", sqlQuery, args)
     srvObj.getDb().query2(sqlQuery, args=args)
 
