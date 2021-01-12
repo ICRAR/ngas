@@ -53,8 +53,8 @@ import time
 from ngamsLib.ngamsCore import checkCreatePath
 from ngamsLib import ngamsHttpUtils
 from ngamsServer import ngamsFileUtils
+from ngamsServer.ngamsArchiveUtils import archiving_results
 from . import ngamsFailedDownloadException
-
 
 logger = logging.getLogger(__name__)
 
@@ -147,28 +147,51 @@ def saveToFile(srvObj,
     buf = "-"
     rdSize = blockSize
 
+    crctime = 0
+    rtime = 0
+    wtime = 0
+    readin = 0
+
     crc_m = crc_info.method
     with contextlib.closing(response), contextlib.closing(fdOut):
         while remSize > 0:
             if remSize < rdSize:
                 rdSize = remSize
+
+            # Read
+            rstart = time.time()
             buf = response.read(rdSize)
+            rtime += time.time() - rstart
             sizeRead = len(buf)
+            readin += sizeRead
+
             if sizeRead == 0:
-                raise Exception("server is unreachable")
-            else:
-                crc = crc_m(buf, crc)
-                remSize -= sizeRead
-                reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() + sizeRead)
-                fdOut.write(buf)
+                raise ngamsFailedDownloadException.FailedDownloadException("server is unreachable")
+
+            # CRC
+            crcstart = time.time()
+            crc = crc_m(buf, crc)
+            crctime += time.time() - crcstart
+
+            remSize -= sizeRead
+            reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() + sizeRead)
+
+            # Write
+            wstart = time.time()
+            fdOut.write(buf)
+            wtime += time.time() - wstart
+
     crc = crc_info.final(crc)
 
-    deltaTime = time.time() - start
+    total_time = time.time() - start
+    # Avoid divide by zeros later on, let's say it took us 1 [us] to do this
+    if total_time == 0.0:
+        total_time = 0.000001
+
     msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
           "Rate: %.2f Bytes/s"
-    logger.info(msg, trgFilename, int(reqPropsObj.getBytesReceived()),
-                  deltaTime, (float(reqPropsObj.getBytesReceived()) /
-                              deltaTime))
+    logger.info(msg, trgFilename, int(reqPropsObj.getBytesReceived()), total_time,
+                (float(reqPropsObj.getBytesReceived()) / total_time))
 
     # Raise exception if bytes received were less than expected
     if remSize != 0:
@@ -181,4 +204,4 @@ def saveToFile(srvObj,
         msg = "checksum mismatch: source={:s}, received={:d}".format(checksum, crc)
         raise ngamsFailedDownloadException.FailedDownloadException(msg)
 
-    return [deltaTime, crc, crc_variant]
+    return archiving_results(readin, rtime, wtime, crctime, total_time, crc_variant, crc)
