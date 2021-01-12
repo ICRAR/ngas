@@ -55,8 +55,8 @@ from . import ngamsFailedDownloadException
 from ngamsLib import ngamsLib, ngamsHttpUtils
 from ngamsServer import ngamsFileUtils
 
-
 logger = logging.getLogger(__name__)
+
 
 def get_full_qualified_name(srvObj):
     """
@@ -78,6 +78,7 @@ def get_full_qualified_name(srvObj):
 
     # Return full qualified server name
     return fqdn
+
 
 def saveToFile(srvObj,
                ngamsCfgObj,
@@ -140,16 +141,15 @@ def saveToFile(srvObj,
                   deltaTime, (float(reqPropsObj.getBytesReceived()) / deltaTime))
 
     # now check the CRC value against what we expected
-    sourceChecksum = reqPropsObj.checksum
+    checksum = reqPropsObj.checksum
+    crc_variant = reqPropsObj.checksum_plugin
     start = time.time()
-    crc = ngamsFileUtils.get_checksum(65536, trgFilename, 'crc32')
+    crc = ngamsFileUtils.get_checksum(65536, trgFilename, crc_variant)
     deltaTime = time.time() - start
     logger.info("crc computed in %f [s]", deltaTime)
-    logger.info('source checksum: %s - current checksum: %d', str(sourceChecksum), crc)
-    if (crc != int(sourceChecksum)):
-        msg = "checksum mismatch: source=" + str(sourceChecksum) + ", received: " + str(crc)
+    logger.info('source checksum: %s - current checksum: %d', checksum, crc)
+    if crc != int(checksum):
+        msg = "checksum mismatch: source={:s}, received={:d}".format(checksum, crc)
         raise ngamsFailedDownloadException.FailedDownloadException(msg)
 
-    return [deltaTime, crc]
-
-# EOF
+    return [deltaTime, crc, crc_variant]

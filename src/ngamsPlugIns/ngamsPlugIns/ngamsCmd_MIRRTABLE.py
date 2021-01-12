@@ -235,10 +235,10 @@ def reassign_broken_downloads(currentIteration, srvObj):
     sql = "insert into ngas_mirroring_bookkeeping"
     sql += " (file_id, file_version, file_size, disk_id, host_id, format, status,"
     sql += " target_cluster, target_host, source_host, "
-    sql += " ingestion_date, ingestion_time, iteration, checksum, staging_file, attempt, source_ingestion_date)"
+    sql += " ingestion_date, ingestion_time, iteration, checksum, checksum_plugin, staging_file, attempt, source_ingestion_date)"
     sql += " select file_id, file_version, file_size, disk_id, host_id, format, 'READY' as status,"
     sql += " target_cluster, target_host, source_host,"
-    sql += " ingestion_date, ingestion_time, {0} as iteration, checksum, staging_file, attempt, source_ingestion_date"
+    sql += " ingestion_date, ingestion_time, {0} as iteration, checksum, checksum_plugin, staging_file, attempt, source_ingestion_date"
     sql += " from ngas_mirroring_bookkeeping "
     sql += " where status = 'TORESUME'"
     srvObj.getDb().query2(sql, args=(currentIteration,))
@@ -360,7 +360,7 @@ def generate_source_files_query(srvObj,startDate, db_link,
     query += "substr(min(nf.disk_id || nh.host_id || nh.srv_port),1,length(min(nd.disk_id))) disk_id, "
     query += "substr(min(nf.disk_id || nh.host_id || nh.srv_port),1+length(min(nd.disk_id)),length(min(nh.host_id))) host_id, "
     query += "substr(min(nf.disk_id || nh.host_id || nh.srv_port),1+length(min(nd.disk_id))+length(min(nh.host_id)),length(min(nh.srv_port))) srv_port, "
-    query += "min(nf.format) format, min(nf.file_size) file_size, min(nf.checksum) checksum, min(nh.domain) domain "
+    query += "min(nf.format) format, min(nf.file_size) file_size, min(nf.checksum) checksum, min(nf.checksum_plugin) checksum_plugin, min(nh.domain) domain "
     query += "from "
     # Depending on all_versions parameter we select only last version or not
     if all_versions:
@@ -467,7 +467,7 @@ def generate_diff_ngas_files_query(source_ext_ngas_files_query,
 
     # Query create table statement (common)
     query = "(select source.file_id, source.file_version, source.disk_id,"
-    query += " source.format, source.file_size, source.checksum,"
+    query += " source.format, source.file_size, source.checksum, source.checksum_plugin,"
     query += " source.host_id, source.domain, source.srv_port,"
     # replace: some "timestamps" (stored as varchar2 in Oracle) have 60 as the seconds value due to an
     # earlier NGAS bug. We can't convert that to an Oracle timestamp so have to hack it.
@@ -535,7 +535,7 @@ def populate_mirroring_bookkeeping_table(diff_ngas_files_query,
     query += "(file_id, file_version, disk_id, host_id, "
     query += "file_size, format, status, target_cluster, "
     query += "source_host, ingestion_date, "
-    query += "iteration, checksum, source_ingestion_date)"
+    query += "iteration, checksum, checksum_plugin, source_ingestion_date)"
     query += "select "
     # file_id: Direct from diff_ngas_files table
     query += "d.file_id, "
@@ -563,7 +563,7 @@ def populate_mirroring_bookkeeping_table(diff_ngas_files_query,
     # iteration: In order to distinguish from different runs
     query += "{2}, "
     # the checksum from the source node
-    query += "d.checksum, d.ingestion_date"
+    query += "d.checksum, d.checksum_plugin, d.ingestion_date"
     # All this info comes from the diff table
     query += " from " + diff_ngas_files_query + " d"
     #if rows_limit is not None and rows_limit != "None":

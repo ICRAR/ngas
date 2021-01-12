@@ -53,6 +53,7 @@ create table ngas_mirroring_bookkeeping
     ingestion_time float(126) default 0 constraint nn_ngas_mirroring_bookkeeping_ingestion_time not null,
     iteration number(22, 0) default 0 constraint nn_ngas_mirroring_bookkeeping_iteration not null,
     checksum varchar2(64) default '?' constraint nn_ngas_mirroring_bookkeeping_checksum not null,
+    checksum_plugin varchar2(64) null,
     staging_file varchar2(305) null,
     attempt number(4, 0) default 0 null,
     downloaded_bytes number(22, 0) default 0 null,

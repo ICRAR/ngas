@@ -192,8 +192,8 @@ def __handleCmd(srvObj, reqPropsObj):
         stagingInfo = saveInStagingFile(srvObj, srvObj.getCfg(), reqPropsObj,
                                         stgFilename, startByte)
         reqPropsObj.incIoTime(stagingInfo[0])
-        checksumPlugIn = "ngamsGenCrc32"
         checksum = stagingInfo[1]
+        checksumPlugIn = stagingInfo[2]
     except (ngamsFailedDownloadException.FailedDownloadException, ngamsFailedDownloadException.PostponeException):
         raise
     except Exception as e:

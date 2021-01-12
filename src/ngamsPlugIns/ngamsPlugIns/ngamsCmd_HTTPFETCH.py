@@ -60,11 +60,11 @@ logger = logging.getLogger(__name__)
 
 
 def saveToFile(srvObj,
-                       ngamsCfgObj,
-                       reqPropsObj,
-                       trgFilename,
-                       blockSize,
-                       startByte):
+               ngamsCfgObj,
+               reqPropsObj,
+               trgFilename,
+               blockSize,
+               startByte):
     """
     Save the data available on an HTTP channel into the given file.
 
@@ -92,6 +92,8 @@ def saveToFile(srvObj,
     host_id = reqPropsObj.fileinfo['hostId']
     file_version = reqPropsObj.fileinfo['fileVersion']
     file_id = reqPropsObj.fileinfo['fileId']
+    checksum = reqPropsObj.checksum
+    crc_variant = reqPropsObj.checksum_plugin
 
     host, port = source_host.split(":")
     pars = {
@@ -101,7 +103,7 @@ def saveToFile(srvObj,
         'file_version': file_version,
         'file_id': file_id
     }
-    hdrs = {'Range': str(startByte) + '-'}
+    hdrs = {'Range': "bytes={:d}-".format(startByte)}
 
     rx_timeout = 30 * 60
     if srvObj.getCfg().getVal("Mirroring[1].rx_timeout"):
@@ -114,16 +116,17 @@ def saveToFile(srvObj,
     logger.debug("Creating path: %s", trgFilename)
     checkCreatePath(os.path.dirname(trgFilename))
 
-    crc_info = ngamsFileUtils.get_checksum_info('crc32')
+    logger.info('Fetching file ID %s, checksum %s, checksum variant %s', file_id, checksum, crc_variant)
+    crc_info = ngamsFileUtils.get_checksum_info(crc_variant)
     if startByte != 0:
         logger.info("resume requested")
     if startByte != 0 and downloadResumeSupported:
         logger.info("Resume requested and mirroring source supports resume. Appending data to previously started staging file")
-        crc = ngamsFileUtils.get_checksum(65536, trgFilename, 'crc32')
+        crc = ngamsFileUtils.get_checksum(65536, trgFilename, crc_variant)
         reqPropsObj.setBytesReceived(startByte)
         fdOut = open(trgFilename, "a")
     else:
-        if (startByte > 0):
+        if startByte > 0:
             logger.info("Resume of download requested but server does not support it. Starting from byte 0 again.")
         fdOut = open(trgFilename, "w")
         crc = crc_info.init
@@ -134,10 +137,10 @@ def saveToFile(srvObj,
     # Pull we may simply read the file descriptor until it returns "".
     logger.info("It is an HTTP Archive Pull Request: trying to get Content-length")
     hdrs = {h[0]: h[1] for h in response.getheaders()}
-    if hdrs.has_key('content-length'):
+    if 'content-length' in hdrs:
         remSize = int(hdrs['content-length'])
     else:
-        logger.warning("Non Content-Lenght header found, defaulting to 1e11")
+        logger.warning("No Content-Length header found, defaulting to 1e11")
         remSize = int(1e11)
 
     # Receive the data.
@@ -146,8 +149,8 @@ def saveToFile(srvObj,
 
     crc_m = crc_info.method
     with contextlib.closing(response), contextlib.closing(fdOut):
-        while (remSize > 0):
-            if (remSize < rdSize):
+        while remSize > 0:
+            if remSize < rdSize:
                 rdSize = remSize
             buf = response.read(rdSize)
             sizeRead = len(buf)
@@ -156,8 +159,7 @@ def saveToFile(srvObj,
             else:
                 crc = crc_m(buf, crc)
                 remSize -= sizeRead
-                reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() +\
-                                         sizeRead)
+                reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() + sizeRead)
                 fdOut.write(buf)
     crc = crc_info.final(crc)
 
@@ -168,16 +170,15 @@ def saveToFile(srvObj,
                   deltaTime, (float(reqPropsObj.getBytesReceived()) /
                               deltaTime))
 
-    # Raise exception if less byes were received as expected.
-    if (remSize != 0):
-        msg = "No all expected data arrived, %d bytes left to read" % (remSize,)
+    # Raise exception if bytes received were less than expected
+    if remSize != 0:
+        msg = "No all expected data arrived, {:d} bytes left to read".format(remSize)
         raise ngamsFailedDownloadException.FailedDownloadException(msg)
 
-    # now check the CRC value against what we expected
-    sourceChecksum = reqPropsObj.checksum
-    logger.info('source checksum: %s - current checksum: %d', str(sourceChecksum), crc)
-    if (crc != int(sourceChecksum)):
-        msg = "checksum mismatch: source=" + str(sourceChecksum) + ", received: " + str(crc)
+    # Now check the freshly calculated CRC value against the stored CRC value
+    logger.info('source checksum: %s - current checksum: %d', checksum, crc)
+    if crc != int(checksum):
+        msg = "checksum mismatch: source={:s}, received={:d}".format(checksum, crc)
         raise ngamsFailedDownloadException.FailedDownloadException(msg)
 
-    return [deltaTime,crc]
+    return [deltaTime, crc, crc_variant]
