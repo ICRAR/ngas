@@ -785,8 +785,8 @@ class ngamsPClient:
         for i,host_port in enumerate(servers):
             host, port = host_port
             try:
-                _,_,_,data = self._do_post(host, port, cmd, mime_type, data, pars)
-                return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
+                http_status, _, _, data = self._do_post(host, port, cmd, mime_type, data, pars)
+                return ngamsStatus.ngamsStatus(http_status).unpackXmlDoc(data, 1)
             except socket.error:
                 if i == len(servers) - 1:
                     raise

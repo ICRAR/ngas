@@ -53,11 +53,12 @@ class ngamsStatus:
     Class to handle the NG/AMS Status Report.
     """
 
-    def __init__(self):
+    def __init__(self, http_status=None):
         """
         Constructor method.
         """
         self.clear()
+        self.http_status = http_status
 
 
     def clear(self):
@@ -75,6 +76,7 @@ class ngamsStatus:
         self.__state          = ""
         self.__subState       = ""
         self.__data           = None
+        self.http_status      = None
 
 
         # Request handling status.
@@ -898,8 +900,8 @@ class ngamsStatus:
 
         return buf
 
-def _dummy_stat(host_id, status, msg, data=None):
-    stat = ngamsStatus().\
+def _dummy_stat(host_id, status, msg, data=None, http_status=None):
+    stat = ngamsStatus(http_status).\
            setDate(toiso8601()).\
            setVersion(getNgamsVersion()).setHostId(host_id).\
            setStatus(status).\
@@ -910,11 +912,11 @@ def _dummy_stat(host_id, status, msg, data=None):
         stat.setData(data)
     return stat
 
-def dummy_success_stat(host_id, data=None):
-    return _dummy_stat(host_id, NGAMS_SUCCESS, "Successfully handled request", data)
+def dummy_success_stat(host_id, data=None, http_status=200):
+    return _dummy_stat(host_id, NGAMS_SUCCESS, "Successfully handled request", data=data, http_status=http_status)
 
-def dummy_failure_stat(host_id, cmd):
-    return _dummy_stat(host_id, NGAMS_FAILURE, "Failed to handle command %s" % (cmd,))
+def dummy_failure_stat(host_id, cmd, http_status=400):
+    return _dummy_stat(host_id, NGAMS_FAILURE, "Failed to handle command %s" % (cmd,), http_status=http_status)
 
 def to_status(http_response, host_id, cmd):
     """
@@ -929,11 +931,11 @@ def to_status(http_response, host_id, cmd):
         data = http_response.content
     if data and b'<?xml' in data:
         logger.debug("Parsing incoming HTTP data as ngamsStatus")
-        return ngamsStatus().unpackXmlDoc(data, 1)
+        return ngamsStatus(http_response.status).unpackXmlDoc(data, 1)
 
     # Otherwise, and depending on the HTTP code, we create either
     # a dummy successful or failed status object
     if http_response.status != NGAMS_HTTP_SUCCESS:
         logger.debug("HTTP status != 200, creating dummy NGAS_FAILURE status")
-        return dummy_failure_stat(host_id, cmd)
-    return dummy_success_stat(host_id, data)
+        return dummy_failure_stat(host_id, cmd, http_status=http_response.status)
+    return dummy_success_stat(host_id, data, http_status=http_response.status)
