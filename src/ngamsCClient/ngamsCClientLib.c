@@ -3523,7 +3523,7 @@ void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level,
 		const char* format, va_list vaParList) {
 	int fd = 0;
 	ssize_t bytes_written;
-	ngamsHUGE_BUF logMsg, tmpLogMsg;
+	ngamsHUGE_BUF logMsg;
 	ngamsMED_BUF isoTime;
 	ngamsSTAT stat;
 
@@ -3533,7 +3533,8 @@ void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level,
 		ngamsGenIsoTime(3, isoTime);
 	size_t maxsize = sizeof(ngamsHUGE_BUF);
 	int written = sprintf(logMsg, "%s [%s] [%lu] ", isoTime, type, (unsigned long)pthread_self);
-	vsnprintf(tmpLogMsg + written, maxsize - written, format, vaParList);
+	written += vsnprintf(logMsg + written, maxsize - written, format, vaParList);
+	sprintf(logMsg + written, "\n");
 
 	_ngamsLockLogWR();
 
