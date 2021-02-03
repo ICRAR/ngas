@@ -89,6 +89,9 @@ Changelog
   where upstream files with checksum values
   calculated with checksum variants other than ``crc32``
   failed to be pushed downstream.
+* Fixed logging of C utilities,
+  and implemented the logic behind the ``-v`` flag
+  of the ``ngamsCClient`` program.
 
 .. rubric:: 11.0.2
 
