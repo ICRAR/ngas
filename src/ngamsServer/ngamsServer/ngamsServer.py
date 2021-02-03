@@ -1181,14 +1181,16 @@ class ngamsServer(object):
 
     def startMirControlThread(self):
         """Starts the Mirroring Control Thread"""
-        if (not self.getCfg().getMirroringActive()):
+        if not self.getCfg().getMirroringActive():
             logger.info("NGAS Mirroring not active - Mirroring Control Thread not started")
             return
+        logger.info("NGAS Mirroring is active - Starting Mirroring Control Thread")
         self._mir_control_thread.start(self)
 
 
     def stopMirControlThread(self):
         """Stops the Mirroring Control Thread"""
+        logger.info("NGAS Mirroring is inactive - Stopping Mirroring Control Thread")
         self._mir_control_thread.stop()
         # This should bring the sub-threads to an end too, although we should
         # probably make this part of the main mirroring control thread itself

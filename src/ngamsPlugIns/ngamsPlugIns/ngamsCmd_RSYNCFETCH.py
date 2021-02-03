@@ -54,9 +54,10 @@ from ngamsLib.ngamsCore import checkCreatePath, getHostName
 from . import ngamsFailedDownloadException
 from ngamsLib import ngamsLib, ngamsHttpUtils
 from ngamsServer import ngamsFileUtils
-
+from ngamsServer.ngamsArchiveUtils import archiving_results
 
 logger = logging.getLogger(__name__)
+
 
 def get_full_qualified_name(srvObj):
     """
@@ -78,6 +79,7 @@ def get_full_qualified_name(srvObj):
 
     # Return full qualified server name
     return fqdn
+
 
 def saveToFile(srvObj,
                ngamsCfgObj,
@@ -132,24 +134,33 @@ def saveToFile(srvObj,
         data = response.read()
         if 'FAILURE' in data:
             raise Exception(data)
-    deltaTime = time.time() - start
+    total_time = time.time() - start
+
+    # Avoid divide by zeros later on, let's say it took us 1 [us] to do this
+    if total_time == 0.0:
+        total_time = 0.000001
 
     msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
           "Rate: %.2f Bytes/s"
-    logger.info(msg, trgFilename, int(reqPropsObj.getBytesReceived()),
-                  deltaTime, (float(reqPropsObj.getBytesReceived()) / deltaTime))
+    logger.info(msg, trgFilename, int(reqPropsObj.getBytesReceived()), total_time,
+                (float(reqPropsObj.getBytesReceived()) / total_time))
 
     # now check the CRC value against what we expected
-    sourceChecksum = reqPropsObj.checksum
-    start = time.time()
-    crc = ngamsFileUtils.get_checksum(65536, trgFilename, 'crc32')
-    deltaTime = time.time() - start
-    logger.info("crc computed in %f [s]", deltaTime)
-    logger.info('source checksum: %s - current checksum: %d', str(sourceChecksum), crc)
-    if (crc != int(sourceChecksum)):
-        msg = "checksum mismatch: source=" + str(sourceChecksum) + ", received: " + str(crc)
+    checksum = reqPropsObj.checksum
+    crc_variant = reqPropsObj.checksum_plugin
+    crcstart = time.time()
+    crc = ngamsFileUtils.get_checksum(65536, trgFilename, crc_variant)
+    crctime = time.time() - crcstart
+    logger.info("crc computed in %f [s]", crctime)
+    logger.info('source checksum: %s - current checksum: %d', checksum, crc)
+    if crc != int(checksum):
+        msg = "checksum mismatch: source={:s}, received={:d}".format(checksum, crc)
         raise ngamsFailedDownloadException.FailedDownloadException(msg)
 
-    return [deltaTime, crc]
+    # We half the total time for reading and writing because we do not have
+    # enough data for an accurate measurement
+    rtime = total_time / 2.0
+    wtime = total_time / 2.0
+    readin = reqPropsObj.getBytesReceived()
 
-# EOF
+    return archiving_results(readin, rtime, wtime, crctime, total_time, crc_variant, crc)

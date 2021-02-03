@@ -191,19 +191,21 @@ def __handleCmd(srvObj, reqPropsObj):
         logger.info("Saving in staging file: %s", stgFilename)
         stagingInfo = saveInStagingFile(srvObj, srvObj.getCfg(), reqPropsObj,
                                         stgFilename, startByte)
-        reqPropsObj.incIoTime(stagingInfo[0])
-        checksumPlugIn = "ngamsGenCrc32"
-        checksum = stagingInfo[1]
+        reqPropsObj.incIoTime(stagingInfo.rtime)
+        reqPropsObj.incIoTime(stagingInfo.wtime)
+        ingest_rate = int(reqPropsObj.getSize() // stagingInfo.totaltime)
     except (ngamsFailedDownloadException.FailedDownloadException, ngamsFailedDownloadException.PostponeException):
         raise
     except Exception as e:
         if getattr(e, 'errno', 0) == 28:
             # we can't resume, otherwise the same host will be used next time
-            logger.warning("ran out of disk space during the download to %s. Marking as FAILURE", stgFilename)
-            # TBD automatically mark the volume as completed
-            # TBD try something more sophisticated with the file - other volumes on the same host?
-            #     ot at least ARCHIVE in another host avoiding the download of WAN again. This is
-            # particularly important if we just downloaded most of a 300GB file
+            logger.warning("Ran out of disk space during the download to %s. Marking as FAILURE", stgFilename)
+            # TODO: automatically mark the volume as completed
+            # TODO: try something more sophisticated with the file - other
+            #       volumes on the same host? Or at least ARCHIVE in another
+            #       host avoiding the download of WAN again. This is
+            #       particularly important if we just downloaded most of a
+            #       300GB file
             raise ngamsFailedDownloadException.FailedDownloadException(e)
         elif reqPropsObj.getBytesReceived() >= 0:
             logger.warning("the fetch has already downloaded data. marking as TORESUME")
@@ -218,8 +220,8 @@ def __handleCmd(srvObj, reqPropsObj):
 
     # Move file to final destination.
     logger.info("Moving file to final destination: %s", resDapi.getCompleteFilename())
-    ioTime = mvFile(reqPropsObj.getStagingFilename(), resDapi.getCompleteFilename())
-    reqPropsObj.incIoTime(ioTime)
+    mtime = mvFile(reqPropsObj.getStagingFilename(), resDapi.getCompleteFilename())
+    reqPropsObj.incIoTime(mtime)
 
     # Check/generate remaining file info + update in DB.
     logger.info("Creating db entry")
@@ -229,30 +231,30 @@ def __handleCmd(srvObj, reqPropsObj):
     srvObj.getDb().query2(sqlUpdate, args=(resDapi.getFileSize(), resDapi.getFileSize(), resDapi.getDiskId()))
 
     ts = srvObj.getDb().convertTimeStamp(time.time())
+    io_time = int(reqPropsObj.getIoTime() * 1000)
     sqlQuery = "INSERT INTO ngas_files " +\
-               "(disk_id, file_name, file_id, file_version, " +\
-               "format, file_size, " +\
-               "uncompressed_file_size, compression, " +\
-               "ingestion_date, %s, checksum, " % ('file_ignore' if srvObj.getCfg().getDbUseFileIgnore() else 'ignore') +\
-               "checksum_plugin, file_status, creation_date) "+\
+               "(disk_id, file_name, file_id, " +\
+               "file_version, format, file_size, " +\
+               "uncompressed_file_size, compression, ingestion_date, " +\
+               "{:s}, ".format('file_ignore' if srvObj.getCfg().getDbUseFileIgnore() else 'ignore') +\
+               "checksum, checksum_plugin, file_status, " +\
+               "creation_date, io_time, ingestion_rate) " +\
                "VALUES " +\
-               "({}, {}, {}, {}," +\
-               " {}, {}," +\
-               " {}, {}," +\
-               " {}, 0, {}," +\
-               " {}, {}, {})"
-    args = (str(resDapi.getDiskId()), str(resDapi.getRelFilename()), file_id, file_version,
-            str(resDapi.getFormat()), resDapi.getFileSize(),
-            resDapi.getUncomprSize(), str(resDapi.getCompression()),
-            ts, str(checksum),
-            checksumPlugIn, NGAMS_FILE_STATUS_OK, creDate)
+               "({}, {}, {}, " +\
+               "{}, {}, {}, " +\
+               "{}, {},  {}, " +\
+               "0, " +\
+               "{}, {}, {}, " +\
+               "{}, {}, {})"
+    args = (str(resDapi.getDiskId()), str(resDapi.getRelFilename()), file_id,
+            file_version, str(resDapi.getFormat()), resDapi.getFileSize(),
+            resDapi.getUncomprSize(), str(resDapi.getCompression()), ts,
+            str(stagingInfo.crc), stagingInfo.crcname, NGAMS_FILE_STATUS_OK,
+            creDate, io_time, ingest_rate)
     logger.info("Will try to insert the file information: %s / %r", sqlQuery, args)
     srvObj.getDb().query2(sqlQuery, args=args)
 
-    # Final log message
     logger.info("Successfully handled Archive Pull Request for data file with URI: %s",
             reqPropsObj.getSafeFileUri())
 
     return
-
-# EOF

@@ -292,7 +292,7 @@ def get_list_mirroring_tasks(currentIteration, source_node, target_node, srvObj)
     # pull out the fields from the mirroring bookkeeping table that we may need in order to fetch files.
     # the individual fields are passed around and eventually formed into a command in process_mirroring_tasks
     query = "select file_size, staging_file, rowid, "
-    query += "format, checksum, source_host, disk_id, "
+    query += "format, checksum, checksum_plugin, source_host, disk_id, "
     query += "host_id, file_version, file_id"
     query += " from ngas_mirroring_bookkeeping"
     query += " where source_host={0} and target_host={1}"
@@ -516,14 +516,15 @@ def process_mirroring_tasks(mirroring_tasks_queue,target_node,ith_thread,n_tasks
             staging_file = str(item[1])
             mimeType = str(item[3])
             checksum = str(item[4])
+            checksum_plugin = str(item[5])
             rowid = str(item[2])
-            file_id = str(item[9])
+            file_id = str(item[10])
             fileSize = str(item[0])
             fileInfo = {}
-            fileInfo['sourceHost'] = str(item[5])
-            fileInfo['diskId'] = str(item[6])
-            fileInfo['hostId'] = str(item[7])
-            fileInfo['fileVersion'] = str(item[8])
+            fileInfo['sourceHost'] = str(item[6])
+            fileInfo['diskId'] = str(item[7])
+            fileInfo['hostId'] = str(item[8])
+            fileInfo['fileVersion'] = str(item[9])
             fileInfo['fileId'] = file_id
 
             logger.info("Processing mirroring task (Target node: %s, file size: %s, Thread: %d) file info: %s",
@@ -532,6 +533,7 @@ def process_mirroring_tasks(mirroring_tasks_queue,target_node,ith_thread,n_tasks
             reqPropObj = ngamsReqProps.ngamsReqProps()
             reqPropObj.setMimeType(mimeType)
             reqPropObj.checksum = checksum
+            reqPropObj.checksum_plugin = checksum_plugin
             reqPropObj.fileinfo = fileInfo
             reqPropObj.setSize(fileSize)
 
