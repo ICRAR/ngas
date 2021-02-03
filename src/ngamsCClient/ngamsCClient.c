@@ -344,7 +344,11 @@ int main (int argc, char*  argv[])
 	    timeOut = atof(argv[i]);
 	    }
 	else if (strcmp(tmpPar, "-V") == 0)
-	    printf("\nNOTE: Command line option -v is not yet implemented!\n");
+	{
+	    if (++i == argc) goto correctUsage;
+	    if (*argv[i] == '-') goto correctUsage;
+	    ngamsSetVerboseLevel(atoi(argv[i]));
+	}
 	else if (strcmp(tmpPar, "-VERSION") == 0)
 	    {
 	    printf("%s\n", ngamsVersion());
