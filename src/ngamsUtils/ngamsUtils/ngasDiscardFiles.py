@@ -72,6 +72,10 @@ from ngamsLib.ngamsCore import getHostName, rmFile, NGAMS_SUCCESS, NGAMS_DISCARD
 from ngamsPClient import ngamsPClient
 import ngasUtilsLib
 
+LOGGING_FORMAT = "%(asctime)s %(processName)-20.20s %(levelname)-8.8s - %(message)s"
+LOGGING_FILE_PATH = os.path.join(os.getcwd(), "ngas-discard-files.log")
+logging.basicConfig(filename=LOGGING_FILE_PATH, format=LOGGING_FORMAT, level="DEBUG")
+logging.getLogger(__name__).addHandler(logging.StreamHandler())
 logger = logging.getLogger(__name__)
 
 

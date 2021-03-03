@@ -43,12 +43,17 @@ then generate a file list internally from this.
 """
 
 import logging
+import os
 import sys
 
 from ngamsLib.ngamsCore import NGAMS_CHECKFILE_CMD, NGAMS_FAILURE, NGAMS_SUCCESS
 from ngamsPClient import ngamsPClient
 import ngasUtilsLib
 
+LOGGING_FORMAT = "%(asctime)s %(processName)-20.20s %(levelname)-8.8s - %(message)s"
+LOGGING_FILE_PATH = os.path.join(os.getcwd(), "ngas-check-file-list.log")
+logging.basicConfig(filename=LOGGING_FILE_PATH, format=LOGGING_FORMAT, level="DEBUG")
+logging.getLogger(__name__).addHandler(logging.StreamHandler())
 logger = logging.getLogger(__name__)
 
 

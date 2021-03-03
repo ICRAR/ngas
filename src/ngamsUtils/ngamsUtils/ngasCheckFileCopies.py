@@ -43,6 +43,7 @@ For each file found on the disk, the following output is generated:
 
 import base64
 import logging
+import os
 import sys
 
 from ngamsLib import ngamsDb
@@ -50,6 +51,10 @@ from ngamsLib import ngamsDbCore
 from ngamsLib import ngamsLib
 import ngasUtilsLib
 
+LOGGING_FORMAT = "%(asctime)s %(processName)-20.20s %(levelname)-8.8s - %(message)s"
+LOGGING_FILE_PATH = os.path.join(os.getcwd(), "ngas-check-file-copies.log")
+logging.basicConfig(filename=LOGGING_FILE_PATH, format=LOGGING_FORMAT, level="DEBUG")
+logging.getLogger(__name__).addHandler(logging.StreamHandler())
 logger = logging.getLogger(__name__)
 
 

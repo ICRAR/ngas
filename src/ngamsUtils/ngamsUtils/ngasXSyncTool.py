@@ -61,7 +61,8 @@ from ngamsPClient import ngamsPClient
 import ngasUtilsLib
 
 LOGGING_FORMAT = "%(asctime)s %(processName)-20.20s %(levelname)-8.8s - %(message)s"
-logging.basicConfig(filename="/home/aog/ngasXSyncTool.log", format=LOGGING_FORMAT, level="DEBUG")
+LOGGING_FILE_PATH = os.path.join(os.getcwd(), "ngas-xsync-tool.log")
+logging.basicConfig(filename=LOGGING_FILE_PATH, format=LOGGING_FORMAT, level="DEBUG")
 logging.getLogger(__name__).addHandler(logging.StreamHandler())
 logger = logging.getLogger(__name__)
 

@@ -45,10 +45,13 @@ import traceback
 from ngamsLib.ngamsCore import getHostName
 from ngamsLib import ngamsDiskInfo
 from ngamsLib import ngamsFileInfo
-from ngamsLib import ngamsLib
 from ngamsPClient import ngamsPClient
 import ngasUtilsLib
 
+LOGGING_FORMAT = "%(asctime)s %(processName)-20.20s %(levelname)-8.8s - %(message)s"
+LOGGING_FILE_PATH = os.path.join(os.getcwd(), "ngas-verify-cloning.log")
+logging.basicConfig(filename=LOGGING_FILE_PATH, format=LOGGING_FORMAT, level="DEBUG")
+logging.getLogger(__name__).addHandler(logging.StreamHandler())
 logger = logging.getLogger(__name__)
 
 # SQL values indices
@@ -239,7 +242,6 @@ def check_cloning(source_disk_id, auto_clone):
 
         # 2. Check that the size is correct
         source_file_size = file_info[INDEX_FILE_SIZE]
-        # target_file_size = ngamsLib.getFileSize(target_file_path)
         target_file_size = os.path.getsize(target_file_path)
         if source_file_size != target_file_size:
             check_report += "Wrong size of target file: {:s}\n".format(str(file_info))
