@@ -44,7 +44,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data={
-        'ngamsUtils' : ['README', 'sql/*.sql', 'src/*.sql', 'test/ref/*', 'test/src/*.eml']
+        'ngamsUtils' : ['README']
     },
     install_requires=['ngamsCore'],
     entry_points= {
