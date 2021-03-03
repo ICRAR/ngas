@@ -56,7 +56,17 @@ for f in src/ngamsPlugIns/ngamsPlugIns/*.py; do
 	import_statements+="import ngamsPlugIns.${f%%.py}; "
 done
 
-echo "Starting import of plugins code"
+# Try to simply import the utility modules
+# This increases our coverage by a not-too-small amount
+for f in src/ngamsUtils/ngamsUtils/*.py; do
+	f=`basename $f`
+	if [[ $f == __init__.py ]]; then
+		continue
+	fi
+	import_statements+="import ngamsUtils.${f%%.py}; "
+done
+
+echo "Starting import of plugins and utilities code"
 coverage run -p <(echo $import_statements) || fail "Importing plugins failed"
 coverage combine || fail "Failed to combine coverage information"
 
