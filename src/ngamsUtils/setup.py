@@ -31,7 +31,7 @@ with open('../../VERSION') as vfile:
             break
 
 setup(
-    name='ngasUtils',
+    name='ngamsUtils',
     version=version,
     description="The python package containing the NGAS utility python scripts",
     long_description="The python package containing the NGAS utility python scripts",
@@ -44,7 +44,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data={
-        'ngasUtils' : ['README', 'sql/*.sql', 'src/*.sql', 'test/ref/*', 'test/src/*.eml']
+        'ngamsUtils' : ['README', 'sql/*.sql', 'src/*.sql', 'test/ref/*', 'test/src/*.eml']
     },
     install_requires=['ngamsCore'],
     entry_points= {
