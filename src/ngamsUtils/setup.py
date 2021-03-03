@@ -49,11 +49,11 @@ setup(
     install_requires=['ngamsCore'],
     entry_points= {
         'console_scripts':[
-            'ngas-check-file-list=ngasUtils.src.ngasCheckFileList:main',
-            'ngas-check-file-copies=ngasUtils.src.ngasCheckFileCopies:main',
-            'ngas-discard-files=ngasUtils.src.ngasDiscardFiles:main',
-            'ngas-verify-cloning=ngasUtils.src.ngasVerifyCloning:main',
-            'ngas-xsync-tool=ngasUtils.src.ngasXSyncTool:main'
+            'ngas-check-file-list=ngamsUtils.ngasCheckFileList:main',
+            'ngas-check-file-copies=ngamsUtils.ngasCheckFileCopies:main',
+            'ngas-discard-files=ngamsUtils.ngasDiscardFiles:main',
+            'ngas-verify-cloning=ngamsUtils.ngasVerifyCloning:main',
+            'ngas-xsync-tool=ngamsUtils.ngasXSyncTool:main'
         ],
     }
 )
