@@ -124,7 +124,7 @@ pip install 'astropy' || warning "Failed to install astropy via pip"
 # I haven't decided on either yet, but I think the first one
 # makes more sense given that nobody is really using the client only,
 # and most of the dependencies are on the ngamsCore package anyway
-for pyModule in ngamsCore ngamsPClient ngamsServer ngamsPlugIns
+for pyModule in ngamsCore ngamsPClient ngamsServer ngamsPlugIns ngamsUtils
 do
 	prevDir=$(pwd -P)
 	cd "$pyModule"

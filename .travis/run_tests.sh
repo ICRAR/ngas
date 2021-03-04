@@ -67,7 +67,7 @@ for f in src/ngamsUtils/ngamsUtils/*.py; do
 done
 
 echo "Starting import of plugins and utilities code"
-coverage run -p <(echo $import_statements) || fail "Importing plugins failed"
+coverage run -p <(echo $import_statements) || fail "Importing plugins and utilities failed"
 coverage combine || fail "Failed to combine coverage information"
 
 # These are the user/dbname/passwd that we created on run_build
