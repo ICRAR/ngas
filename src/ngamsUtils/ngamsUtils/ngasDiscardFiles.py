@@ -70,7 +70,7 @@ import tempfile
 
 from ngamsLib.ngamsCore import getHostName, rmFile, NGAMS_SUCCESS, NGAMS_DISCARD_CMD
 from ngamsPClient import ngamsPClient
-import ngasUtilsLib
+from . import ngasUtilsLib
 
 LOGGING_FORMAT = "%(asctime)s %(processName)-20.20s %(levelname)-8.8s - %(message)s"
 LOGGING_FILE_PATH = os.path.join(os.getcwd(), "ngas-discard-files.log")

@@ -49,7 +49,7 @@ import sys
 from ngamsLib import ngamsDb
 from ngamsLib import ngamsDbCore
 from ngamsLib import ngamsLib
-import ngasUtilsLib
+from . import ngasUtilsLib
 
 LOGGING_FORMAT = "%(asctime)s %(processName)-20.20s %(levelname)-8.8s - %(message)s"
 LOGGING_FILE_PATH = os.path.join(os.getcwd(), "ngas-check-file-copies.log")

@@ -46,7 +46,7 @@ from ngamsLib.ngamsCore import getHostName
 from ngamsLib import ngamsDiskInfo
 from ngamsLib import ngamsFileInfo
 from ngamsPClient import ngamsPClient
-import ngasUtilsLib
+from . import ngasUtilsLib
 
 LOGGING_FORMAT = "%(asctime)s %(processName)-20.20s %(levelname)-8.8s - %(message)s"
 LOGGING_FILE_PATH = os.path.join(os.getcwd(), "ngas-verify-cloning.log")
