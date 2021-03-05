@@ -1272,7 +1272,7 @@ def execute(param_dict):
     logger.info("Entering execute() ...")
 
     if param_dict["help"]:
-        print correct_usage()
+        print(correct_usage())
         sys.exit(0)
     ngasUtilsLib.get_check_access_code(get_option_dict())
 

@@ -154,7 +154,7 @@ def discard_files(file_list_file, execute, notification_email):
         for statInfo in success_stat_list:
             report += "{:s}: {:s}\n".format(statInfo[0], statInfo[1].getMessage())
     report += "\n# EOF\n"
-    print "\n" + report
+    print("\n" + report)
     if notification_email:
         ngasUtilsLib.send_email("ngasDiscardFiles: FILE DISCARD REPORT", notification_email, report)
 
@@ -206,7 +206,7 @@ def main():
             index += 1
         except Exception as e:
             print("\nProblem executing the File Discard Tool: {:s}\n".format(str(e)))
-            print correct_usage()
+            print(correct_usage())
             sys.exit(1)
 
     if notification_email is None:
@@ -217,7 +217,7 @@ def main():
         ngasUtilsLib.dcc_message_to_file_list(dcc_message_file, file_list_file)
     try:
         if not file_list_file:
-            print correct_usage()
+            print(correct_usage())
             raise Exception("Incorrect command line parameter(s) given!")
         if not access_code:
             access_code = ngasUtilsLib.console_input("Enter Access Code:")
