@@ -32,11 +32,11 @@ Utility functions used by the tool in the NGAS Utils module
 """
 
 import base64
-import commands
 import getpass
 import glob
 import logging
 import os
+import shutil
 import smtplib
 import time
 
@@ -363,6 +363,22 @@ def parse_file_list(file_list_file):
     return file_reference_list
 
 
+def remove_recursively(path):
+    """
+    Remove files, links and directories recursively for a given path
+
+    :param path: File system path
+    """
+    if not os.path.exists(path):
+        return
+    if os.path.isfile(path):
+        os.remove(path)
+    elif os.path.islink(path):
+        os.unlink(path)
+    else:
+        shutil.rmtree(path)
+
+
 def check_delete_tmp_directories(directory_name_pattern, time_out=600):
     """
     Check if there are temporary directories files according to the given pattern, which are older than the time out
@@ -376,8 +392,8 @@ def check_delete_tmp_directories(directory_name_pattern, time_out=600):
         last_path = glob_file.split("/")[-1]
         if last_path != "." and last_path != "..":
             creation_time = getFileCreationTime(glob_file)
-            if time.time() - creation_time > time_out:
-                commands.getstatusoutput("rm -rf " + glob_file)
+            if (time.time() - creation_time) > time_out:
+                remove_recursively(glob_file)
 
 
 def check_server_running(host=None, port=8001):
