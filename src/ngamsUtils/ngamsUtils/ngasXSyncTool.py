@@ -462,9 +462,8 @@ def _get_cluster_nodes(connection, cluster_id):
     :param cluster_id: NGAS Cluster ID (string)
     :return: List of NGAS Host IDs of the nodes in the cluster (list)
     """
-    sql = "select host_id from ngas_hosts where cluster_name='{:s}'".format(cluster_id)
-    # result = connection.query(sql, ignoreEmptyRes=0)
-    result = connection.query2(sql)
+    sql = "select host_id from ngas_hosts where cluster_name='{0}'"
+    result = connection.query2(sql, args=(cluster_id))
     if len(result) == 0:
         return []
     else:
@@ -1053,10 +1052,9 @@ def get_cluster_ready_naus(connection, target_cluster):
     :return: List of NAUs (list)
     """
     sql = "select host_id, srv_port from ngas_hosts " \
-          "where cluster_name = '{:s}' and host_id in " \
+          "where cluster_name = '{0}' and host_id in " \
           "(select host_id from ngas_disks where completed = 0 and mounted = 1) order by host_id"
-    sql = sql.format(target_cluster)
-    result = connection.query2(sql)
+    result = connection.query2(sql, args=(target_cluster))
     if result == [[]]:
         return []
     else:
@@ -1077,8 +1075,8 @@ def get_cluster_nodes(connection, target_cluster):
                 2. String buffer with comma separated list of hostnames
                 3. String buffer with a comma separated list of host:port pairs (tuple)
     """
-    sql = "select host_id, srv_port from ngas_hosts where cluster_name = '{:s}'".format(target_cluster)
-    result = connection.query2(sql)
+    sql = "select host_id, srv_port from ngas_hosts where cluster_name = '{0}'"
+    result = connection.query2(sql, args=(target_cluster))
     if result == [[]]:
         return []
     else:
@@ -1111,10 +1109,9 @@ def check_if_file_in_target_cluster(connection, cluster_nodes, file_id, file_ver
 
     sql = "select nf.disk_id, nf.file_id, nf.file_version " \
           "from ngas_files nf, ngas_disks nd " \
-          "where nf.file_id = '{:s}' and nf.file_version = {:d} and nf.disk_id = nd.disk_id " \
-          "and (nd.host_id in ({:s}) or nd.last_host_id in ({:s}))"
-    sql = sql.format(file_id, file_version, cluster_nodes_sql, cluster_nodes_sql)
-    result = connection.query2(sql)
+          "where nf.file_id = '{0}' and nf.file_version = {1} and nf.disk_id = nd.disk_id " \
+          "and (nd.host_id in ({2}) or nd.last_host_id in ({3}))"
+    result = connection.query2(sql, args=(file_id, file_version, cluster_nodes_sql, cluster_nodes_sql))
     if len(result):
         disk_id, file_id, file_version = result[0][0]
         msg = "Leaving check_if_file_in_target_cluster() (OK: Disk ID: %s, File ID: %s, File Version: %s"
