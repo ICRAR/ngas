@@ -46,7 +46,7 @@ setup(
     package_data={
         'ngamsUtils' : ['README']
     },
-    install_requires=['ngamsCore'],
+    install_requires=['ngamsCore', 'ngamsPClient'],
     entry_points= {
         'console_scripts':[
             'ngas-check-file-list=ngamsUtils.ngasCheckFileList:main',
