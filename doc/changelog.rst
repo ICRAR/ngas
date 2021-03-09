@@ -81,6 +81,10 @@ Changelog
 * Added new partner sites feature that provides the capability of configuring
   a remote NGAS cluster as a proxy for retrieving files that are not available
   in the local NGAS cluster.
+* Fixed the mirroring plugin modules: `ngamsCmd_HTTPFETCH.py`,
+  `ngamsCmd_MIRRARCHIVE.py`, `ngamsCmd_MIRREXEC.py` and `ngamsCmd_MIRRTABLE.py`
+* Ported NGAS utility scripts: `ngasCheckFileCopies.py`, `ngasCheckFileList.py`
+  `ngasDiscardFiles.py`, `ngasVerifyCloning.py` and `ngasXSyncTool.py`
 
 .. rubric:: 11.0.2
 
