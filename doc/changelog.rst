@@ -85,6 +85,10 @@ Changelog
   `ngamsCmd_MIRRARCHIVE.py`, `ngamsCmd_MIRREXEC.py` and `ngamsCmd_MIRRTABLE.py`
 * Ported NGAS utility scripts: `ngasCheckFileCopies.py`, `ngasCheckFileList.py`
   `ngasDiscardFiles.py`, `ngasVerifyCloning.py` and `ngasXSyncTool.py`
+* Fixed an issue with the subscription mechanism,
+  where upstream files with checksum values
+  calculated with checksum variants other than ``crc32``
+  failed to be pushed downstream.
 
 .. rubric:: 11.0.2
 

@@ -431,6 +431,25 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             return res[0][0]
         return None
 
+    def getFileChecksumValueAndVariant(self, diskId, fileId, fileVersion):
+        """
+        Get the checksum value and variant for the file.
+
+        diskId:         ID of disk hosting the file (string).
+
+        fileId:         ID of file to be deleted. No wildcards accepted
+                        (string).
+
+        fileVersion:    Version of file to delete (integer)
+
+        Returns:        checksum (string | None).
+        """
+        sql = "SELECT checksum, checksum_plugin FROM ngas_files WHERE file_id={0} AND file_version={1} AND disk_id={2}"
+        res = self.query2(sql, args=(fileId, fileVersion, diskId)) # throw exception if an empty record
+        if res:
+            return res[0]
+        return None, None
+
 
     def getIngDate(self,
                    diskId,

@@ -740,12 +740,16 @@ def _deliveryThread(srvObj,
                         else:
                             raise Exception(str(jpiCode) + NGAS_JOB_DELIMIT + jpiResult)
                     else:
-                        fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
-                        if fileChecksum is None:
+                        checksum, checksum_variant = srvObj.getDb().getFileChecksumValueAndVariant(diskId, fileId, fileVersion)
+                        if checksum is None:
                             logger.warning('Fail to get file checksum for file %s', fileId)
 
                         # TODO: validate the URL before blindly using it
-                        hdrs = {NGAMS_HTTP_HDR_CHECKSUM: fileChecksum}
+                        hdrs = {}
+                        pars = []
+                        if checksum is not None:
+                            hdrs[NGAMS_HTTP_HDR_CHECKSUM] = checksum
+                            pars.append(('crc_variant', checksum_variant))
                         if fileInfoObjHdr:
                             hdrs[NGAMS_HTTP_HDR_FILE_INFO] = fileInfoObjHdr
 
@@ -759,7 +763,7 @@ def _deliveryThread(srvObj,
                                    ngamsHttpUtils.httpPostUrl(sendUrl, f, fileMimeType,
                                                         contDisp=contDisp,
                                                         auth=authHdr,
-                                                        hdrs=hdrs,
+                                                        hdrs=hdrs, pars=pars,
                                                         timeout=120)
                         stat.clear()
                         if data:
