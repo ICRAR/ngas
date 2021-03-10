@@ -51,6 +51,11 @@ try:
 except ImportError:
     ssl = None
 
+try:
+    import crc32c
+except ImportError:
+    crc32c = None
+
 class ngamsSubscriptionTest(ngamsTestSuite):
     """
     Synopsis:
@@ -86,15 +91,18 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         return self.prepCluster(server_list, cert_file=cert_file)
 
-    def test_basic_subscription(self):
+    def _test_basic_subscription(self, crc_method):
 
         # We configure the second server to send notifications via socket
         # to the listener we start later
-        self._prep_subscription_cluster(8888, (8889, [], True))
+        servers = self._prep_subscription_cluster(8888, (8889, [], True))
+        db = servers['%s:8888' % getHostName()][1]
 
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
 
-        subscription_listener = self.upload_subscription_files(8888, 8889)
+        subscription_listener = self.upload_subscription_files(
+            8888, 8889, pars=[('crc_variant', crc_method)]
+        )
 
         # Create subscription
         params = {'url': 'http://localhost:8889/QARCHIVE',
@@ -107,6 +115,23 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         self.check_subscription_transfer(subscription_listener, 8889)
 
+        # Both versions have the same checksum, regardless of the crc variant
+        checksums = db.query2("SELECT checksum from ngas_files where file_id = 'SmallFile.fits'")
+        self.assertEqual(2, len(checksums))
+        self.assertEqual(1, len(set(checksums)), 'not only one checksum: %r' % (checksums,))
+
+        # Both versions use the same checksum variant, which is the same we intended to use
+        checksum_variants = db.query2("SELECT checksum_plugin from ngas_files where file_id = 'SmallFile.fits'")
+        self.assertEqual(2, len(checksum_variants))
+        self.assertEqual(1, len(set(checksum_variants)), 'not only one checksum_variant %r' % (checksum_variants,))
+        self.assertEqual(crc_method, checksum_variants[0][0])
+        self.terminateAllServer()
+
+    def test_basic_subscription(self):
+        self._test_basic_subscription('crc32')
+        self._test_basic_subscription('crc32z')
+        if crc32c:
+            self._test_basic_subscription('crc32c')
 
     def test_basic_subscription_fail(self):
 
@@ -404,9 +429,9 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         # Note that as the cleanup will run here, the cleanup via offline will
         # fail due to unknown CA, so the servers will be killed instead
 
-    def upload_subscription_files(self, start_port, end_port):
+    def upload_subscription_files(self, start_port, end_port, pars=[]):
         # Initial archiving
-        self.qarchive(start_port, 'src/SmallFile.fits', mimeType='application/octet-stream')
+        self.qarchive(start_port, 'src/SmallFile.fits', mimeType='application/octet-stream', pars=pars)
 
         # Version 2 of the file should only exist after
         # subscription transfer is successful.
