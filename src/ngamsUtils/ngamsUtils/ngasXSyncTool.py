@@ -463,7 +463,7 @@ def _get_cluster_nodes(connection, cluster_id):
     :return: List of NGAS Host IDs of the nodes in the cluster (list)
     """
     sql = "select host_id from ngas_hosts where cluster_name='{0}'"
-    result = connection.query2(sql, args=(cluster_id))
+    result = connection.query2(sql, args=(cluster_id,))
     if len(result) == 0:
         return []
     else:
@@ -1054,7 +1054,7 @@ def get_cluster_ready_naus(connection, target_cluster):
     sql = "select host_id, srv_port from ngas_hosts " \
           "where cluster_name = '{0}' and host_id in " \
           "(select host_id from ngas_disks where completed = 0 and mounted = 1) order by host_id"
-    result = connection.query2(sql, args=(target_cluster))
+    result = connection.query2(sql, args=(target_cluster,))
     if result == [[]]:
         return []
     else:
@@ -1076,7 +1076,7 @@ def get_cluster_nodes(connection, target_cluster):
                 3. String buffer with a comma separated list of host:port pairs (tuple)
     """
     sql = "select host_id, srv_port from ngas_hosts where cluster_name = '{0}'"
-    result = connection.query2(sql, args=(target_cluster))
+    result = connection.query2(sql, args=(target_cluster,))
     if result == [[]]:
         return []
     else:
