@@ -92,6 +92,10 @@ Changelog
 * Fixed logging of C utilities,
   and implemented the logic behind the ``-v`` flag
   of the ``ngamsCClient`` program.
+* Improved error message sent back by the ``REGISTER`` command
+  when registration of a file
+  with a MIME type with no configured plug-in
+  is requested.
 
 .. rubric:: 11.0.2
 

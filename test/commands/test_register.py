@@ -56,11 +56,15 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
     - Unknown mime-type.
     """
 
-    def copy_and_register(self, file_suffix='', **extra_params):
+    def copy_to_ngas(self, file_suffix=''):
         srcFile = "src/SmallFile.fits"
         tmpSrcFile = self.ngas_path("FitsStorage2-Main-3/saf/test/SmallFile.fits" + file_suffix)
         checkCreatePath(os.path.dirname(tmpSrcFile))
         self.cp(srcFile, tmpSrcFile)
+        return tmpSrcFile
+
+    def copy_and_register(self, file_suffix='', **extra_params):
+        tmpSrcFile = self.copy_to_ngas(file_suffix=file_suffix)
         return self.get_status(NGAMS_REGISTER_CMD, (("path", tmpSrcFile),) + tuple(extra_params.items()))
 
     def test_RegisterCmd_1(self):
@@ -115,3 +119,10 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         self.prepExtSrv(cfgProps=cfg)
         self.copy_and_register(file_suffix='.log')
         self.retrieve('SmallFile.fits.log', targetFile=tmp_path())
+
+    def test_register_invalid_mime_type(self):
+        '''Tests registering with an invalid mime type fails with a meaningful message'''
+        self.prepExtSrv()
+        fname = self.copy_to_ngas(file_suffix=".log")
+        status = self.get_status_fail(NGAMS_REGISTER_CMD, (("path", fname),))
+        self.assertIn("mime-type", status.getMessage().lower())

@@ -179,7 +179,10 @@ def _registerExec(srvObj,
 
         # Register the file. Check first, that exactly this file is
         # not already registered. In case it is, the file will be rejected.
-        regPi = srvObj.getCfg().register_plugins[mimeType]
+        try:
+            regPi = srvObj.cfg.register_plugins[mimeType]
+        except KeyError:
+            raise ValueError("No registration plug-in defined for mime-type '%s'" % (mimeType,))
         logger.debug("Plugin found for %s: %s", mimeType, regPi)
         params = ngamsPlugInApi.parseRawPlugInPars(regPi.pars)
         tmpReqPropsObj = ngamsReqProps.ngamsReqProps().\
