@@ -576,7 +576,7 @@ def register(srvObj,
                  NGAMS_VOLUME_ID_FILE, \
                  NGAMS_VOLUME_INFO_FILE]:
                     mimeType = ngamsLib.detMimeType(mimeTypeMappings,
-                                                    nextFile, 0)
+                                                    nextFile, 1)
                     tmpFileInfo = [os.path.join(root,nextFile),
                                     mtPt2DiskInfo[mtPt].getDiskId(),
                                     mimeType]
