@@ -44,6 +44,7 @@ import hashlib
 import logging
 import os
 import random
+import signal
 import sys
 import time
 import traceback
@@ -66,8 +67,7 @@ logging.basicConfig(filename=LOGGING_FILE_PATH, format=LOGGING_FORMAT, level="DE
 logging.getLogger(__name__).addHandler(logging.StreamHandler())
 logger = logging.getLogger(__name__)
 
-_document =\
-"""
+_document = """
 The NGAS Express Synchronization Tool, ngasXSyncTool, is used to carry out
 bulk data mirroring or cloning within the NGAS System in an efficient manner.
 
@@ -295,19 +295,6 @@ _options = [
 
 _option_dict, _option_document = ngasUtilsLib.generate_options_dictionary_and_document(_options)
 __doc__ = _document.format(_option_document)
-sync_thread_group = None
-
-
-def signal_handler(signum, frame):
-    """
-    Signal handler to set exit flag
-    :param signum: Signal numerical value
-    :param frame: ???
-    :return: None
-    """
-    logger.fatal("Signal handler called with signal %d", signum)
-    if sync_thread_group is not None:
-        sync_thread_group.stop()
 
 
 class NgasSyncRequest:
@@ -1115,23 +1102,24 @@ def check_if_file_in_target_cluster(connection, cluster_nodes, file_id, file_ver
     """
     logger.debug("Entering check_if_file_in_target_cluster() ...")
 
-    # Reformat the cluster node list to a string for passing into the SQL statement
-    # It should be in the format "'ngas04:7777','ngas04:7778'"
-    cluster_nodes_sql = str(cluster_nodes.split(',')).replace('[', '').replace(']', '')
-
     # FIXME: this fails to format the SQL query probably because we are inserting a list of nodes
+    # cluster_nodes_list = cluster_nodes.split(',')
     # sql = "select nf.disk_id, nf.file_id, nf.file_version " \
     #       "from ngas_files nf, ngas_disks nd " \
     #       "where nf.file_id = {0} and nf.file_version = {1} and nf.disk_id = nd.disk_id " \
     #       "and (nd.host_id in ({2}) or nd.last_host_id in ({3}))"
-    # result = connection.query2(sql, args=(file_id, file_version, cluster_nodes_sql, cluster_nodes_sql))
+    # result = connection.query2(sql, args=(file_id, file_version, cluster_nodes_list, cluster_nodes_list))
 
+    # Reformat the cluster node list to a string for passing into the SQL statement
+    # It should be in the format "'ngas04:7777','ngas04:7778'"
+    cluster_nodes_sql = str(cluster_nodes.split(',')).replace('[', '').replace(']', '')
     sql = "select nf.disk_id, nf.file_id, nf.file_version " \
           "from ngas_files nf, ngas_disks nd " \
           "where nf.file_id = '{:s}' and nf.file_version = {:d} and nf.disk_id = nd.disk_id " \
           "and (nd.host_id in ({:s}) or nd.last_host_id in ({:s}))"
     sql = sql.format(file_id, file_version, cluster_nodes_sql, cluster_nodes_sql)
     result = connection.query2(sql, ())
+
     if len(result):
         disk_id, file_id, file_version = result[0]
         logger.debug("Leaving check_if_file_in_target_cluster() (OK: Disk ID: %s, File ID: %s, File Version: %s",
@@ -1301,8 +1289,24 @@ def execute(param_dict):
         streams = int(param_dict[PAR_STREAMS]) + 1
     else:
         streams = int(param_dict[PAR_STREAMS])
-    global sync_thread_group
+
     sync_thread_group = ngamsThreadGroup.ngamsThreadGroup(param_dict[PAR_SESSION_ID], sync_thread, streams, [param_dict])
+
+    def signal_handler(signum, frame):
+        """
+        Signal handler to set exit flag
+        :param signum: Signal numerical value
+        :param frame: ???
+        :return: None
+        """
+        logger.fatal("Signal handler called with signal %d", signum)
+        if sync_thread_group is not None:
+            sync_thread_group.stop()
+
+    signal.signal(signal.SIGHUP, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     sync_thread_group.start()
 
     # Generate final report if requested
