@@ -1103,22 +1103,19 @@ def check_if_file_in_target_cluster(connection, cluster_nodes, file_id, file_ver
     logger.debug("Entering check_if_file_in_target_cluster() ...")
 
     # FIXME: this fails to format the SQL query probably because we are inserting a list of nodes
-    # cluster_nodes_list = cluster_nodes.split(',')
-    # sql = "select nf.disk_id, nf.file_id, nf.file_version " \
-    #       "from ngas_files nf, ngas_disks nd " \
-    #       "where nf.file_id = {0} and nf.file_version = {1} and nf.disk_id = nd.disk_id " \
-    #       "and (nd.host_id in ({2}) or nd.last_host_id in ({3}))"
-    # result = connection.query2(sql, args=(file_id, file_version, cluster_nodes_list, cluster_nodes_list))
-
-    # Reformat the cluster node list to a string for passing into the SQL statement
-    # It should be in the format "'ngas04:7777','ngas04:7778'"
-    cluster_nodes_sql = str(cluster_nodes.split(',')).replace('[', '').replace(']', '')
+    cluster_nodes_list = cluster_nodes.split(',')
+    num_nodes = len(cluster_nodes_list)
+    count = 2
+    bind_names_1 = ["{" + str(count + i) + "}" for i in range(num_nodes)]
+    count = num_nodes + 2
+    bind_names_2 = ["{" + str(count + i) + "}" for i in range(num_nodes)]
     sql = "select nf.disk_id, nf.file_id, nf.file_version " \
           "from ngas_files nf, ngas_disks nd " \
-          "where nf.file_id = '{:s}' and nf.file_version = {:d} and nf.disk_id = nd.disk_id " \
-          "and (nd.host_id in ({:s}) or nd.last_host_id in ({:s}))"
-    sql = sql.format(file_id, file_version, cluster_nodes_sql, cluster_nodes_sql)
-    result = connection.query2(sql, ())
+          "where nf.file_id = {0} and nf.file_version = {1} and nf.disk_id = nd.disk_id " \
+          "and (nd.host_id in ({bind_names_1}) or nd.last_host_id in ({bind_names_2}))".format("{0}", "{1}",
+          bind_names_1=",".join(bind_names_1), bind_names_2=",".join(bind_names_2))
+    args = [file_id, file_version] + cluster_nodes_list + cluster_nodes_list
+    result = connection.query2(sql, args)
 
     if len(result):
         disk_id, file_id, file_version = result[0]
