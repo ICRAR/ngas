@@ -167,14 +167,6 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         msg = "Incorrect info in DB for registered file"
         self.assert_status_ref_file(file_info_ref, tmp_file_obj, msg=msg)
 
-    def test_register_no_params(self):
-        '''Tests that a register plugin without parameters can work'''
-        cfg = (('NgamsCfg.Register[1].PlugIn[2].Name', 'test.support.generic_register_plugin'),
-               ('NgamsCfg.Register[1].PlugIn[2].MimeType[1].Name', 'ngas/log'))
-        self.prepExtSrv(cfgProps=cfg)
-        self.copy_and_register(file_suffix='.log')
-        self.retrieve('SmallFile.fits.log', targetFile=tmp_path())
-
     def test_register_generic_plugin(self):
         """Tests that a register plugin without parameters can work"""
         cfg = (('NgamsCfg.Register[1].PlugIn[2].Name', 'ngamsPlugIns.ngamsRegisterGenericPlugIn'),
