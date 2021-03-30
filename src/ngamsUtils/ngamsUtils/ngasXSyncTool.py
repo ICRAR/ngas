@@ -44,6 +44,7 @@ import hashlib
 import logging
 import os
 import random
+import signal
 import sys
 import time
 import traceback
@@ -51,7 +52,7 @@ import getpass
 
 from ngamsLib.ngamsCore import checkCreatePath, getHostName, mvFile, rmFile, NGAMS_CHECKFILE_CMD, NGAMS_CLONE_CMD, \
     NGAMS_FAILURE
-from ngamsLib import ngamsDb
+from ngamsLib import ngamsDbCore
 from ngamsLib import ngamsDbm
 from ngamsLib import ngamsDiskInfo
 from ngamsLib import ngamsLib
@@ -66,8 +67,7 @@ logging.basicConfig(filename=LOGGING_FILE_PATH, format=LOGGING_FORMAT, level="DE
 logging.getLogger(__name__).addHandler(logging.StreamHandler())
 logger = logging.getLogger(__name__)
 
-_document =\
-"""
+_document = """
 The NGAS Express Synchronization Tool, ngasXSyncTool, is used to carry out
 bulk data mirroring or cloning within the NGAS System in an efficient manner.
 
@@ -429,10 +429,10 @@ def get_lock_file(param_dict):
     :param param_dict: Dictionary with parameters (dictionary)
     :return: Lock filename (string)
     """
-    logger.info("Entering get_lock_file() ...")
+    logger.debug("Entering get_lock_file() ...")
     lock_file = os.path.normpath(os.path.join(param_dict[PAR_WORKING_DIR], param_dict[PAR_SESSION_ID],
                                               "{:s}.lock".format(NGAS_XSYNC_TOOL)))
-    logger.info("Leaving get_lock_file()")
+    logger.debug("Leaving get_lock_file()")
     return lock_file
 
 
@@ -444,10 +444,10 @@ def _add_in_file_dbm(file_list_generator, queue_dbm):
     :param queue_dbm: DBM in which to add the file info (ngamsDbm)
     """
     for sql_file_info in file_list_generator:
-        disk_id = sql_file_info[ngamsDb.SUM1_DISK_ID]
-        file_id = sql_file_info[ngamsDb.SUM1_FILE_ID]
-        file_version = int(sql_file_info[ngamsDb.SUM1_VERSION])
-        file_size = float(sql_file_info[ngamsDb.SUM1_FILE_SIZE])
+        disk_id = sql_file_info[ngamsDbCore.SUM1_DISK_ID]
+        file_id = sql_file_info[ngamsDbCore.SUM1_FILE_ID]
+        file_version = int(sql_file_info[ngamsDbCore.SUM1_VERSION])
+        file_size = float(sql_file_info[ngamsDbCore.SUM1_FILE_SIZE])
         sync_req = NgasSyncRequest(disk_id, file_id, file_version, file_size)
         key = ngamsLib.genFileKey(None, file_id, file_version)
         logger.info("DBM: Adding entry in Tmp Queue DBM with key: %s", key)
@@ -488,7 +488,7 @@ def initialize(param_dict):
 
     :param param_dict: Dictionary with parameters (dictionary)
     """
-    logger.info("Entering initialize() ...")
+    logger.debug("Entering initialize() ...")
 
     # Extra checks of command line options
     # =Rule 1: Can only specify one of: cluster-id, disk-id, host_id and file-list
@@ -666,14 +666,13 @@ def initialize(param_dict):
     files_in_proc_dbm = param_dict[PROC_DBM_NAME].getCount()
     files_in_synced_dbm = param_dict[SYNCED_DBM_NAME].getCount()
     files_in_failed_dbm = param_dict[FAILED_DBM_NAME].getCount()
-    param_dict[PAR_STAT_TOTAL_FILES] = files_in_queue_dbm + files_in_proc_dbm + files_in_synced_dbm + \
-                                       files_in_failed_dbm
+    param_dict[PAR_STAT_TOTAL_FILES] = files_in_queue_dbm + files_in_proc_dbm + files_in_synced_dbm + files_in_failed_dbm
     param_dict[PAR_STAT_FILE_COUNT] = 0
     param_dict[PAR_STAT_LAST_FILE_COUNT] = 0
     param_dict[PAR_STAT_TOTAL_VOL] = total_volume
     param_dict[PAR_STAT_VOL_ACCU] = 0.0
     param_dict[PAR_STAT_LAST_VOL_ACCU] = 0.0
-    logger.info("Leaving initialize()")
+    logger.debug("Leaving initialize()")
 
 
 def check_file(client, disk_id, file_id, file_version):
@@ -836,7 +835,7 @@ def generate_report(thread_group_obj):
 
     :param thread_group_obj: Reference to the Thread Group Object (ngamsThreadGroup)
     """
-    logger.info("Entering generate_report() ...")
+    logger.debug("Entering generate_report() ...")
 
     param_dict = thread_group_obj.getParameters()[0]
     report = generate_intermediate_report(thread_group_obj)
@@ -858,7 +857,7 @@ def generate_report(thread_group_obj):
         report += error_report
         report += "\n" + 50 * "=" + "\n"
 
-    logger.info("Leaving generate_report()")
+    logger.debug("Leaving generate_report()")
     return report
 
 
@@ -868,7 +867,7 @@ def intermediate_report_loop(thread_group_obj):
 
     :param thread_group_obj: Reference to the Thread Group Object (ngamsThreadGroup)
     """
-    logger.info("Entering intermediate_report_loop()")
+    logger.debug("Entering intermediate_report_loop()")
     param_dict = thread_group_obj.getParameters()[0]
     period = int(param_dict[PAR_INT_NOTIF])
     start_time = time.time()
@@ -952,7 +951,7 @@ def move_request_from_proc_to_sync_queue(thread_group_obj, sync_req):
     :param thread_group_obj: Reference to the Thread Group Object (ngamsThreadGroup)
     :param sync_req: Synchronization request (ngasSyncRequest)
     """
-    logger.info("Entering move_request_from_proc_to_sync_queue() ...")
+    logger.debug("Entering move_request_from_proc_to_sync_queue() ...")
     param_dict = thread_group_obj.getParameters()[0]
     try:
         thread_group_obj.takeGenMux()
@@ -977,7 +976,7 @@ def move_request_from_sync_to_synced_queue(thread_group_obj, sync_req):
     :param thread_group_obj: Reference to the Thread Group Object (ngamsThreadGroup)
     :param sync_req: Synchronization request (ngasSyncRequest)
     """
-    logger.info("Entering move_request_from_sync_to_synced_queue() ...")
+    logger.debug("Entering move_request_from_sync_to_synced_queue() ...")
     param_dict = thread_group_obj.getParameters()[0]
     try:
         thread_group_obj.takeGenMux()
@@ -1002,7 +1001,7 @@ def move_request_from_proc_to_failed_queue(thread_group_obj, sync_req):
     :param thread_group_obj: Reference to the Thread Group Object (ngamsThreadGroup)
     :param sync_req: Synchronization request (ngasSyncRequest)
     """
-    logger.info("Entering move_request_from_proc_to_failed_queue() ...")
+    logger.debug("Entering move_request_from_proc_to_failed_queue() ...")
     param_dict = thread_group_obj.getParameters()[0]
     try:
         thread_group_obj.takeGenMux()
@@ -1028,18 +1027,18 @@ def clone_file(client, sync_req):
     :param sync_req: Synchronization request (ngasSyncRequest)
     :return: Status object (ngamsStatus)
     """
-    logger.info("Entering clone_file() ...")
+    logger.debug("Entering clone_file() ...")
     try:
         parameters = [["file_id", sync_req.get_file_id()], ["file_version", sync_req.get_file_version()]]
         if sync_req.get_disk_id() != "-":
             parameters.append(["disk_id", sync_req.get_disk_id()])
         status = client.get_status(NGAMS_CLONE_CMD, pars=parameters)
         # status = client.clone(sync_request.get_file_id(), sync_request.get_disk_id(), sync_request.get_file_version())
-        logger.info("Leaving clone_file() (OK)")
+        logger.debug("Leaving clone_file() (OK)")
         return status
     except Exception as e:
         status = ngamsStatus.ngamsStatus().setStatus(NGAMS_FAILURE).set_message(str(e))
-        logger.info("Leaving clone_file() (ERROR)")
+        logger.debug("Leaving clone_file() (ERROR)")
         return status
 
 
@@ -1101,24 +1100,30 @@ def check_if_file_in_target_cluster(connection, cluster_nodes, file_id, file_ver
     :return: Information for file as tuple:
                 (<Disk Id>, <File ID>, <File Version>) or None if the file is not available in the cluster (tuple|None)
     """
-    logger.info("Entering check_if_file_in_target_cluster() ...")
+    logger.debug("Entering check_if_file_in_target_cluster() ...")
 
-    # Reformat the cluster node list to a string for passing into the SQL statement
-    # It should be in the format "'ngas04:7777', 'ngas04:7778'"
-    cluster_nodes_sql = str(cluster_nodes.split(',')).replace('[', '').replace(']', '')
-
+    # FIXME: this fails to format the SQL query probably because we are inserting a list of nodes
+    cluster_nodes_list = cluster_nodes.split(',')
+    num_nodes = len(cluster_nodes_list)
+    count = 2
+    bind_names_1 = ["{" + str(count + i) + "}" for i in range(num_nodes)]
+    count = num_nodes + 2
+    bind_names_2 = ["{" + str(count + i) + "}" for i in range(num_nodes)]
     sql = "select nf.disk_id, nf.file_id, nf.file_version " \
           "from ngas_files nf, ngas_disks nd " \
-          "where nf.file_id = '{0}' and nf.file_version = {1} and nf.disk_id = nd.disk_id " \
-          "and (nd.host_id in ({2}) or nd.last_host_id in ({3}))"
-    result = connection.query2(sql, args=(file_id, file_version, cluster_nodes_sql, cluster_nodes_sql))
+          "where nf.file_id = {0} and nf.file_version = {1} and nf.disk_id = nd.disk_id " \
+          "and (nd.host_id in ({bind_names_1}) or nd.last_host_id in ({bind_names_2}))".format("{0}", "{1}",
+          bind_names_1=",".join(bind_names_1), bind_names_2=",".join(bind_names_2))
+    args = [file_id, file_version] + cluster_nodes_list + cluster_nodes_list
+    result = connection.query2(sql, args)
+
     if len(result):
-        disk_id, file_id, file_version = result[0][0]
-        msg = "Leaving check_if_file_in_target_cluster() (OK: Disk ID: %s, File ID: %s, File Version: %s"
-        logger.info(msg, str(disk_id), str(file_id), str(file_version))
+        disk_id, file_id, file_version = result[0]
+        logger.debug("Leaving check_if_file_in_target_cluster() (OK: Disk ID: %s, File ID: %s, File Version: %s",
+                     str(disk_id), str(file_id), str(file_version))
         return disk_id, file_id, file_version
     else:
-        logger.info("Leaving check_if_file_in_target_cluster() (empty result)")
+        logger.debug("Leaving check_if_file_in_target_cluster() (empty result)")
         return None, None, None
 
 
@@ -1128,7 +1133,7 @@ def sync_loop(thread_group_obj):
 
     :param thread_group_obj: Reference to the Thread Group Object (ngamsThreadGroup)
     """
-    logger.info("Entering sync_loop()")
+    logger.debug("Entering sync_loop()")
     param_dict = thread_group_obj.getParameters()[0]
     cluster_node_status_time = 0.0
     # client = ngamsPClient.ngamsPClient()
@@ -1148,8 +1153,8 @@ def sync_loop(thread_group_obj):
                 thread_group_obj.terminateNormal()
         if (time.time() - sync_req.get_time_last_attempt()) < NGAS_MIN_RETRY_TIME:
             # Time waiting for next retry has not expired. Put the request back in the sync queue
-            logger.info("Time for waiting for retrying entry: %s has not expired",
-                        ngamsLib.genFileKey(None, sync_req.get_file_id(), sync_req.get_file_version()))
+            logger.debug("Time for waiting for retrying entry: %s has not expired",
+                         ngamsLib.genFileKey(None, sync_req.get_file_id(), sync_req.get_file_version()))
             move_request_from_proc_to_sync_queue(thread_group_obj, sync_req)
             continue
 
@@ -1250,7 +1255,7 @@ def sync_thread(thread_group_obj):
     The first thread (thread number 1), will also generate intermediate status reports if requested
     :param thread_group_obj: Reference to the Thread Group Object (ngamsThreadGroup)
     """
-    logger.info("Entering sync_thread()")
+    logger.debug("Entering sync_thread()")
     param_dict = thread_group_obj.getParameters()[0]
 
     # Thread #1 takes care of sending out intermediate reports if specified
@@ -1266,7 +1271,7 @@ def execute(param_dict):
 
     :param param_dict: Dictionary containing the parameters and options (dictionary)
     """
-    logger.info("Entering execute() ...")
+    logger.debug("Entering execute() ...")
 
     if param_dict["help"]:
         print(correct_usage())
@@ -1281,18 +1286,35 @@ def execute(param_dict):
         streams = int(param_dict[PAR_STREAMS]) + 1
     else:
         streams = int(param_dict[PAR_STREAMS])
-    sync_threads = ngamsThreadGroup.ngamsThreadGroup(param_dict[PAR_SESSION_ID], sync_thread, streams, [param_dict])
-    sync_threads.start()
+
+    sync_thread_group = ngamsThreadGroup.ngamsThreadGroup(param_dict[PAR_SESSION_ID], sync_thread, streams, [param_dict])
+
+    def signal_handler(signum, frame):
+        """
+        Signal handler to set exit flag
+        :param signum: Signal numerical value
+        :param frame: ???
+        :return: None
+        """
+        logger.fatal("Signal handler called with signal %d", signum)
+        if sync_thread_group is not None:
+            sync_thread_group.stop()
+
+    signal.signal(signal.SIGHUP, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    sync_thread_group.start()
 
     # Generate final report if requested
     if param_dict[PAR_NOTIF_EMAIL]:
         logger.info("Generating report about actions carried out ...")
-        report = generate_report(sync_threads)
+        report = generate_report(sync_thread_group)
         subject = "NGAS express sync tool - final status report (session: {:s})".format(param_dict[PAR_SESSION_ID])
         logger.info("Sending final report ...")
         ngasUtilsLib.send_email(subject, param_dict[PAR_NOTIF_EMAIL], report, "text/plain", "NGAS-XSYNC-report.txt")
     # TODO: Clean up old working directories (if older than 30 days)
-    logger.info("Leaving execute()")
+    logger.debug("Leaving execute()")
 
 
 def main():
