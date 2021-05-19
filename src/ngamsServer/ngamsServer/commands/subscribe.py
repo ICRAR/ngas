@@ -119,13 +119,20 @@ def handleCmd(srvObj,
 
     # If the Start Date given in before the Last Ingestion Date, we
     # reset the Last Ingestion Date
+    #
+    # TODO (rtobar, May 2021):
+    #     This bit of logic seems to be in contention with the fact that adding
+    #     a subscription with an ID that is already taken would be otherwise a
+    #     failure. I'm leaving it here for the time being in order to avoid
+    #     breaking anything, but it must probably be removed (or clarification
+    #     should be sought otherwise).
     subscrStat = srvObj.getDb().getSubscriberStatus([subscrObj.getId()],
                                                     subscrObj.getHostId(),
                                                     subscrObj.getPortNo())
-    if subscrStat:
-        lastIngDate = subscrStat[0][1]
+    if subscrStat and subscrStat[0][1]:
+        lastIngDate = fromiso8601(subscrStat[0][1], local=True)
         if startDate < lastIngDate:
-            subscrObj.setLastFileIngDate(None)
+            subscrObj.setLastFileIngDate('')
         else:
             subscrObj.setLastFileIngDate(lastIngDate)
 
