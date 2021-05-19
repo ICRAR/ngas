@@ -35,6 +35,8 @@ import importlib
 import logging
 import sys
 
+from ngamsLib.ngamsCore import NGAMS_SUCCESS
+
 from . import NoSuchCommand
 
 
@@ -65,7 +67,12 @@ def handle_cmd(srvObj, reqPropsObj, httpRef):
         if httpRef.reply_sent:
             logger.warning("Module returned message to send back to client, but reply has been sent, ignoring")
             return
-        httpRef.send_status(msg)
+        status = NGAMS_SUCCESS
+        code = 200
+        if isinstance(msg, (tuple, list)):
+            assert len(msg) == 3
+            code, status, msg = msg
+        httpRef.send_status(msg, status=status, code=code)
 
 def _get_module(server, request):
 
