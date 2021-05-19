@@ -96,6 +96,10 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                     information for all Subscribers. Otherwise [] is returned
                     (list/list).
         """
+        with self.transaction() as tx:
+            return self._getSubscriberInfo(tx, subscrId, hostId, portNo)
+
+    def _getSubscriberInfo(self, tx, subscrId=None, hostId=None, portNo=-1):
         where = False
         vals = []
         sql = []
@@ -124,7 +128,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
             sql.append("srv_port = {}")
             vals.append(portNo)
 
-        return self.query2(''.join(sql), args = vals)
+        return tx.execute(''.join(sql), args = vals)
 
 
     def insertSubscriberEntry(self, sub_obj):
