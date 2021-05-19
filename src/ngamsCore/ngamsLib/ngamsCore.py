@@ -796,11 +796,19 @@ def toiso8601(t=None, local=False, fmt=FMT_DATETIME):
     if t is None:
         t = time.time()
 
-    totuple = time.gmtime if not local else time.localtime
-    timeStamp = time.strftime(fmt.format, totuple(t))
+    # We round the number of milliseconds, taking care of the extreme case of
+    # msec >= 0.9995 which means an extra second is considered
+    msecs, secs = math.modf(t)
     if fmt.msecs:
-        t = (t - utils._long(t)) * 1000
-        timeStamp += '.%03d' % int(t)
+        msecs = int(round(msecs, 3) * 1000)
+        if msecs == 1000:
+            msecs = 0
+            secs += 1
+
+    totuple = time.gmtime if not local else time.localtime
+    timeStamp = time.strftime(fmt.format, totuple(secs))
+    if fmt.msecs:
+        timeStamp += '.%03d' % msecs
 
     return timeStamp
 
