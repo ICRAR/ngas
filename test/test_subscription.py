@@ -42,7 +42,7 @@ import six
 import requests
 import trustme
 
-from ngamsLib import ngamsHttpUtils
+from ngamsLib import ngamsHttpUtils, ngamsSubscriber
 from ngamsLib.ngamsCore import getHostName
 from .ngamsTestLib import ngamsTestSuite, tmp_path, genTmpFilename
 
@@ -428,6 +428,14 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         del os.environ["NGAS_CA_PATH"]
         # Note that as the cleanup will run here, the cleanup via offline will
         # fail due to unknown CA, so the servers will be killed instead
+
+    def test_subscription_equality(self):
+
+        # baseline
+        URL = 'http://127.0.0.1:1234/path'
+        subs1 = ngamsSubscriber.ngamsSubscriber(url=URL, subscrId='my-id')
+        subs2 = ngamsSubscriber.ngamsSubscriber(url=URL, subscrId='my-id')
+        self.assertEqual(subs1, subs2)
 
     def upload_subscription_files(self, start_port, end_port, pars=[]):
         # Initial archiving

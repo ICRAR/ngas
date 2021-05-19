@@ -429,4 +429,17 @@ class ngamsSubscriber:
         return tmpSubscrEl
 
 
+    def __eq__(self, other):
+        return (self.getHostId() == other.getHostId() and
+                self.getPortNo() == other.getPortNo() and
+                self.getPriority() == other.getPriority() and
+                self.getUrl() == other.getUrl() and
+                self.getStartDate() == other.getStartDate() and
+                self.getFilterPi() == other.getFilterPi() and
+                self.getLastFileIngDate() == other.getLastFileIngDate() and
+                self.getId() == other.getId() and
+                self.getConcurrentThreads() == other.getConcurrentThreads() and
+                self.command == other.command)
+
+
 # EOF
