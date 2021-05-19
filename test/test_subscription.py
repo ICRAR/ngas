@@ -42,8 +42,8 @@ import six
 import requests
 import trustme
 
-from ngamsLib import ngamsHttpUtils, ngamsSubscriber
-from ngamsLib.ngamsCore import getHostName
+from ngamsLib import ngamsHttpUtils, ngamsDb, ngamsSubscriber
+from ngamsLib.ngamsCore import getHostName, toiso8601
 from .ngamsTestLib import ngamsTestSuite, tmp_path, genTmpFilename
 
 try:
@@ -436,6 +436,37 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         subs1 = ngamsSubscriber.ngamsSubscriber(url=URL, subscrId='my-id')
         subs2 = ngamsSubscriber.ngamsSubscriber(url=URL, subscrId='my-id')
         self.assertEqual(subs1, subs2)
+
+        # Store in DB, check equality holds
+        cfg = self.env_aware_cfg()
+        self.point_to_sqlite_database(cfg, tmp_path('ngas.sqlite'))
+        db = ngamsDb.from_config(cfg, maxpool=1)
+        with contextlib.closing(db):
+            db_subs1 = db.insertSubscriberEntry(subs1)
+            db_subs2 = db.insertSubscriberEntry(subs2)
+            self.assertIs(subs1, db_subs1)
+            self.assertEqual(subs1, db_subs2)
+            self.assertEqual(subs2, db_subs2)
+
+    def test_duplicate_subscription(self):
+        """
+        Test that creating multiple subscriptions with the same ID results in
+        different HTTP codes returned to the client
+        """
+        URL = 'http://127.0.0.1:1234/path'
+        NOW = time.time()
+        START_DATE = toiso8601(NOW, local=True)
+        def assert_subscription(http_status, ngams_status, url=URL, start_date=START_DATE):
+            status = self.client.subscribe(url=url, startDate=start_date,
+                                           pars=[['subscr_id', 'my-id']])
+            self.assertEqual(status.http_status, http_status)
+            self.assertEqual(status.getStatus(), ngams_status)
+
+        self.prepExtSrv()
+        assert_subscription(200, 'SUCCESS')
+        assert_subscription(201, 'SUCCESS')
+        assert_subscription(409, 'FAILURE', url=URL + '/subpath')
+        assert_subscription(409, 'FAILURE', start_date=toiso8601(NOW + 1, local=True))
 
     def upload_subscription_files(self, start_port, end_port, pars=[]):
         # Initial archiving

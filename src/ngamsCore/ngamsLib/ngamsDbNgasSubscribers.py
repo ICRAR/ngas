@@ -37,6 +37,7 @@ It should be used as part of the ngamsDbBase parent classes.
 
 from . import ngamsDbCore
 from .ngamsCore import fromiso8601
+from .ngamsSubscriber import ngamsSubscriber
 
 
 class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
@@ -132,6 +133,11 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
 
 
     def insertSubscriberEntry(self, sub_obj):
+        """
+        Inserts the new subscription object into the NGAS subscription table.
+        If an object with the same subscription ID exists, its contents are
+        returned; otherwise the given object is returned.
+        """
 
         hostId = sub_obj.getHostId()
         portNo = sub_obj.getPortNo()
@@ -157,8 +163,15 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                 filterPlugIn, filterPlugInPars, \
                 lastFileIngDate, concurrent_threads)
 
-        self.query2(sql, args = vals)
-        self.triggerEvents()
+        # If a subscriber with the given ID already exists return that
+        with self.transaction() as tx:
+            existing_sub = self._getSubscriberInfo(tx, subscrId=subscrId)
+            if existing_sub:
+                sub_obj = ngamsSubscriber().unpackSqlResult(existing_sub[0])
+            else:
+                tx.execute(sql, vals)
+                self.triggerEvents()
+        return sub_obj
 
 
     def updateSubscriberEntry(self, sub_obj):

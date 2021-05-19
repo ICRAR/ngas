@@ -35,7 +35,8 @@ import logging
 import time
 
 from ngamsLib.ngamsCore import \
-    genLog, NGAMS_SUBSCRIBE_CMD, fromiso8601, toiso8601
+    genLog, NGAMS_SUBSCRIBE_CMD, fromiso8601, toiso8601, NGAMS_FAILURE,\
+    NGAMS_SUCCESS
 from ngamsLib import ngamsSubscriber, ngamsLib
 
 
@@ -52,10 +53,16 @@ def addSubscriber(srvObj, subscrObj):
 
     Returns:     Void.
     """
-    srvObj.getDb().insertSubscriberEntry(subscrObj)
-    #subscrObj.write(srvObj.getDb())
-
-    srvObj.registerSubscriber(subscrObj)
+    subscr_in_db = srvObj.getDb().insertSubscriberEntry(subscrObj)
+    if subscr_in_db is subscrObj:
+        srvObj.registerSubscriber(subscrObj)
+        # Trigger the Data Susbcription Thread to make it check if there are
+        # files to deliver to the new Subscriber.
+        srvObj.addSubscriptionInfo([], [subscrObj]).triggerSubscriptionThread()
+    elif subscr_in_db == subscrObj:
+        return 'equal'
+    else:
+        return 'unequal'
 
 
 def handleCmd(srvObj,
@@ -137,10 +144,10 @@ def handleCmd(srvObj,
             subscrObj.setLastFileIngDate(lastIngDate)
 
     # Register the Subscriber.
-    addSubscriber(srvObj, subscrObj)
-
-    # Trigger the Data Susbcription Thread to make it check if there are
-    # files to deliver to the new Subscriber.
-    srvObj.addSubscriptionInfo([], [subscrObj]).triggerSubscriptionThread()
+    existence_test = addSubscriber(srvObj, subscrObj)
+    if existence_test == 'equal':
+        return 201, NGAMS_SUCCESS, "Identical subscription with ID '%s' existed" % (id,)
+    elif existence_test == 'unequal':
+        return 409, NGAMS_FAILURE, "Different subscription with ID '%s' existed" % (id,)
 
     return "Handled SUBSCRIBE command"
