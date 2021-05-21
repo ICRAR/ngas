@@ -38,7 +38,7 @@ import logging
 from ngamsLib.ngamsCore import NGAMS_NOT_RUN_STATE,\
     NGAMS_ONLINE_STATE, NGAMS_SUBSCRIBE_CMD, NGAMS_SUCCESS, genLog, \
     NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
-    loadPlugInEntryPoint, toiso8601, fromiso8601
+    loadPlugInEntryPoint, toiso8601, fromiso8601, NGAMS_NOTIF_ERROR
 from ngamsLib import ngamsStatus, ngamsLib, ngamsHttpUtils, utils
 from ngamsLib import ngamsSubscriber
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
@@ -136,9 +136,29 @@ def _create_remote_subscriptions(srvObj, stop_evt):
                     stat = ngamsStatus.to_status(resp, subscrObj.getHostId(), NGAMS_SUBSCRIBE_CMD)
 
                 if stat.getStatus() != NGAMS_SUCCESS:
-                    msg = "Unsuccessful NGAS XML response. Status: %s, message: %s. Will try again later"
-                    logger.warning(msg, stat.getStatus(), stat.getMessage())
-                    continue
+                    if stat.http_status == 409:
+                        short_msg = "Different subscription with ID '%s' already exists, giving up"
+                        long_msg = (
+                            "NGAS attempted to create an automatic subscription "
+                            "with ID=%s to obtain data from %s:%d, but the remote server "
+                            "already has a subscription registered with the same ID, "
+                            "but different details.\n\n"
+                            "Instead of retrying to create this subscription over and over, "
+                            "this server will give up now. To fit this either remove "
+                            "the remote subscription, or change the ID of the subscription to be created "
+                            "in the local server configuration."
+                        )
+                        logger.error(short_msg)
+                        ngamsNotification.notify(
+                            srvObj.host_id, srvObj.cfg, NGAMS_NOTIF_ERROR,
+                            "Automatic subscription cannot be created",
+                            long_msg % (subscrObj.getId(), subs_host, subs_port),
+                            force=True)
+                        subscriptions.remove(subscrObj)
+                    else:
+                        msg = "Unsuccessful NGAS XML response. Status: %s, message: %s. Will try again later"
+                        logger.warning(msg, stat.getStatus(), stat.getMessage())
+                        continue
 
                 subscriptions_created += 1
                 logger.info("Successfully subscribed to %s:%d with url=%s", subs_host, subs_port, subscrObj.getUrl())
