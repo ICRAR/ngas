@@ -107,7 +107,7 @@ def _create_remote_subscriptions(srvObj, stop_evt):
                 logger.warning("Skipping subscription to %s:%d because that's us", subs_host, subs_port)
                 continue
 
-            # Because propertly supporting the "Command" configuration mechansim
+            # Because properly supporting the "Command" configuration mechanism
             # still requires some more work, we prefer the "SubscriberUrl"
             # attribute as the main source of URL information.
             # We still support "Command", but with the following caveats:
