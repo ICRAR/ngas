@@ -86,6 +86,13 @@ def _create_remote_subscriptions(srvObj, stop_evt):
     subscriptions = [v for _, v in subscriptions_in_cfg.items()]
     subscriptions_created = 0
 
+    def mark_as_active(s):
+        # Removes s from list of subscriptions pending creation, and
+        # ensures the corresponding UNSUBSCRIBE command will be called
+        # at server shutdown
+        srvObj.getSubscrStatusList().append(s)
+        subscriptions.remove(s)
+
     while True:
 
         # Done with all of them
@@ -144,17 +151,18 @@ def _create_remote_subscriptions(srvObj, stop_evt):
                             "already has a subscription registered with the same ID, "
                             "but different details.\n\n"
                             "Instead of retrying to create this subscription over and over, "
-                            "this server will give up now. To fit this either remove "
+                            "this server will give up now. To fix this either remove "
                             "the remote subscription, or change the ID of the subscription to be created "
                             "in the local server configuration."
                         )
-                        logger.error(short_msg)
+                        logger.error(short_msg, subscrObj.getId())
                         ngamsNotification.notify(
                             srvObj.host_id, srvObj.cfg, NGAMS_NOTIF_ERROR,
                             "Automatic subscription cannot be created",
                             long_msg % (subscrObj.getId(), subs_host, subs_port),
                             force=True)
-                        subscriptions.remove(subscrObj)
+                        mark_as_active(subscrObj)
+                        continue
                     else:
                         msg = "Unsuccessful NGAS XML response. Status: %s, message: %s. Will try again later"
                         logger.warning(msg, stat.getStatus(), stat.getMessage())
@@ -162,10 +170,7 @@ def _create_remote_subscriptions(srvObj, stop_evt):
 
                 subscriptions_created += 1
                 logger.info("Successfully subscribed to %s:%d with url=%s", subs_host, subs_port, subscrObj.getUrl())
-
-                # Remember to unsubscribe when going Offline.
-                srvObj.getSubscrStatusList().append(subscrObj)
-                subscriptions.remove(subscrObj)
+                mark_as_active(subscrObj)
 
             except:
                 logger.exception("Error while adding subscription, will try later")
