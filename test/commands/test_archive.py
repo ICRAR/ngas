@@ -966,9 +966,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             fo.close()
 
         self.restart_last_server()
-        badDirPat = self.ngas_path("bad-files/BAD-FILE-*-%s.fits")
+        badDirPat = self.ngas_path("%s/bad-files/BAD-FILE-*-%s.fits")
         for diskName in diskList:
-            badFile = badDirPat % diskName
+            badFile = badDirPat % (diskName, diskName)
             pollForFile(badFile, 1)
             pollForFile("%s.%s" % (badFile, NGAMS_PICKLE_FILE_EXT), 1)
 
@@ -1011,7 +1011,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.assertGreater(len(glob.glob(req_fname)), 0)
 
         self.restart_last_server(before_restart=before_restart, force=True)
-        reqPropBadFile = self.ngas_path("bad-files/BAD-FILE-*-SmallFile.fits.pickle", port=8888)
+        reqPropBadFile = self.ngas_path("FitsStorage1-Main-1/bad-files/BAD-FILE-*-SmallFile.fits.pickle", port=8888)
         pollForFile(reqPropBadFile, 1)
 
 

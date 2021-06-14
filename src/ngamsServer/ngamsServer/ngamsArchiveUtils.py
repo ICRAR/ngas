@@ -769,7 +769,7 @@ def archiveFromFile(srvObj,
                   ". Attempt failed with following error", filename)
             logger.warning("Moving local file: " +\
                    filename + " to Bad Files Directory -- cannot be handled.")
-            ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename)
+            ngamsHighLevelLib.moveFile2BadDir(trgDiskInfo, filename)
             # Remove pickle file if available.
             pickleObjFile = filename + "." + NGAMS_PICKLE_FILE_EXT
             if (os.path.exists(pickleObjFile)):

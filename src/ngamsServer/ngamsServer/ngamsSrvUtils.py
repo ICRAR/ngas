@@ -450,18 +450,13 @@ def checkStagingAreas(srvObj):
                getDiskInfoForMountedDisks(srvObj.getDb(), srvObj.getHostId(),
                                           srvObj.getCfg().\
                                           getRootDirectory())
-    # Generate first a dictionary with all files in the staging areas.
-    stagingFileDic = {}
     for disk in diskList:
         stagingArea = disk.getStagingArea()
-        if (stagingArea != ""):
-            fileList = glob.glob(stagingArea + "/*")
-            fileList += glob.glob(stagingArea + "/.NGAMS*")
-            for filename in fileList: stagingFileDic[filename] = 1
-    # Go through all files in the staging file dictionary and move them to
-    # the Bad Files Area.
-    for filename in stagingFileDic.keys():
-        ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename)
+        if stagingArea:
+            files_to_move = glob.glob(stagingArea + "/*")
+            files_to_move += glob.glob(stagingArea + "/.NGAMS*")
+            for f in files_to_move:
+                ngamsHighLevelLib.moveFile2BadDir(disk, f)
 
 
 def genIntAuthHdr(srvObj):
