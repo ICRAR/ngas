@@ -19,7 +19,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-#******************************************************************************
+# *****************************************************************************
 #
 # "@(#) $Id: ngamsMirroringControlThread.py,v 1.27 2010/06/18 12:03:55 awicenec Exp $"
 #
@@ -28,16 +28,14 @@
 # jknudstr  27/03/2008  Created
 #
 """
-This module contains the code for the Mirroring Control Thread, which is used
-to coordinate the mirroring of the local NGAS Cluster with other NGAS Clusters.
+This module contains the code for the Mirroring Control Thread, which is used to coordinate the mirroring of the
+local NGAS Cluster with other NGAS Clusters.
 
-The NGAS Mirroring Service is running as a background service which does not
-consume soo many resources for the general command handling.
+The NGAS Mirroring Service is running as a background service which does not consume so many resources for the
+general command handling.
 """
-# TODO:
-#   - Detailed reporting not yet implemented.
-# Various definitions used within this module.
-# Definitions for internal DBM based queues used.
+
+# TODO: Detailed reporting not yet implemented
 
 import base64
 import contextlib
@@ -49,1312 +47,991 @@ import random
 import threading
 import time
 
-from ngamsLib.ngamsCore import NGAMS_MIR_CONTROL_THR, rmFile, \
-    NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, \
-    NGAMS_HTTP_HDR_CONTENT_TYPE, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_SUCCESS, \
-    NGAMS_STATUS_CMD, decompressFile, \
+from ngamsLib.ngamsCore import \
+    FMT_TIME_ONLY_NOMSEC, \
+    NGAMS_HTTP_HDR_FILE_INFO, \
+    NGAMS_HTTP_HDR_CONTENT_TYPE,\
+    NGAMS_HTTP_SUCCESS, \
+    NGAMS_HTTP_PAR_FILE_LIST,\
     NGAMS_HTTP_PAR_FILE_LIST_ID, \
-    NGAMS_HTTP_PAR_FILE_LIST, NGAMS_HTTP_PAR_UNIQUE, NGAMS_HTTP_PAR_MAX_ELS, \
-    NGAMS_HTTP_PAR_FROM_ING_DATE, get_contact_ip,\
-    toiso8601, FMT_TIME_ONLY_NOMSEC
+    NGAMS_HTTP_PAR_FILENAME,\
+    NGAMS_HTTP_PAR_FROM_ING_DATE, \
+    NGAMS_HTTP_PAR_MAX_ELS, \
+    NGAMS_HTTP_PAR_UNIQUE,\
+    NGAMS_MIR_CONTROL_THR, \
+    NGAMS_REARCHIVE_CMD,\
+    NGAMS_STATUS_CMD,  \
+    decompressFile, get_contact_ip, rmFile, toiso8601
 from ngamsLib import ngamsFileInfo, ngamsStatus, ngamsHighLevelLib, ngamsDbm, \
-    ngamsMirroringRequest, ngamsLib, ngamsHttpUtils
-
+    NgamsMirroringRequest, ngamsLib, ngamsHttpUtils
 
 logger = logging.getLogger(__name__)
 
-NGAMS_MIR_QUEUE_DBM          = "MIR_QUEUE"
-NGAMS_MIR_ERR_QUEUE_DBM      = "MIR_ERROR_QUEUE"
-NGAMS_MIR_COMPL_QUEUE_DBM    = "MIR_COMPLETED_QUEUE"
-NGAMS_MIR_DBM_COUNTER        = "MIR_DBM_COUNTER"
-NGAMS_MIR_DBM_POINTER        = "MIR_DBM_POINTER"
-NGAMS_MIR_FILE_LIST_RAW      = "MIR_FILE_LIST_RAW"
-NGAMS_MIR_CLUSTER_FILE_DBM   = "MIR_CLUSTER_FILE_INFO"
-NGAMS_MIR_DBM_MAX_LIMIT      = (2**30)
+# Various definitions used within this module.
+# Definitions for internal DBM based queues used.
+NGAMS_MIR_QUEUE_DBM = "MIR_QUEUE"
+NGAMS_MIR_ERR_QUEUE_DBM = "MIR_ERROR_QUEUE"
+NGAMS_MIR_COMPL_QUEUE_DBM = "MIR_COMPLETED_QUEUE"
+NGAMS_MIR_DBM_COUNTER = "MIR_DBM_COUNTER"
+NGAMS_MIR_DBM_POINTER = "MIR_DBM_POINTER"
+NGAMS_MIR_FILE_LIST_RAW = "MIR_FILE_LIST_RAW"
+NGAMS_MIR_CLUSTER_FILE_DBM = "MIR_CLUSTER_FILE_INFO"
+NGAMS_MIR_DBM_MAX_LIMIT = (2**30)
 NGAMS_MIR_MIR_THREAD_TIMEOUT = 10.0
-NGAMS_MIR_SRC_ARCH_INF_DBM   = "MIR_SRC_ARCH_INFO"
-NGAMS_MIR_ALL_LOCAL_SRVS     = "ALL"
+NGAMS_MIR_SRC_ARCH_INF_DBM = "MIR_SRC_ARCH_INFO"
+NGAMS_MIR_ALL_LOCAL_SRVS = "ALL"
 
-# Used as exception message when the thread is stopping execution
-# (deliberately).
+# Used as exception message when the thread is stopping execution (deliberately)
 NGAMS_MIR_CONTROL_THR_STOP = "_STOP_MIR_CONTROL_THREAD_"
+
 
 def _finish_thread():
     logger.info("Stopping the Mirroring Service")
     raise Exception(NGAMS_MIR_CONTROL_THR_STOP)
 
-def checkStopMirControlThread(stop_evt):
-    """
-    Used to check if the Mirroring Control Thread should be stopped and in case
-    yes, to stop it.
 
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+def check_stop_mirror_control_thread(stop_event):
     """
-    if stop_evt.is_set():
+    Used to check if the Mirroring Control Thread should be stopped and in case yes, to stop it.
+    :param stop_event: Stop event
+    """
+    if stop_event.is_set():
         _finish_thread()
 
-def suspend(stop_evt, t):
-    if stop_evt.wait(t):
+
+def suspend(stop_event, thread):
+    if stop_event.wait(thread):
         _finish_thread()
 
-def addEntryMirQueue(srvObj,
-                     mirReqObj,
-                     updateDb = True):
+
+def add_entry_mirror_queue(ngams_server, mirror_request, update_db=True):
     """
-    Add (schedule) a new Mirroring Request in the internal DBM Mirroring Queue.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    mirReqObj:  Instance of Mirroring Request Object to schedule
-                (ngamsMirroringRequest).
-
-    updateDb:   If true, the status is updated in the DB (boolean).
-
-    Returns:    Void.
+    Add (schedule) a new Mirroring Request in the internal DBM Mirroring Queue
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param mirror_request: Instance of Mirroring Request Object to schedule (ngamsMirroringRequest)
+    :param update_db: If true, the status is updated in the DB (boolean)
     """
     try:
-        srvObj._mirQueueDbmSem.acquire()
-        logger.debug("Adding entry in Mirroring Queue: %s/%d",
-             mirReqObj.getFileId(), mirReqObj.getFileVersion())
-        newKey = ((srvObj._mirQueueDbm.get(NGAMS_MIR_DBM_COUNTER) + 1) %\
-                  NGAMS_MIR_DBM_MAX_LIMIT)
-        srvObj._mirQueueDbm.\
-                              add(str(newKey), mirReqObj).\
-                              add(NGAMS_MIR_DBM_COUNTER, newKey).sync()
-        if (updateDb): srvObj.getDb().updateMirReq(mirReqObj)
-        srvObj._mirQueueDbmSem.release()
+        ngams_server._mirQueueDbmSem.acquire()
+        logger.debug("Adding entry in Mirroring Queue: %s/%d", mirror_request.get_file_id(),
+                     mirror_request.getFileVersion())
+        new_key = (ngams_server._mirQueueDbm.get(NGAMS_MIR_DBM_COUNTER) + 1) % NGAMS_MIR_DBM_MAX_LIMIT
+        ngams_server._mirQueueDbm.add(str(new_key), mirror_request).add(NGAMS_MIR_DBM_COUNTER, new_key).sync()
+        if update_db:
+            ngams_server.getDb().updateMirReq(mirror_request)
+        ngams_server._mirQueueDbmSem.release()
     except Exception as e:
-        srvObj._mirQueueDbmSem.release()
-        msg = "Error adding new element to DBM Mirroring Queue. Error: %s" %\
-              str(e)
-        raise Exception(msg)
+        ngams_server._mirQueueDbmSem.release()
+        raise Exception("Error adding new element to DBM Mirroring Queue. Error: %s" % str(e))
 
 
-def addEntryErrQueue(srvObj,
-                     mirReqObj,
-                     updateDb = True):
+def add_entry_error_queue(ngams_server, mirror_request, update_db=True):
     """
-    Add a Mirroring Request in the internal DBM Mirroring Error Queue.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    mirReqObj:  Instance of Mirroring Request Object to schedule
-                (ngamsMirroringRequest).
-
-    updateDb:   If true, the status is updated in the DB (boolean).
-
-    Returns:    Void.
+    Add (push) a Mirroring Request in the internal DBM Mirroring Error Queue
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param mirror_request: Instance of Mirroring Request Object to schedule (ngamsMirroringRequest)
+    :param update_db: If true, the status is updated in the DB (boolean)
     """
     try:
-        srvObj._errQueueDbmSem.acquire()
-        logger.debug("Adding entry in Mirroring Error Queue: %s/%d",
-             mirReqObj.getFileId(), mirReqObj.getFileVersion())
-        srvObj._errQueueDbm.add(mirReqObj.genFileKey(), mirReqObj).sync()
-        if (updateDb): srvObj.getDb().updateMirReq(mirReqObj)
-        srvObj._errQueueDbmSem.release()
+        ngams_server._errQueueDbmSem.acquire()
+        logger.debug("Adding entry in Mirroring Error Queue: %s/%d", mirror_request.get_file_id(),
+                     mirror_request.getFileVersion())
+        ngams_server._errQueueDbm.add(mirror_request.genFileKey(), mirror_request).sync()
+        if update_db:
+            ngams_server.getDb().updateMirReq(mirror_request)
+        ngams_server._errQueueDbmSem.release()
     except Exception as e:
-        srvObj._errQueueDbmSem.release()
-        msg = "Error adding new element to DBM Mirroring Error Queue. " +\
-              "Error: %s"
-        raise Exception(msg % str(e))
+        ngams_server._errQueueDbmSem.release()
+        raise Exception("Error adding new element to DBM Mirroring Error Queue. Error: %s" % str(e))
 
 
-def popEntryQueue(srvObj,
-                  mirReqObj,
-                  dbm,
-                  dbmSem):
+def pop_entry_queue(mirror_request, dbm, dbm_sem):
     """
-    Get (pop) a Mirroring Request Object from the given DBM queue. The entry is
-    removed from the queue. The entry to get is referenced by its Mirroring
-    Request Object.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    mirReqObj:  Instance of Mirroring Request Object to schedule
-                (ngamsMirroringRequest).
-
-    dbm:        DBM handle to that DBM queue (ngamsDbm).
-
-    dbmSem:     Semaphore controlling access to that queue
-                (threading.Semaphore).
-
-    Return:     Reference to the Mirroring Request Object removed from the
-                Error Queue DBM (ngamsMirroringRequest).
+    Get (pop) a Mirroring Request Object from the given DBM queue. The entry is removed from the queue. The entry to
+    get is referenced by its Mirroring Request Object.
+    :param mirror_request: Instance of Mirroring Request Object to schedule (ngamsMirroringRequest)
+    :param dbm: DBM handle to that DBM queue (ngamsDbm)
+    :param dbm_sem: Semaphore controlling access to that queue (threading.Semaphore)
+    :return: Reference to the Mirroring Request Object removed from the Error Queue DBM (ngamsMirroringRequest)
     """
     try:
-        dbmSem.acquire()
-
-        if (not dbm.hasKey(mirReqObj.genFileKey())):
-            msg = "Mirroring Request: %s not found in DBM Queue: %s"
-            raise Exception(msg % (mirReqObj.genSummary(), dbm.getDbmName()))
-
-        mirReqObj = dbm.get(mirReqObj.genFileKey())
-        dbm.rem(mirReqObj.genFileKey())
-
-        dbmSem.release()
-        return mirReqObj
-
+        dbm_sem.acquire()
+        if not dbm.hasKey(mirror_request.genFileKey()):
+            raise Exception("Mirroring Request: %s not found in DBM Queue: %s"
+                            % (mirror_request.genSummary(), dbm.getDbmName()))
+        mirror_request = dbm.get(mirror_request.genFileKey())
+        dbm.rem(mirror_request.genFileKey())
+        dbm_sem.release()
+        return mirror_request
     except Exception as e:
-        dbmSem.release()
+        dbm_sem.release()
         msg = "Error retrieving element from DBM queue: %s. Error: %s"
         raise Exception(msg % (dbm.getDbmName(), str(e)))
 
 
-def dumpKeysQueue(srvObj,
-                  dbm,
-                  dbmSem,
-                  targetDbmName):
+def dump_keys_queue(dbm, dbm_sem, target_dbm_name):
     """
-    Make a snapshot of all keys in the referenced DBM.
-
-    srvObj:    Reference to server object (ngamsServer).
-
-    dbm:       DBM from which to dump the keys (ngamsDbm).
-
-    dbmSem:    Semaphore used to access that DBM (threading.Semaphore).
-
-    dbmName:   Name of the DBM in which to dump the keys (string).
-
-    Returns:   The final name of the resulting DBM (string).
+    Make a snapshot of all keys in the referenced DBM
+    :param dbm: DBM from which to dump the keys (ngamsDbm)
+    :param dbm_sem: Semaphore used to access that DBM (threading.Semaphore)
+    :param target_dbm_name: Name of the DBM in which to dump the keys (string)
+    :return: The final name of the resulting DBM (string)
     """
-    rmFile("%s*" % targetDbmName)
-    keyDbm = ngamsDbm.ngamsDbm(targetDbmName, cleanUpOnDestr = False,
-                               writePerm = True)
+    rmFile("%s*" % target_dbm_name)
+    key_dbm = ngamsDbm.ngamsDbm(target_dbm_name, cleanUpOnDestr=False, writePerm=True)
     try:
-        dbmSem.acquire()
+        dbm_sem.acquire()
         dbm.initKeyPtr()
-        while (True):
+        while True:
             key, data = dbm.getNext()
-            if (not key): break
-            keyDbm.add(key, data)
-        dbmSem.release()
+            if not key:
+                break
+            key_dbm.add(key, data)
+        dbm_sem.release()
     except Exception as e:
-        dbmSem.release()
-        msg = "Error dumping keys from DBM: %s. Error: %s"
-        raise Exception(msg % (dbm.getDbmName(), str(e)))
-
-    dbmName = keyDbm.sync().getDbmName()
-    return dbmName
+        dbm_sem.release()
+        raise Exception("Error dumping keys from DBM: %s. Error: %s" % (dbm.getDbmName(), str(e)))
+    dbm_name = key_dbm.sync().getDbmName()
+    return dbm_name
 
 
-def addEntryComplQueue(srvObj,
-                       mirReqObj,
-                       updateDb = True):
+def add_entry_completed_queue(ngams_server, mirror_request, update_db=True):
     """
-    Add a Mirroring Request in the DBM Mirroring Completed Queue.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    mirReqObj:  Instance of Mirroring Request Object to put in the queue
-                (ngamsMirroringRequest).
-
-    updateDb:   If true, the status is updated in the DB (boolean).
-
-    Returns:    Void.
+    Add a Mirroring Request in the DBM Mirroring Completed Queue
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param mirror_request: Instance of Mirroring Request Object to put in the queue (ngamsMirroringRequest)
+    :param update_db: If true, the status is updated in the DB (boolean)
     """
     try:
-        srvObj._complQueueDbmSem.acquire()
-        logger.debug("Adding entry in Mirroring Completed Queue: %s/%d",
-             mirReqObj.getFileId(), mirReqObj.getFileVersion())
-        srvObj._complQueueDbm.add(mirReqObj.genFileKey(), mirReqObj).sync()
-        if (updateDb): srvObj.getDb().updateMirReq(mirReqObj)
-        srvObj._complQueueDbmSem.release()
+        ngams_server._complQueueDbmSem.acquire()
+        logger.debug("Adding entry in Mirroring Completed Queue: %s/%d", mirror_request.get_file_id(),
+                     mirror_request.getFileVersion())
+        ngams_server._complQueueDbm.add(mirror_request.genFileKey(), mirror_request).sync()
+        if update_db:
+            ngams_server.getDb().updateMirReq(mirror_request)
+        ngams_server._complQueueDbmSem.release()
     except Exception as e:
-        srvObj._complQueueDbmSem.release()
-        msg = "Error adding new element to DBM Mirroring Completed Queue. " +\
-              "Error: %s"
-        raise Exception(msg % str(e))
+        ngams_server._complQueueDbmSem.release()
+        raise Exception("Error adding new element to DBM Mirroring Completed Queue. Error: %s" % str(e))
 
 
-def scheduleMirReq(srvObj,
-                   instanceId,
-                   fileId,
-                   fileVersion,
-                   ingestionDate,
-                   srvListId,
-                   xmlFileInfo):
+def schedule_mirror_request(ngams_server, instance_id, file_id, file_version, ingestion_date, server_list_id,
+                            xml_file_info):
     """
-    Schedule a new Mirroring Request in the DB Mirroring Queue and the
-    Mirroring Queue DBM.
-
-    srvObj:         Reference to server object (ngamsServer).
-
-    instanceId:     ID for instance controlling the mirroring (string).
-
-    fileId:         NGAS ID of file (string).
-
-    fileVersion:    NGAS version of file (integer).
-
-    ingestionDate:  NGAS ingestion date reference for file (number).
-
-    srvListId:      Server list ID for this request indicating the nodes to
-                    contact to obtain this file (string).
-
-    xmlFileInfo:    The XML file information for the file (string/XML).
-
-    Returns:        Void.
+    Schedule a new Mirroring Request in the DB Mirroring Queue and the Mirroring Queue DBM
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param instance_id: ID for instance controlling the mirroring (string)
+    :param file_id: NGAS file ID (string)
+    :param file_version: NGAS file version (integer)
+    :param ingestion_date: NGAS ingestion date reference for file (number)
+    :param server_list_id: Server list ID for this request indicating the nodes to contact to obtain this file (string)
+    :param xml_file_info: The XML file information for the file (string/XML)
     """
-    mirReqObj = ngamsMirroringRequest.ngamsMirroringRequest().\
-                setInstanceId(instanceId).\
-                setFileId(fileId).\
-                setFileVersion(fileVersion).\
-                setIngestionDate(ingestionDate).\
-                setSrvListId(srvListId).\
-                setStatus(ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED).\
-                setXmlFileInfo(xmlFileInfo)
-    logger.debug("Scheduling data object for mirroring: %s",
-         mirReqObj.genSummary())
-    srvObj.getDb().writeMirReq(mirReqObj)
-    addEntryMirQueue(srvObj, mirReqObj, updateDb = False)
+    mirror_request_obj = NgamsMirroringRequest.NgamsMirroringRequest().\
+        set_instance_id(instance_id).\
+        set_file_id(file_id).\
+        set_file_version(file_version).\
+        setIngestionDate(ingestion_date).\
+        setSrvListId(server_list_id).\
+        setStatus(NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED).\
+        setXmlFileInfo(xml_file_info)
+    logger.debug("Scheduling data object for mirroring: %s", mirror_request_obj.genSummary())
+    ngams_server.getDb().writeMirReq(mirror_request_obj)
+    add_entry_mirror_queue(ngams_server, mirror_request_obj, update_db=False)
 
 
-def getMirRequestFromQueue(srvObj):
+def get_mir_request_from_queue(ngams_server):
     """
-    Get the next Mirroring Request from the Mirroring Request Queue.
-    If there are no requests in the queue, None is returned.
-
-    The entries are removed (popped) from the queue.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Next Mirroring Request Object or None
-                (ngamsMirroringRequest | None).
+    Get the next Mirroring Request from the Mirroring Request Queue. If there are no requests in the queue, None is
+    returned. The entries are removed (popped) from the queue.
+    :param ngams_server: Reference to server object (ngamsServer)
+    :return: Next Mirroring Request Object or None (ngamsMirroringRequest | None)
     """
     try:
-        srvObj._mirQueueDbmSem.acquire()
-        nextKey = ((srvObj._mirQueueDbm.get(NGAMS_MIR_DBM_POINTER) + 1) %\
-                   NGAMS_MIR_DBM_MAX_LIMIT)
-        if (srvObj._mirQueueDbm.hasKey(str(nextKey))):
-            mirReqObj = srvObj._mirQueueDbm.get(str(nextKey))
-            srvObj._mirQueueDbm.\
-                                  add(NGAMS_MIR_DBM_POINTER, nextKey).\
-                                  rem(str(nextKey)).sync()
+        ngams_server._mirQueueDbmSem.acquire()
+        next_key = (ngams_server._mirQueueDbm.get(NGAMS_MIR_DBM_POINTER) + 1) % NGAMS_MIR_DBM_MAX_LIMIT
+        if ngams_server._mirQueueDbm.hasKey(str(next_key)):
+            mirror_request_obj = ngams_server._mirQueueDbm.get(str(next_key))
+            ngams_server._mirQueueDbm.add(NGAMS_MIR_DBM_POINTER, next_key).rem(str(next_key)).sync()
         else:
-            mirReqObj = None
-        srvObj._mirQueueDbmSem.release()
-        return mirReqObj
-
+            mirror_request_obj = None
+        ngams_server._mirQueueDbmSem.release()
+        return mirror_request_obj
     except Exception as e:
-        srvObj._mirQueueDbmSem.release()
-        msg = "Error adding new element to DBM Mirroring Queue. Error: %s" %\
-              str(e)
-        raise Exception(msg)
+        ngams_server._mirQueueDbmSem.release()
+        raise Exception("Error adding new element to DBM Mirroring Queue. Error: %s" % str(e))
 
 
-def startMirroringThreads(srvObj, stop_evt):
+def start_mirroring_threads(ngams_server, stop_event):
     """
-    Start the Mirroring Threads according to the configuration.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+    Start the Mirroring Threads according to the configuration
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param stop_event Stop event
     """
-    for thrNo in range(1, (srvObj.getCfg().getMirroringThreads() + 1)):
-        threadId = NGAMS_MIR_CONTROL_THR + "-" + str(thrNo)
-        args = (srvObj, stop_evt)
-        logger.debug("Starting Mirroring Thread: %s", threadId)
-        thrHandle = threading.Thread(None, mirroringThread, threadId, args)
-        thrHandle.setDaemon(0)
-        thrHandle.start()
+    for thread_num in range(1, ngams_server.getCfg().getMirroringThreads() + 1):
+        thread_id = NGAMS_MIR_CONTROL_THR + "-" + str(thread_num)
+        args = (ngams_server, stop_event)
+        logger.debug("Starting Mirroring Thread: %s", thread_id)
+        thread_handle = threading.Thread(None, mirroring_thread, thread_id, args)
+        thread_handle.setDaemon(False)
+        thread_handle.start()
 
 
-def pauseMirThreads(srvObj, stop_evt):
+def pause_mirror_threads(ngams_server, stop_event):
     """
-    Called by the Mirroring Control Thread to request the Mirroring Threads
-    to pause themselves until asked to resume.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+    Called by the Mirroring Control Thread to request the Mirroring Threads to pause themselves until asked to resume
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param stop_event: Stop event
     """
-    srvObj._pauseMirThreads = True
-    # Wait for all threads to enter pause mode.
-    noOfMirThreads = srvObj.getCfg().getMirroringThreads()
-    while (True):
-        if (srvObj._mirThreadsPauseCount == noOfMirThreads):
+    ngams_server._pauseMirThreads = True
+    # Wait for all threads to enter pause mode
+    num_mirror_threads = ngams_server.getCfg().getMirroringThreads()
+    while True:
+        if ngams_server._mirThreadsPauseCount == num_mirror_threads:
             logger.debug("All Mirroring Threads entered paused mode")
             return
-        suspend(stop_evt, 1)
+        suspend(stop_event, 1)
 
 
-def resumeMirThreads(srvObj, stop_evt):
+def resume_mirror_threads(ngams_server, stop_event):
     """
-    Called by the Mirroring Control Thread to request the Mirroring Threads
-    to resume service after they have been paused.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+    Called by the Mirroring Control Thread to request the Mirroring Threads to resume service after they have
+    been paused
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param stop_event: Stop event
     """
-    srvObj._pauseMirThreads = False
-    # Wait for all threads to resume service.
-    noOfMirThreads = srvObj.getCfg().getMirroringThreads()
-    while (srvObj._mirThreadsPauseCount > 0):
-        suspend(stop_evt, 1)
+    ngams_server._pauseMirThreads = False
+    # Wait for all threads to resume service
+    while ngams_server._mirThreadsPauseCount > 0:
+        suspend(stop_event, 1)
     logger.debug("All Mirroring Threads resumed service")
 
 
-def pauseMirThread(srvObj, stop_evt):
+def pause_mirror_thread(ngams_server, stop_event):
     """
-    Called by the Mirroring Threads to check if they should pause on request
-    from the Mirroring Control Thread. If yes, they pause themselves until
-    requested to resume or to exit the service.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+    Called by the Mirroring Threads to check if they should pause on request from the Mirroring Control Thread. If yes,
+    they pause themselves until requested to resume or to exit the service.
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param stop_event: Stop event
     """
-    if (srvObj._pauseMirThreads):
+    if ngams_server._pauseMirThreads:
         logger.debug("Mirroring Thread suspending itself ...")
-        srvObj._mirThreadsPauseCount += 1
-        while (srvObj._pauseMirThreads):
-            suspend(stop_evt, 1)
+        ngams_server._mirThreadsPauseCount += 1
+        while ngams_server._pauseMirThreads:
+            suspend(stop_event, 1)
         logger.debug("Mirroring Thread resuming service ...")
-        srvObj._mirThreadsPauseCount -= 1
+        ngams_server._mirThreadsPauseCount -= 1
 
 
-def getMirRequest(srvObj,
-                  timeout):
+def get_mirror_request(ngams_server, timeout):
     """
-    Check if there is a Mirroring Request in the queue.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    timeout:    Max. timeout to wait for a new request (float).
-
-    Returns:    Return Mirroring Request Object or None if no became available
-                in the specified period of time (ngamsMirroringRequest|None).
+    Check if there is a Mirroring Request in the queue
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param timeout: Max. timeout to wait for a new request (float)
+    :return: Return Mirroring Request Object or None if no became available in the specified period of time
+    (ngamsMirroringRequest | None)
     """
-    srvObj.waitMirTrigger(timeout)
-    mirReqObj = getMirRequestFromQueue(srvObj)
-    return mirReqObj
+    ngams_server.waitMirTrigger(timeout)
+    mirror_request_obj = get_mir_request_from_queue(ngams_server)
+    return mirror_request_obj
 
 
-# An internal list of local serves is kept, to avoid reading this information
-# continuesly from the DB.
-_localSrvList = []
-_lastUpdateLocalSrvList = 0
-def getLocalNauList(srvObj,
-                    localSrvListCfg):
+# TODO: remove these global variables
+# An internal list of local serves is kept, to avoid reading this information continuously from the DB
+_local_server_list = []
+_last_update_local_server_list = 0
+
+
+def get_local_nau_list(ngams_server, local_server_list_cfg):
     """
-    Render the list of local servers that can be contacted for handling
-    the re-archiving of the files from the source archive.
-
-    If 'localSrvListCfg' is 'ALL', all the local servers with archiving
-    capability are considered. If 'localSrvListCfg' is specified, only
-    these are considered. In both cases the resulting list is shuffled
-    randomly to obtain some load balancing.
-
-    srvObj:             Reference to server object (ngamsServer).
-
-    localSrvListCfg:    List with '<Server>:<Port>,...' to be contacted for
-                        re-archiving requests in the local cluster, or 'ALL'
-                        (string).
-
-    Returns:            List of servers that can be contacted (list).
+    Render the list of local servers that can be contacted for handling the re-archiving of the files from the source
+    archive.
+    If 'local_server_list_cfg' is 'ALL', all the local servers with archiving capability are considered. If
+    'localSrvListCfg' is specified, only these are considered. In both cases the resulting list is shuffled randomly
+    to obtain some load balancing.
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param local_server_list_cfg: List with 'server:port,...' to be contacted for re-archiving requests in the local
+    cluster, or 'ALL' (string)
+    :return: List of servers that can be contacted (list)
     """
-    if (localSrvListCfg == NGAMS_MIR_ALL_LOCAL_SRVS):
-        # All local servers should be considered.
-        # Read only the list of local servers ~every minute.
-        global _localSrvList, _lastUpdateLocalSrvList
-        if ((time.time() - _lastUpdateLocalSrvList) > 60):
-            clusterName = srvObj.getHostInfoObj().getClusterName()
-            _localSrvList = srvObj.getDb().\
-                            getClusterReadyArchivingUnits(clusterName)
-            _lastUpdateLocalSrvList = time.time()
-        tmpSrvList = _localSrvList
+    if local_server_list_cfg == NGAMS_MIR_ALL_LOCAL_SRVS:
+        # All local servers should be considered
+        # Read only the list of local servers about every minute
+        global _local_server_list, _last_update_local_server_list
+        if (time.time() - _last_update_local_server_list) > 60:
+            cluster_name = ngams_server.getHostInfoObj().getClusterName()
+            _local_server_list = ngams_server.getDb().getClusterReadyArchivingUnits(cluster_name)
+            _last_update_local_server_list = time.time()
+        tmp_server_list = _local_server_list
     else:
-        # A specific list is given.
-        tmpSrvList = filter(None, localSrvListCfg.split(","))
-
-    # Create copy of list and shuffle it.
-    srvList = copy.deepcopy(tmpSrvList)
-    random.shuffle(srvList)
-
-    return srvList
+        # A specific list is given
+        tmp_server_list = filter(None, local_server_list_cfg.split(","))
+    # Create a copy of the list and shuffle the item order
+    server_list = copy.deepcopy(tmp_server_list)
+    random.shuffle(server_list)
+    return server_list
 
 
-def handleMirRequest(srvObj,
-                     mirReqObj):
+def handle_mirror_request(ngams_server, mirror_request):
     """
-    Handle a Mirroring Request: Attempt to mirror the data object associated
-    to that Mirroring Request.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    mirReqObj:  Mirroring Request Object (ngamsMirroringRequest).
-
-    Returns:    Void.
+    Handle a Mirroring Request: Attempt to mirror the data object associated to that Mirroring Request.
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param mirror_request: Mirroring Request Object (ngamsMirroringRequest)
     """
-    mirReqObj.setStatus(ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE)
-    srvObj.getDb().updateStatusMirReq(mirReqObj.getFileId(),
-                                      mirReqObj.getFileVersion(),
-                                      ngamsMirroringRequest.\
-                                      NGAMS_MIR_REQ_STAT_ACTIVE_NO)
+    mirror_request.setStatus(NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE)
+    ngams_server.getDb().updateStatusMirReq(mirror_request.get_file_id(), mirror_request.getFileVersion(),
+                                            NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE_NO)
 
-    # Find a node to contact in the local cluster (try the whole list
-    # if necessary).
-    srvList = srvObj.getSrvListDic()[mirReqObj.getSrvListId()]
-    mirSrcObj = srvObj.getCfg().getMirroringSrcObjFromSrvList(srvList)
-    localNauList = getLocalNauList(srvObj, mirSrcObj.getTargetNodes())
+    # Find a node to contact in the local cluster (try the whole list if necessary)
+    server_list = ngams_server.getSrvListDic()[mirror_request.getSrvListId()]
+    mirror_source_obj = ngams_server.getCfg().getMirroringSrcObjFromSrvList(server_list)
+    local_nau_list = get_local_nau_list(ngams_server, mirror_source_obj.getTargetNodes())
     succeeded = False
-    encFileInfo = base64.b64encode(mirReqObj.getXmlFileInfo())
-    fileInfoObj = ngamsFileInfo.ngamsFileInfo().\
-                  unpackXmlDoc(mirReqObj.getXmlFileInfo())
-    errMsg = ""
-    for nextNau in localNauList:
-        nextLocalSrv, nextLocalPort = nextNau.split(":")
-        nextLocalPort = int(nextLocalPort)
+    encoded_file_info = base64.b64encode(mirror_request.getXmlFileInfo())
+    file_info = ngamsFileInfo.ngamsFileInfo().unpackXmlDoc(mirror_request.getXmlFileInfo())
+    error_message = ""
+    for next_nau in local_nau_list:
+        next_local_server, next_local_port = next_nau.split(":")
+        next_local_port = int(next_local_port)
 
-        # Cycle over the specified remote nodes in the source archive, until
-        # one of them are successful.
+        # Cycle over the specified remote nodes in the source archive, until one of them are successful
 
         # Get shuffled list of nodes in the source archive to contact to
         # get a copy of the file in question.
-        srcNodeList = copy.deepcopy(srvObj.getSrvListDic()[mirSrcObj.getId()])
-        random.shuffle(srcNodeList)
-        for srcNodeAddress in srcNodeList:
-            srcHostName, srcPortNo = srcNodeAddress.split(":")
-            srcPortNo = int(srcPortNo)
+        source_node_list = copy.deepcopy(ngams_server.getSrvListDic()[mirror_source_obj.getId()])
+        random.shuffle(source_node_list)
+        for source_node_address in source_node_list:
+            source_host_name, source_port_num = source_node_address.split(":")
+            source_port_num = int(source_port_num)
+            # Send REARCHIVE Command to the next, local contact node, asking it to try to collect the file from the
+            # next node in the Mirroring Source Archive.
+            # FIXME: we should try using https
+            file_uri = "http://%s:%d/RETRIEVE?file_id=%s&file_version=%d&quick_location=1"
+            file_uri = file_uri % (source_host_name, source_port_num, mirror_request.get_file_id(),
+                                   mirror_request.getFileVersion())
+            pars = [[NGAMS_HTTP_PAR_FILENAME, file_uri]]
+            hdrs = [[NGAMS_HTTP_HDR_FILE_INFO, encoded_file_info],
+                    [NGAMS_HTTP_HDR_CONTENT_TYPE, file_info.getFormat()]]
+            response = ngamsHttpUtils.httpGet(next_local_server, next_local_port, NGAMS_REARCHIVE_CMD, pars=pars,
+                                              hdrs=hdrs, timeout=600)
 
-            # Send REARCHIVE Command to the next, local contact node, asking
-            # it to try to collect the file from the next node in the
-            # Mirroring Source Archive.
-            fileUri = "http://%s:%d/RETRIEVE?file_id=%s&file_version=%d&quick_location=1"
-            fileUri = fileUri % (srcHostName, srcPortNo, mirReqObj.getFileId(),
-                                 mirReqObj.getFileVersion())
-            pars = [[NGAMS_HTTP_PAR_FILENAME, fileUri]]
-            hdrs = [[NGAMS_HTTP_HDR_FILE_INFO, encFileInfo],
-                    [NGAMS_HTTP_HDR_CONTENT_TYPE, fileInfoObj.getFormat()]]
-            resp = ngamsHttpUtils.httpGet(nextLocalSrv, nextLocalPort,
-                                    NGAMS_REARCHIVE_CMD, pars=pars, hdrs=hdrs,
-                                    timeout=600)
-
-            with contextlib.closing(resp):
-                if resp.status == NGAMS_HTTP_SUCCESS:
+            with contextlib.closing(response):
+                if response.status == NGAMS_HTTP_SUCCESS:
                     succeeded = True
                     break
                 else:
-                    # An error occurred, log error notice and go to next (if there
-                    # are more nodes).
-                    tmpStatObj = ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read())
-                    msg = "Error issuing REARCHIVE Command. " +\
-                          "Local node: %s:%d, source contact node: %s:%d. " +\
+                    # An error occurred, log error notice and go to next (if there are more nodes)
+                    tmp_status = ngamsStatus.ngamsStatus().unpackXmlDoc(response.read())
+                    msg = "Error issuing REARCHIVE Command. Local node: %s:%d, source contact node: %s:%d. " \
                           "Error message: %s"
-                    msg = msg % (nextLocalSrv, nextLocalPort, srcHostName,
-                                 srcPortNo, tmpStatObj.getMessage())
+                    msg = msg % (next_local_server, next_local_port, source_host_name, source_port_num,
+                                 tmp_status.getMessage())
                     logger.warning(msg)
-                    errMsg = "Last error encountered: %s" % msg
+                    error_message = "Last error encountered: %s" % msg
                     continue
+        if succeeded:
+            break
 
-        if (succeeded): break
-
-    if (not succeeded):
-        mirReqObj.\
-                    setStatus(ngamsMirroringRequest.\
-                              NGAMS_MIR_REQ_STAT_ERR_RETRY_NO).\
-                    setMessage(errMsg).\
-                    setLastActivityTime(time.time())
-        srvObj.getDb().updateStatusMirReq(mirReqObj.getFileId(),
-                                          mirReqObj.getFileVersion(),
-                                          ngamsMirroringRequest.\
-                                          NGAMS_MIR_REQ_STAT_ERR_RETRY_NO)
-        msg = "Error handling Mirroring Request: %s" % mirReqObj.genSummary()
-        raise Exception(msg)
+    if not succeeded:
+        mirror_request.setStatus(NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO).\
+            setMessage(error_message).setLastActivityTime(time.time())
+        ngams_server.getDb().updateStatusMirReq(mirror_request.get_file_id(), mirror_request.getFileVersion(),
+                                                NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO)
+        raise Exception("Error handling Mirroring Request: %s" % mirror_request.genSummary())
     else:
-        msg = "Successfully handled Mirroring Request: %s"
-        logger.debug(msg, mirReqObj.genSummary())
+        logger.debug("Successfully handled Mirroring Request: %s", mirror_request.genSummary())
 
 
-def mirroringThread(srvObj, stop_evt):
+def mirroring_thread(ngams_server, stop_event):
     """
-    A number of Mirroring Threads are executing when the NGAS Mirroring Service
-    is enabled to handle the requesting of data and ingestion into the local
-    clster.
-
-    srvObj:      Reference to server object (ngamsServer).
-
-    dummy:       Needed by the thread handling ...
-
-    Returns:     Void.
+    A number of Mirroring Threads are executing when the NGAS Mirroring Service is enabled to handle the requesting of
+    data and ingestion into the local cluster.
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param stop_event: Stop event
     """
-    # Main loop.
-    while (True):
-        # Incapsulate this whole block to avoid that the thread dies in
-        # case a problem occurs, like e.g. a problem with the DB connection.
+    while True:
+        # Encapsulate this whole block to avoid that the thread dies in case a problem occurs,
+        # like e.g. a problem with the DB connection
         try:
-            checkStopMirControlThread(stop_evt)
-            pauseMirThread(srvObj, stop_evt)
-
+            check_stop_mirror_control_thread(stop_event)
+            pause_mirror_thread(ngams_server, stop_event)
             logger.debug("Mirroring Thread starting next iteration ...")
-
-            ###################################################################
             # Business logic of Mirroring Thread
-            ###################################################################
             try:
-                # Wait for the next Mirroring Request. A timeout is applied,
-                # if no request becomes available within the given timeout
-                # an exception is thrown.
-                mirReqObj = getMirRequest(srvObj, NGAMS_MIR_MIR_THREAD_TIMEOUT)
-                if (mirReqObj):
-                    handleMirRequest(srvObj, mirReqObj)
-
-                    # The handling of the Mirroring Request succeeded (no
-                    # exception was thrown). Put the handle in the Completed
-                    # Queue.
-                    mirReqObj.setStatus(ngamsMirroringRequest.\
-                                        NGAMS_MIR_REQ_STAT_MIR)
-                    fileVer = mirReqObj.getFileVersion()
-                    mirroringStat = ngamsMirroringRequest.\
-                                    NGAMS_MIR_REQ_STAT_MIR_NO
-                    srvObj.getDb().updateStatusMirReq(mirReqObj.getFileId(),
-                                                      fileVer, mirroringStat)
-                    addEntryComplQueue(srvObj, mirReqObj)
+                # Wait for the next Mirroring Request. A timeout is applied, if no request becomes available within
+                # the given timeout an exception is thrown.
+                mirror_request = get_mirror_request(ngams_server, NGAMS_MIR_MIR_THREAD_TIMEOUT)
+                if mirror_request:
+                    handle_mirror_request(ngams_server, mirror_request)
+                    # The handling of the Mirroring Request succeeded (no exception was thrown). Put the handle in the
+                    # Completed Queue.
+                    mirror_request.setStatus(NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_MIR)
+                    file_version = mirror_request.getFileVersion()
+                    mirroring_status = NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_MIR_NO
+                    ngams_server.getDb().updateStatusMirReq(mirror_request.getFileId(), file_version, mirroring_status)
+                    add_entry_completed_queue(ngams_server, mirror_request)
             except Exception as e:
-                if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): raise e
-                msg = "Error handling Mirroring Request. Putting in Error " +\
-                      "Queue. Error: %s" % str(e)
-                logger.warning(msg)
-                # Put the request in the Error Queue DBM.
-                statNo = ngamsMirroringRequest.\
-                         NGAMS_MIR_REQ_STAT_ERR_RETRY_NO
-                mirReqObj.\
-                            setStatus(statNo).\
-                            setMessage(str(e))
-                srvObj.getDb().updateStatusMirReq(mirReqObj.getFileId(),
-                                                  mirReqObj.getFileVersion(),
-                                                  statNo)
-                addEntryErrQueue(srvObj, mirReqObj)
-            ###################################################################
-
+                if str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1:
+                    raise e
+                logger.warning("Error handling Mirroring Request. Putting in Error Queue. Error: %s" % str(e))
+                # Put the request in the Error Queue DBM
+                stat_num = NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO
+                mirror_request.setStatus(stat_num).setMessage(str(e))
+                ngams_server.getDb().updateStatusMirReq(mirror_request.getFileId(), mirror_request.getFileVersion(),
+                                                        stat_num)
+                add_entry_error_queue(ngams_server, mirror_request)
         except Exception as e:
-            if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1):
+            if str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1:
                 return
-            errMsg = "Error occurred during execution of the Mirroring " +\
-                     "Control Thread"
-            logger.exception(errMsg)
-            # We make a small wait here to avoid that the process tries
-            # too often to carry out the tasks that failed.
-            if stop_evt.wait(5.0):
+            logger.exception("Error occurred during execution of the Mirroring Control Thread")
+            # We make a small wait here to avoid that the process tries too often to carry out the tasks that failed
+            if stop_event.wait(5.0):
                 return
 
 
-def initMirroring(srvObj):
+def initialise_mirroring(ngams_server):
     """
-    Initialize the NGAS Mirroring Service. If there are requests in the
-    Mirroring Request Queue in the DB, these are read out and inserted
-    in the local Mirroring Request DBM.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+    Initialize the NGAS Mirroring Service. If there are requests in the Mirroring Request Queue in the DB, these are
+    read out and inserted in the local Mirroring Request DBM.
+    :param ngams_server: Reference to server object (ngamsServer)
     """
-    hostId = srvObj.getHostId()
-    # Build up the server list in the DB and the local repository kept
-    # in memory.
-    # The ID allocated to each Mirroring Source, is used as ID in the Server
-    # List.
-    for mirSrcObj in srvObj.getCfg().getMirroringSrcList():
-        srvListId = srvObj.getDb().\
-                    getSrvListIdFromSrvList(mirSrcObj.getServerList())
-        srvObj.getSrvListDic()[srvListId] = mirSrcObj.getServerList()
-        srvObj.getSrvListDic()[mirSrcObj.getServerList()] = srvListId
-        # Add compiled version of the list, which is easy to use when
-        # accessing the contact nodes.
-        srvObj.getSrvListDic()[mirSrcObj.getId()] = mirSrcObj.\
-                                                    getServerList().split(",")
+    host_id = ngams_server.getHostId()
+    # Build up the server list in the DB and the local repository kept in memory
+    # The ID allocated to each Mirroring Source, is used as ID in the Server List
+    for mirror_source_obj in ngams_server.getCfg().getMirroringSrcList():
+        server_list_id = ngams_server.getDb().getSrvListIdFromSrvList(mirror_source_obj.getServerList())
+        ngams_server.getSrvListDic()[server_list_id] = mirror_source_obj.getServerList()
+        ngams_server.getSrvListDic()[mirror_source_obj.getServerList()] = server_list_id
+        # Add compiled version of the list, which is easy to use when accessing the contact nodes
+        ngams_server.getSrvListDic()[mirror_source_obj.getId()] = mirror_source_obj.getServerList().split(",")
 
-    # Create the Mirroring DBM Queue.
-    mirQueueDbmName = "%s/%s_%s" %\
-                      (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-                       NGAMS_MIR_QUEUE_DBM, hostId)
-    rmFile("%s*" % mirQueueDbmName)
-    srvObj._mirQueueDbm = ngamsDbm.ngamsDbm(mirQueueDbmName,
-                                            cleanUpOnDestr = 0,
-                                            writePerm = 1)
-    srvObj._mirQueueDbm.\
-                          add(NGAMS_MIR_DBM_COUNTER, 0).\
-                          add(NGAMS_MIR_DBM_POINTER, 0)
+    # Create the Mirroring DBM Queue
+    mirror_queue_dbm_name = "%s/%s_%s" % (ngamsHighLevelLib.getNgasChacheDir(ngams_server.getCfg()),
+                                          NGAMS_MIR_QUEUE_DBM, host_id)
+    rmFile("%s*" % mirror_queue_dbm_name)
+    ngams_server._mirQueueDbm = ngamsDbm.ngamsDbm(mirror_queue_dbm_name, cleanUpOnDestr=0, writePerm=1)
+    ngams_server._mirQueueDbm.add(NGAMS_MIR_DBM_COUNTER, 0).add(NGAMS_MIR_DBM_POINTER, 0)
 
-    # Create the Error DBM Queue.
-    errQueueDbmName = "%s/%s_%s" %\
-                      (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-                       NGAMS_MIR_ERR_QUEUE_DBM, hostId)
-    rmFile("%s*" % errQueueDbmName)
-    srvObj._errQueueDbm = ngamsDbm.ngamsDbm(errQueueDbmName,
-                                            cleanUpOnDestr = 0,
-                                            writePerm = 1)
+    # Create the Error DBM Queue
+    error_queue_dbm_name = "%s/%s_%s" % (ngamsHighLevelLib.getNgasChacheDir(ngams_server.getCfg()),
+                                         NGAMS_MIR_ERR_QUEUE_DBM, host_id)
+    rmFile("%s*" % error_queue_dbm_name)
+    ngams_server._errQueueDbm = ngamsDbm.ngamsDbm(error_queue_dbm_name, cleanUpOnDestr=0, writePerm=1)
 
-    # Create the Completed DBM Queue.
-    complQueueDbmName = "%s/%s_%s" %\
-                        (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-                         NGAMS_MIR_COMPL_QUEUE_DBM, hostId)
-    rmFile("%s*" % complQueueDbmName)
-    srvObj._complQueueDbm = ngamsDbm.ngamsDbm(complQueueDbmName,
-                                              cleanUpOnDestr = 0,
-                                              writePerm = 1)
+    # Create the Completed DBM Queue
+    completed_queue_dbm_name = "%s/%s_%s" % (ngamsHighLevelLib.getNgasChacheDir(ngams_server.getCfg()),
+                                             NGAMS_MIR_COMPL_QUEUE_DBM, host_id)
+    rmFile("%s*" % completed_queue_dbm_name)
+    ngams_server._complQueueDbm = ngamsDbm.ngamsDbm(completed_queue_dbm_name, cleanUpOnDestr=0, writePerm=1)
 
-    # Create the DBM to keep track of when synchronization was last done with
-    # the specified Source Archives. Note this DBM is kept between sessions
-    # to avoid too frequent complete syncrhonization checks.
-    srcArchInfoDbm = "%s/%s_%s" %\
-                     (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-                      NGAMS_MIR_SRC_ARCH_INF_DBM, hostId)
-    srvObj._srcArchInfoDbm = ngamsDbm.ngamsDbm(srcArchInfoDbm,
-                                               cleanUpOnDestr = 0,
-                                               writePerm = 1)
-    # Update the Mirroring Source Archive DBM.
-    for mirSrcObj in srvObj.getCfg().getMirroringSrcList():
-        if (not srvObj._srcArchInfoDbm.hasKey(mirSrcObj.getId())):
-            srvObj._srcArchInfoDbm.add(mirSrcObj.getId(), mirSrcObj)
+    # Create the DBM to keep track of when synchronization was last done with the specified Source Archives. Note this
+    # DBM is kept between sessions to avoid too frequent complete synchronization checks.
+    source_archive_info_dbm = "%s/%s_%s" % (ngamsHighLevelLib.getNgasChacheDir(ngams_server.getCfg()),
+                                            NGAMS_MIR_SRC_ARCH_INF_DBM, host_id)
+    ngams_server._srcArchInfoDbm = ngamsDbm.ngamsDbm(source_archive_info_dbm, cleanUpOnDestr=0, writePerm=1)
+    # Update the Mirroring Source Archive DBM
+    for mirror_source_obj in ngams_server.getCfg().getMirroringSrcList():
+        if not ngams_server._srcArchInfoDbm.hasKey(mirror_source_obj.getId()):
+            ngams_server._srcArchInfoDbm.add(mirror_source_obj.getId(), mirror_source_obj)
         else:
-            dbmMirSrcObj = srvObj._srcArchInfoDbm.get(mirSrcObj.getId())
-            mirSrcObj.setLastSyncTime(dbmMirSrcObj.getLastSyncTime())
-            srvObj._srcArchInfoDbm.add(mirSrcObj.getId(), mirSrcObj)
+            dbm_mirror_source_obj = ngams_server._srcArchInfoDbm.get(mirror_source_obj.getId())
+            mirror_source_obj.setLastSyncTime(dbm_mirror_source_obj.getLastSyncTime())
+            ngams_server._srcArchInfoDbm.add(mirror_source_obj.getId(), mirror_source_obj)
 
-    # Restore the previous state of the mirroring from the DB Mirroring Queue
-    # (if the service was interrupted).
-    for mirReqObj in srvObj.getDb().dumpMirroringQueue(srvObj.getHostId()):
-        logger.debug("Restoring Mirroring Request: %s", mirReqObj.genSummary())
+    # Restore the previous state of the mirroring from the DB Mirroring Queue (if the service was interrupted)
+    for mirror_request_obj in ngams_server.getDb().dumpMirroringQueue(ngams_server.getHostId()):
+        logger.debug("Restoring Mirroring Request: %s", mirror_request_obj.genSummary())
         # Add entry in the Mirroring DBM Queue?
-        if (mirReqObj.getStatusAsNo() in
-            (ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED_NO,
-             ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE_NO)):
-            addEntryMirQueue(srvObj, mirReqObj)
+        if mirror_request_obj.getStatusAsNo() in (NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED_NO,
+                                                  NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE_NO):
+            add_entry_mirror_queue(ngams_server, mirror_request_obj)
         # Add entry in the Error DBM Queue?
-        elif (mirReqObj.getStatusAsNo() ==
-              ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO):
-            addEntryErrQueue(srvObj, mirReqObj)
+        elif mirror_request_obj.getStatusAsNo() == NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO:
+            add_entry_error_queue(ngams_server, mirror_request_obj)
         # Add entry in the Completed DBM Queue?
-        elif (mirReqObj.getStatusAsNo() in
-              (ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_MIR_NO,
-               ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_REP_NO,
-               ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_ABANDON_NO)):
-            addEntryComplQueue(srvObj, mirReqObj, updateDb = False)
+        elif mirror_request_obj.getStatusAsNo() in (NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_MIR_NO,
+                                                    NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_REP_NO,
+                                                    NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_ABANDON_NO):
+            add_entry_completed_queue(ngams_server, mirror_request_obj, update_db=False)
 
 
-def retrieveFileList(srvObj,
-                     mirSrcObj,
-                     node,
-                     port,
-                     statusCmdPars,
-                     clusterFilesDbmName):
+def retrieve_file_list(ngams_server, mirror_source, node, port, status_cmd_pars, cluster_files_dbm_name):
     """
-    Retrieve and handle the information in connection with the STATUS?file_list
-    request.
-
-    srvObj:               Reference to server object (ngamsServer).
-
-    mirSrcObj:            Mirroring Source Object associated with the NGAS
-                          Cluster contacted (ngamsMirroringSource).
-
-    node:                 NGAS host to contact (string).
-
-    port:                 Port used by NGAS instance to contact (integer).
-
-    statusCmdPars:        HTTP parameters for the STATUS Command (list).
-
-    clusterFilesDbmName:  Name of the DBM containing a snapshot of all files
-                          stored in the name space of the local cluster
-                          (string).
-
-    Returns:              Void
+    Retrieve and handle the information in connection with the STATUS?file_list request
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param mirror_source: Mirroring Source Object associated with the NGAS Cluster contacted (ngamsMirroringSource)
+    :param node: NGAS host to contact (string)
+    :param port: Port used by NGAS instance to contact (integer)
+    :param status_cmd_pars: HTTP parameters for the STATUS Command (list)
+    :param cluster_files_dbm_name: Name of the DBM containing a snapshot of all files stored in the name space of the
+    local cluster (string)
     """
-    hostId = srvObj.getHostId()
+    host_id = ngams_server.getHostId()
 
-    # Send the STATUS?file_list query. Receive the data into a temporary file.
-    rawFileListCompr = "%s/%s_%s.gz" %\
-                       (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-                        NGAMS_MIR_FILE_LIST_RAW, hostId)
-
-
-    fileListId = None
+    # Send the STATUS?file_list query. Receive the data into a temporary file
+    raw_file_list_compressed = "%s/%s_%s.gz" % (ngamsHighLevelLib.getNgasChacheDir(ngams_server.getCfg()),
+                                                NGAMS_MIR_FILE_LIST_RAW, host_id)
+    file_list_id = None
     try:
-        clusterFilesDbm = ngamsDbm.ngamsDbm(clusterFilesDbmName,
-                                            cleanUpOnDestr = 0, writePerm = 1)
+        cluster_files_dbm = ngamsDbm.ngamsDbm(cluster_files_dbm_name, cleanUpOnDestr=0, writePerm=1)
+        # Retrieve the file info from the specified contact nodes and schedule the files relevant
+        remaining_elements = None
+        while True:
+            rmFile("%s*" % raw_file_list_compressed[:-3])
+            response = ngamsHttpUtils.httpGet(node, port, NGAMS_STATUS_CMD, pars=status_cmd_pars, timeout=1800)
 
-        # Retrieve the file info from the specified contact nodes and
-        # schedule the files relevant.
-        remainingEls = None
-        while (True):
-            rmFile("%s*" % rawFileListCompr[:-3])
-            resp = ngamsHttpUtils.httpGet(node, port, NGAMS_STATUS_CMD,
-                                    pars=statusCmdPars,
-                                    timeout=1800)
+            with contextlib.closing(response):
+                if response.status != NGAMS_HTTP_SUCCESS:
+                    rmFile("%s*" % raw_file_list_compressed[:-3])
+                    status_obj = ngamsStatus.ngamsStatus().unpackXmlDoc(response.read())
+                    raise Exception("Error accessing NGAS Node: %s/%d. Error: %s"
+                                    % (node, port, status_obj.getMessage()))
 
-            with contextlib.closing(resp):
-                if resp.status != NGAMS_HTTP_SUCCESS:
-                    rmFile("%s*" % rawFileListCompr[:-3])
-                    statObj = ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read())
-                    msg = "Error accessing NGAS Node: %s/%d. Error: %s"
-                    raise Exception(msg % (node, port, statObj.getMessage()))
+                with open(raw_file_list_compressed, 'wb') as raw_file_obj:
+                    response_read_buffer = functools.partial(response.read, 65536)
+                    for response_buffer in iter(response_read_buffer, ''):
+                        raw_file_obj.write(response_buffer)
 
-                with open(rawFileListCompr, 'wb') as f:
-                    readf = functools.partial(resp.read, 65536)
-                    for buf in iter(readf, ''):
-                        f.write(buf)
+            # Decompress the file (it is always transferred compressed)
+            file_list_raw = decompressFile(raw_file_list_compressed)
 
-            # Decompress the file (it is always transferred compressed).
-            fileListRaw = decompressFile(rawFileListCompr)
-
-            # Get the File List ID in connection with this request if not
-            # already extracted.
-            # Get the number of remaining items to retrieve info about.
-            # It is necessary to scan through the beginning of the file to
-            # get the FileList Element, which contains this information.
+            # Get the File List ID in connection with this request if not already extracted.
+            # Get the number of remaining items to retrieve info about. It is necessary to scan through the beginning
+            # of the file to get the FileList Element, which contains this information.
             # The entry looks something like this:
-            #
-            # <FileList Id="a8f2cbdb705899588468f72986c813ab"
-            #           Status="REMAINING_DATA_OBJECTS: 1453">
-            fo = open(fileListRaw)
+            # <FileList Id="a8f2cbdb705899588468f72986c813ab" Status="REMAINING_DATA_OBJECTS: 1453">
+            file_list_raw_obj = open(file_list_raw)
             count = 0
-            while (count < 100):
-                nextLine = fo.readline()
-                if (nextLine.find("FileList Id=") != -1):
-                    lineEls = filter(None, nextLine.strip().split(" "))
-                    if (not fileListId):
-                        fileListId = lineEls[1].split("=")[1].strip('"')
-                        statusCmdPars.append([NGAMS_HTTP_PAR_FILE_LIST_ID,
-                                              fileListId])
-                    remainingEls = int(filter(None, lineEls)[-1].split('"')[0])
+            while count < 100:
+                next_line = file_list_raw_obj.readline()
+                if next_line.find("FileList Id=") != -1:
+                    line_elements = filter(None, next_line.strip().split(" "))
+                    if not file_list_id:
+                        file_list_id = line_elements[1].split("=")[1].strip('"')
+                        status_cmd_pars.append([NGAMS_HTTP_PAR_FILE_LIST_ID, file_list_id])
+                    remaining_elements = int(filter(None, line_elements)[-1].split('"')[0])
                     break
                 count += 1
-            msg = "Retrieving File List. File List ID: %s. " +\
-                  "Remaining Elements: %d"
-            logger.debug(msg, fileListId, remainingEls)
-            if (count == 100):
-                msg = "Illegal file list received as response to " +\
-                      "STATUS?file_list Request"
-                raise Exception(msg)
-            fo.seek(0)
+            logger.debug("Retrieving File List. File List ID: %s. Remaining Elements: %d",
+                         file_list_id, remaining_elements)
+            if count == 100:
+                raise Exception("Illegal file list received as response to STATUS?file_list Request")
+            file_list_raw_obj.seek(0)
 
-            # Read out the file info and figure out whether to schedule it
-            # for mirroring or not (file referenced by File ID + Version),
-            # if this file is:
-            #
-            # - being mirrored already (if it is queued): Skip.
-            #
-            # - available in the local cluster name space: Skip.
-            #
-            # - not already available in local cluster name space: Schedule it.
-            while (True):
-                nextLine = fo.readline()
-                if (nextLine == ""): break
-                if (nextLine.find("FileStatus AccessDate=") != -1):
-                    tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
-                                 unpackXmlDoc(nextLine)
-                    fileKey = ngamsLib.genFileKey(None, tmpFileObj.getFileId(),
-                                                  tmpFileObj.getFileVersion())
+            # Read out the file info and figure out whether to schedule it for mirroring or not (file referenced by
+            # File ID + Version), if this file is:
+            # * being mirrored already (if it is queued): Skip
+            # * available in the local cluster name space: Skip
+            # * not already available in local cluster name space: Schedule it
+            while True:
+                next_line = file_list_raw_obj.readline()
+                if next_line == "":
+                    break
+                if next_line.find("FileStatus AccessDate=") != -1:
+                    tmp_file_obj = ngamsFileInfo.ngamsFileInfo().unpackXmlDoc(next_line)
+                    file_key = ngamsLib.genFileKey(None, tmp_file_obj.get_file_id(), tmp_file_obj.getFileVersion())
                     # Entry found in the
-                    # - Mirroring DBM Queue?
-                    # - Error DBM Queue?
-                    # - Completed DBM Queue?
+                    #   * Mirroring DBM Queue?
+                    #   * Error DBM Queue?
+                    #   * Completed DBM Queue?
                     # Are there enough local copies in the cluster name space?
-                    msg = "Checking whether to schedule file: %s/%d for " +\
-                          "mirroring ..."
-                    logger.debug(msg, tmpFileObj.getFileId(),
-                                   tmpFileObj.getFileVersion())
-                    if (srvObj._mirQueueDbm.hasKey(fileKey)):
+                    logger.debug("Checking whether to schedule file: %s/%d for mirroring ...",
+                                 tmp_file_obj.get_file_id(), tmp_file_obj.getFileVersion())
+                    if ngams_server._mirQueueDbm.hasKey(file_key):
                         continue
-                    elif (srvObj._errQueueDbm.hasKey(fileKey)):
+                    elif ngams_server._errQueueDbm.hasKey(file_key):
                         continue
-                    elif (srvObj._complQueueDbm.hasKey(fileKey)):
+                    elif ngams_server._complQueueDbm.hasKey(file_key):
                         continue
                     else:
-                        # Check if the file is available in the name space of
-                        # this cluster. If not, schedule it.
-                        if (not clusterFilesDbm.hasKey(fileKey)):
+                        # Check if the file is available in the name space of this cluster. If not, schedule it.
+                        if not cluster_files_dbm.hasKey(file_key):
                             # The data object is not available, schedule it!
-                            srvListIdDb = srvObj.getSrvListDic()\
-                                          [mirSrcObj.getServerList()]
-                            scheduleMirReq(srvObj, hostId,
-                                           tmpFileObj.getFileId(),
-                                           tmpFileObj.getFileVersion(),
-                                           tmpFileObj.getIngestionDate(),
-                                           srvListIdDb, nextLine)
-
-            # Stop if there are no more elements to read out.
-            if (remainingEls == 0): break
-
+                            server_list_id_db = ngams_server.getSrvListDic()[mirror_source.getServerList()]
+                            schedule_mirror_request(ngams_server, host_id, tmp_file_obj.get_file_id(),
+                                                    tmp_file_obj.getFileVersion(), tmp_file_obj.getIngestionDate(),
+                                                    server_list_id_db, next_line)
+            # Stop if there are no more elements to read out
+            if remaining_elements == 0:
+                break
     except Exception as e:
-        msg = "Error retrieving file list. Error: %s"
-        raise Exception(msg % str(e))
+        raise Exception("Error retrieving file list. Error: %s" % str(e))
 
 
-def checkSourceArchives(srvObj):
+def check_source_archives(ngams_server):
     """
-    Check the source archives to see if data is available for mirroring.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+    Check the source archives to see if data is available for mirroring
+    :param ngams_server: Reference to server object (ngamsServer)
     """
-    # Dump the information for all files managed by this cluster.
-    clusterName = srvObj.getDb().getClusterNameFromHostId(srvObj.getHostId())
-    clusterFilesDbmName = "%s/%s_%s" %\
-                          (ngamsHighLevelLib.\
-                           getNgasChacheDir(srvObj.getCfg()),
-                           NGAMS_MIR_CLUSTER_FILE_DBM, clusterName)
-    clusterFilesDbmName = os.path.normpath(clusterFilesDbmName)
-    # Dump information about files registered in this cluster.
-    # Use the file key as key in the DBM, count occurrences of each file.
-    clusterFilesDbmName = srvObj.getDb().\
-                          dumpFileInfoCluster(clusterName,
-                                              clusterFilesDbmName,
-                                              useFileKey = True,
-                                              count = True)
+    # Dump the information for all files managed by this cluster
+    cluster_name = ngams_server.getDb().getClusterNameFromHostId(ngams_server.getHostId())
+    cluster_files_dbm_name = "%s/%s_%s" % (ngamsHighLevelLib.getNgasChacheDir(ngams_server.getCfg()),
+                                           NGAMS_MIR_CLUSTER_FILE_DBM, cluster_name)
+    cluster_files_dbm_name = os.path.normpath(cluster_files_dbm_name)
 
-    # Loop over the various Mirroring Source Archives specified in the
-    # configuration.
-    for mirSrcObj in srvObj.getCfg().getMirroringSrcList():
-        dbmMirSrcObj = srvObj._srcArchInfoDbm.get(mirSrcObj.getId())
+    # Dump information about files registered in this cluster
+    # Use the file key as key in the DBM, count occurrences of each file
+    cluster_files_dbm_name = ngams_server.getDb().dumpFileInfoCluster(cluster_name, cluster_files_dbm_name,
+                                                                      useFileKey=True, count=True)
 
-        # Figure out if a partial or complete sync should be done for this
-        # mirroring source.
-        timeNow = time.time()
-        doPartialSync = False
-        doComplSync = False
-        if (mirSrcObj.getCompleteSyncList()):
-            # OK, it is specified to do complete sync's in the configuration.
-            timeNowTag = "%s_TIME_NOW" % toiso8601(timeNow, fmt=FMT_TIME_ONLY_NOMSEC)
-            # Find the last time stamp compared to now.
-            tmpComplSyncList = copy.deepcopy(mirSrcObj.getCompleteSyncList())
-            tmpComplSyncList.append(timeNowTag)
-            tmpComplSyncList.sort()
-            timeNowIdx = tmpComplSyncList.index(timeNowTag)
-            # Get the closest sync. time handle (from the configuration)
-            # compared to the present time.
-            relevantSyncTime = tmpComplSyncList[timeNowIdx - 1]
-            lastComplSync =\
-                          dbmMirSrcObj.\
-                          getLastCompleteSyncDic()[relevantSyncTime]
-            if (not lastComplSync):
-                # The sync time for that cfg. sync entry is None -> no sync
-                # yet done for that sync time, just do it.
-                doComplSync = True
+    # Loop over the various Mirroring Source Archives specified in the configuration
+    for mirror_source_obj in ngams_server.getCfg().getMirroringSrcList():
+        dbm_mirror_source_obj = ngams_server._srcArchInfoDbm.get(mirror_source_obj.getId())
+
+        # Figure out if a partial or complete sync should be done for this mirroring source
+        time_now = time.time()
+        do_partial_sync = False
+        do_complete_sync = False
+        if mirror_source_obj.getCompleteSyncList():
+            # OK, it is specified to do complete sync's in the configuration
+            time_now_tag = "%s_TIME_NOW" % toiso8601(time_now, fmt=FMT_TIME_ONLY_NOMSEC)
+            # Find the last time stamp compared to now
+            tmp_complete_sync_list = copy.deepcopy(mirror_source_obj.getCompleteSyncList())
+            tmp_complete_sync_list.append(time_now_tag)
+            tmp_complete_sync_list.sort()
+            time_now_idx = tmp_complete_sync_list.index(time_now_tag)
+            # Get the closest sync. time handle (from the configuration) compared to the present time
+            relevant_sync_time = tmp_complete_sync_list[time_now_idx - 1]
+            last_complete_sync = dbm_mirror_source_obj.getLastCompleteSyncDic()[relevant_sync_time]
+            if not last_complete_sync:
+                # The sync time for that cfg sync entry is None -> no sync yet done for that sync time, just do it
+                do_complete_sync = True
             else:
-                # Check if a complete sync for the relevant time was done
-                # within the last 24 hours.
-                dateNow = timeNowTag.split("_")[0]
-                dateLastSync = lastComplSync.split("T")[0]
-                if (dateNow > dateLastSync): doComplSync = True
+                # Check if a complete sync for the relevant time was done within the last 24 hours
+                date_now = time_now_tag.split("_")[0]
+                date_last_sync = last_complete_sync.split("T")[0]
+                if date_now > date_last_sync:
+                    do_complete_sync = True
 
-        # Figure out if a partial sync should be done if not a complete sync
-        # should be carried out.
-        if (not doComplSync):
-            lastPartialSyncSecs = dbmMirSrcObj.getLastSyncTime()
-            if ((timeNow - lastPartialSyncSecs) >= dbmMirSrcObj.getPeriod()):
-                doPartialSync = True
+        # Figure out if a partial sync should be done if not a complete sync should be carried out
+        if not do_complete_sync:
+            last_partial_sync_secs = dbm_mirror_source_obj.getLastSyncTime()
+            if (time_now - last_partial_sync_secs) >= dbm_mirror_source_obj.getPeriod():
+                do_partial_sync = True
 
-        # If no synchronization to be done for this source, continue to the
-        # next mirroring source.
-        if ((not doPartialSync) and (not doComplSync)): continue
+        # If no synchronization to be done for this source, continue to the next mirroring source
+        if not do_partial_sync and not do_complete_sync:
+            continue
 
-        # Complete sync: Don't specify a lower limit ingestion date.
-        # Partial sync:  Specify lower limit ingestion date.
-        # TODO: For now only ingestion date is supported as selection criteria.
-        maxEls = 100000
-        statusCmdPars = [[NGAMS_HTTP_PAR_FILE_LIST, 1],
-                         [NGAMS_HTTP_PAR_UNIQUE, 1],
-                         [NGAMS_HTTP_PAR_MAX_ELS, maxEls]]
-        if (doPartialSync):
-            statusCmdPars.append([NGAMS_HTTP_PAR_FROM_ING_DATE,
-                                  toiso8601(dbmMirSrcObj.getLastSyncTime())])
+        # Complete sync: Don't specify a lower limit ingestion date
+        # Partial sync:  Specify lower limit ingestion date
+        # TODO: For now only ingestion date is supported as selection criteria
+        max_elements = 100000
+        status_cmd_pars = [[NGAMS_HTTP_PAR_FILE_LIST, 1],
+                           [NGAMS_HTTP_PAR_UNIQUE, 1],
+                           [NGAMS_HTTP_PAR_MAX_ELS, max_elements]]
+        if do_partial_sync:
+            status_cmd_pars.append([NGAMS_HTTP_PAR_FROM_ING_DATE, toiso8601(dbm_mirror_source_obj.getLastSyncTime())])
 
         # Go through the list, we shuffle it to get some kind of load balancing
-        srvListIndexes = range(len(srvObj.getSrvListDic()[mirSrcObj.getId()]))
-        random.shuffle(srvListIndexes)
-        for srvIdx in srvListIndexes:
-            nextSrv, nextPort = srvObj.\
-                                getSrvListDic()[mirSrcObj.getId()][srvIdx].\
-                                split(":")
-            nextPort = int(nextPort)
-            msg = "Sending STATUS/file_list request to Source Archive: %s. " +\
-                  "Node: %s/%d"
-            if (doComplSync):
+        server_list_indexes = range(len(ngams_server.getSrvListDic()[mirror_source_obj.getId()]))
+        random.shuffle(server_list_indexes)
+        for server_index in server_list_indexes:
+            next_server, next_port = ngams_server.getSrvListDic()[mirror_source_obj.getId()][server_index].split(":")
+            next_port = int(next_port)
+            msg = "Sending STATUS/file_list request to Source Archive: %s. Node: %s/%d"
+            if do_complete_sync:
                 msg += ". Complete synchronization"
             else:
-                msg += ". Partial synchronization from date: %s" %\
-                       toiso8601(dbmMirSrcObj.getLastSyncTime())
-            logger.debug(msg, mirSrcObj.getId(), nextSrv, nextPort)
+                msg += ". Partial synchronization from date: %s" % toiso8601(dbm_mirror_source_obj.getLastSyncTime())
+            logger.debug(msg, mirror_source_obj.getId(), next_server, next_port)
             try:
-                retrieveFileList(srvObj, mirSrcObj, nextSrv, nextPort,
-                                 statusCmdPars, clusterFilesDbmName)
-                # The retrieval of the file list was successful, we don't need
-                # to contacting others of the specified contact nodes.
+                retrieve_file_list(ngams_server, mirror_source_obj, next_server, next_port, status_cmd_pars,
+                                   cluster_files_dbm_name)
+                # The retrieval of the file list was successful, we don't need to contacting others of the
+                # specified contact nodes
                 break
             except Exception as e:
-                # Create log entry in case it was not possible to communicate
-                # to this Mirroring Source Archive. Continue to the next
-                # Mirroring Source Archive in that case.
-                msg = "Error sending STATUS/file_list to Mirroring Source " +\
-                      "Archive with ID: %s (%s:%d). Error: %s"
-                logger.error(msg, mirSrcObj.getId(), nextSrv, nextPort, str(e))
-                # Try the next contact node specified in the cfg.
+                # Create log entry in case it was not possible to communicate to this Mirroring Source Archive.
+                # Continue to the next Mirroring Source Archive in that case.
+                logger.error("Error sending STATUS/file_list to Mirroring Source Archive with ID: %s (%s:%d). " 
+                             "Error: %s", mirror_source_obj.getId(), next_server, next_port, str(e))
+                # Try the next contact node specified in the configuration
                 continue
 
-        # Register the times for the last partial or complete sync.
-        if (doComplSync):
-            dbmMirSrcObj.\
-                           getLastCompleteSyncDic()[relevantSyncTime] =\
-                           toiso8601(timeNow, local=True)
-            # Fair enough to consider that a partial sync been done when a
-            # complete sync has been carried out.
-            dbmMirSrcObj.setLastSyncTime(timeNow)
-        elif (doPartialSync):
-            dbmMirSrcObj.setLastSyncTime(timeNow)
+        # Register the times for the last partial or complete sync
+        if do_complete_sync:
+            dbm_mirror_source_obj.getLastCompleteSyncDic()[relevant_sync_time] = toiso8601(time_now, local=True)
+            # Fair enough to consider that a partial sync been done when a complete sync has been carried out
+            dbm_mirror_source_obj.setLastSyncTime(time_now)
+        elif do_partial_sync:
+            dbm_mirror_source_obj.setLastSyncTime(time_now)
 
-        # Store the updated Source Archive Object back into the Source
-        # Archive DBM.
-        srvObj._srcArchInfoDbm.add(mirSrcObj.getId(), dbmMirSrcObj).sync()
+        # Store the updated Source Archive Object back into the Source Archive DBM
+        ngams_server._srcArchInfoDbm.add(mirror_source_obj.getId(), dbm_mirror_source_obj).sync()
 
-    # Signal to the Mirroring Threads that there might be new Mirroring
-    # Requests to handle.
-    srvObj.triggerMirThreads()
+    # Signal to the Mirroring Threads that there might be new Mirroring Requests to handle
+    ngams_server.triggerMirThreads()
 
 
-def checkErrorQueue(srvObj):
+def check_error_queue(ngams_server):
     """
-    Check the Error Queue for failing Mirroring Requests to reschedule into
-    the internal DB Mirroring Queue.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+    Check the Error Queue for failing Mirroring Requests to reschedule into the internal DB Mirroring Queue
+    :param ngams_server: Reference to server object (ngamsServer)
     """
     # Go through the list of entries in the Error Queue. Handle as follows:
-    #
-    # - For entries marked as Error/Reschedule:
-    #
-    #   - If the time since last activity time is larger than the
-    #     ErrorRetryPeriod specified in the configuration, put these back into
-    #     the Mirroring Queue.
-    #
-    #   - If the ErrorRetryTimeOut has expired, leave the entry in the queue
-    #     for the reporting.
-    #
-    # - For entries marked as Error/Abandon: Leave these in the queue to be
-    #   handled later by the reporting.
+    # * For entries marked as Error/Reschedule:
+    #   * If the time since last activity time is larger than the ErrorRetryPeriod specified in the configuration, put
+    #     these back into the Mirroring Queue.
+    #   * If the ErrorRetryTimeOut has expired, leave the entry in the queue for the reporting.
+    # * For entries marked as Error/Abandon: Leave these in the queue to be handled later by the reporting.
 
-    # We create a snapshot of the keys in the Error DBM, so that we can
-    # pass through these without interferring with other activities, and
-    # to avoid creating a maybe huge list in memory.
-    dbmName = "%s/%s_%s" %\
-              (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-               "NGAMS_MIR_ERR_QUEUE_KEYS_DBM",
-               srvObj.getHostInfoObj().getClusterName())
-    dbmName = dumpKeysQueue(srvObj, srvObj._errQueueDbm,
-                            srvObj._errQueueDbmSem, dbmName)
-    errQueueKeysDbm = ngamsDbm.ngamsDbm(dbmName, cleanUpOnDestr = True)
-    errQueueKeysDbm.initKeyPtr()
-    while (True):
-        nextKey, data = errQueueKeysDbm.getNext()
-        if (not nextKey): break
+    # We create a snapshot of the keys in the Error DBM, so that we can pass through these without interfering with
+    # other activities, and to avoid creating a maybe huge list in memory.
+    dbm_name = "%s/%s_%s" % (ngamsHighLevelLib.getNgasChacheDir(ngams_server.getCfg()), "NGAMS_MIR_ERR_QUEUE_KEYS_DBM",
+                             ngams_server.getHostInfoObj().getClusterName())
+    dbm_name = dump_keys_queue(ngams_server._errQueueDbm, ngams_server._errQueueDbmSem, dbm_name)
+    error_queue_keys_dbm = ngamsDbm.ngamsDbm(dbm_name, cleanUpOnDestr=True)
+    error_queue_keys_dbm.initKeyPtr()
+    while True:
+        next_key, data = error_queue_keys_dbm.getNext()
+        if not next_key:
+            break
         try:
-            mirReqObj = srvObj._errQueueDbm.get(nextKey)
-        except:
-            # Maybe this entry was removed by the reporting, ignore, continue
-            # to the next entry.
+            mirror_request_obj = ngams_server._errQueueDbm.get(next_key)
+        except Exception:
+            # Maybe this entry was removed by the reporting, ignore, continue to the next entry
             continue
-        if (mirReqObj.getStatusAsNo() ==
-            ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO):
-            # If the time since last activity is longer than ErrorRetryPeriod
-            # reschedule the request into the Mirroring Queue.
-            timeNow = time.time()
-            if ((timeNow - mirReqObj.getLastActivityTime()) >
-                srvObj.getCfg().getMirroringErrorRetryPeriod()):
+        if mirror_request_obj.getStatusAsNo() == NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO:
+            # If the time since last activity is longer than ErrorRetryPeriod reschedule the request into the
+            # Mirroring Queue
+            time_now = time.time()
+            if (time_now - mirror_request_obj.getLastActivityTime()) > \
+                    ngams_server.getCfg().getMirroringErrorRetryPeriod():
                 try:
-                    mirReqObj = popEntryQueue(srvObj, mirReqObj,
-                                              srvObj._errQueueDbm,
-                                              srvObj._errQueueDbmSem)
-                    addEntryMirQueue(srvObj, mirReqObj)
+                    mirror_request_obj = pop_entry_queue(mirror_request_obj, ngams_server._errQueueDbm,
+                                                         ngams_server._errQueueDbmSem)
+                    add_entry_mirror_queue(ngams_server, mirror_request_obj)
                 except Exception as e:
-                    msg = "Error moving Mirroring Request from Error DBM " +\
-                          "Queue to the Mirroring DBM Queue: %s"
-                    logger.error(msg, str(e))
+                    logger.error("Error moving Mirroring Request from Error DBM Queue to the Mirroring DBM Queue: %s",
+                                 str(e))
         else:
-            # NGAMS_MIR_REQ_STAT_ERR_ABANDON_NO: Do nothing.
+            # NGAMS_MIR_REQ_STAT_ERR_ABANDON_NO: Do nothing
             pass
+    ngams_server.triggerMirThreads()
 
-    srvObj.triggerMirThreads()
 
-
-def generateReport(srvObj):
+def generate_report(ngams_server):
     """
     Check the queues and report the Mirroring Requests in the
-
-      - Mirroring Queue.
-      - Completed Queue.
-      - Error Queue.
-
+        * Mirroring Queue
+        * Completed Queue
+        * Error Queue
     A summary report and a detailed report is generated.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+    :param ngams_server: Reference to server object (ngamsServer)
     """
-    reportHdr = "Date:         %s\n" +\
-                "Control Node: %s\n\n"
-    reportHdr = reportHdr % (toiso8601(), srvObj.getHostId())
-    summary   = "NGAS MIRRORING - SUMMARY REPORT\n\n" + reportHdr
+    report_header = "Date:         %s\n" +\
+                    "Control Node: %s\n\n"
+    report_header = report_header % (toiso8601(), ngams_server.getHostId())
+    summary = "NGAS MIRRORING - SUMMARY REPORT\n\n" + report_header
 
-    # Go through the various queue DBMs.
-    dbmName = "%s/%s_%s" %\
-              (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-               "NGAMS_MIR_REPORINTG_QUEUE_KEYS_DBM",
-               srvObj.getHostInfoObj().getClusterName())
+    # Go through the various queue DBMs
+    dbm_name = "%s/%s_%s" % (ngamsHighLevelLib.getNgasChacheDir(ngams_server.getCfg()),
+                             "NGAMS_MIR_REPORINTG_QUEUE_KEYS_DBM",
+                             ngams_server.getHostInfoObj().getClusterName())
 
-    # Go through Completed Queue.
-    dbmName = dumpKeysQueue(srvObj, srvObj._complQueueDbm,
-                            srvObj._complQueueDbmSem, dbmName)
-    complQueueKeysDbm = ngamsDbm.ngamsDbm(dbmName, cleanUpOnDestr = True)
-    complQueueKeysDbm.initKeyPtr()
-    completedCount = 0
-    while (True):
-        nextKey, mirReqObj = complQueueKeysDbm.getNext()
-        if (not nextKey): break
+    # Go through Completed Queue
+    dbm_name = dump_keys_queue(ngams_server._complQueueDbm, ngams_server._complQueueDbmSem, dbm_name)
+    completed_queue_keys_dbm = ngamsDbm.ngamsDbm(dbm_name, cleanUpOnDestr=True)
+    completed_queue_keys_dbm.initKeyPtr()
+    completed_count = 0
+
+    while True:
+        next_key, mirror_request = completed_queue_keys_dbm.getNext()
+        if not next_key:
+            break
         try:
-            mirReqObj = popEntryQueue(srvObj, mirReqObj,
-                                      srvObj._complQueueDbm,
-                                      srvObj._complQueueDbmSem)
-            completedCount += 1
+            pop_entry_queue(mirror_request, ngams_server._complQueueDbm, ngams_server._complQueueDbmSem)
+            completed_count += 1
         except Exception as e:
-            msg = "Error popping Mirroring Request from the Completed " +\
-                  "DBM Queue: %s"
-            logger.error(msg, str(e))
-    summary += "Completed Requests:    %d\n" % completedCount
+            logger.error("Error popping Mirroring Request from the Completed DBM Queue: %s", str(e))
 
-    # Go through Error Queue.
-    dbmName = dumpKeysQueue(srvObj, srvObj._errQueueDbm,
-                            srvObj._errQueueDbmSem, dbmName)
-    errRetryCount = 0
-    errTimeoutCount = 0
-    errAbandonCount = 0
-    errQueueKeysDbm = ngamsDbm.ngamsDbm(dbmName, cleanUpOnDestr = True)
-    errQueueKeysDbm.initKeyPtr()
-    while (True):
-        nextKey, mirReqObj = errQueueKeysDbm.getNext()
-        if (not nextKey): break
-        if (mirReqObj.getStatusAsNo() ==
-            ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_ABANDON):
+    summary += "Completed Requests:    %d\n" % completed_count
+
+    # Go through Error Queue
+    dbm_name = dump_keys_queue(ngams_server._errQueueDbm, ngams_server._errQueueDbmSem, dbm_name)
+    error_retry_count = 0
+    error_timeout_count = 0
+    error_abandon_count = 0
+    error_queue_keys_dbm = ngamsDbm.ngamsDbm(dbm_name, cleanUpOnDestr=True)
+    error_queue_keys_dbm.initKeyPtr()
+
+    while True:
+        next_key, mirror_request = error_queue_keys_dbm.getNext()
+        if not next_key:
+            break
+        if mirror_request.getStatusAsNo() == NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_ABANDON:
             try:
-                mirReqObj = popEntryQueue(srvObj, mirReqObj,
-                                          srvObj._errQueueDbm,
-                                          srvObj._errQueueDbmSem)
-                errAbandonCount += 1
+                pop_entry_queue(mirror_request, ngams_server._errQueueDbm, ngams_server._errQueueDbmSem)
+                error_abandon_count += 1
             except Exception as e:
-                msg = "Error popping Mirroring Request from Error DBM " +\
-                      "Queue: %s"
-                logger.error(msg, str(e))
-        elif ((time.time() - mirReqObj.getSchedulingTime()) >
-              srvObj.getCfg().getMirroringErrorRetryPeriod()):
+                logger.error("Error popping Mirroring Request from Error DBM Queue: %s", str(e))
+        elif (time.time() - mirror_request.getSchedulingTime()) > ngams_server.getCfg().getMirroringErrorRetryPeriod():
             try:
-                mirReqObj = popEntryQueue(srvObj, mirReqObj,
-                                          srvObj._errQueueDbm,
-                                          srvObj._errQueueDbmSem)
-                errTimeoutCount += 1
+                pop_entry_queue(mirror_request, ngams_server._errQueueDbm, ngams_server._errQueueDbmSem)
+                error_timeout_count += 1
             except Exception as e:
-                msg = "Error popping Mirroring Request from Error DBM " +\
-                      "Queue: %s"
-                logger.error(msg, str(e))
+                logger.error("Error popping Mirroring Request from Error DBM Queue: %s", str(e))
         else:
-            errRetryCount += 1
-    summary += "Error Request/Retry:   %d\n" % errRetryCount
-    summary += "Error Request/Timeout: %d\n" % errTimeoutCount
-    summary += "Error Request/Abandon: %d\n" % errAbandonCount
+            error_retry_count += 1
+    summary += "Error Request/Retry:   %d\n" % error_retry_count
+    summary += "Error Request/Timeout: %d\n" % error_timeout_count
+    summary += "Error Request/Abandon: %d\n" % error_abandon_count
 
-    # Go through Mirroring Queue.
-    dbmName = dumpKeysQueue(srvObj, srvObj._mirQueueDbm,
-                            srvObj._mirQueueDbmSem, dbmName)
-    mirQueueKeysDbm = ngamsDbm.ngamsDbm(dbmName, cleanUpOnDestr = True)
-    mirQueueKeysDbm.initKeyPtr()
-    mirQueueCount = 0
-    while (True):
-        nextKey, mirReqObj = mirQueueKeysDbm.getNext()
-        if (not nextKey): break
-        mirQueueCount += 1
-    summary += "Mirroring Queue:    %d\n" % mirQueueCount
+    # Go through Mirroring Queue
+    dbm_name = dump_keys_queue(ngams_server._mirQueueDbm, ngams_server._mirQueueDbmSem, dbm_name)
+    mirror_queue_keys_dbm = ngamsDbm.ngamsDbm(dbm_name, cleanUpOnDestr=True)
+    mirror_queue_keys_dbm.initKeyPtr()
+    mirror_queue_count = 0
 
-    # Submit report to the specified recipients.
-    if (srvObj.getCfg().getMirroringReportRecipients()):
-        repRecipients = str(srvObj.getCfg().getMirroringReportRecipients()).\
-                        strip()
-        if (not repRecipients): return
+    while True:
+        next_key, mirror_request = mirror_queue_keys_dbm.getNext()
+        if not next_key:
+            break
+        mirror_queue_count += 1
+    summary += "Mirroring Queue:    %d\n" % mirror_queue_count
+
+    # Submit report to the specified recipients
+    if ngams_server.getCfg().getMirroringReportRecipients():
+        report_recipients = str(ngams_server.getCfg().getMirroringReportRecipients()).strip()
+        if not report_recipients:
+            return
         subject = "NGAS MIRRORING SERVICE STATUS REPORT"
-        for recipient in repRecipients.split(","):
-            ngamsHighLevelLib.sendEmail(srvObj.getCfg(),
-                                        subject, [recipient],
-                                        srvObj.getCfg().getSender(), summary,
-                                        "text/plain")
+        for recipient in report_recipients.split(","):
+            ngamsHighLevelLib.sendEmail(ngams_server.getCfg(), subject, [recipient], ngams_server.getCfg().getSender(),
+                                        summary, "text/plain")
 
-def cleanUpMirroring(srvObj):
-    host = get_full_qualified_name(srvObj)
-    logger.debug("cleaning up mirroring tasks for ngas node: %s", host)
-    sql = "update ngas_mirroring_bookkeeping set status = 'ABORTED', staging_file = null where status = 'READY' and target_host = {0}"
-    srvObj.getDb().query2(sql, args=(host,))
+
+def clean_up_mirroring(ngams_server):
+    host = get_fully_qualified_domain_name(ngams_server)
+    logger.debug("Cleaning up mirroring tasks for NGAS node: %s", host)
+    sql = "update ngas_mirroring_bookkeeping set status = 'ABORTED', staging_file = null " \
+          "where status = 'READY' and target_host = {0}"
+    ngams_server.getDb().query2(sql, args=(host,))
     sql = "update ngas_mirroring_bookkeeping set status = 'TORESUME' where status = 'FETCHING' and target_host = {0}"
-    srvObj.getDb().query2(sql, args=(host,))
+    ngams_server.getDb().query2(sql, args=(host,))
 
-def get_full_qualified_name(srvObj):
+
+def get_fully_qualified_domain_name(ngams_server):
     """
     Get full qualified server name for the input NGAS server object
-
-    INPUT:
-        srvObj  ngamsServer, Reference to NG/AMS server class object
-
-    RETURNS:
-        fqdn    string, full qualified host name (host name + domain + port)
+    :param ngams_server: ngamsServer, Reference to NG/AMS server class object
+    :return: string, full qualified host name (host name + domain + port)
     """
-
     # Get hots_id, domain and port using ngamsLib functions
-    host_id = srvObj.getHostId()
+    host_id = ngams_server.getHostId()
     domain = ngamsLib.getDomain()
-    port = str(srvObj.getCfg().getPortNo())
+    port = str(ngams_server.getCfg().getPortNo())
     # Concatenate all elements to construct full qualified name
     # Notice that host_id may contain port number
     fqdn = (host_id.rsplit(":"))[0] + "." + domain + ":" + port
-
-    # Return full qualified server name
     return fqdn
 
 
-def mirControlThread(srvObj, stopEvt):
+def get_mirroring_sleep_time(ngams_server):
     """
-    The Mirroring Control Thread runs periodically when the NG/AMS Server is
-    Online (if enabled) to synchronize the data holding of the local NGAS
-    Cluster against a set of remote NGAS Clusters.
-
-    srvObj:      Reference to server object (ngamsServer).
-
-    dummy:       Needed by the thread handling ...
-
-    Returns:     Void.
+    Get the sleep time parameter value from ngas_cfg_pars DB table
     """
-    # Alma Mirroring Service
-    if (srvObj.getCfg().getVal("Mirroring[1].AlmaMirroring")):
+    sql = "select cfg_val from ngas_cfg_pars where cfg_par = 'sleepTime'"
 
-        timeout = 6 * 3600
-        sleepTime = getMirroringSleepTime(srvObj)
+    logger.debug("Executing SQL query to get mirroring sleep time: %s", sql)
+    sleep_time = float(ngams_server.getDb().query2(sql)[0][0])
 
-        logger.info("ALMA Mirroring Control Thread cleaning up from previous state")
-        cleanUpMirroring(srvObj)
+    logger.debug("Mirroring sleep time value is %.3f", sleep_time)
+    return sleep_time
 
-        logger.info("ALMA Mirroring Control Thread entering main server loop")
-        while (True):
 
-            # Incapsulate this whole block to avoid that the thread dies in
+def mirror_control_thread(ngams_server, stop_event):
+    """
+    The Mirroring Control Thread runs periodically when the NG/AMS Server is Online (if enabled) to synchronize the
+    data holding of the local NGAS Cluster against a set of remote NGAS Clusters.
+    :param ngams_server: Reference to server object (ngamsServer)
+    :param stop_event: Stop event
+    """
+    if ngams_server.getCfg().getVal("Mirroring[1].AlmaMirroring"):
+        logger.info("ALMA mirroring control thread cleaning up from previous state")
+        clean_up_mirroring(ngams_server)
+
+        logger.info("ALMA mirroring control thread entering main server loop")
+        while True:
+            # Encapsulate this whole block to avoid that the thread dies in case a problem occurs,
+            # like e.g. a problem with the DB connection
             try:
-                checkStopMirControlThread(stopEvt)
+                check_stop_mirror_control_thread(stop_event)
                 logger.debug("ALMA Mirroring Control Thread starting next iteration ...")
 
                 # Update mirroring book keeping table
-                # TODO: handle the response, there's no information whatsoever
-                # if things went fine or not
+                # TODO: handle the response, there's no information whatsoever if things went fine or not
                 logger.debug("ALMA Mirroring Control Thread updating book keeping table ...")
-                local_server_contact_ip = get_contact_ip(srvObj.getCfg())
-                ngamsHttpUtils.httpGet(local_server_contact_ip, srvObj.portNo, 'MIRRTABLE', timeout=timeout)
+                local_server_contact_ip = get_contact_ip(ngams_server.getCfg())
+                timeout = 6 * 3600
+                ngamsHttpUtils.httpGet(local_server_contact_ip, ngams_server.portNo, 'MIRRTABLE', timeout=timeout)
 
-                # Sleep to let Janitor Thread and DCC do their tasks
-                # always reload from DB to allow for updates without restarting the server
-                sleepTime = getMirroringSleepTime(srvObj)
-                logger.info("ALMA Mirroring Control Thread sleeping for %.3f [s]", sleepTime)
-                suspend(stopEvt, sleepTime)
-
+                # Sleep to let Janitor Thread and Data Check do their tasks always reload from DB to allow for updates
+                # without restarting the server
+                sleep_time = get_mirroring_sleep_time(ngams_server)
+                logger.info("ALMA mirroring control thread sleeping for %.3f [s]", sleep_time)
+                suspend(stop_event, sleep_time)
             except Exception as e:
-                if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1):
+                if str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1:
                     return
-                errMsg = "Error occurred during execution of the ALMA Mirroring " +\
-                         "Control Thread"
-                logger.exception(errMsg)
-                # We make a small wait here to avoid that the process tries
-                # too often to carry out the tasks that failed.
-                if stopEvt.wait(5.0):
+                logger.exception("Error occurred during execution of the ALMA mirroring control thread")
+                # We make a small wait here to avoid that the process tries too often to carry out tasks that failed
+                if stop_event.wait(5.0):
                     return
-
-    # Generic Mirroring service
     else:
-        # Initialize the mirroring service.
-        initMirroring(srvObj)
+        # Generic Mirroring service
+        initialise_mirroring(ngams_server)
 
-        # Start the Mirroring Threads.
-        startMirroringThreads(srvObj, stopEvt)
+        # Start the Mirroring Threads
+        start_mirroring_threads(ngams_server, stop_event)
 
-        # Render the suspension time as the minimum time for checking a remote
-        # archive.
-        period = (24 * 3600)
-        for mirSrcObj in srvObj.getCfg().getMirroringSrcList():
-            tmpPeriod = float(mirSrcObj.getPeriod())
-            if (tmpPeriod < period): period = tmpPeriod
+        # Render the suspension time as the minimum time for checking a remote archive
+        period = 24 * 3600
+        for mirror_source_obj in ngams_server.getCfg().getMirroringSrcList():
+            tmp_period = float(mirror_source_obj.getPeriod())
+            if tmp_period < period:
+                period = tmp_period
 
         logger.debug("Mirroring Control Thread entering main server loop")
-        while (True):
-            startTime = time.time()
+        while True:
+            start_time = time.time()
 
-            # Incapsulate this whole block to avoid that the thread dies in
-            # case a problem occurs, like e.g. a problem with the DB connection.
+            # Encapsulate this whole block to avoid that the thread dies in case a problem occurs,
+            # like e.g. a problem with the DB connection
             try:
-                checkStopMirControlThread(stopEvt)
+                check_stop_mirror_control_thread(stop_event)
                 logger.debug("Mirroring Control Thread starting next iteration ...")
 
-                ###################################################################
-                # Business logic of Mirroring Control Thread
-                ###################################################################
-
-                # Check if there are new data objects in the specified source
-                # archives to mirror. While checking this the Mirroring Threads
-                # should be paused, since otherwise, inconsistencies may occurr
+                # Check if there are new data objects in the specified source archives to mirror. While checking
+                # this the Mirroring Threads should be paused, since otherwise, inconsistencies may occur
                 # (e.g. a file scheduled several times).
                 try:
-                    pauseMirThreads(srvObj, stopEvt)
-                    checkSourceArchives(srvObj)
+                    pause_mirror_threads(ngams_server, stop_event)
+                    check_source_archives(ngams_server)
                 except Exception as e:
-                    if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): raise
-                resumeMirThreads(srvObj, stopEvt)
+                    if str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1:
+                        raise
+                resume_mirror_threads(ngams_server, stop_event)
 
-                # Check if there are entries in Error State, which should be
-                # resumed.
-                checkErrorQueue(srvObj)
+                # Check if there are entries in Error State, which should be resumed
+                check_error_queue(ngams_server)
 
-                # Check if there entries to be reported in the queues and generate
-                # the report(s).
-                generateReport(srvObj)
-                ###################################################################
+                # Check if there entries to be reported in the queues and generate the report(s)
+                generate_report(ngams_server)
 
-                ###################################################################
-                # Suspend the Mirroring Control Thread for a while.
-                ###################################################################
-                suspTime = (period - (time.time() - startTime))
-                if (suspTime < 1): suspTime = 1
-                logger.debug("Mirroring Control Thread executed - suspending for %s [s]",
-                      str(suspTime))
-
-                suspend(stopEvt, suspTime)
-
+                # Suspend the Mirroring Control Thread for a while
+                suspend_time = period - (time.time() - start_time)
+                if suspend_time < 1:
+                    suspend_time = 1
+                logger.debug("Mirroring control thread executed - suspending for %s [s]", str(suspend_time))
+                suspend(stop_event, suspend_time)
             except Exception as e:
-                if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1):
+                if str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1:
                     return
-                errMsg = "Error occurred during execution of the Mirroring " +\
-                         "Control Thread"
-                logger.exception(errMsg)
-                # We make a small wait here to avoid that the process tries
-                # too often to carry out the tasks that failed.
-                if stopEvt.wait(5.0):
+                error_message = "Error occurred during execution of the mirroring control thread"
+                logger.exception(error_message)
+                # We insert a short delay here to help avoid that the process tries too often to carry out the task
+                # that caused the mirroring process to fail
+                if stop_event.wait(5.0):
                     return
-
-
-def getMirroringSleepTime(srvObj):
-    query = "select cfg_val"
-    query += " from ngas_cfg_pars"
-    query += " where cfg_par = 'sleepTime'"
-
-    # Execute query
-    logger.debug("Executing SQL query to get mirroring sleep time: %s" % query)
-    sleepTime = float(srvObj.getDb().query2(query)[0][0])
-
-    # Log info
-    logger.debug("result is %.3f", sleepTime)
-    return sleepTime
-
-# EOF
