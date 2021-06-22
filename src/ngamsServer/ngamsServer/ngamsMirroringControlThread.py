@@ -40,10 +40,12 @@ general command handling.
 import base64
 import contextlib
 import copy
+import errno
 import functools
 import logging
 import os
 import random
+import socket
 import threading
 import time
 
@@ -63,7 +65,7 @@ from ngamsLib.ngamsCore import \
     NGAMS_STATUS_CMD,  \
     decompressFile, get_contact_ip, rmFile, toiso8601
 from ngamsLib import ngamsFileInfo, ngamsStatus, ngamsHighLevelLib, ngamsDbm, \
-    NgamsMirroringRequest, ngamsLib, ngamsHttpUtils
+    ngamsMirroringRequest, ngamsLib, ngamsHttpUtils
 
 logger = logging.getLogger(__name__)
 
@@ -76,18 +78,22 @@ NGAMS_MIR_DBM_COUNTER = "MIR_DBM_COUNTER"
 NGAMS_MIR_DBM_POINTER = "MIR_DBM_POINTER"
 NGAMS_MIR_FILE_LIST_RAW = "MIR_FILE_LIST_RAW"
 NGAMS_MIR_CLUSTER_FILE_DBM = "MIR_CLUSTER_FILE_INFO"
-NGAMS_MIR_DBM_MAX_LIMIT = (2**30)
+NGAMS_MIR_DBM_MAX_LIMIT = 2**30
 NGAMS_MIR_MIR_THREAD_TIMEOUT = 10.0
 NGAMS_MIR_SRC_ARCH_INF_DBM = "MIR_SRC_ARCH_INFO"
 NGAMS_MIR_ALL_LOCAL_SRVS = "ALL"
 
-# Used as exception message when the thread is stopping execution (deliberately)
-NGAMS_MIR_CONTROL_THR_STOP = "_STOP_MIR_CONTROL_THREAD_"
+# NGAMS_MIR_CONTROL_THR_STOP = "_STOP_MIR_CONTROL_THREAD_"
+
+
+# We use an exception to stop the mirroring thread (deliberately)
+class MirroringStoppedException(Exception):
+    pass
 
 
 def _finish_thread():
     logger.info("Stopping the Mirroring Service")
-    raise Exception(NGAMS_MIR_CONTROL_THR_STOP)
+    raise MirroringStoppedException
 
 
 def check_stop_mirror_control_thread(stop_event):
@@ -113,7 +119,7 @@ def add_entry_mirror_queue(ngams_server, mirror_request, update_db=True):
     """
     try:
         ngams_server._mirQueueDbmSem.acquire()
-        logger.debug("Adding entry in Mirroring Queue: %s/%d", mirror_request.get_file_id(),
+        logger.debug("Adding entry in Mirroring Queue: %s/%d", mirror_request.getFileId(),
                      mirror_request.getFileVersion())
         new_key = (ngams_server._mirQueueDbm.get(NGAMS_MIR_DBM_COUNTER) + 1) % NGAMS_MIR_DBM_MAX_LIMIT
         ngams_server._mirQueueDbm.add(str(new_key), mirror_request).add(NGAMS_MIR_DBM_COUNTER, new_key).sync()
@@ -134,7 +140,7 @@ def add_entry_error_queue(ngams_server, mirror_request, update_db=True):
     """
     try:
         ngams_server._errQueueDbmSem.acquire()
-        logger.debug("Adding entry in Mirroring Error Queue: %s/%d", mirror_request.get_file_id(),
+        logger.debug("Adding entry in Mirroring Error Queue: %s/%d", mirror_request.getFileId(),
                      mirror_request.getFileVersion())
         ngams_server._errQueueDbm.add(mirror_request.genFileKey(), mirror_request).sync()
         if update_db:
@@ -204,7 +210,7 @@ def add_entry_completed_queue(ngams_server, mirror_request, update_db=True):
     """
     try:
         ngams_server._complQueueDbmSem.acquire()
-        logger.debug("Adding entry in Mirroring Completed Queue: %s/%d", mirror_request.get_file_id(),
+        logger.debug("Adding entry in Mirroring Completed Queue: %s/%d", mirror_request.getFileId(),
                      mirror_request.getFileVersion())
         ngams_server._complQueueDbm.add(mirror_request.genFileKey(), mirror_request).sync()
         if update_db:
@@ -227,13 +233,13 @@ def schedule_mirror_request(ngams_server, instance_id, file_id, file_version, in
     :param server_list_id: Server list ID for this request indicating the nodes to contact to obtain this file (string)
     :param xml_file_info: The XML file information for the file (string/XML)
     """
-    mirror_request_obj = NgamsMirroringRequest.NgamsMirroringRequest().\
-        set_instance_id(instance_id).\
-        set_file_id(file_id).\
-        set_file_version(file_version).\
+    mirror_request_obj = ngamsMirroringRequest.ngamsMirroringRequest().\
+        setInstanceId(instance_id).\
+        setFileId(file_id).\
+        setFileVersion(file_version).\
         setIngestionDate(ingestion_date).\
         setSrvListId(server_list_id).\
-        setStatus(NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED).\
+        setStatus(ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED).\
         setXmlFileInfo(xml_file_info)
     logger.debug("Scheduling data object for mirroring: %s", mirror_request_obj.genSummary())
     ngams_server.getDb().writeMirReq(mirror_request_obj)
@@ -378,9 +384,9 @@ def handle_mirror_request(ngams_server, mirror_request):
     :param ngams_server: Reference to server object (ngamsServer)
     :param mirror_request: Mirroring Request Object (ngamsMirroringRequest)
     """
-    mirror_request.setStatus(NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE)
-    ngams_server.getDb().updateStatusMirReq(mirror_request.get_file_id(), mirror_request.getFileVersion(),
-                                            NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE_NO)
+    mirror_request.setStatus(ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE)
+    ngams_server.getDb().updateStatusMirReq(mirror_request.getFileId(), mirror_request.getFileVersion(),
+                                            ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE_NO)
 
     # Find a node to contact in the local cluster (try the whole list if necessary)
     server_list = ngams_server.getSrvListDic()[mirror_request.getSrvListId()]
@@ -407,7 +413,7 @@ def handle_mirror_request(ngams_server, mirror_request):
             # next node in the Mirroring Source Archive.
             # FIXME: we should try using https
             file_uri = "http://%s:%d/RETRIEVE?file_id=%s&file_version=%d&quick_location=1"
-            file_uri = file_uri % (source_host_name, source_port_num, mirror_request.get_file_id(),
+            file_uri = file_uri % (source_host_name, source_port_num, mirror_request.getFileId(),
                                    mirror_request.getFileVersion())
             pars = [[NGAMS_HTTP_PAR_FILENAME, file_uri]]
             hdrs = [[NGAMS_HTTP_HDR_FILE_INFO, encoded_file_info],
@@ -433,10 +439,10 @@ def handle_mirror_request(ngams_server, mirror_request):
             break
 
     if not succeeded:
-        mirror_request.setStatus(NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO).\
+        mirror_request.setStatus(ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO).\
             setMessage(error_message).setLastActivityTime(time.time())
-        ngams_server.getDb().updateStatusMirReq(mirror_request.get_file_id(), mirror_request.getFileVersion(),
-                                                NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO)
+        ngams_server.getDb().updateStatusMirReq(mirror_request.getFileId(), mirror_request.getFileVersion(),
+                                                ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO)
         raise Exception("Error handling Mirroring Request: %s" % mirror_request.genSummary())
     else:
         logger.debug("Successfully handled Mirroring Request: %s", mirror_request.genSummary())
@@ -465,24 +471,24 @@ def mirroring_thread(ngams_server, stop_event):
                     handle_mirror_request(ngams_server, mirror_request)
                     # The handling of the Mirroring Request succeeded (no exception was thrown). Put the handle in the
                     # Completed Queue.
-                    mirror_request.setStatus(NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_MIR)
+                    mirror_request.setStatus(ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_MIR)
                     file_version = mirror_request.getFileVersion()
-                    mirroring_status = NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_MIR_NO
+                    mirroring_status = ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_MIR_NO
                     ngams_server.getDb().updateStatusMirReq(mirror_request.getFileId(), file_version, mirroring_status)
                     add_entry_completed_queue(ngams_server, mirror_request)
+            except MirroringStoppedException as e:
+                raise e
             except Exception as e:
-                if str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1:
-                    raise e
                 logger.warning("Error handling Mirroring Request. Putting in Error Queue. Error: %s" % str(e))
                 # Put the request in the Error Queue DBM
-                stat_num = NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO
+                stat_num = ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO
                 mirror_request.setStatus(stat_num).setMessage(str(e))
                 ngams_server.getDb().updateStatusMirReq(mirror_request.getFileId(), mirror_request.getFileVersion(),
                                                         stat_num)
                 add_entry_error_queue(ngams_server, mirror_request)
+        except MirroringStoppedException as e:
+            return
         except Exception as e:
-            if str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1:
-                return
             logger.exception("Error occurred during execution of the Mirroring Control Thread")
             # We make a small wait here to avoid that the process tries too often to carry out the tasks that failed
             if stop_event.wait(5.0):
@@ -542,16 +548,16 @@ def initialise_mirroring(ngams_server):
     for mirror_request_obj in ngams_server.getDb().dumpMirroringQueue(ngams_server.getHostId()):
         logger.debug("Restoring Mirroring Request: %s", mirror_request_obj.genSummary())
         # Add entry in the Mirroring DBM Queue?
-        if mirror_request_obj.getStatusAsNo() in (NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED_NO,
-                                                  NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE_NO):
+        if mirror_request_obj.getStatusAsNo() in (ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED_NO,
+                                                  ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ACTIVE_NO):
             add_entry_mirror_queue(ngams_server, mirror_request_obj)
         # Add entry in the Error DBM Queue?
-        elif mirror_request_obj.getStatusAsNo() == NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO:
+        elif mirror_request_obj.getStatusAsNo() == ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO:
             add_entry_error_queue(ngams_server, mirror_request_obj)
         # Add entry in the Completed DBM Queue?
-        elif mirror_request_obj.getStatusAsNo() in (NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_MIR_NO,
-                                                    NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_REP_NO,
-                                                    NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_ABANDON_NO):
+        elif mirror_request_obj.getStatusAsNo() in (ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_MIR_NO,
+                                                    ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_REP_NO,
+                                                    ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_ABANDON_NO):
             add_entry_completed_queue(ngams_server, mirror_request_obj, update_db=False)
 
 
@@ -628,15 +634,15 @@ def retrieve_file_list(ngams_server, mirror_source, node, port, status_cmd_pars,
                 if next_line == "":
                     break
                 if next_line.find("FileStatus AccessDate=") != -1:
-                    tmp_file_obj = ngamsFileInfo.ngamsFileInfo().unpackXmlDoc(next_line)
-                    file_key = ngamsLib.genFileKey(None, tmp_file_obj.get_file_id(), tmp_file_obj.getFileVersion())
+                    tmp_file = ngamsFileInfo.ngamsFileInfo().unpackXmlDoc(next_line)
+                    file_key = ngamsLib.genFileKey(None, tmp_file.getFileId(), tmp_file.getFileVersion())
                     # Entry found in the
                     #   * Mirroring DBM Queue?
                     #   * Error DBM Queue?
                     #   * Completed DBM Queue?
                     # Are there enough local copies in the cluster name space?
                     logger.debug("Checking whether to schedule file: %s/%d for mirroring ...",
-                                 tmp_file_obj.get_file_id(), tmp_file_obj.getFileVersion())
+                                 tmp_file.getFileId(), tmp_file.getFileVersion())
                     if ngams_server._mirQueueDbm.hasKey(file_key):
                         continue
                     elif ngams_server._errQueueDbm.hasKey(file_key):
@@ -648,8 +654,8 @@ def retrieve_file_list(ngams_server, mirror_source, node, port, status_cmd_pars,
                         if not cluster_files_dbm.hasKey(file_key):
                             # The data object is not available, schedule it!
                             server_list_id_db = ngams_server.getSrvListDic()[mirror_source.getServerList()]
-                            schedule_mirror_request(ngams_server, host_id, tmp_file_obj.get_file_id(),
-                                                    tmp_file_obj.getFileVersion(), tmp_file_obj.getIngestionDate(),
+                            schedule_mirror_request(ngams_server, host_id, tmp_file.getFileId(),
+                                                    tmp_file.getFileVersion(), tmp_file.getIngestionDate(),
                                                     server_list_id_db, next_line)
             # Stop if there are no more elements to read out
             if remaining_elements == 0:
@@ -792,7 +798,7 @@ def check_error_queue(ngams_server):
         except Exception:
             # Maybe this entry was removed by the reporting, ignore, continue to the next entry
             continue
-        if mirror_request_obj.getStatusAsNo() == NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO:
+        if mirror_request_obj.getStatusAsNo() == ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_RETRY_NO:
             # If the time since last activity is longer than ErrorRetryPeriod reschedule the request into the
             # Mirroring Queue
             time_now = time.time()
@@ -860,7 +866,7 @@ def generate_report(ngams_server):
         next_key, mirror_request = error_queue_keys_dbm.getNext()
         if not next_key:
             break
-        if mirror_request.getStatusAsNo() == NgamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_ABANDON:
+        if mirror_request.getStatusAsNo() == ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_ERR_ABANDON:
             try:
                 pop_entry_queue(mirror_request, ngams_server._errQueueDbm, ngams_server._errQueueDbmSem)
                 error_abandon_count += 1
@@ -972,9 +978,18 @@ def mirror_control_thread(ngams_server, stop_event):
                 sleep_time = get_mirroring_sleep_time(ngams_server)
                 logger.info("ALMA mirroring control thread sleeping for %.3f [s]", sleep_time)
                 suspend(stop_event, sleep_time)
+            except MirroringStoppedException as e:
+                return
+            except socket.error as e:
+                if e.errno == errno.ECONNREFUSED:
+                    logger.warning("Server not up and running yet, postponing mirroring")
+                    try:
+                        sleep_time = get_mirroring_sleep_time(ngams_server)
+                        logger.info("ALMA mirroring control thread sleeping for %.3f [s]", sleep_time)
+                        suspend(stop_event, sleep_time)
+                    except MirroringStoppedException as e:
+                        return
             except Exception as e:
-                if str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1:
-                    return
                 logger.exception("Error occurred during execution of the ALMA mirroring control thread")
                 # We make a small wait here to avoid that the process tries too often to carry out tasks that failed
                 if stop_event.wait(5.0):
@@ -1009,9 +1024,9 @@ def mirror_control_thread(ngams_server, stop_event):
                 try:
                     pause_mirror_threads(ngams_server, stop_event)
                     check_source_archives(ngams_server)
-                except Exception as e:
-                    if str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1:
-                        raise
+                except MirroringStoppedException as e:
+                    raise e
+
                 resume_mirror_threads(ngams_server, stop_event)
 
                 # Check if there are entries in Error State, which should be resumed
@@ -1026,9 +1041,20 @@ def mirror_control_thread(ngams_server, stop_event):
                     suspend_time = 1
                 logger.debug("Mirroring control thread executed - suspending for %s [s]", str(suspend_time))
                 suspend(stop_event, suspend_time)
+            except MirroringStoppedException as e:
+                return
+            except socket.error as e:
+                if e.errno == errno.ECONNREFUSED:
+                    logger.warning("Server not up and running yet, postponing mirroring")
+                    try:
+                        suspend_time = period - (time.time() - start_time)
+                        if suspend_time < 1:
+                            suspend_time = 1
+                        logger.debug("Mirroring control thread executed - suspending for %s [s]", str(suspend_time))
+                        suspend(stop_event, suspend_time)
+                    except MirroringStoppedException as e:
+                        return
             except Exception as e:
-                if str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1:
-                    return
                 error_message = "Error occurred during execution of the mirroring control thread"
                 logger.exception(error_message)
                 # We insert a short delay here to help avoid that the process tries too often to carry out the task
