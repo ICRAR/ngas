@@ -284,7 +284,7 @@ def get_num_download_threads_in_use(current_iteration, target_node, ngams_server
 
 def revert_mirroring_bookkeeping_entries(current_iteration, target_node, ngams_server):
     sql = "delete from ngas_mirroring_bookkeeping " \
-          "where target_host = :targetNode and iteration = :iteration and status = 'READY'"
+          "where target_host = {0} and iteration = {1} and status = 'READY'"
     ngams_server.getDb().query2(sql, args=(target_node, current_iteration))
 
 
