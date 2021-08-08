@@ -35,65 +35,65 @@ from ngamsLib.ngamsCore import get_contact_ip
 from . import ngamsServer
 
 
-def err(s):
+def errmsg(s):
     sys.stderr.write(s + '\n')
 
-def start(args, cfg, pidfile):
 
+def start(args, cfg, pid_path):
     # Ensure the directory is there to keep the PID file
     try:
         os.makedirs(os.path.join(cfg.getRootDirectory(), 'var', 'run'))
     except OSError:
         pass
 
-    if os.path.isfile(pidfile):
-        pid = lockfile.pidlockfile.read_pid_from_pidfile(pidfile)
-        err('PID file %s already exists (pid=%d), not overwriting possibly existing instance' % (pidfile, pid,))
+    if os.path.isfile(pid_path):
+        pid = lockfile.pidlockfile.read_pid_from_pidfile(pid_path)
+        errmsg("PID file %s already exists (PID=%s), not overwriting possibly existing instance" % (pid_path, str(pid)))
         return 1
 
     # Old versions of lockfile don't offer a timeout parameter for PIDLockFile.
     # We thus use it only when available (because we still want to have the
     # behavior available when possible)
-    PIDLockFile = lockfile.pidlockfile.PIDLockFile
-    pidlockfile_kwargs = {}
-    if 'timeout' in inspect.getargspec(PIDLockFile.__init__).args:
-        pidlockfile_kwargs['timeout'] = 1
+    pid_file = lockfile.pidlockfile.PIDLockFile
+    pid_file_kwargs = {}
+    if 'timeout' in inspect.getargspec(pid_file.__init__).args:
+        pid_file_kwargs['timeout'] = 1
 
     # Go, go, go!
-    with daemon.DaemonContext(pidfile=PIDLockFile(pidfile, **pidlockfile_kwargs)):
+    with daemon.DaemonContext(pidfile=pid_file(pid_path, **pid_file_kwargs)):
         ngamsServer.main(args=args[1:], prog='ngamsDaemon')
 
     return 0
 
-def stop(pidfile):
-    pid = lockfile.pidlockfile.read_pid_from_pidfile(pidfile)
+
+def stop(pid_path):
+    pid = lockfile.pidlockfile.read_pid_from_pidfile(pid_path)
     if pid is None:
-        err('Cannot read PID file, is there an instance running?')
+        errmsg("Cannot read PID file, is there an instance running?")
         return 1
     else:
         try:
-            return kill_and_wait(pid, pidfile)
+            return kill_and_wait(pid, pid_path)
         except OSError as e:
             if e.errno == errno.ESRCH:
-                err('PID file points to non-existing process, removing it')
-                os.unlink(pidfile)
+                errmsg("PID lock file points to non-existing PID %d, removing PID lock file" % (pid,))
+                os.unlink(pid_path)
                 return 1
 
-def kill_and_wait(pid, pidfile):
 
+def kill_and_wait(pid, pid_path):
     # The NGAS server should nicely shut down itself after receiving this signal
     os.kill(pid, signal.SIGTERM)
 
-    # We previously checked that the pidfile was gone, but this is not enough
+    # We previously checked that the pid_file was gone, but this is not enough
     # In some cases the main thread finished correctly, but there are other
     # threads (e.g., HTTP servicing threads) that are still running,
     # and thus the PID file disappears but the process is still ongoing
     tries = 0
     max_tries = 20
     sleep_period = 1
-    start = time.time()
+    start_time = time.time()
     while tries < max_tries:
-
         # SIGCONT can be sent many times without fear of side effects
         # If we get ESRCH then the process has finished
         try:
@@ -110,48 +110,49 @@ def kill_and_wait(pid, pidfile):
 
     sys.stdout.write('\n')
     sys.stdout.flush()
-    end = time.time()
+    end_time = time.time()
 
-    ret = 0x00
+    exit_status = 0x00
 
-    # We waited a lot but the process is still there, kill it with 9
+    # We waited a lot but the process is still there, now forcibly kill it with -9
     if tries == max_tries:
-        err("Process didn't die after %.2f [s], killing it with -9" % (end-start))
+        errmsg("Process didn't die after %.2f [s], killing it with -9" % (end_time - start_time))
         os.kill(pid, signal.SIGKILL)
-        ret += 0x01
+        exit_status += 0x01
 
-    # The process should have removed its own pidfile...
-    if os.path.exists(pidfile):
-        err("Removing PID file manually, the daemon process didn't remove it by itself")
-        os.unlink(pidfile)
-        ret += 0x02
+    # The process should have removed its own PID file
+    if os.path.exists(pid_path):
+        errmsg("Removing PID file manually, the daemon process didn't remove it by itself")
+        os.unlink(pid_path)
+        exit_status += 0x02
 
-    return ret
+    return exit_status
+
 
 def status(cfg):
     """
     Check if the server is up and running
     """
-
-    ipAddress = get_contact_ip(cfg)
+    ip_address = get_contact_ip(cfg)
     port = cfg.getPortNo()
-
     try:
-        ngamsHighLevelLib.pingServer(ipAddress, port, 10)
+        ngamsHighLevelLib.pingServer(ip_address, port, 10)
         return 0
     except:
         return 1
 
+
 def print_usage(name):
-    err("usage: %s [start|stop|restart|status] <ngamsServer options>" % (name,))
+    errmsg("Usage: %s [start|stop|restart|status] <ngamsServer options>" % (name,))
+
 
 def main(args=sys.argv):
     """
     Entry point function. It's mapped to two different scripts, which is why
     we can distinguish here between them and start different processes
     """
-
     # A minimum of 4 because we require at least -cfg <file>
+    # e.g. ngamsDaemon.py start -cfg /path/to/ngas-server-7777.xml
     name = args[0]
     if len(args) < 4:
         print_usage(name)
@@ -162,38 +163,46 @@ def main(args=sys.argv):
 
     # We need to load the configuration file to know the root directory
     # and the IP address the server is listening on
-    largs = [x.lower() for x in args]
-    if '-cfg' not in largs:
-        err('At least -cfg <file> should be specified')
+    lower_args = [x.lower() for x in args]
+    if '-cfg' not in lower_args:
+        errmsg('At least -cfg <file> should be specified')
         sys.exit(2)
-    cfg_idx = largs.index('-cfg')
-    if cfg_idx == len(largs) - 1:
-        err('At least -cfg <file> should be specified')
+    cfg_idx = lower_args.index('-cfg')
+    if cfg_idx == len(lower_args) - 1:
+        errmsg('At least -cfg <file> should be specified')
         sys.exit(2)
 
-    cfgfile = args[cfg_idx + 1]
+    cfg_file = args[cfg_idx + 1]
     cfg = ngamsConfig.ngamsConfig()
-    cfg.load(cfgfile)
+    cfg.load(cfg_file)
 
     # The daemon PID file
-    pidfile = os.path.join(cfg.getRootDirectory(), 'var', 'run', 'ngamsDaemon.pid')
+    pid_path = os.path.join(cfg.getRootDirectory(), 'var', 'run', 'ngamsDaemon.pid')
+
+    # In the event we receive the '-force' command line option we will forcibly restart the NGAS daemon
+    # This will require stopping any NGAS daemon that might be currently running and removing the PID lock file
+    if '-force' in lower_args:
+        sys.stdout.write("Force command line option is set. Will clean up PID lock file if one exists.\n")
+        if os.path.isfile(pid_path):
+            stop(pid_path)
 
     # Main command switch
     if 'start' == cmd:
-        exitCode = start(args, cfg, pidfile)
+        exit_code = start(args, cfg, pid_path)
     elif 'stop' == cmd:
-        exitCode = stop(pidfile)
+        exit_code = stop(pid_path)
     elif 'restart' == cmd:
-        stop(pidfile)
-        exitCode = start(args, cfg, pidfile)
+        stop(pid_path)
+        exit_code = start(args, cfg, pid_path)
     elif 'status' == cmd:
-        exitCode = status(cfg)
+        exit_code = status(cfg)
     else:
-        err("Unknown command: %s" % (cmd,))
+        errmsg("Unknown command: %s" % (cmd,))
         print_usage(name)
-        exitCode = 1
+        exit_code = 1
 
-    sys.exit(exitCode)
+    sys.exit(exit_code)
+
 
 if __name__ == '__main__':
     main(sys.argv)
