@@ -33,9 +33,11 @@ This module contains the Test Suite for the NG/AMS Server.
 
 import contextlib
 import os
+import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import unittest
@@ -174,6 +176,37 @@ class ngamsDaemonTest(ngamsTestSuite):
         self.prepExtSrv(daemon=True)
         cfg_file = self.resource('src/ngamsCfg.xml')
         self.assertNotEqual(0, self._run_daemon_start(self.point_to_ngas_root(cfg_file)))
+
+    def test_daemon_stale_pid_file(self):
+        # Create a stale PID file, it should refuse to start
+        # Define a root directory for creating the temporary NGAS volume
+        root_path = tempfile.mkdtemp(prefix="ngas_")
+        run_path = os.path.join(root_path, "var", "run")
+        os.makedirs(run_path)
+        # Create a stale PID lock file with a bogus PID
+        pid_path = os.path.join(run_path, "ngamsDaemon.pid")
+        with open(pid_path, "w") as pid_file:
+            pid_file.write("99999999")
+        # self.prepExtSrv(daemon=True, delDirs=0, root_dir=root_path)
+        self.assertRaises(BaseException, self.prepExtSrv, daemon=True, delDirs=0, root_dir=root_path)
+        # Clean up the temporary volume directories and files
+        shutil.rmtree(root_path, True)
+
+    def test_daemon_stale_pid_file_with_force(self):
+        # Create a stale PID file but set '-force' command line option,
+        # it should clean up the old PID file and forcibly restart if necessary
+        root_path = tempfile.mkdtemp(prefix="ngas_")
+        run_path = os.path.join(root_path, "var", "run")
+        os.makedirs(run_path)
+        # Create a stale PID lock file with a bogus PID
+        pid_path = os.path.join(run_path, "ngamsDaemon.pid")
+        with open(pid_path, "w") as pid_file:
+            pid_file.write("99999999")
+        self.prepExtSrv(daemon=True, delDirs=0, force=True, root_dir=root_path)
+        self.assertEqual(0, self._run_daemon_status(self.extSrvInfo[-1].cfg_file))
+        self.terminateAllServer()
+        # Clean up the temporary volume directories and files
+        shutil.rmtree(root_path, True)
 
 class _ReqDbTests(object):
 
