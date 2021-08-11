@@ -96,6 +96,14 @@ Changelog
   when registration of a file
   with a MIME type with no configured plug-in
   is requested.
+* The ``bad-files`` directory
+  now exists on each volume
+  rather that there being a single one
+  outside of any volume directory.
+  This allows for faster movement of files
+  into the ``bad-files`` directory,
+  a more consistent directory structure,
+  and better traceability of files that end up in ``bad-files``.
 
 .. rubric:: 11.0.2
 

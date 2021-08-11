@@ -524,14 +524,14 @@ def getNewFileVersion(dbConObj,
         return (latestFileVersion + 1)
 
 
-def moveFile2BadDir(ngamsCfgObj, srcFilename):
+def moveFile2BadDir(disk, srcFilename):
     """
     Move a file to the Bad File Directory on the destination disk.
 
     Returns:         Name of filename in Bad Files Area (string).
     """
 
-    badFilesDir = os.path.join(ngamsCfgObj.getRootDirectory(), NGAMS_BAD_FILES_DIR)
+    badFilesDir = os.path.join(disk.getMountPoint(), NGAMS_BAD_FILES_DIR)
     checkCreatePath(badFilesDir)
 
     trgFilename = tempfile.mktemp(suffix="-" + os.path.basename(srcFilename),
