@@ -177,7 +177,7 @@ def __handle_command(ngams_server, request_properties):
 
     # Invoke DAPI
     logger.info("Invoking DAPI for mirroring")
-    result_dapi = ngamsDAPIMirroring.ngamsGeneric(ngams_server, request_properties)
+    result_dapi = ngamsDAPIMirroring.ngams_generic(ngams_server, request_properties)
 
     # Move file to final destination
     logger.info("Moving file to final destination: %s", result_dapi.getCompleteFilename())

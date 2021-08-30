@@ -1,7 +1,7 @@
 #
-#    ALMA - Atacama Large Millimiter Array
-#    (c) European Southern Observatory, 2002
-#    Copyright by ESO (in the framework of the ALMA collaboration),
+#    ICRAR - International Centre for Radio Astronomy Research
+#    (c) UWA - The University of Western Australia, 2012
+#    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
 #
 #    This library is free software; you can redistribute it and/or
@@ -35,65 +35,74 @@ Note that the plug-in is implemented for the usage for ALMA. If used in other co
 the individual context should be implemented and NG/AMS configured to use it.
 """
 
-import cgi
+import email
 import logging
 import os
 import re
-import rfc822
+import sys
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import genLog, toiso8601, FMT_DATE_ONLY
+from ngamsLib import ngamsCore
+from ngamsLib.ngamsCore import genLog
+
+PLUGIN_ID = __name__
+
+# Update for the new assignment of archive IDs (backwards compatible)
+UID_EXPRESSION = re.compile(r"^[uU][iI][dD]://[aAbBcCzZxX][0-9,a-z,A-Z]+(/[xX][0-9,a-z,A-Z]+){2}(#\w{1,}|/\w{0,}){0,}$")
+
+# Python 2/3 workaround
+message_from_file = email.message_from_file
+if sys.version_info[0] > 2:
+    message_from_file = email.message_from_binary_file
 
 logger = logging.getLogger(__name__)
 
-_EXT = '.msg'
-_PLUGIN_ID = __name__
 
-
-def specific_treatment(file_object):
+def specific_treatment(file_path):
     """
     Method contains the specific treatment of the file passed from NG/AMS
-    :param file_object: File object
-    :return: (file_id, finalFileName, type); The finalFileName is a string containing the name of the final file without extension. type is the mime-type from the header.
+    :param file_path: File path
+    :return: (file_id, final_filename, file_type); The final_filename is a string containing the name of the final
+             file without extension. file_type is the mime-type from the header.
     """
-    filename = file_object.name
-    uid_template = re.compile("^[uU][iI][dD]://[aAbBcCzZxX][0-9,a-z,A-Z]+(/[xX][0-9,a-z,A-Z]+){2}(#\w{1,}|/\w{0,}){0,}$")
-
+    filename = os.path.basename(file_path)
     try:
-        message = rfc822.Message(file_object)
-        type, type_params = cgi.parse_header(message["Content-Type"])
+        with open(file_path, "rb") as fo:
+            mime_message = message_from_file(fo)
     except Exception as e:
-        error_message = "Parsing of mime message failed: " + str(e)
-        exception_message = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename), _PLUGIN_ID, error_message])
-        raise Exception(exception_message)
+        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "Failed to open file: " + str(e)]))
 
+    if mime_message is None:
+        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "Failed to parse mime message"]))
+
+    file_type = mime_message.get_content_type()
+    alma_uid = mime_message["alma-uid"]
+    if alma_uid is None:
+        alma_uid = mime_message["Content-Location"]
+    if alma_uid is None:
+        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE",
+                               [filename, PLUGIN_ID,
+                                "Mandatory 'alma-uid' and/or 'Content-Location' parameter not found in mime header!"]))
+
+    if UID_EXPRESSION.match(alma_uid) is None:
+        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE",
+                               [filename, PLUGIN_ID, "Invalid alma-uid found in Content-Location: " + alma_uid]))
+
+    # Now, build final filename. We do that by looking for the UID in the message mime-header.
+    # The final filename is built as follows: <ALMA-UID>.<EXT> where ALMA-UID has the slash character in the UID
+    # replaced by colons.
     try:
-        alma_uid = message["alma-uid"]
-    except:
-        try:
-            alma_uid = message["Content-Location"]
-        except:
-            error_message = "Mandatory alma-uid or Content-Location parameter not found in mime header!"
-            exception_message = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename), _PLUGIN_ID, error_message])
-            raise Exception(exception_message)
-
-    if not uid_template.match(alma_uid):
-        error_message = "Invalid alma-uid found in Content-Location: " + alma_uid
-        exception_message = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename), _PLUGIN_ID, error_message])
-        raise Exception(exception_message)
-
-    try:
-        alma_uid = alma_uid.split('//',2)[1].split('#')[0]
-        if alma_uid[-1] == '/':
-            alma_uid = alma_uid[:-1]
+        # Get rid of the 'uid://' and of anything following a '#' sign
+        alma_uid = alma_uid.split("//", 2)[1].split("#")[0]
+        # Remove trailing '/'
+        alma_uid = alma_uid.rstrip("/")
         file_id = alma_uid
-        final_file_name = alma_uid.replace('/',':')
+        final_filename = alma_uid.replace("/", ":")
     except Exception as e:
-        error_message = "Problem constructing final file name: " + str(e)
-        exception_message = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),_PLUGIN_ID, error_message])
-        raise Exception(exception_message)
+        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE",
+                               [filename, PLUGIN_ID, "Problem constructing final file name: " + str(e)]))
 
-    return file_id, final_file_name, type
+    return file_id, final_filename, file_type
 
 
 def generate_file_info(ngams_config, target_disk_info, staging_filename, file_version, base_filename,
@@ -102,12 +111,12 @@ def generate_file_info(ngams_config, target_disk_info, staging_filename, file_ve
     relative_path = ngams_config.getPathPrefix()
 
     for subdirectory in subdirectory_list:
-        if relative_path != "":
-            relative_path += "/" + subdirectory
+        if relative_path:
+            relative_path = os.path.join(relative_path, subdirectory)
 
-    relative_path = relative_path + "/" + str(file_version)
+    relative_path = os.path.join(relative_path, str(file_version))
     relative_path = relative_path.strip("/")
-    complete_path = os.path.normpath(target_disk_info.getMountPoint() + "/" + relative_path)
+    complete_path = os.path.normpath(os.path.join(target_disk_info.getMountPoint(), relative_path))
     extension = os.path.basename(staging_filename).split(".")[-1]
     new_filename = base_filename
 
@@ -118,8 +127,8 @@ def generate_file_info(ngams_config, target_disk_info, staging_filename, file_ve
         if additional_extension.strip() != "":
             new_filename += "." + additional_extension
 
-    complete_filename = os.path.normpath(complete_path + "/" + new_filename)
-    relative_filename = os.path.normpath(relative_path + "/" + new_filename)
+    complete_filename = os.path.normpath(os.path.join(complete_path, new_filename))
+    relative_filename = os.path.normpath(os.path.join(relative_path, new_filename))
     logger.debug("Target name for file is: %s", complete_filename)
 
     # We already know that the file does not exist
@@ -127,54 +136,50 @@ def generate_file_info(ngams_config, target_disk_info, staging_filename, file_ve
     return relative_path, relative_filename, complete_filename, file_exists
 
 
-def ngamsGeneric(ngams_server, request_properties):
+def ngams_generic(ngams_server, request_properties):
     """
     Data Archiving Plug-In to handle archiving of SDM multipart related message files containing ALMA UIDs in the
     Content-Location mime parameter or any other kind of file
     :param ngams_server: Reference to NG/AMS Server Object (ngamsServer)
     :param request_properties: NG/AMS request properties object (ngamsReqProps)
     :return: Standard NG/AMS Data Archiving Plug-In Status as generated by: ngamsPlugInApi.genDapiSuccessStat()
-    (ngamsDapiStatus)
+             (ngamsDapiStatus)
     """
-    logger.debug("Mirroring plug-in handling data for file: %s", os.path.basename(request_properties.getFileUri()))
+    logger.info("Mirroring plug-in handling data for file: %s", os.path.basename(request_properties.getFileUri()))
 
-    # Create the file
+    # Create staging file
     disk_info = request_properties.getTargDiskInfo()
     staging_filename = request_properties.getStagingFilename()
-    # extension = os.path.splitext(staging_filename)[1][1:]
 
     # request_properties format: /MIRRARCHIVE?mime_type=application/x-tar&filename=...
-    if request_properties.getMimeType():
-        file_format = request_properties.getMimeType()
-    else:
-        raise Exception("mime_type paremeter not specified in MIRRARCHIVE request")
+    file_format = request_properties.getMimeType()
+    if not file_format:
+        raise Exception("mime_type parameter not specified in MIRRARCHIVE request")
 
-    # File URI format: http://ngasbe03.aiv.alma.cl:7777/RETRIEVE?disk_id=59622720f79296473f6106c15e5c2240&host_id=ngasbe03:7777&quick_location=1&file_version=1&file_id=backup.2011-02-02T22:01:59.tar
+    # Example of file URI format:
+    # http://ngas01.org:7777/RETRIEVE?disk_id=59622720f79296473f6106c15e5c2240&host_id=ngas01:7777&quick_location=1&file_version=1&file_id=backup.2011-02-02T22:01:59.tar
 
-    # Get file ID
-    file_version = request_properties.fileinfo['fileVersion']
-    file_id = request_properties.fileinfo['fileId']
+    file_id = request_properties.fileinfo["fileId"]
+    file_version = request_properties.fileinfo["fileVersion"]
 
     # Specific treatment depending on the mime-type
     if file_format.find("multipart") >= 0 or file_format.find("multialma") >= 0:
-        logger.debug("Applying plug-in specific treatment")
-        with open(staging_filename, "r") as fo:
-            file_id, final_name, file_format = specific_treatment(fo)
+        logger.debug("Mirroring plug-in applying specific treatment for multipart/multialma mime file")
+        file_id, final_filename, file_format = specific_treatment(staging_filename)
     else:
-        final_name = file_id
+        final_filename = file_id
 
-    logger.debug("File with URI %s is being handled by ngamsGeneric: file_format=%s, file_id=%s, file_version=%s," 
-                 " final_name=%s", request_properties.getFileUri(), file_format, file_id, file_version, final_name)
+    logger.debug("Mirroring plug-in processing request for file with URI %s, file_format=%s, file_id=%s, file_version=%s," 
+                 " final_name=%s", request_properties.getFileUri(), file_format, file_id, file_version, final_filename)
 
     try:
         # Compression parameters
         uncompressed_size = ngamsPlugInApi.getFileSize(staging_filename)
         compression = ""
 
-        # Filename and paths
-        date = toiso8601(fmt=FMT_DATE_ONLY)
+        today = ngamsCore.toiso8601(fmt=ngamsCore.FMT_DATE_ONLY)
         relative_path, relative_filename, complete_filename, file_exists = \
-            generate_file_info(ngams_server.getCfg(), disk_info, staging_filename, file_version, final_name, [date])
+            generate_file_info(ngams_server.getCfg(), disk_info, staging_filename, file_version, final_filename, [today])
 
         # Make sure the format is defined
         if not file_format:
@@ -186,6 +191,5 @@ def ngamsGeneric(ngams_server, request_properties):
                                                  file_format, file_size, uncompressed_size, compression, relative_path,
                                                  disk_info.getSlotId(), file_exists, complete_filename)
     except Exception as e:
-        error_message = "Problem processing file in staging area: " + str(e)
-        exception_message = genLog("NGAMS_ER_DAPI_BAD_FILE", [staging_filename, _PLUGIN_ID, error_message])
-        raise Exception(exception_message)
+        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE",
+                               [staging_filename, PLUGIN_ID, "Problem processing file in staging area: " + str(e)]))

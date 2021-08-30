@@ -776,11 +776,11 @@ class MirrexecCommandSender(threading.Thread):
                 'iteration': str(self.iteration)
             }
 
-            start = time.time()
+            start_time = time.time()
             response = ngamsHttpUtils.httpGet(host, int(port), 'MIRREXEC', pars=pars, timeout=self.rx_timeout)
             with contextlib.closing(response):
                 failed = response.status != NGAMS_HTTP_SUCCESS or NGAMS_FAILURE in response.read()
-            elapsed_time = time.time() - start
+            elapsed_time = time.time() - start_time
 
             if failed:
                 logger.error("MIRREXEC command sent to %s with (n_threads=%d) was handled with status FAILURE " 
