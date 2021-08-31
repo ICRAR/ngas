@@ -169,8 +169,9 @@ def ngams_generic(ngams_server, request_properties):
     else:
         final_filename = file_id
 
-    logger.debug("Mirroring plug-in processing request for file with URI %s, file_format=%s, file_id=%s, file_version=%s," 
-                 " final_name=%s", request_properties.getFileUri(), file_format, file_id, file_version, final_filename)
+    logger.debug("Mirroring plug-in processing request for file with URI %s, file_format=%s, file_id=%s, "
+                 "file_version=%s, final_filename=%s", request_properties.getFileUri(), file_format, file_id,
+                 file_version, final_filename)
 
     try:
         # Compression parameters
