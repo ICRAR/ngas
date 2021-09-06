@@ -657,7 +657,7 @@ class ngamsServer(object):
 
         # Handling of the Mirroring Control Thread.
         self._mir_control_thread = utils.Task(ngamsMirroringControlThread.NGAMS_MIR_CONTROL_THR,
-                                              ngamsMirroringControlThread.mirControlThread)
+                                              ngamsMirroringControlThread.mirror_control_thread)
         self.__mirControlTrigger      = threading.Event()
         self._pauseMirThreads         = False
         self._mirThreadsPauseCount    = 0

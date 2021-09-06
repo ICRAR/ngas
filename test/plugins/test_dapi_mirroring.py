@@ -21,22 +21,22 @@
 #
 
 """
-This module contains the Test Suite for the ngamsSdmMultipart plugin.
+This module contains the Test Suite for the ngamsDAPIMirroring plugin.
 """
 
 import os
 
-from ngamsPlugIns import ngamsSdmMultipart
+from ngamsPlugIns import ngamsDAPIMirroring
 from test import ngamsTestLib
 
 
-class NgamsSdmMultipartTest(ngamsTestLib.ngamsTestSuite):
+class NgamsDAPIMirroringTest(ngamsTestLib.ngamsTestSuite):
 
     def test_specific_treatment(self):
         sample_file_name = "A002_X9896b4_X10f"
         sample_file_path = self.resource(os.path.join("src", sample_file_name))
 
-        file_id, file_name, file_type = ngamsSdmMultipart.specific_treatment(sample_file_path)
+        file_id, file_name, file_type = ngamsDAPIMirroring.specific_treatment(sample_file_path)
         self.assertEqual(file_id, "A002/X9896b4/X10f")
         self.assertEqual(file_name, "A002:X9896b4:X10f")
         self.assertEqual(file_type, "multipart/mixed")
