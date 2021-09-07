@@ -104,6 +104,16 @@ Changelog
   into the ``bad-files`` directory,
   a more consistent directory structure,
   and better traceability of files that end up in ``bad-files``.
+* The ngamsDaemon.py now checks the `-force` command line option and will
+  forcibly start-up and clean up any existing PID lock files.
+* Lots of code clean up for the mirroring plugin code using PEP8 style
+  guidelines. Replaced deprecated rfc822 module with email module in the
+  ngamsDAPIMirroring.py and ngamsAlmaMultipart.py plugins. Added
+  test_dapi_mirroring.py unit tests. General code clean up changes in both
+  mirroring and SDM multipart plug-ins.
+* Fixed 'Connection refused' exception on mirror plugin start-up. Now logs a
+  warning when NGAS server is not available. Now uses exception class instead
+  of string for handling stop events.
 
 .. rubric:: 11.0.2
 
