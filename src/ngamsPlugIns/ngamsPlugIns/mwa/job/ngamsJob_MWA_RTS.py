@@ -151,7 +151,7 @@ class RTSJob(MapReduceTask):
             obsTaskRe = None
             try:
                 obsTaskRe = self.__obsRespQ.get_nowait()
-            except Empty, e:
+            except Empty:
                 break
             jobRe.merge(obsTaskRe)
 
@@ -214,7 +214,7 @@ class ObsTask(MapReduceTask):
                     imgurlList.append(imgurl)
                 else:
                     pass
-            except Empty, e:
+            except Empty:
                 break
             obsTaskRe.merge(corrTaskRe)
 
@@ -1152,7 +1152,7 @@ def test():
     params = RTSJobParam()
     params.obsList = ['1052803816', '1053182656', '1052749752']
     rts_job = RTSJob('job001', params)
-    print rts_job.start()
+    print(rts_job.start())
 
 if __name__=="__main__":
     test()

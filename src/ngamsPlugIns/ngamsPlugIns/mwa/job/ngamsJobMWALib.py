@@ -225,14 +225,14 @@ def testIsValidObsNum():
     obs2 = '1055695336'
 
     if (isValidObsNum(obs1)):
-        print 'Yes, obs %s is valid' % obs1
+        print('Yes, obs %s is valid' % obs1)
     else:
-        print 'No, obs %s is not valid' % obs1
+        print('No, obs %s is not valid' % obs1)
 
     if (isValidObsNum(obs2)):
-        print 'Yes, obs %s is valid' % obs2
+        print('Yes, obs %s is valid' % obs2)
     else:
-        print 'No, obs %s is not valid' % obs2
+        print('No, obs %s is not valid' % obs2)
 
 def hasAllFilesInLTA(obs_num):
     """
@@ -257,18 +257,18 @@ def testHasFilesInLTA():
     obs2 = '1055695336'
 
     if (hasAllFilesInLTA(obs1)):
-        print 'Yes, obs %s is in LTA' % obs1
+        print('Yes, obs %s is in LTA' % obs1)
     else:
-        print 'No, obs %s is not in LTA' % obs1
+        print('No, obs %s is not in LTA' % obs1)
 
     if (hasAllFilesInLTA(obs2)):
-        print 'Yes, obs %s is in LTA' % obs2
+        print('Yes, obs %s is in LTA' % obs2)
     else:
-        print 'No, obs %s is not in LTA' % obs2
+        print('No, obs %s is not in LTA' % obs2)
 
 def testGetFileIds():
-    print getFileIdsByObsNum('1052803816')[22][0]
-    #print getFileIdsByObsNum('1052803816')[19][1] # this will raise key error
+    print(getFileIdsByObsNum('1052803816')[22][0])
+    #print(getFileIdsByObsNum('1052803816')[19][1]) # this will raise key error
 
 class FileLocation:
     """
@@ -322,9 +322,9 @@ def testGetFileLocations():
     file = '1053182656_20130521144711_gpubox08_03.fits'
     ret = getFileLocations(file)
     if (ret and len(ret) > 0):
-        print 'server_url = %s, file_path = %s' % (ret[0]._svrHost, ret[0]._filePath)
+        print('server_url = %s, file_path = %s' % (ret[0]._svrHost, ret[0]._filePath))
     else:
-        print 'Could not find locations for file %s' % file
+        print('Could not find locations for file %s' % file)
 
 def getBestHost(fileIds, blackList = None):
     """
@@ -405,7 +405,7 @@ def getBestHost(fileIds, blackList = None):
         else:
             canHost = candict.values()[0]._svrHost
             if (pingHost('http://%s/STATUS' % canHost)):
-                #print 'Ping %s was not successful' % canHost
+                #print('Ping %s was not successful' % canHost)
                 continue
             else:
                 found = 1
@@ -436,14 +436,14 @@ def testIsFileOnHost():
     fileId2 = '/pbstore/astrofs/mwa/NGAS_MWA_RUNTIME/volume2/afa/2013-05-21/1053182656/1/1053182656_20130521144502_gpubox08_02.fits'
 
     if (_isFileOnHost(hostId, fileId1)):
-        print 'File %s is on host %s' % (fileId1, hostId)
+        print('File %s is on host %s' % (fileId1, hostId))
     else:
-        print 'File %s is NOT on host %s' % (fileId1, hostId)
+        print('File %s is NOT on host %s' % (fileId1, hostId))
 
     if (_isFileOnHost(hostId, fileId2)):
-        print 'File %s is on host %s' % (fileId2, hostId)
+        print('File %s is on host %s' % (fileId2, hostId))
     else:
-        print 'File %s is NOT on host %s' % (fileId2, hostId)
+        print('File %s is NOT on host %s' % (fileId2, hostId))
 
 def testGetBestHost():
     # this test data works when
@@ -455,7 +455,7 @@ def testGetBestHost():
     fileList = ['1054900032_20130610114655_gpubox02_00.fits', '1054900032_20130610114759_gpubox02_01.fits']
     ret = getBestHost(fileList)
     for (fid, floc) in ret.items():
-        print 'file_id = %s, host = %s, path = %s' % (fid, floc._svrHost, floc._filePath)
+        print('file_id = %s, host = %s, path = %s' % (fid, floc._svrHost, floc._filePath))
 
 def getNextOnlineHost(blackList = None):
     """
@@ -490,7 +490,7 @@ def getNextOnlineHost(blackList = None):
     return None
 
 def testGetNextOnlineHostUrl():
-    print getNextOnlineHost()
+    print(getNextOnlineHost())
 
 """
 class StageRequest():
@@ -646,14 +646,14 @@ def getPushURL(hostId, gateway = None):
         return 'http://%s/QAPLUS' % hostId
 
 def testGetPushURL():
-    print getPushURL('192.168.222.7:7777', getClusterGateway())
+    print(getPushURL('192.168.222.7:7777', getClusterGateway()))
 
 """
 def scheduleForStaging(num_repeats = 0):
     \"""
     This method is no longer useful
     \"""
-    print 'Scheduling staging...'
+    print('Scheduling staging...')
     global stage_queue # since we will update it, need to declare as global
 
     if (len(stage_queue) == 0):
@@ -668,7 +668,7 @@ def scheduleForStaging(num_repeats = 0):
         try:
             fileId = stage_queue.get_nowait()
             list.append(fileId)
-        except Empty, e:
+        except Empty:
             break
     \"""
 
@@ -834,8 +834,8 @@ if __name__=="__main__":
     #testGetFileLocations()
     #testGetBestHost()
     #testGetNextOnlineHostUrl()
-    #print pingHost('http://cortex.ivec.org:7799/STATUS')
-    #print pingHost('http://fornax-io1.ivec.org:7777/STATUS')
+    #print(pingHost('http://cortex.ivec.org:7799/STATUS'))
+    #print(pingHost('http://fornax-io1.ivec.org:7777/STATUS'))
     #testGetPushURL()
     testIsFileOnHost()
     #testHasFilesInLTA()
