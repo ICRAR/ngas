@@ -767,10 +767,7 @@ ngamsSTAT ngamsCheckArchiveQueue(ngamsARCHIVE_CLIENT_REGISTRY*  regP)
 {
     DIR*             dirPtr = NULL;
     struct dirent*   dirEnt = NULL;
-    ngamsHUGE_BUF    ngamsStatBuf, checksumRes;
-    ngamsMED_BUF     queueFilename, checksumCmd, tmpEnc;
-    ngamsSTAT        stat;
-    ngamsSTATUS      status;
+    ngamsMED_BUF     queueFilename;
 
     if ((dirPtr = opendir(ngamsGetQueueDir(regP->rootDir))) == NULL)
 	{
@@ -1126,7 +1123,6 @@ int main (int argc, char *argv[])
     int              i;
     ngamsMED_BUF     tmpPar, tmpVal, statStr;
     ngamsSTAT        stat;
-    ngamsCMD         cmdCode;
 
     ngamsInitApi();
 

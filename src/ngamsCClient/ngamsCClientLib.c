@@ -597,7 +597,8 @@ ngamsSTAT ngamsGenSendData(const char* host, const int port,
 		const ngamsCMD cmdCode, const float timeoutSecs, const char* fileUri,
 		const char* mimeType, const ngamsPAR_ARRAY* parArray,
 		ngamsSTATUS* status) {
-	int retCode, i;
+	int retCode = ngamsSTAT_SUCCESS;
+	int i;
 	int written;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -861,7 +862,8 @@ ngamsSTAT ngamsArchiveFromMem(const char* host, const int port,
 		const float timeoutSecs, const char* fileUri, const char* bufPtr,
 		const int size, const char* mimeType, const int noVersioning,
 		const int wait, ngamsSTATUS* status) {
-	int retCode, locTimeout;
+	int retCode = ngamsSTAT_SUCCESS;
+	int locTimeout;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
 	ngamsHTTP_RESP httpResp;
@@ -1022,7 +1024,7 @@ ngamsSTAT ngamsExit(const char* host, const int port, const float timeoutSecs,
  */
 ngamsSTAT ngamsLabel(const char* host, const int port, const float timeoutSecs,
 		const char* slotId, ngamsSTATUS* status) {
-	int retCode;
+	int retCode = ngamsSTAT_SUCCESS;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
 	ngamsHTTP_RESP httpResp;
@@ -1278,7 +1280,7 @@ ngamsSTAT ngamsRegister(const char* host, const int port,
 ngamsSTAT ngamsRemDisk(const char* host, const int port,
 		const float timeoutSecs, const char* diskId, const int execute,
 		ngamsSTATUS* status) {
-	int retCode;
+	int retCode = ngamsSTAT_SUCCESS;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
 	ngamsHTTP_RESP httpResp;
@@ -1338,7 +1340,7 @@ ngamsSTAT ngamsRemDisk(const char* host, const int port,
 ngamsSTAT ngamsRemFile(const char* host, const int port,
 		const float timeoutSecs, const char* diskId, const char* fileId,
 		const int fileVersion, const int execute, ngamsSTATUS* status) {
-	int retCode;
+	int retCode = ngamsSTAT_SUCCESS;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
 	ngamsHTTP_RESP httpResp;
@@ -1413,10 +1415,8 @@ ngamsSTAT ngamsRetrieve2Mem(const char* host, const int port,
 		const char* hostId, ngamsHTTP_DATA* repDataRef,
 		ngamsDATA_LEN* repDataLen, ngamsSTATUS* status) {
 	char tmpBuf[10000];
-	int retCode;
-	int bytesRd;
+	int retCode = ngamsSTAT_SUCCESS;
 	int written;
-	ngamsDATA_LEN bytesRead = 0;
 	ngamsHTTP_RESP httpResp;
 	ngamsHTTP_HDR httpHdr;
 	ngamsBIG_BUF tmpUrl;
@@ -1503,7 +1503,6 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 	char* tmpP;
 	int retCode;
 	int fd = 0, bytesRd;
-	time_t timeLastRec;
 	ssize_t bytes_written;
 	ngamsDATA_LEN bytesRead = 0;
 	ngamsDATA_LEN repDataLen;
@@ -1595,7 +1594,6 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 		goto errExit;
 	}
 
-	timeLastRec = time(NULL);
 	time_t startTime = time(NULL);
 	int count = 0;
 	while (bytesRead < repDataLen) {
@@ -1620,7 +1618,6 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 				retCode = ngamsERR_WR_DATA;
 				goto errExit;
 			}
-			timeLastRec = time(NULL);
 			count++;
 		} else if( bytesRd == 0 ) {
 			retCode = ngamsERR_TIMEOUT;
@@ -1732,7 +1729,6 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
 	char* tmpP;
 	int retCode, i;
 	int fd = 0, bytesRd;
-	time_t timeLastRec;
 	ssize_t bytes_written;
 	ngamsDATA_LEN bytesRead = 0;
 	ngamsDATA_LEN repDataLen;
@@ -1792,9 +1788,7 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
 		goto errExit;
 	}
 
-	timeLastRec = time(NULL);
 	while (bytesRead < repDataLen) {
-
 		bytesRd = read(repDataRef.fd, tmpBuf, 10000);
 		if (bytesRd > 0) {
 			bytes_written = write(fd, tmpBuf, bytesRd);
@@ -1804,7 +1798,6 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
 				goto errExit;
 			}
 			bytesRead += bytesRd;
-			timeLastRec = time(NULL);
 		} else if( bytesRd == 0 ) {
 			retCode = ngamsERR_TIMEOUT;
 			goto errExit;
@@ -1911,7 +1904,7 @@ ngamsSTAT ngamsSubscribe(const char* host, const int port,
 		const float timeoutSecs, const char* url, const int priority,
 		const char* startDate, const char* filterPlugIn,
 		const char* filterPlugInPars, ngamsSTATUS* status) {
-	int retCode;
+	int retCode = ngamsSTAT_SUCCESS;
 	int written;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1978,7 +1971,7 @@ ngamsSTAT ngamsSubscribe(const char* host, const int port,
  */
 ngamsSTAT ngamsUnsubscribe(const char* host, const int port,
 		const float timeoutSecs, const char* url, ngamsSTATUS* status) {
-	int retCode;
+	int retCode = ngamsSTAT_SUCCESS;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
 	ngamsHTTP_RESP httpResp;
@@ -2838,7 +2831,8 @@ int ngamsHttpGet(const char* host, const int port, const float timeout, const ch
 ngamsSTAT ngamsGenSendCmd(const char* host, const int port,
 		const float timeoutSecs, const char* cmd,
 		const ngamsPAR_ARRAY* parArray, ngamsSTATUS* status) {
-	int retCode, i;
+	int retCode = ngamsSTAT_SUCCESS;
+	int i;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
 	ngamsHTTP_RESP httpResp;
@@ -3525,7 +3519,6 @@ void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level,
 	ssize_t bytes_written;
 	ngamsHUGE_BUF logMsg;
 	ngamsMED_BUF isoTime;
-	ngamsSTAT stat;
 
 	/* Create log line */
 	ngamsGenIsoTime(3, isoTime);
@@ -3546,7 +3539,6 @@ void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level,
 	if (level <= _logLevel) {
 		/* IMPL: Support buffering to avoid opening and closing the file all the time */
 		if ((fd = open(_logFile, O_WRONLY | O_CREAT, 0644)) == -1) {
-			stat = ngamsERR_OPEN_LOG_FILE;
 			goto errExit;
 		}
 		lseek(fd, 0, SEEK_END);
