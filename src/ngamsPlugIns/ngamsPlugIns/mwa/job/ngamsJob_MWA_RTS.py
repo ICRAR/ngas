@@ -98,7 +98,7 @@ class RTSJob(MapReduceTask):
                     exeHost, fileLocaDic = self._allocateHost(fileIds[k + 1])
                     if (not exeHost):
                         errMsg = 'There are no online NGAS servers available'
-                        raise Exception, errMsg
+                        raise Exception(errMsg)
                     corrTask = CorrTask(str(k + 1), fileIds[k + 1], self._rtsParam, obsTask, exeHost, fileLocDict = fileLocaDic)
                     obsTask.addMapper(corrTask)
                     if (self.__hostAllocDict.has_key(exeHost)):
@@ -253,7 +253,7 @@ class ObsTask(MapReduceTask):
                         else:
                             urlError = 0
                             break
-                except Exception, err:
+                except Exception:
                     urlError = 1
                     continue
 
@@ -383,7 +383,7 @@ class CorrTask(MapReduceTask):
         if (not self._taskExeHost):  # this is re-try
             try:
                 self._fileLocDict = ngamsJobMWALib.getBestHost(self.__fileIds, self._blackList)
-            except Exception, e:
+            except Exception as e:
                 cre._errcode = 4
                 cre._errmsg = 'Fail to get the best host for file list %s: %s' % (str(self.__fileIds), str(e))
                 self.setStatus(STATUS_EXCEPTION)
@@ -410,7 +410,7 @@ class CorrTask(MapReduceTask):
             if (not self._fileLocDict.has_key(fid)):
                 try:
                     fileLoc = ngamsJobMWALib.getFileLocations(fid)
-                except Exception, e:
+                except Exception as e:
                     cre._errmsg = "Fail to get location for file '%s': %s" % (fid, str(e))
                     cre._errcode = 2
                     dprint(cre._errmsg)
@@ -760,7 +760,7 @@ class CorrTask(MapReduceTask):
             #
             try:
                 fjsobj['name'] = '%s@%s-%.0fMB/s' % (fileId, floc, (float(ingR) / 1024.0 ** 2)) # convert to MB/s
-            except Exception, jerr:
+            except Exception as jerr:
                 logger.info('Ingestion rate = %s. Exception: %s' % (str(ingR), str(jerr)))
                 fjsobj['name'] = '%s@%s-%.0fMB/s' % (fileId, floc, float(0.0))
 
@@ -1080,7 +1080,7 @@ class CorrLocalTask(MRLocalTask):
             try:
                 os.killpg(self._subproc.pid, signal.SIGTERM)
                 return (0, '')
-            except Exception, oserr:
+            except Exception as oserr:
                 #logger.error('Fail to kill process %d: %s' % (self._subproc.pid, str(oserr)))
                 return (1, str(oserr))
         else:
@@ -1104,7 +1104,7 @@ class CorrLocalTask(MRLocalTask):
             retval = self._subproc.returncode
             ret = MRLocalTaskResult(self._taskId, retval, output, True)
             return ret
-        except Exception, err:
+        except Exception as err:
             #logger.error('Fail to launch RTS Task %s: %s' % (self._taskId, str(err)))
             ret = MRLocalTaskResult(self._taskId, -128, str(err), True)
             return ret

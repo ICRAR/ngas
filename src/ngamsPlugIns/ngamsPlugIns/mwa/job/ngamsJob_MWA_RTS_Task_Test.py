@@ -82,7 +82,7 @@ def testCorrTaskOnNGAS():
     localTask = CorrLocalTask(taskId, fileList, params)
     strLT = pickle.dumps(localTask)
     strRes = urllib2.urlopen('http://%s/RUNTASK' % ngas_host, data = strLT, timeout = 10).read()
-    print 'Submit localtask, acknowledgement received: %s' % strRes
+    print('Submit localtask, acknowledgement received: %s' % strRes)
 
 def manualTest():
     job_id = 'cwu_20130605T171913.236'
@@ -98,8 +98,8 @@ def manualTest():
     cmd = '/home/cwu/ngas_rt/src/ngamsPlugIns/ngamsJob_MWA_RTS_Task.sh' +\
         ' -j %s -o %d -c %d -t %s -f %s -g N' % (job_id, obs_num, corr_id, rts_tpl, file_list)
     re = commands.getstatusoutput(cmd)
-    print re[0]
-    print re[1]
+    print(re[0])
+    print(re[1])
 
 if __name__ == "__main__":
     parser = OptionParser()

@@ -122,9 +122,9 @@ def getMWADBConn():
                             password = ''.decode('base64'),
                             host = None)
         return g_db_conn
-    except Exception, e:
+    except Exception as e:
         errStr = 'Cannot create MWA DB Connection: %s' % str(e)
-        raise Exception, errStr
+        raise Exception(errStr)
 
 def getFornaxDBConn():
     global f_db_conn
@@ -142,9 +142,9 @@ def getFornaxDBConn():
                             password = fdb_passwd.decode('base64'),
                             host = fdb_host)
         return f_db_conn
-    except Exception, e:
+    except Exception as e:
         errStr = 'Cannot create Fornax DB Connection: %s' % str(e)
-        raise Exception, errStr
+        raise Exception(errStr)
 
 def getLTADBConn():
     global l_db_conn
@@ -162,9 +162,9 @@ def getLTADBConn():
                             password = ldb_passwd.decode('base64'),
                             host = ldb_host)
         return l_db_conn
-    except Exception, e:
+    except Exception as e:
         errStr = 'Cannot create LTA DB Connection: %s' % str(e)
-        raise Exception, errStr
+        raise Exception(errStr)
 
 def executeQuery(conn, sqlQuery):
     try:
@@ -423,7 +423,7 @@ def _isFileOnHost(hostId, filePath):
             return 1
         else:
             return 0
-    except Exception, err:
+    except Exception as err:
         logger.error('Fail to check file %s online status on host %s: %s' % (filePath, hostId, str(err)))
         return 0
 
@@ -597,7 +597,7 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
         else:
             logger.error('Response is None when staging files')
             return ERROR_ST_NONRESP
-    except Exception, err:
+    except Exception as err:
         logger.error((str(err) + ':' + traceback.format_exc()))
 
         if (str(err).find('urlopen error timed out') > -1):
@@ -697,7 +697,7 @@ def fileFailToDeliver(fileId, toUrl, errMsg):
     if (LTA):
         try:
             toHost = toUrl.split('nexturl')[-1].split('//')[1].split('%')[0]
-        except Exception, err:
+        except Exception as err:
             logger.error('Fail to notify failToDeliver event to CorrTask, Exception: %s' % str(err))
             return
 
