@@ -282,7 +282,7 @@ class ObsTask(MapReduceTask):
             try:
                 strRes = urllib2.urlopen('http://%s/RUNTASK' % self._taskExeHost, data = strLT, timeout = 15).read()
                 logger.debug('Submit local task, acknowledgement received: %s'     % strRes)
-            except urllib2.URLError, urlerr:
+            except urllib2.URLError as urlerr:
                 if (str(urlerr).find('Connection refused') > -1): # the host is down
                     #TODO - make it a log!
                     logger.info('The original host %s is down, changing to another host to download all image files...' % self._taskExeHost)
@@ -535,7 +535,7 @@ class CorrTask(MapReduceTask):
             try:
                 strRes = urllib2.urlopen('http://%s/RUNTASK' % self._taskExeHost, data = strLT, timeout = 15).read()
                 logger.debug('Submit localtask, acknowledgement received: %s' % strRes)
-            except urllib2.URLError, urlerr:
+            except urllib2.URLError as urlerr:
                 if (str(urlerr).find('Connection refused') > -1): # the host is down
                     logger.info('The original host %s is down, changing to another host and re-staging all files...' % self._taskExeHost)
                     self._blackList.append(self._taskExeHost)
@@ -646,7 +646,7 @@ class CorrTask(MapReduceTask):
                     logger.debug('Before calling taskcancel on correlator %s' % self.getId())
                     strRes = urllib2.urlopen('http://%s/RUNTASK?action=cancel&task_id=%s' % (failHost, urllib2.quote(taskId)), timeout = 15).read()
                     logger.debug('Submit task cancel request, acknowledgement received: %s' % strRes)
-                except urllib2.URLError, urlerr:
+                except urllib2.URLError as urlerr:
                     logger.error('Fail to submit task cancel request for task: %s, Exception: %s', (taskId, str(urlerr)))
 
 
