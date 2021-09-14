@@ -81,7 +81,7 @@ class RTSJob(MapReduceTask):
     def buildRTSTasks(self):
         if (self._rtsParam.obsList == None or len(self._rtsParam.obsList) == 0):
             errMsg = 'No observation numbers found in this RTS Job'
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         num_obs = len(self._rtsParam.obsList)
 
@@ -1156,3 +1156,4 @@ def test():
 
 if __name__=="__main__":
     test()
+

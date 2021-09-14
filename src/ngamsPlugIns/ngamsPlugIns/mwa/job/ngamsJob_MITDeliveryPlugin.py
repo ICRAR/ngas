@@ -163,7 +163,7 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
                 try:
                     crc32 = getFileCRC(newfn)
                     bbcpurl += "&bchecksum=%s" % str(crc32)
-                except Exception, crcexp:
+                except Exception as crcexp:
                     logger.exception('Fail to calculate the file CRC %s', newfn)
                     return (500, str(crcexp).replace("'",""))
 

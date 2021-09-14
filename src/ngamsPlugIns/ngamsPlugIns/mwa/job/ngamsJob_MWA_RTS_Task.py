@@ -120,7 +120,7 @@ def parseOptions():
     (options, args) = parser.parse_args()
     if (None == options.obs_num):
         #parser.print_help()
-        print 'Observation number is None'
+        print('Observation number is None')
         return None
     return options
 

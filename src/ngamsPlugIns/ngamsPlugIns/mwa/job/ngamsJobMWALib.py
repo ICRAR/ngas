@@ -84,7 +84,7 @@ def pingHost(url, timeout = 5):
     cmd = 'curl --connect-timeout %d %s' % (timeout, url)
     try:
         return execCmd(cmd)[0]
-    except Exception, err:
+    except Exception:
         return 1
 """
 def addToBlackHostList(host):

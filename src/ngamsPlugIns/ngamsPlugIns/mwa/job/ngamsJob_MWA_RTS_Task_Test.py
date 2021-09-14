@@ -58,7 +58,7 @@ def testDummyLocalTaskOnNGAS():
     localTask = DummyLocalTask('123456')
     strLT = pickle.dumps(localTask)
     strRes = urllib2.urlopen('http://%s/RUNTASK' % ngas_host, data = strLT, timeout = 10).read()
-    print 'Submit localtask, acknowledgement received: %s' % strRes
+    print('Submit localtask, acknowledgement received: %s' % strRes)
 
 def testCorrTaskOnNGAS():
     """

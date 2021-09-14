@@ -87,7 +87,7 @@ def failToDeliver():
             msg = 'File %s fail to be delivered to %s: %s' % (fileId, toUrl, errMsg)
             logger.info(msg)
             return msg
-        except Exception, err:
+        except Exception as err:
             logger.error(traceback.format_exc())
             return 'Exception (%s) when doing - File %s failed to be deliverred on %s' % (str(err), fileId, toUrl)
 
