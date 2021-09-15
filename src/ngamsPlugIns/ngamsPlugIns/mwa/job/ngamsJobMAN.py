@@ -87,7 +87,7 @@ def failToDeliver():
             msg = 'File %s fail to be delivered to %s: %s' % (fileId, toUrl, errMsg)
             logger.info(msg)
             return msg
-        except Exception, err:
+        except Exception as err:
             logger.error(traceback.format_exc())
             return 'Exception (%s) when doing - File %s failed to be deliverred on %s' % (str(err), fileId, toUrl)
 
@@ -105,7 +105,7 @@ def ingest():
             msg = 'File %s is just ingested at %s on %s with a rate %s' % (fileId, filePath, toHost, ingestRate)
             logger.info(msg)
             return msg
-        except Exception, err:
+        except Exception as err:
             logger.error(traceback.format_exc())
             return 'Exception (%s) when doing - File %s is just ingested at %s on %s' % (str(err), fileId, filePath, toHost)
 
@@ -117,7 +117,7 @@ def reportHostError():
         o = urlparse(nexturl)
         try:
             ngamsJobMWALib.reportHostDown(fileId, '%s:%d' % (o.hostname, o.port))
-        except Exception, err:
+        except Exception as err:
             logger.error(traceback.format_exc())
         finally:
             return 'Thanks for letting me know that %s:%d is down' % (o.hostname, o.port)
@@ -195,7 +195,7 @@ def submit_job_post():
         return _responseMsg('invalid Task execution timeout')
     try:
         params.LT_timeout = int(lttimeout)
-    except Exception, err:
+    except Exception as err:
         return _responseMsg('invalid Task execution timeout')
 
     fitimeout = request.forms.get('FI_timeout')
@@ -203,7 +203,7 @@ def submit_job_post():
         return _responseMsg('invalid File ingestion timeout')
     try:
         params.FI_timeout = int(fitimeout)
-    except Exception, err:
+    except Exception as err:
         return _responseMsg('invalid File ingestion timeout')
 
     obsNums = observations.replace(' ', '').split(',')
@@ -214,7 +214,7 @@ def submit_job_post():
         for obsNum in obsNums:
             if (not ngamsJobMWALib.hasAllFilesInLTA(obsNum)):
                 return _responseMsg('Observation %s does not have ALL files archived on Cortex yet.' % obsNum)
-    except Exception, err:
+    except Exception as err:
         logger.error(traceback.format_exc())
         return _responseMsg('Fail to validate observation numbers, Exception: %s' % str(err))
 
@@ -240,7 +240,7 @@ def reportLocalTask():
     """
     try:
         localTaskResult = pickle.loads(request.body.read())
-    except Exception, err:
+    except Exception as err:
         msg = 'Invalid MRLocalTask pickle content: %s' % str(err)
         logger.error(msg)
         return msg
@@ -257,7 +257,7 @@ def reportLocalTask():
             logger.info(msg)
     try:
         ngamsJobMWALib.localTaskCompleted(localTaskResult)
-    except Exception, err:
+    except Exception as err:
         logger.error(traceback.format_exc())
     finally:
         if (msg):
@@ -276,7 +276,7 @@ def dequeueLocalTask():
     try:
         ngamsJobMWALib.localTaskDequeued(taskId)
         return 'OK'
-    except Exception, err:
+    except Exception as err:
         logger.error(traceback.format_exc())
         return 'Fail to notify jobman of task dequeue'
 
@@ -372,7 +372,7 @@ def _jobThread(jobId, params, myjobDic):
         try:
             job.buildRTSTasks()
             job.start()
-        except Exception, err:
+        except Exception as err:
             job.setStatus(STATUS_EXCEPTION)
             job.setFinalJobResult('Fail to start the Job %s, Exception: %s' % (jobId, str(traceback.format_exc())))
             logger.error(traceback.format_exc())

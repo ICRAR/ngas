@@ -163,7 +163,7 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
                 try:
                     crc32 = getFileCRC(newfn)
                     bbcpurl += "&bchecksum=%s" % str(crc32)
-                except Exception, crcexp:
+                except Exception as crcexp:
                     logger.exception('Fail to calculate the file CRC %s', newfn)
                     return (500, str(crcexp).replace("'",""))
 
@@ -176,7 +176,7 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
                 else:
                     logger.error('Fail to sent the file %s: %s', newfn, retstr)
                     return (500, retstr.replace("'",""))
-            except Exception, exp:
+            except Exception as exp:
                 warn_msg = ''
                 if (type(exp) is urllib2.HTTPError):
                     errors = exp.readlines()
@@ -212,7 +212,7 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
             try:
                 crc32 = getFileCRC(filename)
                 bbcpurl += "&bchecksum=%s" % str(crc32)
-            except Exception, crcexp:
+            except Exception as crcexp:
                 logger.exception('Fail to calculate the file CRC %s', filename)
                 return (500, str(crcexp).replace("'",""))
 
@@ -226,7 +226,7 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
             else:
                 logger.error('Fail to sent the file %s: %s', filename, retstr)
                 return (500, retstr.replace("'",""))
-        except Exception, exp:
+        except Exception as exp:
             warn_msg = ''
             if (type(exp) is urllib2.HTTPError):
                 errors = exp.readlines()

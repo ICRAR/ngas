@@ -120,7 +120,7 @@ def parseOptions():
     (options, args) = parser.parse_args()
     if (None == options.obs_num):
         #parser.print_help()
-        print 'Observation number is None'
+        print('Observation number is None')
         return None
     return options
 
@@ -191,8 +191,8 @@ def main():
     try:
         for tplt in templates:
             f.write(tplt + '\n')
-    except Exception, err:
-        print 'Fail to add template file %s: %s' % (tplt, str(err))
+    except Exception as err:
+        print('Fail to add template file %s: %s' % (tplt, str(err)))
         exit(1)
     finally:
         if (f):
@@ -232,8 +232,8 @@ def main():
         try:
             for line in lines:
                 f.write('\n' + line)
-        except Exception, err:
-            print 'Fail to add lines to rts input file %s: %s' % (fn, str(err))
+        except Exception as err:
+            print('Fail to add lines to rts input file %s: %s' % (fn, str(err)))
             exit(1)
         finally:
             if (f):
@@ -283,7 +283,7 @@ def main():
     execCmd(cmd)
 
     # output the local path to the final image(gzip) file
-    print '%s/%s' % (work_dir, imgFile)
+    print('%s/%s' % (work_dir, imgFile))
     exit(0)
 
     """
@@ -291,7 +291,7 @@ def main():
     # Task per se no longer archives file, this is done by the framework
     cmd = '%s -mimeType application/octet-stream -servers %s -cmd QARCHIVE -fileUri %s/%s' % (ngas_cclient, opts.ngas_host, work_dir, imgFile)
     execCmd(cmd)
-    print 'http://%s/RETRIEVE?file_id=%s' % (opts.ngas_host, imgFile)
+    print('http://%s/RETRIEVE?file_id=%s' % (opts.ngas_host, imgFile))
     """
 
 def moveAllImgFiles(tgtPath):
