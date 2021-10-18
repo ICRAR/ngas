@@ -537,10 +537,14 @@ class ngamsPClientTest(ngamsTestSuite):
 
 class CommandLineTest(ngamsTestSuite):
 
-    def _assert_client(self, success_expected, *args):
+    def _assert_client(self, success_expected, *args, **kwargs):
 
         cmdline = [sys.executable, '-m', 'ngamsPClient.ngamsPClient']
-        cmdline += list(args) + ['--host', '127.0.0.1', '--port', '8888']
+        cmdline += list(args)
+        if kwargs.pop('use_servers_flag', False):
+            cmdline += ['--servers', '127.0.0.1:8888']
+        else:
+            cmdline += ['--host', '127.0.0.1', '--port', '8888']
         with self._proc_startup_lock:
             p = subprocess.Popen(cmdline, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -553,15 +557,19 @@ class CommandLineTest(ngamsTestSuite):
             self.fail('Successfully executed "%s"\nstdout: %s\n\nstderr:%s' % (cmdline, out, err))
         return out, err
 
-    def assert_client_succeeds(self, *args):
-        return self._assert_client(True, *args)
+    def assert_client_succeeds(self, *args, **kwargs):
+        return self._assert_client(True, *args, **kwargs)
 
-    def assert_client_fails(self, *args):
-        self._assert_client(False, *args)
+    def assert_client_fails(self, *args, **kwargs):
+        self._assert_client(False, *args, **kwargs)
 
     def test_client_information(self):
         self.assert_client_succeeds('--license')
         self.assert_client_succeeds('--version')
+
+    def test_servers_cmdline_flag(self):
+        self.prepExtSrv()
+        self.assert_client_succeeds('STATUS', use_servers_flag=True)
 
     def test_client_status_document(self):
         """Test the behavior of the -s flag of ngamsPClient"""
