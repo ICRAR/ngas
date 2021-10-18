@@ -884,7 +884,11 @@ def main():
         parser.error('cmd required but none given')
 
     if opts.servers:
-        servers = [(host, int(port)) for s in opts.servers.split(',') for host,port in s.split(':')]
+        servers = [(parts[0], int(parts[1]))
+                    for parts in (
+                        server.split(':')
+                        for server in filter(None, opts.servers.split(','))
+                   )]
         client = ngamsPClient(servers=servers, timeout=opts.timeout,
                               auth=opts.auth, reload_mod=opts.reload)
     else:
