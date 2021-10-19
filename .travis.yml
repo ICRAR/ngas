@@ -76,9 +76,9 @@ jobs:
       - libdb-dev
     services: postgresql
   # The rest use all sqlite3, but in more diverse environments
-  - python: "3.5"
   - python: "3.6"
   - python: "3.7"
+  - python: "3.8"
   - python: "3.7"
     name: Build docs
     install: pip install sphinx sphinx_rtd_theme
