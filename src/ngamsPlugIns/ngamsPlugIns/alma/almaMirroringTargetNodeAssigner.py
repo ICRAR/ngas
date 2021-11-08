@@ -36,7 +36,7 @@ class TargetVolumeAssigner:
         # round-robin pointer for each hosts volumes
         self.current_host_volume_index = {}
         # all the host names in a list
-        self.hosts = target_nodes.keys()
+        self.hosts = list(target_nodes.keys())
         # list all the volume names for each host, dictionary(host_name -> list(volume_name))
         self.host_volume_names = {}
         # dictionary((host_name, volume_name) -> bytes_scheduled_to_be_mirrored)
@@ -45,7 +45,7 @@ class TargetVolumeAssigner:
         self.num_files_to_be_mirrored = {}
         for target_host in target_nodes:
             # I don't care about the order of the volumes
-            self.host_volume_names[target_host] = target_nodes[target_host].keys()
+            self.host_volume_names[target_host] = list(target_nodes[target_host].keys())
             self.current_host_volume_index[target_host] = 0
             for target_volume in target_nodes[target_host]:
                 # get the (total_file_size, num_files) for all files still to be mirrored
@@ -58,7 +58,7 @@ class TargetVolumeAssigner:
         """Could be that the hosts we are considering mirroring too already have theior hands full with mirroring. In
          theory each host has a limited number of threads which they should use for mirroring. We try not to exceed this
          Remove any hosts which do not have at least one thread available for mirroring"""
-        for next_host in self.hosts[:]:
+        for next_host in self.hosts:
             if self.num_files_to_be_mirrored[next_host] >= num_threads_per_host:
                 logger.info('host %s does not have any threads available for mirroring - removing as a target', next_host)
                 self.hosts.remove(next_host)
