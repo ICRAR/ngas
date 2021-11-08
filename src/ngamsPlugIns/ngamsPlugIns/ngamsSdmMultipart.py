@@ -96,7 +96,6 @@ def specific_treatment(file_path):
     try:
         # Get rid of the 'uid://' and of anything following a '#' sign
         alma_uid = alma_uid.split("//", 2)[1].split("#")[0]
-        # Remove trailing '/'
         alma_uid = alma_uid.rstrip("/")
         file_id = alma_uid
         final_filename = alma_uid.replace("/", ":")
@@ -127,6 +126,9 @@ def ngamsSdmMultipart(ngams_server, request_properties):
 
     if request_properties.hasHttpPar("file_id"):
         file_id = request_properties.getHttpPar("file_id")
+
+    #if request_properties.hasHttpPar("file_version"):
+    #    file_version = request_properties.getHttpPar("file_version")
 
     logger.debug("SDM multipart plug-in processing request for file with URI %s, file_format=%s, file_id=%s, "
                  "final_filename=%s", request_properties.getFileUri(), file_format, file_id, final_filename)
