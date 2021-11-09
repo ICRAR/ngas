@@ -58,7 +58,7 @@ class TargetVolumeAssigner:
         """Could be that the hosts we are considering mirroring too already have theior hands full with mirroring. In
          theory each host has a limited number of threads which they should use for mirroring. We try not to exceed this
          Remove any hosts which do not have at least one thread available for mirroring"""
-        for next_host in self.hosts:
+        for next_host in self.hosts[:]:
             if self.num_files_to_be_mirrored[next_host] >= num_threads_per_host:
                 logger.info('host %s does not have any threads available for mirroring - removing as a target', next_host)
                 self.hosts.remove(next_host)
@@ -106,11 +106,10 @@ class TargetVolumeAssigner:
         logger.info('XXX: available space for volume (%s, %s): %s MB', target_host, target_volume, str(self.available_bytes[(target_host, target_volume)]))
         has_space = self.available_bytes[(target_host, target_volume)] >= file_size_bytes
         if not has_space:
-            logger.info("%s:%s doesnt't have sufficient space", target_host, target_volume)
+            logger.info("%s:%s does not have sufficient space", target_host, target_volume)
         return has_space
 
     def __decrease_available_bytes(self, target_host, target_volume, file_size_bytes):
         self.available_bytes[(target_host, target_volume)] -= file_size_bytes
         logger.info('XXX: decreased space for volume (%s, %s) to: %s MB', target_host, target_volume, str(self.available_bytes[(target_host, target_volume)]))
 
-# EOF
