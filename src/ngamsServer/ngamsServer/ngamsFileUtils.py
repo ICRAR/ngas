@@ -589,7 +589,7 @@ def quickFileLocate(srvObj,
         if host_id == srvObj.getHostId():
             location = NGAMS_HOST_LOCAL
         else:
-            location = NGAMS_HOST_REMOTE
+            location = NGAMS_HOST_CLUSTER
         return [location] + list(res[0])
 
     return (8 if not include_compression else 9) * (None,)
