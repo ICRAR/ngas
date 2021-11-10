@@ -36,7 +36,7 @@ class TargetVolumeAssigner:
         # round-robin pointer for each hosts volumes
         self.current_host_volume_index = {}
         # all the host names in a list
-        self.hosts = target_nodes.keys()
+        self.hosts = list(target_nodes.keys())
         # list all the volume names for each host, dictionary(host_name -> list(volume_name))
         self.host_volume_names = {}
         # dictionary((host_name, volume_name) -> bytes_scheduled_to_be_mirrored)
@@ -45,7 +45,7 @@ class TargetVolumeAssigner:
         self.num_files_to_be_mirrored = {}
         for target_host in target_nodes:
             # I don't care about the order of the volumes
-            self.host_volume_names[target_host] = target_nodes[target_host].keys()
+            self.host_volume_names[target_host] = list(target_nodes[target_host].keys())
             self.current_host_volume_index[target_host] = 0
             for target_volume in target_nodes[target_host]:
                 # get the (total_file_size, num_files) for all files still to be mirrored
@@ -106,11 +106,10 @@ class TargetVolumeAssigner:
         logger.info('XXX: available space for volume (%s, %s): %s MB', target_host, target_volume, str(self.available_bytes[(target_host, target_volume)]))
         has_space = self.available_bytes[(target_host, target_volume)] >= file_size_bytes
         if not has_space:
-            logger.info("%s:%s doesnt't have sufficient space", target_host, target_volume)
+            logger.info("%s:%s does not have sufficient space", target_host, target_volume)
         return has_space
 
     def __decrease_available_bytes(self, target_host, target_volume, file_size_bytes):
         self.available_bytes[(target_host, target_volume)] -= file_size_bytes
         logger.info('XXX: decreased space for volume (%s, %s) to: %s MB', target_host, target_volume, str(self.available_bytes[(target_host, target_volume)]))
 
-# EOF
