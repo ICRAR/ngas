@@ -122,8 +122,14 @@ def ngamsAlmaMultipart(ngams_server, request_properties):
 
     file_id, final_filename, file_format = specific_treatment(staging_filename)
 
-    logger.debug("SDM multipart plug-in processing request for file with URI %s, file_format=%s, file_id=%s, file_version=%s," 
-                 " final_name=%s", request_properties.getFileUri(), file_format, file_id, file_version, final_filename)
+    #if request_properties.hasHttpPar("file_id"):
+    #    file_id = request_properties.getHttpPar("file_id")
+
+    #if request_properties.hasHttpPar("file_version"):
+    #    file_version = request_properties.getHttpPar("file_version")
+
+    logger.debug("ALMA multipart plug-in processing request for file with URI %s, file_format=%s, file_id=%s, "
+                 "final_filename=%s", request_properties.getFileUri(), file_format, file_id, final_filename)
 
     try:
         # Compression parameters
