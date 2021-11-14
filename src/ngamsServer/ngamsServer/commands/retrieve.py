@@ -241,7 +241,7 @@ def _handleCmdRetrieve(srvObj,
     """
     # For data files, retrieval must be enabled otherwise the request is
     # rejected.
-    if (not srvObj.getCfg().getAllowRetrieveReq()):
+    if not srvObj.getCfg().getAllowRetrieveReq():
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Retrieve"])
         raise Exception(errMsg)
 
@@ -277,16 +277,16 @@ def _handleCmdRetrieve(srvObj,
     # First try the quick retrieve attempt, just try to get the first
     # (and best?) suitable file which is online and located on a node in the
     # same domain as the contacted node.
-    ipAddress = None
-    if (quickLocation):
+    location, ipAddress, host, port = None, None, None, None
+    if quickLocation:
         location, host, ipAddress, port, mountPoint, filename,\
-                  fileVersion, mimeType, compression =\
-                  ngamsFileUtils.quickFileLocate(srvObj, reqPropsObj, fileId,
-                                                 hostId, domain, diskId,
-                                                 fileVer, include_compression=True)
+        fileVersion, mimeType, compression =\
+            ngamsFileUtils.quickFileLocate(srvObj, reqPropsObj, fileId,
+                                           hostId, domain, diskId, fileVer,
+                                           include_compression=True)
 
     # If not located the quick way try the normal way.
-    if not ipAddress:
+    if ipAddress is None:
         try:
             # Locate the file best suiting the query and send it back if possible.
             location, host, ipAddress, port, mountPoint, filename, fileId, \
@@ -302,13 +302,13 @@ def _handleCmdRetrieve(srvObj,
                                                         fileVer, reqPropsObj,
                                                         include_compression=True)
 
-    # If still not located, try to contact associated NGAS sites to query
-    # if the file is available there.
-    # TODO:
-    if (not ipAddress):
-        pass
+    # If the hosts in the cluster have their IP address set to '0.0.0.0' this
+    # will break request. We need to construct the full host name instead.
+    host_address = ipAddress
+    if host_address == "0.0.0.0" or not host_address or host_address is None:
+        host_address = ngamsFileUtils.get_fqdn(location, host, domain)
 
-    if (location == NGAMS_HOST_LOCAL):
+    if location == NGAMS_HOST_LOCAL:
         # Get the file and send back the contents from this NGAS host.
         srcFilename = os.path.normpath("{0}/{1}".format(mountPoint, filename))
 
@@ -322,30 +322,30 @@ def _handleCmdRetrieve(srvObj,
     elif location == NGAMS_HOST_CLUSTER and srvObj.getCfg().getProxyMode():
         logger.info("NG/AMS Server acting as proxy - requesting file with ID: %s " +\
                      "from NG/AMS Server on host/port: %s/%s",
-                     fileId, host, str(port))
+                     fileId, host_address, str(port))
 
         # Act as proxy - get the file from the NGAS host specified and
         # send back the contents. The file is temporarily stored in the
         # Processing Area.
         timeout = float(reqPropsObj['timeout']) if 'timeout' in reqPropsObj else 60
-        httpRef.proxy_request(host, ipAddress, port, timeout=timeout)
+        httpRef.proxy_request(host, host_address, port, timeout=timeout)
         return
 
     elif location == NGAMS_HOST_REMOTE and srvObj.is_partner_sites_proxy_mode():
         logger.info("NG/AMS Server acting as remote proxy - requesting file with ID: %s " + \
                     "from NG/AMS Server on host/port: %s/%s",
-                    fileId, host, str(port))
+                    fileId, host_address, str(port))
 
         # Act as a remote proxy - get the file from the remote NGAS host
         # specified and send back the contents. The file is temporarily stored
         # in the Processing Area.
         timeout = float(reqPropsObj['timeout']) if 'timeout' in reqPropsObj else 300
-        httpRef.remote_proxy_request(reqPropsObj, host, port, timeout=timeout)
+        httpRef.remote_proxy_request(reqPropsObj, host_address, port, timeout=timeout)
         return
 
     else:
         # No proxy mode: A redirection HTTP response is generated.
-        httpRef.redirect(ipAddress, port)
+        httpRef.redirect(host_address, port)
         return
 
     # Send back reply with the result(s) queried and possibly processed.

@@ -44,9 +44,8 @@ import time
 
 import six
 
-from ngamsLib import ngamsDbCore, ngamsDiskInfo, ngamsStatus, \
-    ngamsHttpUtils, ngamsFileInfo
-from ngamsLib import ngamsHighLevelLib
+from ngamsLib import ngamsDbCore, ngamsDiskInfo, ngamsFileInfo, \
+    ngamsLib, ngamsStatus, ngamsHighLevelLib, ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
     NGAMS_STATUS_CMD, NGAMS_CACHE_DIR, \
@@ -97,6 +96,52 @@ def parse_host_id(host_id):
     return host, domain, port
 
 
+def get_fqdn(location, host_id, domain):
+    """
+    Attempts to construct a fully qualified domain name (FQDN)
+    from the NGAS node address attributes
+
+    Parameters:
+
+    location:       File location (local, cluster, remote, etc)
+
+    host_id:        NGAS server host ID
+
+    domain:         NGAS server domain name
+
+    Returns:
+
+    FQDN:           Fully Qualified Domain NAME (so far as possible)
+
+    """
+    host_address = None
+    # Does the host_id contain the port?
+    if ":" in host_id:
+        host_address = host_id.split(":")[0]
+    else:
+        host_address = host_id
+
+    # TODO: We should really check if the host_address is an IP address
+
+    # Does the host address contain a domain?
+    # TODO: This is a crude way of checking by assuming that the domain always follows a '.'
+    if "." in host_address:
+        return host_address
+
+    if not domain or domain is None:
+        if location == NGAMS_HOST_LOCAL \
+            or location == NGAMS_HOST_CLUSTER \
+                or location == NGAMS_HOST_DOMAIN:
+            domain = ngamsLib.getDomain()
+
+    if host_address is not None and domain is not None:
+        return "{}.{}".format(host_address, domain)
+    elif host_address is not None:
+        return "{}".format(host_address)
+    else:
+        return None
+
+
 def lookup_partner_site_file_status(ngas_server,
                                     file_id,
                                     file_version,
@@ -129,7 +174,7 @@ def lookup_partner_site_file_status(ngas_server,
     file_info:      Status response file information object (ngamsFileInfo)
     """
     file_reference = file_id
-    if (file_version > 0):
+    if file_version > 0:
         file_reference += "/Version: " + str(file_version)
 
     # If the request came from a partner site. We will not continue to

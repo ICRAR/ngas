@@ -437,11 +437,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def remote_proxy_request(self, request, host, port, timeout=300):
         """Proxy the current request to remote host ``host``:``port``"""
-        if ':' in host:
-            url = 'http://{0}/{1}'.format(host, NGAMS_RETRIEVE_CMD)
-        else:
-            url = 'http://{0}:{1}/{2}'.format(host, port, NGAMS_RETRIEVE_CMD)
-
+        url = 'http://{0}:{1}/{2}'.format(host, port, NGAMS_RETRIEVE_CMD)
         logger.info("Proxying request for /%s to %s:%d", NGAMS_RETRIEVE_CMD,
                     host, port)
 
