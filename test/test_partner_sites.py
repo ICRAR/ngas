@@ -67,7 +67,7 @@ class NgasPartnerSiteTest(ngamsTestSuite):
         host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_CLUSTER, "ngas", "example.com")
         self.assertEqual(host_address, "ngas.example.com")
         host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_CLUSTER, "ngas", None)
-        self.assertTrue(host_address.startswith("ngas."))
+        self.assertTrue(host_address.startswith("ngas"))
         host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_REMOTE, "ngas", "example.com")
         self.assertEqual(host_address, "ngas.example.com")
         host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_REMOTE, "ngas", None)
