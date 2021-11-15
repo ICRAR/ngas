@@ -29,9 +29,11 @@ import functools
 import os
 
 from ngamsLib import ngamsHttpUtils, ngamsStatus
-from ngamsLib.ngamsCore import getHostName
+from ngamsLib.ngamsCore import getHostName, NGAMS_HOST_LOCAL, \
+    NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE
 from ngamsServer import ngamsFileUtils
 from .ngamsTestLib import ngamsTestSuite, tmp_path
+
 
 class NgasPartnerSiteTest(ngamsTestSuite):
     """
@@ -58,6 +60,18 @@ class NgasPartnerSiteTest(ngamsTestSuite):
         self.assertEqual(host_name, "ngas.example.com")
         self.assertEqual(domain_name, "example.com")
         self.assertEqual(port, 7777)
+
+    def test_get_fqdn(self):
+        host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_LOCAL, "ngas.example.com", None)
+        self.assertEqual(host_address, "ngas.example.com")
+        host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_CLUSTER, "ngas", "example.com")
+        self.assertEqual(host_address, "ngas.example.com")
+        host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_CLUSTER, "ngas", None)
+        self.assertRegex(host_address, "^ngas\..*")
+        host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_REMOTE, "ngas", "example.com")
+        self.assertEqual(host_address, "ngas.example.com")
+        host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_REMOTE, "ngas", None)
+        self.assertEqual(host_address, "ngas")
 
     def test_archive_status_retrieve_sequence(self):
 
@@ -89,7 +103,7 @@ class NgasPartnerSiteTest(ngamsTestSuite):
         self.archive(9011, sample_file_path, mimeType=sample_mime_type)
 
         # We check the status of a file ID found on the partner site cluster
-        command_status = functools.partial(ngamsHttpUtils.httpGet, "localhost", 9001, "STATUS", timeout=5)
+        command_status = functools.partial(ngamsHttpUtils.httpGet, "localhost", 9001, "STATUS", timeout=60)
         argument_list = {"file_id": sample_file_name}
         with contextlib.closing(command_status(pars=argument_list)) as response:
             self.assertEqual(response.status, 200)
@@ -115,7 +129,6 @@ class NgasPartnerSiteTest(ngamsTestSuite):
         retrieve_file_size = os.path.getsize(retrieve_file_path)
         self.assertEqual(sample_file_size - 100, retrieve_file_size)
 
-
     def test_status_retrieve_sequence(self):
         bad_file_name = "dummy.fits"
 
@@ -134,7 +147,7 @@ class NgasPartnerSiteTest(ngamsTestSuite):
         self._prepare_partner_site_cluster((9011, config_list_2))
 
         # We check the status of a file ID found on the partner site cluster
-        command_status = functools.partial(ngamsHttpUtils.httpGet, "localhost", 9001, "STATUS", timeout=1000)
+        command_status = functools.partial(ngamsHttpUtils.httpGet, "localhost", 9001, "STATUS", timeout=60)
         argument_list = {"file_id": bad_file_name}
         with contextlib.closing(command_status(pars=argument_list)) as response:
             self.assertEqual(response.status, 400)
