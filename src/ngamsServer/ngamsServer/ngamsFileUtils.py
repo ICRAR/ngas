@@ -114,6 +114,9 @@ def get_fqdn(location, host_id, domain):
     FQDN:           Fully Qualified Domain NAME (so far as possible)
 
     """
+    if host_id is None:
+        return None
+
     host_address = None
     # Does the host_id contain the port?
     if ":" in host_id:
@@ -134,9 +137,10 @@ def get_fqdn(location, host_id, domain):
                 or location == NGAMS_HOST_DOMAIN:
             domain = ngamsLib.getDomain()
 
-    if host_address is not None and domain is not None:
+    if len(host_address) > 0 \
+        and (domain is not None and len(domain) > 0):
         return "{}.{}".format(host_address, domain)
-    elif host_address is not None:
+    elif len (host_address) > 0:
         return "{}".format(host_address)
     else:
         return None

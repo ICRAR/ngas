@@ -2391,7 +2391,7 @@ def _parse_and_run(args, prog, server_class):
         larg = arg.lower()
         if larg in _lower:
             if larg != arg:
-                print("WARNING: case-insenstive command-line option names are "
+                print("WARNING: case insensitive command-line option names are "
                       "deprecated and will be removed in the future. To avoid this "
                       "message change '%s' by '%s'" % (arg, larg))
             modified_args.append(larg)
