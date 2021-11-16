@@ -305,7 +305,7 @@ def _handleCmdRetrieve(srvObj,
     # If the hosts in the cluster have their IP address set to '0.0.0.0' this
     # will break request. We need to construct the full host name instead.
     host_address = ipAddress
-    if host_address == "0.0.0.0" or not host_address or host_address is None:
+    if host_address == "0.0.0.0" or not host_address:
         host_address = ngamsFileUtils.get_fqdn(location, host, domain)
 
     if location == NGAMS_HOST_LOCAL:

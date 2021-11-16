@@ -131,16 +131,12 @@ def get_fqdn(location, host_id, domain):
     if "." in host_address:
         return host_address
 
-    if not domain or domain is None:
-        if location == NGAMS_HOST_LOCAL \
-            or location == NGAMS_HOST_CLUSTER \
-                or location == NGAMS_HOST_DOMAIN:
+    if not domain and location in (NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN):
             domain = ngamsLib.getDomain()
 
-    if len(host_address) > 0 \
-        and (domain is not None and len(domain) > 0):
+    if host_address and domain:
         return "{}.{}".format(host_address, domain)
-    elif len (host_address) > 0:
+    elif host_address:
         return "{}".format(host_address)
     else:
         return None
