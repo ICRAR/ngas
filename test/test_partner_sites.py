@@ -62,16 +62,18 @@ class NgasPartnerSiteTest(ngamsTestSuite):
         self.assertEqual(port, 7777)
 
     def test_get_fqdn(self):
-        host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_LOCAL, "ngas.example.com", None)
-        self.assertEqual(host_address, "ngas.example.com")
-        host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_CLUSTER, "ngas", "example.com")
-        self.assertEqual(host_address, "ngas.example.com")
-        host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_CLUSTER, "ngas", None)
-        self.assertTrue(host_address.startswith("ngas"))
-        host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_REMOTE, "ngas", "example.com")
-        self.assertEqual(host_address, "ngas.example.com")
-        host_address = ngamsFileUtils.get_fqdn(NGAMS_HOST_REMOTE, "ngas", None)
-        self.assertEqual(host_address, "ngas")
+        fqdn = ngamsFileUtils.get_fqdn(NGAMS_HOST_LOCAL, None, None)
+        self.assertEqual(fqdn, None)
+        fqdn = ngamsFileUtils.get_fqdn(NGAMS_HOST_LOCAL, "ngas.example.com", None)
+        self.assertEqual(fqdn, "ngas.example.com")
+        fqdn = ngamsFileUtils.get_fqdn(NGAMS_HOST_CLUSTER, "ngas", "example.com")
+        self.assertEqual(fqdn, "ngas.example.com")
+        fqdn = ngamsFileUtils.get_fqdn(NGAMS_HOST_CLUSTER, "ngas", None)
+        self.assertTrue(fqdn.startswith("ngas"))
+        fqdn = ngamsFileUtils.get_fqdn(NGAMS_HOST_REMOTE, "ngas", "example.com")
+        self.assertEqual(fqdn, "ngas.example.com")
+        fqdn = ngamsFileUtils.get_fqdn(NGAMS_HOST_REMOTE, "ngas", None)
+        self.assertEqual(fqdn, "ngas")
 
     def test_archive_status_retrieve_sequence(self):
 
