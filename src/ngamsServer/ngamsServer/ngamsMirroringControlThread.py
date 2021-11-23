@@ -912,7 +912,7 @@ def clean_up_mirroring(ngams_server):
     host = get_fully_qualified_domain_name(ngams_server)
     logger.debug("Cleaning up mirroring tasks for NGAS node: %s", host)
     sql = "update ngas_mirroring_bookkeeping set status = 'ABORTED', staging_file = null " \
-          "where status = 'READY' and target_host = {0}"
+          "where status = 'READY' or status = 'LOCKED' and target_host = {0}"
     ngams_server.getDb().query2(sql, args=(host,))
     sql = "update ngas_mirroring_bookkeeping set status = 'TORESUME' where status = 'FETCHING' and target_host = {0}"
     ngams_server.getDb().query2(sql, args=(host,))
