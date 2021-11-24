@@ -114,32 +114,27 @@ def get_fqdn(location, host_id, domain):
     FQDN:           Fully Qualified Domain NAME (so far as possible)
 
     """
-    if host_id is None:
+    if not host_id:
         return None
 
-    host_address = None
-    # Does the host_id contain the port?
-    if ":" in host_id:
-        host_address = host_id.split(":")[0]
-    else:
-        host_address = host_id
+    # TODO: We should really check if the host_id is an IP address
 
-    # TODO: We should really check if the host_address is an IP address
+    # Does the host_id contain the port?
+    hostname = host_id.rsplit(":")[0]
+    domainname = domain
 
     # Does the host address contain a domain?
     # TODO: This is a crude way of checking by assuming that the domain always follows a '.'
-    if "." in host_address:
-        return host_address
+    if "." in hostname:
+        return hostname
 
-    if not domain and location in (NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN):
-            domain = ngamsLib.getDomain()
+    if not domainname and location in (NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN):
+        domainname = ngamsLib.getDomain()
 
-    if host_address and domain:
-        return "{}.{}".format(host_address, domain)
-    elif host_address:
-        return "{}".format(host_address)
-    else:
-        return None
+    if hostname and domainname:
+        hostname = "{}.{}".format(hostname, domainname)
+
+    return hostname
 
 
 def lookup_partner_site_file_status(ngas_server,
