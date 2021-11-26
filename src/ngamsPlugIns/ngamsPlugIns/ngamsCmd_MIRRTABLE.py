@@ -192,13 +192,13 @@ def execute_mirroring(ngams_server, iteration):
             'n_threads': get_num_simultaneous_fetches_per_server(ngams_server)
         }
         host, port = ngams_server.get_self_endpoint()
+        # TODO: look at the HTTP response code
         ngamsHttpUtils.httpGet(host, port, 'MIRREXEC', pars=pars, timeout=rx_timeout)
-        # TODO look at the response code
     except Exception:
-        logger.exception("Mirroring failed")
+        logger.exception("MIRREXEC command for iteration %d has failed", iteration)
     finally:
         fail_remaining_transfers(ngams_server, iteration)
-        logger.info('executeMirroring for iteration %d complete', iteration)
+        logger.info("MIRREXEC command for iteration %d has successfully completed", iteration)
 
     # Remove some of the older bookkeeping entries
     clean_mirroring_bookkeeping_entries(ngams_server)
@@ -286,9 +286,11 @@ def find_date_of_last_successful_mirroring_iteration(ngams_server):
 def get_num_simultaneous_fetches_per_server(ngams_server):
     sql = "select cfg_val from ngas_cfg_pars where cfg_par = 'numParallelFetches'"
     result = ngams_server.getDb().query2(sql)
-    num_threads = str(result[0][0])
-    if num_threads is None or num_threads == "None":
+    value = str(result[0][0])
+    if not value or value == "None":
         num_threads = 5
+    else:
+        num_threads = int(value)
     return num_threads
 
 
@@ -440,9 +442,13 @@ def get_mirroring_iteration(ngams_server):
     """
     Get iteration number for next mirroring loop
     """
-    sql = "select max(iteration)+1 from ngas_mirroring_bookkeeping"
+    sql = "select max(iteration) + 1 from ngas_mirroring_bookkeeping"
     result = ngams_server.getDb().query2(sql)
-    iteration = result[0][0] or 1
+    value = result[0][0]
+    if value is None:
+        iteration = 1
+    else:
+        iteration = int(value)
     logger.info("Next mirroring iteration: %d", iteration)
     return iteration
 
