@@ -315,16 +315,15 @@ def reorder_list_of_mirroring_tasks_for_target(current_iteration, source_nodes_l
                  "average[MB] = %f", target_node, total_tasks, target_average_file_size)
 
     num_sources = len(source_nodes_list)
-    sources_iterator = range(num_sources)
-    ascending_index = range(num_sources)
-    descending_index = range(num_sources)
-    source_total_tasks = range(num_sources)
-    source_processed_tasks = range(num_sources)
+    ascending_index = list(range(num_sources))
+    descending_index = list(range(num_sources))
+    source_total_tasks = list(range(num_sources))
+    source_processed_tasks = list(range(num_sources))
     reordered_mirroring_tasks_list = collections.deque()
     next_source_ascending_index = 0
     next_source_descending_index = 0
 
-    for ith_source in sources_iterator:
+    for ith_source in range(num_sources):
         ascending_index[ith_source] = 0
         descending_index[ith_source] = -1
         source_total_tasks[ith_source] = len(mirroring_tasks_list[ith_source])
@@ -540,6 +539,7 @@ def calculate_staging_name(ngams_server, file_id, existing_staging_file):
     How can we tell which is which? staging filenames all include the character string "___"
     """
     staging_filename = None
+    target_disk_info = None
     logger.debug('Existing staging file: |%s|', existing_staging_file)
     if existing_staging_file == "None":
         logger.error('Trying to mirror a file where the staging file has not been set. This should no longer happen')
