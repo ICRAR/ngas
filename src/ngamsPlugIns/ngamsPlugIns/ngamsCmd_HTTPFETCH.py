@@ -47,9 +47,9 @@ import logging
 import os
 import time
 
-from ngamsLib.ngamsCore import checkCreatePath
+from ngamsLib.ngamsCore import checkCreatePath, NGAMS_RETRIEVE_CMD
 from ngamsLib import ngamsHttpUtils
-from ngamsServer import ngamsFileUtils
+from ngamsServer import ngamsFileUtils, ngamsSrvUtils
 from ngamsServer.ngamsArchiveUtils import archiving_results
 from . import ngamsFailedDownloadException
 
@@ -75,19 +75,21 @@ def save_to_file(ngams_server, request_properties, target_filename, block_size, 
     crc_variant = request_properties.checksum_plugin
 
     host, port = source_host.split(":")
-    pars = {
-        'disk_id': disk_id,
-        'host_id': host_id,
-        'quick_location': '1',
-        'file_version': file_version,
-        'file_id': file_id
-    }
-    hdrs = {'Range': "bytes={:d}-".format(start_byte)}
+    parameter_list = [
+        ('disk_id', disk_id),
+        ('host_id', host_id),
+        ('quick_location', '1'),
+        ('file_version', file_version),
+        ('file_id', file_id)]
+    header_dict = {'Range': "bytes={:d}-".format(start_byte)}
 
     rx_timeout = 30 * 60
     if ngams_server.getCfg().getVal("Mirroring[1].rx_timeout"):
         rx_timeout = int(ngams_server.getCfg().getVal("Mirroring[1].rx_timeout"))
-    response = ngamsHttpUtils.httpGet(host, int(port), 'RETRIEVE', pars=pars, hdrs=hdrs, timeout=rx_timeout)
+
+    url = 'http://{0}:{1}/{2}'.format(host, port, NGAMS_RETRIEVE_CMD)
+    authorization_header = ngamsSrvUtils.genIntAuthHdr(ngams_server)
+    response = ngamsHttpUtils.httpGetUrl(url, parameter_list, header_dict, rx_timeout, authorization_header)
 
     # Can we resume a previous download?
     download_resume_supported = 'bytes' in response.getheader("Accept-Ranges", '')
@@ -98,28 +100,34 @@ def save_to_file(ngams_server, request_properties, target_filename, block_size, 
     logger.info('Fetching file ID %s, checksum %s, checksum variant %s', file_id, checksum, crc_variant)
     crc_info = ngamsFileUtils.get_checksum_info(crc_variant)
     if start_byte != 0:
-        logger.info("resume requested")
+        logger.info("Resume requested from start byte %d", start_byte)
+
     if start_byte != 0 and download_resume_supported:
-        logger.info("Resume requested and mirroring source supports resume. Appending data to previously started staging file")
+        logger.info("Resume requested and mirroring source supports resume. Appending data to previous staging file")
         crc = ngamsFileUtils.get_checksum(65536, target_filename, crc_variant)
         request_properties.setBytesReceived(start_byte)
-        fd_out = open(target_filename, "a")
+        fd_out = open(target_filename, "ab")
     else:
         if start_byte > 0:
             logger.info("Resume of download requested but server does not support it. Starting from byte 0 again.")
-        fd_out = open(target_filename, "w")
+        fd_out = open(target_filename, "wb")
         crc = crc_info.init
 
     fetch_start_time = time.time()
 
-    # Distinguish between Archive Pull and Push Request. By Archive pull we may simply read the file descriptor until
-    # it returns "".
-    logger.info("It is an HTTP Archive Pull Request: trying to get Content-length")
-    hdrs = {h[0]: h[1] for h in response.getheaders()}
-    if 'content-length' in hdrs:
-        remaining_size = int(hdrs['content-length'])
+    # Distinguish between archive pull and push request
+    # By archive pull we may simply read the file descriptor until it returns and empty string
+    response_header_dict = {h[0]: h[1] for h in response.getheaders()}
+    if 'content-length' in response_header_dict:
+        # For some reason python 2 uses lower case 'content-length'
+        remaining_size = int(response_header_dict['content-length'])
+        logger.debug("Got Content-Length header value %d in response", remaining_size)
+    elif 'Content-Length' in response_header_dict:
+        # For some reason python 3 uses mixed case 'Content-Length'
+        remaining_size = int(response_header_dict['Content-Length'])
+        logger.debug("Got Content-Length header value %d in response", remaining_size)
     else:
-        logger.warning("No Content-Length header found, defaulting to 1e11")
+        logger.warning("No Content-Length header found in response. Defaulting to 1e11")
         remaining_size = int(1e11)
 
     # Receive the data
