@@ -117,14 +117,9 @@ def save_to_file(ngams_server, request_properties, target_filename, block_size, 
 
     # Distinguish between archive pull and push request
     # By archive pull we may simply read the file descriptor until it returns and empty string
-    response_header_dict = {h[0]: h[1] for h in response.getheaders()}
+    response_header_dict = {h[0].lower(): h[1] for h in response.getheaders()}
     if 'content-length' in response_header_dict:
-        # For some reason python 2 uses lower case 'content-length'
         remaining_size = int(response_header_dict['content-length'])
-        logger.debug("Got Content-Length header value %d in response", remaining_size)
-    elif 'Content-Length' in response_header_dict:
-        # For some reason python 3 uses mixed case 'Content-Length'
-        remaining_size = int(response_header_dict['Content-Length'])
         logger.debug("Got Content-Length header value %d in response", remaining_size)
     else:
         logger.warning("No Content-Length header found in response. Defaulting to 1e11")
