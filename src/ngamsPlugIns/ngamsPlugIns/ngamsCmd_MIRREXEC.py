@@ -61,7 +61,7 @@ import os
 import time
 import threading
 
-from ngamsLib import ngamsLib, ngamsHttpUtils, ngamsReqProps, ngamsDiskInfo, ngamsDbCore
+from ngamsLib import ngamsLib, ngamsHttpUtils, ngamsReqProps, ngamsDiskInfo, ngamsDbCore, utils
 from ngamsLib.ngamsCore import genUniqueId, toiso8601,\
     FMT_DATETIME_NOMSEC, NGAMS_FAILURE, NGAMS_HTTP_SUCCESS, NGAMS_STAGING_DIR
 from . import ngamsFailedDownloadException
@@ -779,7 +779,7 @@ class MirrexecCommandSender(threading.Thread):
             start_time = time.time()
             response = ngamsHttpUtils.httpGet(host, int(port), 'MIRREXEC', pars=pars, timeout=self.rx_timeout)
             with contextlib.closing(response):
-                failed = response.status != NGAMS_HTTP_SUCCESS or NGAMS_FAILURE in str(response.read)
+                failed = response.status != NGAMS_HTTP_SUCCESS or NGAMS_FAILURE in utils.b2s(response.read())
             elapsed_time = time.time() - start_time
 
             if failed:
