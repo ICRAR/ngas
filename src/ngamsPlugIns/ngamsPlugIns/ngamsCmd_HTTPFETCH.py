@@ -179,8 +179,8 @@ def save_to_file(ngams_server, request_properties, target_filename, block_size, 
         raise ngamsFailedDownloadException.FailedDownloadException(msg)
 
     # Now check the freshly calculated CRC value against the stored CRC value
-    logger.info('source checksum: %s - current checksum: %d', checksum, crc)
-    if crc != int(checksum):
+    logger.info('Source checksum: %s - received checksum: %d', checksum, crc)
+    if not crc_info.equals(checksum, crc):
         msg = "checksum mismatch: source={:s}, received={:d}".format(checksum, crc)
         raise ngamsFailedDownloadException.FailedDownloadException(msg)
 
