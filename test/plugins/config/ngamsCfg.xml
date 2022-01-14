@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<!--
+     ALMA - Atacama Large Millimiter Array
+     (c) European Southern Observatory, 2002
+     Copyright by ESO (in the framework of the ALMA collaboration),
+     All rights reserved
+  
+     This library is free software; you can redistribute it and/or
+     modify it under the terms of the GNU Lesser General Public
+     License as published by the Free Software Foundation; either
+     version 2.1 of the License, or (at your option) any later version.
+  
+     This library is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+     Lesser General Public License for more details.
+  
+     You should have received a copy of the GNU Lesser General Public
+     License along with this library; if not, write to the Free Software
+     Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+     MA 02111-1307  USA
+  
+ -->
+
+<!-- 
+  Who        When        What
+  ********   **********  ***************************************************
+  jknudstr   04.04.2001  Created
+  **************************************************************************
+  This is a template/example NG/AMS Configuration.
+
+  Consult the DTDs ngamsCfg.dtd and ngamsInternal.dtd for more information. 
+
+  NOTE: This file is used as basis configuration file for many of the NG/AMS
+  Unit Tests. Be careful introducing changes and when done, execute
+  and update the Unit Tests if needed.
+  -->
+
+<NgamsCfg Id="ngamsCfg-Test">
+
+  <Header Context="NG/AMS" 
+          Name="ngamsCfg.xml" 
+          Release="1.0" 
+          Revision="@(#) $Id: ngamsCfg.xml,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
+          Source="jknudstr@eso.org" 
+          Type="NGAMS-TEST-BASE-CONFIGURATION">
+    <Description/>
+  </Header>
+
+  <!-- The Root Directory is replaced at runtime by all unit tests,
+       so the value here doesn't matter (except that the test_config_handling
+       test relies on there being a dot) -->
+  <Server Id="Server-Sim"
+          ArchiveName="ESO-ARCHIVE" 
+          BlockSize="65536"
+          MaxSimReqs="30" 
+          RootDirectory="."
+          IpAddress="127.0.0.1"
+          PortNo="8888" 
+          ProxyMode="1"
+          SwVersion=""/>
+
+  <JanitorThread Id="JanitorThread-Std"
+                 SuspensionTime="0T00:03:00" 
+                 MinSpaceSysDirMb="1000"/>
+
+  <ArchiveHandling Id="ArchiveHandling-Test"
+                   ArchiveUnits="-----" 
+                   BackLogBufferDirectory="."
+                   BackLogBuffering="1"
+                   FreeSpaceDiskChangeMb="20"
+                   MinFreeSpaceWarningMb="0"
+                   PathPrefix="saf"
+                   Replication="1"/>
+
+  <Db Id="Db-Test"
+      Interface="sqlite3"
+      database="*replaced at unit test execution time*"
+      Snapshot="0"/>
+
+  <SystemPlugIns Id="SystemPlugIns-Std"
+                 LabelPrinterPlugIn="ngamsNullLabelPrinterPlugIn" 
+                 LabelPrinterPlugInPars="-" 
+                 OfflinePlugIn="ngamsGenericOfflinePlugIn"
+                 OfflinePlugInPars="unmount=0" 
+                 OnlinePlugIn="ngamsGenericOnlinePlugIn"
+                 OnlinePlugInPars="-"
+                 DiskSyncPlugIn="ngamsDiskSyncPlugIn"
+                 DiskSyncPlugInPars="controllers=1/2"/>
+ 
+  <Permissions Id="Permissions-Test"
+               AllowArchiveReq="1" 
+               AllowProcessingReq="1" 
+               AllowRemoveReq="1" 
+               AllowRetrieveReq="1"/>
+
+  <MimeTypes Id="MimeTypes-Std">
+    <MimeTypeMap  MimeType="image/x-fits"         Extension="fits"/>
+    <MimeTypeMap  MimeType="ngas/fits-hdr"        Extension="hdr"/>
+    <MimeTypeMap  MimeType="ngas/log"             Extension="log"/>
+    <MimeTypeMap  MimeType="ngas/nglog"           Extension="nglog"/>
+    <MimeTypeMap  MimeType="application/x-gfits"  Extension="fits.gz"/>
+    <MimeTypeMap  MimeType="application/x-cfits"  Extension="fits.Z"/>
+    <MimeTypeMap  MimeType="application/x-hfits"  Extension="hfits"/>
+    <MimeTypeMap  MimeType="application/x-nglog"  Extension="nglog.gz"/>
+  </MimeTypes>
+
+  <StorageSets Id="StorageSets-PATA-8-Dbl">
+    <StorageSet StorageSetId="FitsStorage1"
+                DiskLabel="FITS"
+                MainDiskSlotId="FitsStorage1-Main-1"
+                RepDiskSlotId="FitsStorage1-Rep-2"
+                Mutex="0"
+                Synchronize="1"/>
+
+    <StorageSet StorageSetId="FitsStorage2"
+                MainDiskSlotId="FitsStorage2-Main-3"
+                RepDiskSlotId="FitsStorage2-Rep-4"
+                Mutex="0"
+                Synchronize="1"/>
+
+    <StorageSet StorageSetId="FitsStorage3"
+                MainDiskSlotId="FitsStorage3-Main-5"
+                RepDiskSlotId="FitsStorage3-Rep-6"
+                Mutex="0"
+                Synchronize="1"/>
+
+    <StorageSet StorageSetId="PafStorage"
+                MainDiskSlotId="PafStorage-Main-7"
+                RepDiskSlotId="PafStorage-Rep-8"
+                Mutex="0"
+                Synchronize="1"/> 
+
+    <StorageSet StorageSetId="LogStorage"
+                MainDiskSlotId="LogStorage-Main-9"
+                RepDiskSlotId="LogStorage-Rep-10"
+                Mutex="0"
+                Synchronize="1"/> 
+  </StorageSets>
+
+  <Streams Id="Streams-4-Dbl">
+    <Stream  MimeType="application/octet-stream" 
+      PlugIn="ngamsGenDapi">
+      <StorageSetRef StorageSetId="FitsStorage1"/>
+      <StorageSetRef StorageSetId="FitsStorage2"/>
+      <StorageSetRef StorageSetId="FitsStorage3"/>
+    </Stream>
+
+    <Stream  MimeType="image/x-fits"
+             PlugIn="ngamsFitsPlugIn"
+             PlugInPars="
+                         checksum_util=utilFitsChecksum,
+                         skip_checksum=,
+                         checksum_result=0/0000000000000000">
+      <StorageSetRef StorageSetId="FitsStorage1"/>
+      <StorageSetRef StorageSetId="FitsStorage2"/>
+      <StorageSetRef StorageSetId="FitsStorage3"/>
+    </Stream>
+
+    <Stream  MimeType="application/x-cfits"
+             PlugIn="ngamsFitsPlugIn"
+             PlugInPars="compression=gzip --no-name,
+                         checksum_util=utilFitsChecksum,
+                         skip_checksum=,
+                         checksum_result=0/0000000000000000">
+      <StorageSetRef StorageSetId="FitsStorage1"/>
+      <StorageSetRef StorageSetId="FitsStorage2"/>
+      <StorageSetRef StorageSetId="FitsStorage3"/>
+    </Stream>
+
+    <Stream  MimeType="application/x-gfits"
+             PlugIn="ngamsFitsPlugIn"
+             PlugInPars="compression=gzip --no-name,
+                         checksum_util=utilFitsChecksum,
+                         skip_checksum=,
+                         checksum_result=0/0000000000000000">
+      <StorageSetRef StorageSetId="FitsStorage1"/>
+      <StorageSetRef StorageSetId="FitsStorage2"/>
+      <StorageSetRef StorageSetId="FitsStorage3"/>
+    </Stream>
+
+    <Stream  MimeType="ngas/log"  
+             PlugIn="ngamsLogPlugIn">
+      <StorageSetRef StorageSetId="LogStorage"/>
+    </Stream>
+
+    <Stream  MimeType="ngas/nglog" 
+             PlugIn="ngamsNgLogPlugIn"
+             PlugInPars="">
+      <StorageSetRef StorageSetId="LogStorage"/>
+    </Stream>
+    <Stream  MimeType="application/x-nglog"
+      PlugIn="ngamsGenDapi">
+      <StorageSetRef StorageSetId="FitsStorage1"/>
+      <StorageSetRef StorageSetId="FitsStorage2"/>
+      <StorageSetRef StorageSetId="FitsStorage3"/>
+    </Stream>
+  </Streams>
+
+  <Processing Id="Processing-Std"
+              ProcessingDirectory=".">
+    <PlugIn Name="ngamsEsoArchDppi"
+            PlugInPars="-input-pars-ngamsEsoArchDppi-">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+    <PlugIn Name="ngamsExtractFitsHdrDppi"
+            PlugInPars="">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+    <PlugIn Name="ngasWfiPreview"
+            PlugInPars="">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+  </Processing>
+
+  <Register Id="Register-Std">
+    <PlugIn Name="ngamsFitsRegPlugIn" 
+            PlugInPars="checksum_util=utilFitsChecksum,
+                        skip_checksum=,
+                        checksum_result=0/0000000000000000">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+  </Register>
+
+  <DataCheckThread Id="DataCheckThread-Test"
+                   Active="0" 
+		   DiskSeq="SEQUENTIAL" 
+                   FileSeq="SEQUENTIAL" 
+                   ForceNotif="1" 
+                   LogSummary="1" 
+                   MaxProcs="4" 
+                   MinCycle="00T00:03:00" 
+                   Prio="25" 
+                   Scan="0"/>
+
+  <Log Id="Log-Test" 
+       LocalLogFile="log/LogFile.nglog"
+       LocalLogLevel="1"
+       LogBufferSize="10"
+       LogRotateCache="30" 
+       LogRotateInt="01T00:00:00" 
+       SysLog="0"
+       SysLogPrefix="NGASLog"/>
+
+  <Notification Id="Notification-Test"
+                SmtpHost="127.0.0.1"
+                Sender="ngast@localhost"
+                Active="0"
+                MaxRetentionTime="00T00:30:00"
+                MaxRetentionSize="1000">
+    <AlertNotification>
+      <EmailRecipient Address="plone@localhost"/>
+    </AlertNotification>
+      
+    <ErrorNotification>
+      <EmailRecipient Address="plone@localhost"/>
+    </ErrorNotification>
+
+    <DiskSpaceNotification>
+      <EmailRecipient Address="plone@localhost"/>
+    </DiskSpaceNotification>
+
+    <DiskChangeNotification>
+      <EmailRecipient Address="plone@localhost"/>
+    </DiskChangeNotification>
+
+    <NoDiskSpaceNotification>
+      <EmailRecipient Address="plone@localhost"/>
+    </NoDiskSpaceNotification>
+
+    <DataErrorNotification>
+      <EmailRecipient Address="plone@localhost"/>
+    </DataErrorNotification>
+  </Notification>
+
+  <HostSuspension Id="HostSuspension-Test" 
+                  IdleSuspension="0" 
+                  IdleSuspensionTime="10" 
+                  SuspensionPlugIn="test.support.ngamsTestSuspensionPlugIn"
+                  SuspensionPlugInPars="SUSPENSION,PI,PARS" 
+                  WakeUpCallTimeOut="10" 
+                  WakeUpPlugIn="test.support.ngamsTestWakeUpPlugIn"
+                  WakeUpPlugInPars="WAKE-UP,PI,PARS" 
+                  WakeUpServerHost="DEFINE"/>
+
+  <SubscriptionDef Id="SubscriptionDef-Test"
+                   AutoUnsubscribe="0"
+                   SuspensionTime="0T00:03:00"
+                   BackLogExpTime="28T00:00:00"
+                   Enable="0">
+    <Subscription HostId="DEFINE"
+                  PortNo="8888"
+                  Priority="0"
+                  SubscriberUrl="http://DEFINE:8888/ARCHIVE"
+                  FilterPlugIn="ngamsMimeTypeFilterPI"
+                  FilterPlugInPars="mime_types=image/x-fits|application/x-cfits|application/octet-stream"/>
+  </SubscriptionDef>
+
+  <Authorization Id="Authorization-Test" Enable="0"/>
+
+</NgamsCfg>
