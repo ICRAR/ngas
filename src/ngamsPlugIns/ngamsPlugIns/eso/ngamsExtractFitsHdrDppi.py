@@ -60,7 +60,7 @@ def constructCommand(file, head=0, struct=0, skey='END', tsv=0, \
 
     return cmd
 
-def ngasExtractFitsHdrDppi(srvObj,
+def ngamsExtractFitsHdrDppi(srvObj,
                            reqPropsObj,
                            filename):
     """
@@ -233,9 +233,9 @@ def ngasExtractFitsHdrDppi(srvObj,
         for f in fils:
             cmd = constructCommand(f, head, struct, skey, tsv, xmlfl, mode, check)
             logger.debug('Executing command: %s', cmd)
-            stat, result, _ = execCmd(cmd)
+            stat, result, stderr = execCmd(cmd)
             if stat != 0:
-                errMsg = "Processing of header for file %s failed: %s" % (filename, result)
+                errMsg = "Processing of header for file %s failed: %s" % (filename, stderr)
                 raise Exception(errMsg)
 
     resFilename = file_id + "." + ext
