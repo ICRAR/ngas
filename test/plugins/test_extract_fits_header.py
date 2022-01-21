@@ -24,8 +24,8 @@ import glob, os
 
 class TestExtractFitsHeader(ngamsTestLib.ngamsTestSuite):
     def test_extract_header(self):
-        # special ALMA config file where we don't compress fits files on ingestion
-        self.prepExtSrv(cfgFile = 'config/ngamsCfg.xml')
+        noFitsCompressionAlmaCfg = [['NgamsCfg.Streams[1].Stream[2].PlugInPars', '']]
+        self.prepExtSrv(cfgProps=noFitsCompressionAlmaCfg)
         self.archive('src/SmallFile.fits', pars=(('ignore_arcfile', 1), ))
         header_file = './SmallFile.hdr'
         self.retrieve('SmallFile.fits', processing=('ngamsExtractFitsHdrDppi'), targetFile=header_file)
