@@ -139,7 +139,7 @@ def ngamsExtractFitsHdrDppi(srvObj,
     ext = 'hdr'
 
 
-    if pars.has_key('header'):
+    if 'header' in pars:
         # extract a certain header: if value == 99 all headers are extracted,
         # for any other value that header is extracted. headers are
         # counted from 0
@@ -155,7 +155,7 @@ def ngamsExtractFitsHdrDppi(srvObj,
             err = "ngasExtractFitsHdrDppi: Invalid value specified for " +\
                   "header parameter."
 
-    if pars.has_key('xml'):
+    if 'xml' in pars:
         # if this key exists we do a conversion to XFits XML.
         struct = 0
         if pars['xml'] in xmlVals:
@@ -165,7 +165,7 @@ def ngamsExtractFitsHdrDppi(srvObj,
                   "parameter. Should be 'vo|xfits': "+ pars['xml']
         ext = 'xml'
 
-    if pars.has_key('skey'):
+    if 'skey' in pars:
         # extract just one keyword. CAUTION: No checking done!
         skey = pars['skey'].strip()
         skeyfl = 1
@@ -180,14 +180,14 @@ def ngamsExtractFitsHdrDppi(srvObj,
                   "parameter specified. Must be a valid FITS keyword:",\
                   skey
 
-    if pars.has_key('struct'):
+    if 'struct' in pars:
         # return only the structure of the FITS file. Value of the
         # parameter is ignored
         head = -99
         struct = 1
         ext = 'txt'
 
-    if pars.has_key('tsv'):
+    if 'tsv' in pars:
         # extract header in tsv format. Parameter value is ignored
         struct = 1
         tsv = 1
@@ -195,7 +195,7 @@ def ngamsExtractFitsHdrDppi(srvObj,
         head = int(head)
         if head < 0: head = 0
 
-    if pars.has_key('check'):
+    if 'check' in pars:
         # head structure and calculate the checksum of the data part.
         head = -99
         struct = 1
