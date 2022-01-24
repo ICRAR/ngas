@@ -36,7 +36,7 @@ import logging
 import os
 import re
 
-from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
+from ngamsLib import ngamsDppiStatus, ngamsPlugInApi, utils
 from ngamsLib.ngamsCore import NGAMS_PROC_DATA, execCmd
 
 
@@ -236,7 +236,7 @@ def ngamsExtractFitsHdrDppi(srvObj,
             logger.debug('Executing command: %s', cmd)
             stat, result, stderr = execCmd(cmd)
             if stat != 0:
-                errMsg = "Processing of header for file %s failed: %s" % (filename, stderr)
+                errMsg = "Processing of header for file %s failed:\nstdout:%s\nstderr:%s" % (filename, utils.b2s(result), utils.b2s(stderr))
                 raise Exception(errMsg)
 
     resFilename = file_id + "." + ext
