@@ -47,7 +47,7 @@ def constructCommand(file, head=0, struct=0, skey='END', tsv=0, \
     """
     """
     printhead_location = os.path.dirname(os.path.abspath(__file__))
-    cmd = printhead_location + '/printhead'
+    cmd = printhead_location + '/printhead.py'
     extCmd = ''
     if head != 0: extCmd += '-H %d' % head
     if struct != 0: extCmd += ' -S'
