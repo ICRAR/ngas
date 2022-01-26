@@ -61,7 +61,7 @@ class FitsHead:
     for more details just call the usage function or run the
     script without parameters.
     """
-    def __init__(self,file,skey='END',struct=0,show=0,check=0, verbose=0, mode=1):
+    def __init__(self,filename,skey='END',struct=0,show=0,check=0, verbose=0, mode=1):
         """
         """
         self.verbose = int(verbose)
@@ -77,22 +77,12 @@ class FitsHead:
                                      # not contain data (.hdr file)
         self.KKeys = ['SIMPLE','EXTEND','NAXIS[0-9]{0,2}','BITPIX','XTENSION', 'END',]
         if skey != 'END': self.KKeys.append(skey)
-        if type(file) == types.StringType:
-            (self.fd, self.size) = self.openFile(file)
-            if self.size == -1:
-                errMsg = "*** File %s does not exists ****" % file
-                raise Exception(errMsg)
-        elif type(file) == types.FileType:  # if fd != 0 we assume that a file object is passed
-            (self.fd, self.size) = (file, file.tell())
-            self.ID = self.fd.name
-            self.name = self.fd.name
-        elif type(file).__name__ == 'StringI': # this is a cStringIO object
-            (self.fd, self.size) = (file, file.tell())
-            self.ID = ""
-            self.name = ""
-        else:
-            errMsg = "Invalid type passed to file parameter during __init__"
+        (self.fd, self.size) = self.openFile(filename)
+        if self.size == -1:
+            errMsg = "*** File %s does not exists ****" % filename
             raise Exception(errMsg)
+        self.ID = self.fd.name
+        self.name = self.fd.name
         self.HEAD = []               # list of list(s) of header cards
         self.analyzeStruct()
 
@@ -164,7 +154,7 @@ class FitsHead:
         endfl = 0
         skfl = 0
         keys=[]
-        block = self.fd.read(_BLOCKSIZE_)
+        block = self.fd.read(_BLOCKSIZE_).decode()
         self.nbytes = self.nbytes + _BLOCKSIZE_
         if len(block) > 0 and not block[0:8] == 'XTENSION' and not block[0:6] == 'SIMPLE':
             return ''
@@ -189,7 +179,7 @@ class FitsHead:
                     kkeys.append(key)
                     if rq.match(key):
                         LineTuple = self.parseFitsCard(block[ind:ind+80])
-                        sline = string.strip(block[ind:ind+80])
+                        sline = block[ind:ind+80].strip()
                         if skey != 'END' and LineTuple[0] == skey:
                             HEAD = sline
                             skfl = 1
@@ -202,7 +192,7 @@ class FitsHead:
             if endfl == 1:
 #               stat=self.fd.close()
                 break
-            block=self.fd.read(_BLOCKSIZE_)
+            block=self.fd.read(_BLOCKSIZE_).decode()
             self.nbytes = self.nbytes + _BLOCKSIZE_
             if skfl == 0: HEAD = HEAD + block
 
@@ -301,7 +291,7 @@ class FitsHead:
                 self.name = file
                 self.ID, ext = os.path.splitext(ID)
             else:
-                fd=open(file,'r')
+                fd=open(file,'rb')
                 fd.seek(0,2)
                 size = fd.tell()
                 fd.seek(0,0)
@@ -519,7 +509,7 @@ class FitsHead:
         Helper method to recursivly walk-through a dictionary and serialize it.
         """
 
-        for k in dict.keys():
+        for k in list(dict.keys()):
                 if type(dict[k]) == type({}):
                     level += 1
                     self.XHead.append((level*"   ") + "<" + k + ">")
@@ -671,7 +661,7 @@ class FitsHead:
         typ = lineTuple[3]
 
         # check if type is defined already or if one of the reserved words is used.
-        if typ == 'C' or (type(val) == types.StringType and val.upper() in reserved):
+        if typ == 'C' or (isinstance(type(val), str) and val.upper() in reserved):
             typ = 'C'
         else:
             try:
@@ -707,7 +697,7 @@ class FitsHead:
                     typ = 'B'
                 else:
                     typ = 'C'
-        if type(val) == types.StringType and typ == 'C' and dtRx.match(val):
+        if isinstance(type(val), str) and typ == 'C' and dtRx.match(val):
             # check for datetime format
             typ = 'T'
 
@@ -764,8 +754,8 @@ class HeadDict(dict):
         INPUT:     size, long
         RETURN:    1 if successful, 0 else
         """
-        if type(size) == types.LongType or type(size) == types.IntType:
-            self.HEADERSIZE = long(size)
+        if type(size) == int:
+            self.HEADERSIZE = int(size)
             return 1
         else:
             return 0
@@ -778,8 +768,8 @@ class HeadDict(dict):
         INPUT:     position, long
         RETURN:    1 if successful, 0 else
         """
-        if type(position) == types.LongType or type(position) == types.IntType:
-            self.POS = long(position)
+        if type(position) == int:
+            self.POS = int(position)
             return 1
         else:
             return 0
@@ -792,7 +782,7 @@ class HeadDict(dict):
         INPUT:     number, int or long
         RETURN:    1 if successful, 0 else
         """
-        if type(number) == types.LongType or type(number) == types.IntType:
+        if type(number) == int:
             self.NUMBER = int(number)
             return 1
         else:
@@ -819,7 +809,7 @@ class HeadDict(dict):
 
 
             siz = siz * abs(int(self.getKeyword('BITPIX')[1]))/8     #calculate data size
-            nblocks = long(siz/2880.+0.5)
+            nblocks = int(siz/2880.+0.5)
 
         self.DATASIZE = (siz,nblocks)
 
@@ -853,16 +843,16 @@ class HeadDict(dict):
         maxInd = self.getKeyIndex('END')
         newInd = 0
 
-        if existKey['index'].keys()[0] == -1:    # keyword not found, create!
+        if list(existKey['index'].keys())[0] == -1:    # keyword not found, create!
             testKey = existKey.copy()
             lenInd = len(self['index'])
 #           print maxInd,lenInd,self['index'].has_key(lenInd-1)
             if lenInd > 0:
                 maxInd = max(self['index'].keys())
 
-            if maxInd > (lenInd-1) and not self['index'].has_key(lenInd-1):
+            if maxInd > (lenInd-1) and not (lenInd - 1) in self['index']:
                 newInd = lenInd-1
-            elif maxInd > (lenInd-1)  and not self['index'].has_key(lenInd):
+            elif maxInd > (lenInd-1)  and not lenInd in self['index']:
                 newInd = maxInd
             elif maxInd > 0 and self['index'][maxInd] == 'END'  and maxInd == lenInd-1:
                 newInd = maxInd
@@ -914,7 +904,7 @@ class HeadDict(dict):
         INPUT:     string, keyword
         OUTPUT:    string tuple, list of descendant nodes
         """
-        nodes = self.getNode(key=key).keys()
+        nodes = list(self.getNode(key=key).keys())
         return tuple(nodes)
 
 
@@ -938,8 +928,8 @@ class HeadDict(dict):
         keyDict = HeadDict()
         node = self['nodes'].copy()
         for hk in hkeys:
-            if node.has_key(hk) and type(node[hk]) == type({}):
-                keys = node[hk].keys()
+            if hk in node and type(node[hk]) == type({}):
+                keys = list(node[hk].keys())
                 exists = 1
                 node = node[hk]
                 if keys != ('Comment','Value','Type') and hk != hkeys[-1]:
@@ -953,7 +943,7 @@ class HeadDict(dict):
                     else:
                         keyDict['nodes'].update(node)
 
-            elif node.has_key(hk) and type(node[hk]) != type({}):
+            elif hk in node and type(node[hk]) != type({}):
                 node = node[hk]
                 if desc == 0:
                     keyDict.getNode(curkey).update({hk:node})
@@ -996,7 +986,7 @@ class HeadDict(dict):
         """
         res=[]
         reg=re.compile(key)
-        keyList=self['index'].values()
+        keyList=list(self['index'].values())
         for k in keyList:
             if reg.match(k):
                 res.append(k)
@@ -1014,13 +1004,13 @@ class HeadDict(dict):
 
         ind = -1
         try:
-            self['index'].values().index(key)
+            list(self['index'].values()).index(key)
             exist = 1
         except:
             exist = 0
 
         if exist:
-            for ind in self['index'].keys():
+            for ind in list(self['index'].keys()):
                 if self['index'][ind] == key:
                     return ind
 
@@ -1038,11 +1028,11 @@ class HeadDict(dict):
             recomp = re.compile(keyexp)
         except Exception as e:
             return e
-        matchlist = map(lambda x,y:(re.match(recomp,x) != None)*(y+1),\
-            self['index'].values(),\
-            self['index'].keys())
-        indlist = map(lambda x:x-1,filter(lambda x:x>0, matchlist))
-        map(lambda x:self['index'].pop(x), indlist)
+        matchlist = list(map(lambda x,y:(re.match(recomp,x) != None)*(y+1),\
+            list(self['index'].values()),\
+            list(self['index'].keys())))
+        indlist = [x-1 for x in [x for x in matchlist if x>0]]
+        list(map(lambda x:self['index'].pop(x), indlist))
 
 
     def setKeyIndex(self,newind,key):
@@ -1060,7 +1050,7 @@ class HeadDict(dict):
         """
 
         try:
-            pos = self['index'].values().index(key)
+            pos = list(self['index'].values()).index(key)
             self['index'].remove(pos)
             self['index'].update({newind:key})
         except:
@@ -1115,9 +1105,9 @@ class HeadDict(dict):
         except:
             com = ''
         try:
-            if len(str(val)) > 0 and not eval("self['nodes']"+fullInd+".has_key('Type')"):
+            if len(str(val)) > 0 and not eval("'Type' in self['nodes']"+fullInd):
                 typ = self.getKeyType(key)
-            elif eval("self['nodes']"+fullInd+".has_key('Type')"):
+            elif eval("'Type' in self['nodes']"+fullInd):
                 typ = eval("self['nodes']"+fullInd+"['Type']")
                 if typ == '':
                    typ = self.getKeyType(key)
@@ -1138,8 +1128,8 @@ class HeadDict(dict):
         OUTPUT: 1 for success, 0 otherwise
 
         """
-        keys = keyDict['index'].values()
-        inds = keyDict['index'].keys()
+        keys = list(keyDict['index'].values())
+        inds = list(keyDict['index'].keys())
 
         for ii in range(len(keys)):
             key = keys[ii]
@@ -1152,22 +1142,22 @@ class HeadDict(dict):
             node = keyDict['nodes']
             oDict = self.getKeyDict(key,inst=1)
             for hk in hkeys:
-                if oDict.getNode(key=curkey)[hk].has_key('Value'):
+                if 'Value' in oDict.getNode(key=curkey)[hk]:
                     test = len(oDict.getNode(key=curkey)[hk]['Value'])
                 else:
-                    test = self.getNode(key=curkey).has_key(hk)
+                    test = hk in self.getNode(key=curkey)
                 node = node[hk]
                 if not test:
                     self.getNode(key=curkey).update({hk:node})
                 elif key in ['COMMENT', 'HISTORY', 'ESO-LOG']:
-                    if not self['nodes'].has_key(key):
+                    if key not in self['nodes']:
                         self['nodes'].update({key:node})
                     self['nodes'][key]['Value'].\
                          append(keyDict['nodes'][key]['Value'][0])
                 fullInd += "['"+hk+"']"
                 curkey = (curkey+" "+hk).strip()
 
-            if self['index'].values().count(key):
+            if list(self['index'].values()).count(key):
                 dind = self.getKeyIndex(key)
                 del(self['index'][dind])
             self['index'].update({ind:key})
@@ -1184,8 +1174,8 @@ class HeadDict(dict):
 
         If the keyword does not exist the output is -1
         """
-        values = self['index'].values()
-        keys = self['index'].keys()
+        values = list(self['index'].values())
+        keys = list(self['index'].keys())
         try:
             return keys[values.index(key)]
         except:
@@ -1220,7 +1210,7 @@ class HeadDict(dict):
         if eval("self['nodes']"+fullInd+".has_key('Value')"):
 
             val = eval("self['nodes']"+fullInd+"['Value']")
-            if typ == 'C' or (type(val) == types.StringType and val.upper() in reserved):
+            if typ == 'C' or (type(val) == bytes and val.upper() in reserved):
                 typ = 'C'
             else:
                 try:
@@ -1256,7 +1246,7 @@ class HeadDict(dict):
                         typ = 'B'
                     else:
                         typ = 'C'
-            if type(val) == types.StringType and typ == 'C' and dtRx.match(val):
+            if type(val) == bytes and typ == 'C' and dtRx.match(val):
                 # check for datetime format
                 typ = 'T'
 
@@ -1277,8 +1267,8 @@ class HeadDict(dict):
         pk = {'SIMPLE':0,'XTENSION':0,'BITPIX':1,'NAXIS':2,'NAXIS1':3,\
               'NAXIS2':4,'NAXIS3':5,'NAXIS4':6}
 
-        rpk = re.compile('|'.join(pk.keys()))
-        keys = self['index'].values()
+        rpk = re.compile('|'.join(list(pk.keys())))
+        keys = list(self['index'].values())
         self['index'] = {}
         keys.sort()
         KeyDict = {}
@@ -1325,7 +1315,7 @@ class HeadDict(dict):
 
         comhist = {'COMMENT':-1,'HISTORY':-1, 'ESO-LOG':-1}
 
-        newind = self['index'].keys()
+        newind = list(self['index'].keys())
         newind.sort()
 
         for ind in newind:
@@ -1442,7 +1432,7 @@ class HeadDict(dict):
         XmlHead.append(level*indent + '<HEADER number="' + str(self.NUMBER) + '" position="' + \
                            str(self.POS) + '" datasize="' + str(self.DATASIZE[0]) + '">')
         level += 1    # indent all the rest...
-        for key in self['index'].values():
+        for key in list(self['index'].values()):
 
 # treat all 'normal' keywords
             rkey = key[0:8].strip()
@@ -1579,7 +1569,7 @@ class HeadDict(dict):
         openTags = ['']
 
         xstr = '<RESOURCE id="' + str(self.NUMBER) + '"'
-        if self['nodes'].has_key('EXTNAME'):
+        if 'EXTNAME' in self['nodes']:
            xstr = xstr + ' name="' + self['nodes']['EXTNAME']['Value'][1:-1] +'"'
 
         xstr = xstr + ' type="meta">'
@@ -1591,7 +1581,7 @@ class HeadDict(dict):
                        str(self.POS) + '"/>')
         XmlHead.append(level*indent + '<INFO name="datasize" value="' + \
                        str(self.DATASIZE[0]) + '"/>')
-        for key in self['index'].values():
+        for key in list(self['index'].values()):
 
 # treat all 'normal' keywords
 
@@ -1793,7 +1783,7 @@ def run(args,skey='END',header=0, mode=1):
             pH = FitsHead(name,skey=skey, show=header, struct=struct,check=check, mode=mode)
             if skey != 'END':
                 if header == 99:
-                    heads = range(len(pH.HEAD))
+                    heads = list(range(len(pH.HEAD)))
                 else:
                     heads = [header]
                 for h in heads:
@@ -1824,7 +1814,7 @@ def tsvFunc(args,skey='END',header=0, mode=1):
           try:
             pH = FitsHead(name, skey=skey, show=header, struct=1, mode=mode)
             tupleList = pH.parseFitsHead2TupleList(forceString=1)
-            if header == 99: hrange = range(len(tupleList))
+            if header == 99: hrange = list(range(len(tupleList)))
             else: hrange = [header]
             for hind in hrange:
                 if skey != 'END':
@@ -1848,7 +1838,7 @@ def ascii_load_lines(res, TABsep, RETsep):
     returns a string formated according to the syntax used by the IQ load command.
     """
 #    lines = RETsep.join(map(lambda x:TABsep.join(x),res))
-    lines = map(lambda x:TABsep.join(x) + RETsep, res)
+    lines = [TABsep.join(x) + RETsep for x in res]
 
 #    lines = ""
 #    for row in res:
@@ -1969,10 +1959,10 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
     extHead = pH.Extension[extnum]
 
 
-    maxind = pH.Extension[0]['index'].keys()[-1]
+    maxind = list(pH.Extension[0]['index'].keys())[-1]
 #    del(pH.Extension[0]['index'][maxind])   # get rid of the END keyword
 
-    for k in extHead['index'].values()[:-1]:
+    for k in list(extHead['index'].values())[:-1]:
 
         keyDict = extHead.getKeyDict(k)
         keyDict['index'] = {}
@@ -1981,7 +1971,7 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
             ind = pH.Extension[0].getKeyIndex(k)
             if ind == -1:
                 ind = max(pH.Extension[0]['index'].keys())
-                if pk.has_key(k):
+                if k in pk:
                     ind = pk[k]
             keyDict['index'].update({ind:k})
 
@@ -2019,7 +2009,7 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
 #                    del(val)
 #                    hind = hind + "['" + hk + "']"
 
-    maxind = pH.Extension[0]['index'].keys()[-1]
+    maxind = list(pH.Extension[0]['index'].keys())[-1]
     pH.Extension[0]['index'].update({maxind+1:'END'})
 
 
