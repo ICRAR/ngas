@@ -777,7 +777,9 @@ class MirrexecCommandSender(threading.Thread):
             }
 
             start_time = time.time()
-            response = ngamsHttpUtils.httpGet(host, int(port), 'MIRREXEC', pars=pars, timeout=self.rx_timeout)
+            # it is important to not let this operation time out. If it times out then the files being fetched will
+            # be eligable for re-fetching even though the spawned threads may still be executing. Chaos ensues.
+            response = ngamsHttpUtils.httpGet(host, int(port), 'MIRREXEC', pars=pars)
             with contextlib.closing(response):
                 failed = response.status != NGAMS_HTTP_SUCCESS or NGAMS_FAILURE in utils.b2s(response.read())
             elapsed_time = time.time() - start_time
