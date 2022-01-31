@@ -929,7 +929,7 @@ class HeadDict(dict):
         node = self['nodes'].copy()
         for hk in hkeys:
             if hk in node and type(node[hk]) == type({}):
-                keys = list(node[hk].keys())
+                keys = tuple(node[hk].keys())
                 exists = 1
                 node = node[hk]
                 if keys != ('Comment','Value','Type') and hk != hkeys[-1]:
