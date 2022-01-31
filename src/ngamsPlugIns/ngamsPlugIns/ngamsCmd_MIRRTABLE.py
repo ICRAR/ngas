@@ -576,13 +576,25 @@ def limit_mirrored_files(ngams_server, iteration, file_limit):
     # This is just used in development. I recommend not to use it in production, otherwise we risk losing partially
     # downloaded file.
     logger.info('Limiting the number of files to fetch to %s', file_limit)
-    sql = "delete from ngas_mirroring_bookkeeping where rowid in ("
-    sql += "select myrowid from ("
-    sql += "select rowid as myrowid, rownum as myrownum from ngas_mirroring_bookkeeping where iteration = {0}"
-    # Prefer files which are already downloading - otherwise we risk losing the data that has already been downloaded
-    sql += " order by staging_file"
-    sql += ") where myrownum > {1})"
-
+    sql = """
+        delete from ngas_mirroring_bookkeeping d
+        where exists (
+          select file_id
+          from (
+            select file_id, file_version, iteration, source_ingestion_Date, status, rownum as myrownum
+            from (
+              select file_id, file_version, iteration, source_ingestion_date, status
+              from ngas_mirroring_bookkeeping i
+              where iteration = {0}
+              order by source_ingestion_date
+            )
+          )
+          where file_id = d.file_id
+          and file_version = d.file_version
+          and iteration = d.iteration
+          and myrownum > {1}
+       )
+    """
     ngams_server.getDb().query2(sql, args=(iteration, file_limit))
 
 
