@@ -697,7 +697,7 @@ class FitsHead:
                     typ = 'B'
                 else:
                     typ = 'C'
-        if isinstance(type(val), str) and typ == 'C' and dtRx.match(val):
+        if isinstance(val, str) and typ == 'C' and dtRx.match(val):
             # check for datetime format
             typ = 'T'
 
