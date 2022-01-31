@@ -36,7 +36,7 @@ import logging
 import os
 import re
 
-from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
+from ngamsLib import ngamsDppiStatus, ngamsPlugInApi, utils
 from ngamsLib.ngamsCore import NGAMS_PROC_DATA, execCmd
 
 
@@ -46,7 +46,8 @@ def constructCommand(file, head=0, struct=0, skey='END', tsv=0, \
                      xmlfl='', mode=1, check=0):
     """
     """
-    cmd = '/opsw/packages/bin/printhead'
+    printhead_location = os.path.dirname(os.path.abspath(__file__))
+    cmd = printhead_location + '/printhead.py'
     extCmd = ''
     if head != 0: extCmd += '-H %d' % head
     if struct != 0: extCmd += ' -S'
@@ -60,7 +61,7 @@ def constructCommand(file, head=0, struct=0, skey='END', tsv=0, \
 
     return cmd
 
-def ngasExtractFitsHdrDppi(srvObj,
+def ngamsExtractFitsHdrDppi(srvObj,
                            reqPropsObj,
                            filename):
     """
@@ -139,7 +140,7 @@ def ngasExtractFitsHdrDppi(srvObj,
     ext = 'hdr'
 
 
-    if pars.has_key('header'):
+    if 'header' in pars:
         # extract a certain header: if value == 99 all headers are extracted,
         # for any other value that header is extracted. headers are
         # counted from 0
@@ -155,7 +156,7 @@ def ngasExtractFitsHdrDppi(srvObj,
             err = "ngasExtractFitsHdrDppi: Invalid value specified for " +\
                   "header parameter."
 
-    if pars.has_key('xml'):
+    if 'xml' in pars:
         # if this key exists we do a conversion to XFits XML.
         struct = 0
         if pars['xml'] in xmlVals:
@@ -165,7 +166,7 @@ def ngasExtractFitsHdrDppi(srvObj,
                   "parameter. Should be 'vo|xfits': "+ pars['xml']
         ext = 'xml'
 
-    if pars.has_key('skey'):
+    if 'skey' in pars:
         # extract just one keyword. CAUTION: No checking done!
         skey = pars['skey'].strip()
         skeyfl = 1
@@ -180,14 +181,14 @@ def ngasExtractFitsHdrDppi(srvObj,
                   "parameter specified. Must be a valid FITS keyword:",\
                   skey
 
-    if pars.has_key('struct'):
+    if 'struct' in pars:
         # return only the structure of the FITS file. Value of the
         # parameter is ignored
         head = -99
         struct = 1
         ext = 'txt'
 
-    if pars.has_key('tsv'):
+    if 'tsv' in pars:
         # extract header in tsv format. Parameter value is ignored
         struct = 1
         tsv = 1
@@ -195,7 +196,7 @@ def ngasExtractFitsHdrDppi(srvObj,
         head = int(head)
         if head < 0: head = 0
 
-    if pars.has_key('check'):
+    if 'check' in pars:
         # head structure and calculate the checksum of the data part.
         head = -99
         struct = 1
@@ -233,9 +234,9 @@ def ngasExtractFitsHdrDppi(srvObj,
         for f in fils:
             cmd = constructCommand(f, head, struct, skey, tsv, xmlfl, mode, check)
             logger.debug('Executing command: %s', cmd)
-            stat, result, _ = execCmd(cmd)
+            stat, result, stderr = execCmd(cmd)
             if stat != 0:
-                errMsg = "Processing of header for file %s failed: %s" % (filename, result)
+                errMsg = "Processing of header for file %s failed:\nstdout:%s\nstderr:%s" % (filename, utils.b2s(result), utils.b2s(stderr))
                 raise Exception(errMsg)
 
     resFilename = file_id + "." + ext
