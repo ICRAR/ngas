@@ -661,7 +661,7 @@ class FitsHead:
         typ = lineTuple[3]
 
         # check if type is defined already or if one of the reserved words is used.
-        if typ == 'C' or (isinstance(type(val), str) and val.upper() in reserved):
+        if typ == 'C' or (isinstance(val, str) and val.upper() in reserved):
             typ = 'C'
         else:
             try:
