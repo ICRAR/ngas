@@ -25,7 +25,7 @@ import logging
 import time
 
 from .common import checkStopJanitorThread
-
+from multiprocessing import queue.Empty
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +37,11 @@ def run(srvObj, stopEvt):
 
     logger.debug("Checking/cleaning up Request DB ...")
     reqTimeOut = 86400
-
-    req_ids = srvObj.janitor_communicate('get-request-ids', timeout=0.5)
+    
+    try:
+        req_ids = srvObj.janitor_communicate('get-request-ids', timeout=0.5)
+    except queue.Empty:
+        logger.exception('no response from the server in the allocated timeout')
 
     to_delete = []
     for reqId in req_ids:
