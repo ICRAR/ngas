@@ -39,6 +39,10 @@ def run(srvObj, stopEvt):
     reqTimeOut = 86400
 
     req_ids = srvObj.janitor_communicate('get-request-ids', timeout=0.5)
+    # I can't work out why we _sometimes_ get a None back. We use a NullDb for storing requests.
+    # Until I work it out, this workaround is in place. 
+    if req_ids is None:
+        req_ids = []
 
     to_delete = []
     for reqId in req_ids:
