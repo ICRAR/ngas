@@ -215,7 +215,14 @@ def __handle_command(ngams_server, request_properties):
             str(staging_info.crc), staging_info.crcname, NGAMS_FILE_STATUS_OK,
             creation_date, io_time, ingest_rate)
     logger.info("Will try to insert the file information: %s / %r", sql, args)
-    ngams_server.getDb().query2(sql, args=args)
+    try:
+        ngams_server.getDb().query2(sql, args=args)
+    except Exception:
+        # this shouldn't happen, but it can. If we rapidly restart a server then there can be some race condition
+        # where a thread is already downloading the file and actually finishes it. Meanwhile the main mirroring thread
+        # shuts down and sets the status to 'ABORTED'. The next iteration starts mirroring it. before the first thread
+        # sets the status to 'SUCCESS'. It happens so rarely that it's easier to work-around than fix properly.
+        logger.exception('mirroring error: the file %s has already been registered. Shouldn't have happened but no damage done.', file_id)
 
     logger.info("Successfully handled Archive Pull Request for data file with URI: %s",
                 request_properties.getSafeFileUri())
