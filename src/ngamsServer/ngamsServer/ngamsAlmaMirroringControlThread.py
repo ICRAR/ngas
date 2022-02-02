@@ -911,27 +911,8 @@ def generate_report(ngams_server):
 def clean_up_mirroring(ngams_server):
     host = get_fully_qualified_domain_name(ngams_server)
     logger.debug("Cleaning up mirroring tasks for NGAS node: %s", host)
-    # An ngams server may have been restarted (or killed / crashed / rebooted) while mirroring. We
-    # need to clean up older files otherwise mirroring wil ignore them, thinking they are already
-    # being processed. In the general case we should only clean up files which have been assigned 
-    # to the server which is restarting. The other servers in the cluster may be happily mirroring.
-    # In a highly unlikely case we could also have killed the mirroring master before files have 
-    # been assigned to a target host. Any node can clean these up, but only for previous iterations.
-    sql = """
-      update ngas_mirroring_bookkeeping 
-      set status = 'ABORTED', staging_file = null
-      where status in ('READY', 'LOCKED') 
-      and (
-        target_host = {0}
-        or (
-          target_host is null 
-          and iteration < (
-            select max(iteration)
-            from ngas_mirroring_bookkeeping
-          )
-        )
-      )
-    """
+    sql = "update ngas_mirroring_bookkeeping set status = 'ABORTED', staging_file = null " \
+          "where status in ('READY', 'LOCKED') and (target_host = {0} or target_host is null)"
     ngams_server.getDb().query2(sql, args=(host,))
     sql = "update ngas_mirroring_bookkeeping set status = 'TORESUME' where status = 'FETCHING' and target_host = {0}"
     ngams_server.getDb().query2(sql, args=(host,))
