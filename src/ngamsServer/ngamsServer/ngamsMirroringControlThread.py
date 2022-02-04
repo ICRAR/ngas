@@ -1005,7 +1005,7 @@ def mirror_control_thread(ngams_server, stop_event):
                 if stop_event.wait(5.0):
                     return
     else:
-        logger.info("NGAS Mirroring is active')
+        logger.info('NGAS Mirroring is active')
         # Generic Mirroring service
         initialise_mirroring(ngams_server)
 
