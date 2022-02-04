@@ -25,7 +25,7 @@ import logging
 import time
 
 from .common import checkStopJanitorThread
-from multiprocessing import queue.Empty
+from multiprocessing import queue
 
 logger = logging.getLogger(__name__)
 
