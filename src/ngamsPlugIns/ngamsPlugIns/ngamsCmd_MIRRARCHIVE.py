@@ -222,7 +222,7 @@ def __handle_command(ngams_server, request_properties):
         # where a thread is already downloading the file and actually finishes it. Meanwhile the main mirroring thread
         # shuts down and sets the status to 'ABORTED'. The next iteration starts mirroring it. before the first thread
         # sets the status to 'SUCCESS'. It happens so rarely that it's easier to work-around than fix properly.
-        logger.exception('mirroring error: the file %s has already been registered. Shouldn't have happened but no damage done.', file_id)
+        logger.exception('mirroring error: the file %s has already been registered. Should not have happened, but no damage done.', file_id)
 
     logger.info("Successfully handled Archive Pull Request for data file with URI: %s",
                 request_properties.getSafeFileUri())
