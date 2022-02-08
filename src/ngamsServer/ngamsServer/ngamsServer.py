@@ -1059,9 +1059,13 @@ class ngamsServer(object):
         """
         logger.debug("Starting Janitor Thread ...")
 
-        # Create the child process and kick it off
+        # Create the communication thread and child process and kick them off
+        # (in that order to prevent the problem reported in #78).
+        # Note that to *really* ensure no problems we'd have to block until the
+        # communication thread is actually working, but we can live with this.
         self._serv_to_jan_queue = multiprocessing.Queue()
         self._jan_to_serv_queue = multiprocessing.Queue()
+        self._janitorQueThread.start()
         self._janitorThread.start(self, self._serv_to_jan_queue, self._jan_to_serv_queue)
 
         # Re-create the DB connections
@@ -1069,9 +1073,6 @@ class ngamsServer(object):
 
         # Subscribe to db-change events (which we pass down to the janitor proc)
         self.getDb().addDbChangeEvt(self._janitordbChangeSync)
-
-        # Kick off the thread that takes care of communicating back and forth
-        self._janitorQueThread.start()
 
 
     def stopJanitorThread(self):
