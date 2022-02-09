@@ -973,10 +973,20 @@ def mirror_control_thread(ngams_server, stop_event):
     :param ngams_server: Reference to server object (ngamsServer)
     :param stop_event: Stop event
     """
-    if ngams_server.getCfg().getVal("Mirroring[1].AlmaMirroring"):
+    # whether or not this is the ALMA mirroring thread (Mirrroring.Active) we always clean up any previous iterations
+    isAlma = ngams_server.getCfg().getVal("Mirroring[1].AlmaMirroring")
+    if isAlma:
         logger.info("ALMA mirroring control thread cleaning up from previous state")
         clean_up_mirroring(ngams_server)
 
+    if not ngams_server.getCfg().getMirroringActive():
+        if isAlma:
+            logger.info('not the mirroring master - stopping the mirroring control thread')
+        else:
+            logger.info('NGAS Mirroring not active - Mirroring Control Thread not started')
+        return
+
+    if isAlma:
         logger.info("ALMA mirroring control thread entering main server loop")
         while True:
             # Encapsulate this whole block to avoid that the thread dies in case a problem occurs,
@@ -1014,6 +1024,7 @@ def mirror_control_thread(ngams_server, stop_event):
                 if stop_event.wait(5.0):
                     return
     else:
+        logger.info('NGAS Mirroring is active')
         # Generic Mirroring service
         initialise_mirroring(ngams_server)
 

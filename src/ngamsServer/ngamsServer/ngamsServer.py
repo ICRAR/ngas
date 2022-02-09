@@ -1181,10 +1181,9 @@ class ngamsServer(object):
 
     def startMirControlThread(self):
         """Starts the Mirroring Control Thread"""
-        if not self.getCfg().getMirroringActive():
-            logger.info("NGAS Mirroring not active - Mirroring Control Thread not started")
-            return
-        logger.info("NGAS Mirroring is active - Starting Mirroring Control Thread")
+        # the mirroring thread is _always_ started and then may do nothing, depending on
+        # the configuration. It does this for the benefit of ALMA mirroring which performs
+        # clean-up in the database when it starts.
         self._mir_control_thread.start(self)
 
 
