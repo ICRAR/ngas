@@ -192,8 +192,9 @@ def execute_mirroring(ngams_server, iteration):
             'n_threads': get_num_simultaneous_fetches_per_server(ngams_server)
         }
         host, port = ngams_server.get_self_endpoint()
-        # TODO: look at the HTTP response code
-        ngamsHttpUtils.httpGet(host, port, 'MIRREXEC', pars=pars, timeout=rx_timeout)
+        # it is important to not let this operation time out. If it times out then the files being fetched will 
+        # be eligable for re-fetching even though the spawned threads may still be executing. Chaos ensues.
+        ngamsHttpUtils.httpGet(host, port, 'MIRREXEC', pars=pars)
     except Exception:
         logger.exception("MIRREXEC command for iteration %d has failed", iteration)
     finally:
@@ -575,13 +576,25 @@ def limit_mirrored_files(ngams_server, iteration, file_limit):
     # This is just used in development. I recommend not to use it in production, otherwise we risk losing partially
     # downloaded file.
     logger.info('Limiting the number of files to fetch to %s', file_limit)
-    sql = "delete from ngas_mirroring_bookkeeping where rowid in ("
-    sql += "select myrowid from ("
-    sql += "select rowid as myrowid, rownum as myrownum from ngas_mirroring_bookkeeping where iteration = {0}"
-    # Prefer files which are already downloading - otherwise we risk losing the data that has already been downloaded
-    sql += " order by staging_file"
-    sql += ") where myrownum > {1})"
-
+    sql = """
+        delete from ngas_mirroring_bookkeeping d
+        where exists (
+          select file_id
+          from (
+            select file_id, file_version, iteration, source_ingestion_Date, status, rownum as myrownum
+            from (
+              select file_id, file_version, iteration, source_ingestion_date, status
+              from ngas_mirroring_bookkeeping i
+              where iteration = {0}
+              order by source_ingestion_date
+            )
+          )
+          where file_id = d.file_id
+          and file_version = d.file_version
+          and iteration = d.iteration
+          and myrownum > {1}
+       )
+    """
     ngams_server.getDb().query2(sql, args=(iteration, file_limit))
 
 

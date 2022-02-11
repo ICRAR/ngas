@@ -1059,9 +1059,13 @@ class ngamsServer(object):
         """
         logger.debug("Starting Janitor Thread ...")
 
-        # Create the child process and kick it off
+        # Create the communication thread and child process and kick them off
+        # (in that order to prevent the problem reported in #78).
+        # Note that to *really* ensure no problems we'd have to block until the
+        # communication thread is actually working, but we can live with this.
         self._serv_to_jan_queue = multiprocessing.Queue()
         self._jan_to_serv_queue = multiprocessing.Queue()
+        self._janitorQueThread.start()
         self._janitorThread.start(self, self._serv_to_jan_queue, self._jan_to_serv_queue)
 
         # Re-create the DB connections
@@ -1069,9 +1073,6 @@ class ngamsServer(object):
 
         # Subscribe to db-change events (which we pass down to the janitor proc)
         self.getDb().addDbChangeEvt(self._janitordbChangeSync)
-
-        # Kick off the thread that takes care of communicating back and forth
-        self._janitorQueThread.start()
 
 
     def stopJanitorThread(self):
@@ -1180,10 +1181,9 @@ class ngamsServer(object):
 
     def startMirControlThread(self):
         """Starts the Mirroring Control Thread"""
-        if not self.getCfg().getMirroringActive():
-            logger.info("NGAS Mirroring not active - Mirroring Control Thread not started")
-            return
-        logger.info("NGAS Mirroring is active - Starting Mirroring Control Thread")
+        # the mirroring thread is _always_ started and then may do nothing, depending on
+        # the configuration. It does this for the benefit of ALMA mirroring which performs
+        # clean-up in the database when it starts.
         self._mir_control_thread.start(self)
 
 

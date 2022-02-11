@@ -111,7 +111,7 @@ def authorize(cfg, reqPropsObj):
         raise UnauthenticatedError("unknown user specified")
 
     # Password matches and command is allowed
-    stored_pass = base64.decodestring(six.b(stored_pass))
+    stored_pass = base64.b64decode(six.b(stored_pass))
     if password != stored_pass:
         raise UnauthenticatedError("wrong password for user " + user)
     if not cmdPermitted(cfg, reqPropsObj, user):

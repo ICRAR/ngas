@@ -722,7 +722,7 @@ def _data_check_cycle(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt):
             # Be nice and join sub-threads
             for t in threads.values():
                 t.join(10)
-                if t.isAlive():
+                if t.is_alive():
                     logger.warning("Thread %r didn't cleanly shut down within 10 seconds", t)
 
             # Let's stop ourselves now
@@ -731,7 +731,7 @@ def _data_check_cycle(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt):
         else:
             # Check if all the sub-threads are still running
             # or if the check cycle is completed.
-            threads = {n: t for n, t in threads.items() if t.isAlive()}
+            threads = {n: t for n, t in threads.items() if t.is_alive()}
             if not threads:
                 lastCheckTime = time.time()
                 break

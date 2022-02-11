@@ -911,8 +911,27 @@ def generate_report(ngams_server):
 def clean_up_mirroring(ngams_server):
     host = get_fully_qualified_domain_name(ngams_server)
     logger.debug("Cleaning up mirroring tasks for NGAS node: %s", host)
-    sql = "update ngas_mirroring_bookkeeping set status = 'ABORTED', staging_file = null " \
-          "where status = 'READY' or status = 'LOCKED' and target_host = {0}"
+    # An ngams server may have been restarted (or killed / crashed / rebooted) while mirroring. We
+    # need to clean up older files otherwise mirroring wil ignore them, thinking they are already
+    # being processed. In the general case we should only clean up files which have been assigned 
+    # to the server which is restarting. The other servers in the cluster may be happily mirroring.
+    # In a highly unlikely case we could also have killed the mirroring master before files have 
+    # been assigned to a target host. Any node can clean these up, but only for previous iterations.
+    sql = """
+      update ngas_mirroring_bookkeeping 
+      set status = 'ABORTED', staging_file = null
+      where status in ('READY', 'LOCKED') 
+      and (
+        target_host = {0}
+        or (
+          target_host is null 
+          and iteration < (
+            select max(iteration)
+            from ngas_mirroring_bookkeeping
+          )
+        )
+      )
+    """
     ngams_server.getDb().query2(sql, args=(host,))
     sql = "update ngas_mirroring_bookkeeping set status = 'TORESUME' where status = 'FETCHING' and target_host = {0}"
     ngams_server.getDb().query2(sql, args=(host,))
@@ -954,10 +973,20 @@ def mirror_control_thread(ngams_server, stop_event):
     :param ngams_server: Reference to server object (ngamsServer)
     :param stop_event: Stop event
     """
-    if ngams_server.getCfg().getVal("Mirroring[1].AlmaMirroring"):
+    # whether or not this is the ALMA mirroring thread (Mirrroring.Active) we always clean up any previous iterations
+    isAlma = ngams_server.getCfg().getVal("Mirroring[1].AlmaMirroring")
+    if isAlma:
         logger.info("ALMA mirroring control thread cleaning up from previous state")
         clean_up_mirroring(ngams_server)
 
+    if not ngams_server.getCfg().getMirroringActive():
+        if isAlma:
+            logger.info('not the mirroring master - stopping the mirroring control thread')
+        else:
+            logger.info('NGAS Mirroring not active - Mirroring Control Thread not started')
+        return
+
+    if isAlma:
         logger.info("ALMA mirroring control thread entering main server loop")
         while True:
             # Encapsulate this whole block to avoid that the thread dies in case a problem occurs,
@@ -995,6 +1024,7 @@ def mirror_control_thread(ngams_server, stop_event):
                 if stop_event.wait(5.0):
                     return
     else:
+        logger.info('NGAS Mirroring is active')
         # Generic Mirroring service
         initialise_mirroring(ngams_server)
 
