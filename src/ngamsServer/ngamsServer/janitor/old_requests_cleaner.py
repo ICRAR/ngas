@@ -42,6 +42,7 @@ def run(srvObj, stopEvt):
     # I can't work out why we _sometimes_ get a None back. We use a NullDb for storing requests.
     # Until I work it out, this workaround is in place. 
     if req_ids is None:
+        logger.warn('obtained invalid request ids from the server')
         req_ids = []
 
     to_delete = []
