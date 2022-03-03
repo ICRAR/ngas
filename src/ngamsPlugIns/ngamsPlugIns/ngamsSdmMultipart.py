@@ -36,11 +36,11 @@ Note that the plug-in is implemented for the usage for ALMA. If used in other co
 the individual context should be implemented and NG/AMS configured to use it.
 """
 
-import email
+import email.parser
+import email.policy
 import logging
 import os
 import re
-import sys
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib import ngamsCore
@@ -50,11 +50,6 @@ PLUGIN_ID = __name__
 
 # Update for the new assignment of archive IDs (backwards compatible)
 UID_EXPRESSION = re.compile(r"^[uU][iI][dD]://[aAbBcCzZxX][0-9,a-z,A-Z]+(/[xX][0-9,a-z,A-Z]+){2}(#\w{1,}|/\w{0,}){0,}$")
-
-# Python 2/3 workaround
-message_from_file = email.message_from_file
-if sys.version_info[0] > 2:
-    message_from_file = email.message_from_binary_file
 
 logger = logging.getLogger(__name__)
 
@@ -69,13 +64,12 @@ def specific_treatment(file_path):
     filename = os.path.basename(file_path)
     try:
         with open(file_path, "rb") as fo:
-            mime_message = message_from_file(fo)
+            mime_message = email.parser.BytesHeaderParser(policy=email.policy.default).parse(fo)
     except Exception as e:
         raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "Failed to open file: " + str(e)]))
 
     if mime_message is None:
-        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE",
-                               [filename, PLUGIN_ID, "Failed to parse mime message"]))
+        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "Failed to parse mime message"]))
 
     file_type = mime_message.get_content_type()
     alma_uid = mime_message["alma-uid"]
