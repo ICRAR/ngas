@@ -37,7 +37,6 @@ the individual context should be implemented and NG/AMS configured to use it.
 """
 
 import email.parser
-import email.policy
 import logging
 import os
 import re
@@ -54,6 +53,35 @@ UID_EXPRESSION = re.compile(r"^[uU][iI][dD]://[aAbBcCzZxX][0-9,a-z,A-Z]+(/[xX][0
 logger = logging.getLogger(__name__)
 
 
+def parse_multipart_primary_header(file_path):
+    """
+    Parses email MIME document file and extracts the primary header elements
+    :param file_path: File path
+    :return: email message object
+    """
+    filename = os.path.basename(file_path)
+    try:
+        # We read file using binary and decode to utf-8 later to ensure python 2/3 compatibility
+        with open(file_path, 'rb') as fo:
+            # Verify the file uses MIME format
+            line = fo.readline().decode(encoding="utf-8")
+            if not line.startswith("MIME-Version: 1.0"):
+                raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "File is not MIME file format"]))
+            # Read primary header block lines into the parser
+            feedparser = email.parser.FeedParser()
+            feedparser.feed(line)
+            for line in fo:
+                line = line.decode(encoding="utf-8")
+                if line.startswith("\n"):
+                    continue
+                if line.startswith("--MIME_boundary"):
+                    break
+                feedparser.feed(line)
+            return feedparser.close()
+    except Exception as e:
+        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "Failed to open file: " + str(e)]))
+
+
 def specific_treatment(file_path):
     """
     Method contains the specific treatment of the file passed from NG/AMS
@@ -62,14 +90,9 @@ def specific_treatment(file_path):
              file without extension. file_type is the mime-type from the header.
     """
     filename = os.path.basename(file_path)
-    try:
-        with open(file_path, "rb") as fo:
-            mime_message = email.parser.BytesHeaderParser(policy=email.policy.default).parse(fo)
-    except Exception as e:
-        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "Failed to open file: " + str(e)]))
-
+    mime_message = parse_multipart_primary_header(file_path)
     if mime_message is None:
-        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "Failed to parse mime message"]))
+        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "Failed to parse MIME message"]))
 
     file_type = mime_message.get_content_type()
     alma_uid = mime_message["alma-uid"]
@@ -78,7 +101,7 @@ def specific_treatment(file_path):
     if alma_uid is None:
         raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE",
                                [filename, PLUGIN_ID,
-                                "Mandatory 'alma-uid' and/or 'Content-Location' parameter not found in mime header!"]))
+                                "Mandatory 'alma-uid' and/or 'Content-Location' parameter not found in MIME header!"]))
 
     if UID_EXPRESSION.match(alma_uid) is None:
         raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE",
