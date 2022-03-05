@@ -38,45 +38,66 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
-import email
+import email.parser
 import logging
 import os
-import sys
 
 from ngamsLib import ngamsCore
 from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import genLog
 
-# Python 2/3 workaround
-message_from_file = email.message_from_file
-if sys.version_info[0] > 2:
-    message_from_file = email.message_from_binary_file
+PLUGIN_ID = __name__
 
 logger = logging.getLogger(__name__)
+
+
+def parse_multipart_primary_header(file_path):
+    """
+    Parses email MIME document file and extracts the primary header elements
+    :param file_path: File path
+    :return: email message object
+    """
+    filename = os.path.basename(file_path)
+    try:
+        # We read file using binary and decode to utf-8 later to ensure python 2/3 compatibility
+        with open(file_path, 'rb') as fo:
+            # Verify the file uses MIME format
+            line = fo.readline().decode(encoding="utf-8")
+            if not line.startswith("MIME-Version: 1.0"):
+                raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "File is not MIME file format"]))
+            # Read primary header block lines into the parser
+            feedparser = email.parser.FeedParser()
+            feedparser.feed(line)
+            for line in fo:
+                line = line.decode(encoding="utf-8")
+                if line.startswith("\n"):
+                    continue
+                if line.startswith("--MIME_boundary"):
+                    break
+                feedparser.feed(line)
+            return feedparser.close()
+    except Exception as e:
+        raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "Failed to open file: " + str(e)]))
 
 
 def get_multipart_file_content_type(file_path):
     """
     Unpack a MIME message and determine the content type (e.g. multipart/mixed or multipart/related)
-
     :param file_path: MIME message file path
     :return: MIME content type
     """
-    with open(file_path, 'rb') as fo:
-        # message = email.message_from_binary_file(fo)
-        message = message_from_file(fo)
-        for part in message.walk():
-            # multipart/* are just containers
-            if part.get_content_type() == 'multipart/mixed':
-                return part.get_content_type()
-            elif part.get_content_type() == 'multipart/related':
-                return part.get_content_type()
+    mime_message = parse_multipart_primary_header(file_path)
+    if mime_message.get_content_type() == 'multipart/mixed':
+        return mime_message.get_content_type()
+    elif mime_message.get_content_type() == 'multipart/related':
+        return mime_message.get_content_type()
+    else:
         return None
 
 
 def ngamsRegisterAlmaPlugIn(server_object, request_object, param_dict):
     """
     Generic registration plug-in to handle registration of files
-
     :param server_object: Reference to NG/AMS Server Object (ngamsServer)
     :param request_object: NG/AMS request properties object (ngamsReqProps)
     :param param_dict: Parameter dictionary
@@ -92,7 +113,7 @@ def ngamsRegisterAlmaPlugIn(server_object, request_object, param_dict):
     if mime_type == ngamsCore.NGAMS_UNKNOWN_MT:
         content_type = get_multipart_file_content_type(stage_file)
         if content_type is None:
-            error_message = ngamsCore.genLog("NGAMS_ER_UNKNOWN_MIME_TYPE1", [file_id])
+            error_message = genLog("NGAMS_ER_UNKNOWN_MIME_TYPE1", [file_id])
             raise Exception(error_message)
         else:
             mime_type = content_type
