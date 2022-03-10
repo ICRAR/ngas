@@ -66,7 +66,9 @@ def parse_multipart_primary_header(file_path):
             # Verify the file uses MIME format
             line = fo.readline().decode(encoding="utf-8")
             first_line = line.lower()
-            if not first_line.startswith("message-id") and not first_line.startswith("mime-version"):
+            if not first_line.startswith("date")\
+                    and not first_line.startswith("message-id")\
+                    and not first_line.startswith("mime-version"):
                 raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "File is not MIME file format"]))
             # Read primary header block lines into the parser
             feedparser = email.parser.FeedParser()
