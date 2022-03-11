@@ -63,21 +63,15 @@ def parse_multipart_primary_header(file_path):
     try:
         # We read file using binary and decode to utf-8 later to ensure python 2/3 compatibility
         with open(file_path, 'rb') as fo:
-            # Verify the file uses MIME format
-            line = fo.readline().decode(encoding="utf-8")
-            first_line = line.lower()
-            if not first_line.startswith("date")\
-                    and not first_line.startswith("message-id")\
-                    and not first_line.startswith("mime-version"):
-                raise Exception(genLog("NGAMS_ER_DAPI_BAD_FILE", [filename, PLUGIN_ID, "File is not MIME file format"]))
-            # Read primary header block lines into the parser
+            # We only want to read the primary header block lines into the parser
+            # According to section 3.1 of RFC822:
+            # A message consists of header fields and, optionally, a body. The body is simply a sequence of lines
+            # containing ASCII characters. It is separated from the headers by a null line (i.e., a  line with nothing
+            # preceding the CRLF).
             feedparser = email.parser.FeedParser()
-            feedparser.feed(line)
             for line in fo:
                 line = line.decode(encoding="utf-8")
-                if line.startswith("\n"):
-                    continue
-                if line.startswith("--"):
+                if line.startswith("\r") or line.startswith("\n") or line.startswith("--"):
                     break
                 feedparser.feed(line)
             return feedparser.close()
