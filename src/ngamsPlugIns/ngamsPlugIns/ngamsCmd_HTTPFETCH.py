@@ -175,7 +175,7 @@ def save_to_file(ngams_server, request_properties, target_filename, block_size, 
 
     # Raise exception if bytes received were less than expected
     if remaining_size != 0:
-        msg = "No all expected data arrived, {:d} bytes left to read".format(remaining_size)
+        msg = "Not all expected data arrived, {:d} bytes left to read".format(remaining_size)
         raise ngamsFailedDownloadException.FailedDownloadException(msg)
 
     # Now check the freshly calculated CRC value against the stored CRC value
