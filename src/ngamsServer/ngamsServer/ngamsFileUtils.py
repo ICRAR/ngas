@@ -679,8 +679,8 @@ def checkFile(srvObj,
     fileChecked = os.path.normpath("%s|%s___%s___%s___%s.check" %
                                    (
                                     NGAMS_CACHE_DIR, NGAMS_DATA_CHECK_THR,
-                                    diskId, fileId,
-                                    str(fileVersion))).replace("/", "_")
+                                    diskId, fileId.replace("/", "_"),
+                                    str(fileVersion)))
     fileChecked = srvObj.getCfg().getRootDirectory() + '/' + fileChecked.replace("|","/")
 
     fileCheckedFo = None
