@@ -170,10 +170,13 @@ if [[ "$DB" == "mysql" ]]; then
 	# Python packages needed
 	PIP_PACKAGES+=" MySQL-python"
 
+	# Needed to compile MySQL-python under python2 in Ubuntu focal
+	sudo wget https://raw.githubusercontent.com/paulfitz/mysql-connector-c/master/include/my_config.h -O /usr/include/mysql/my_config.h
+
 elif [[ "$DB" == "postgresql" ]]; then
 
 	# Create database and user
-	psql_cmd="psql -U postgres -c"
+	psql_cmd="psql -c"
 	$psql_cmd "CREATE USER ngas WITH PASSWORD 'ngas';" || fail "$EUSER"
 	$psql_cmd 'CREATE DATABASE ngas;' || fail "$EDB"
 	$psql_cmd 'GRANT ALL PRIVILEGES ON DATABASE ngas TO ngas;' || fail "$EPERM"

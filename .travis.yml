@@ -24,7 +24,7 @@
 # Most tests run on ubuntu xenial with python 2.7
 #
 os: linux
-dist: xenial
+dist: focal
 language: python
 
 #
@@ -66,15 +66,16 @@ jobs:
       - libmysqlclient-dev
       - libdb-dev
     services: mysql
-  - env: DB=postgresql
+  - env: DB=postgresql PGPORT=5433 PGUSER=travis
     python: 2.7
     addons:
      hostname: my-ngas-host
+     postgresql: "12"
      apt:
       packages:
+      - postgresql-12
       - libpq-dev
       - libdb-dev
-    services: postgresql
   # The rest use all sqlite3, but in more diverse environments
   - python: "3.6"
   - python: "3.7"
