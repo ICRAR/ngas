@@ -1095,7 +1095,7 @@ class ngamsServer(object):
            nothing to be read keep trying until there is something.
          * If something is read, do something with it, and also check if
            a reply should be sent (and send it if required).
-         * Continue like this until the janitor process is signaled to stop.
+         * Continue like this until the janitor process is signalled to stop.
         """
 
         UNSET = object()
