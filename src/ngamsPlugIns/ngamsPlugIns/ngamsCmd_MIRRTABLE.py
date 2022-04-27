@@ -167,8 +167,9 @@ def handleCmd(ngams_server, request_properties, http_reference=None):
         working_source_nodes = remove_empty_source_nodes(iteration, source_active_nodes, target_cluster, ngams_server)
 
         # Assign book keeping table entries
-        logger.info("Updating entries in ngas_mirroring_bookkeeping_table to assign target nodes")
-        total_files_to_mirror = assign_mirroring_bookkeeping_entries(iteration, working_source_nodes,
+        total_files_to_mirror = get_num_files_to_resume(iteration, ngams_server)
+        logger.info("Updating new entries in ngas_mirroring_bookkeeping_table to assign target nodes")
+        total_files_to_mirror += assign_mirroring_bookkeeping_entries(iteration, working_source_nodes,
                                                                      target_cluster, ngams_server)
 
         logger.info("There are %d files are to be mirrored in iteration %d", total_files_to_mirror, iteration)
@@ -677,6 +678,14 @@ def assign_files_to_target_nodes(files, assigner, volumes_to_files):
                     target_host, target_volume)
         volumes_to_files.setdefault((target_host, target_volume), []).append(next_file_to_be_mirrored)
 
+def get_num_files_to_resume(iteration, ngams_server):
+    """
+    How many files in this iteration are being resumed from a failure in a previous iteration?
+    """
+    sql = "select count(file_id) from ngas_mirroring_bookkeeping where iteration = {0} and status <> 'LOCKED'"
+    num_files = ngams_server.getDb().query2(sql, args=(iteration,))[0][0]
+    logger.info('iteration %d contains %d files which will be resumed', iteration, num_files)
+    return num_files
 
 def assign_mirroring_bookkeeping_entries(iteration, source_cluster_active_nodes, cluster_name, ngams_server):
     """
