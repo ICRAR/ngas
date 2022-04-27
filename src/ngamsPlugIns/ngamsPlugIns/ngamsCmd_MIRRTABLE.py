@@ -684,7 +684,7 @@ def get_num_files_to_resume(iteration, ngams_server):
     """
     sql = "select count(file_id) from ngas_mirroring_bookkeeping where iteration = {0} and status <> 'LOCKED'"
     num_files = ngams_server.getDb().query2(sql, args=(iteration,))[0][0]
-    logger.info('iteration %d contains %d files which will be resumed' % (iteration, num_files))
+    logger.info('iteration %d contains %d files which will be resumed', iteration, num_files)
     return num_files
 
 def assign_mirroring_bookkeeping_entries(iteration, source_cluster_active_nodes, cluster_name, ngams_server):
