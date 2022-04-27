@@ -704,9 +704,12 @@ def assign_mirroring_bookkeeping_entries(iteration, source_cluster_active_nodes,
         # In theory we shouldn't have reached this point if there are no threads available. However, the way I
         # calculate if threads are available is open to errors, and it can be that we only discover at this point
         # that no threads are actually available.
+        # ICT-19787 it seems that we can optimise here. If there are no target hosts then we have no files to mirror.
+        # But there may be already files in 'READY' state in this iteration. So we let the processing proceed. The 
+        # important fact is that there is cleanup code at the end of the iteration which marks the files as 'FAILED'
+        # thus allowing them to be considered in the next iteration.
         logger.info("There are no hosts available with threads available for mirroring")
-        return 0
-
+        
     assigned_files = {}
     for source_node in source_cluster_active_nodes:
         logger.info('Assigning files from source host %s to target nodes / volumes', source_node)
