@@ -78,13 +78,13 @@ class LogDefHolder(object):
 
             # Get the Log Text
             tmpNodeList = node.getElementsByTagName("LogText")
-            text = []
+            text_fragments = []
             for nd in tmpNodeList[0].childNodes:
                 if (nd.nodeType == node.TEXT_NODE):
-                    text.append(nd.data.strip(" \n"))
+                    text_fragments.append(nd.data.strip(" \n"))
             # Remove newline characters and ensure that there is no
             # sequence of blanks.
-            text = ' '.join(text)
+            text = ' '.join(text_fragments)
             text = text.replace("\n", "")
             text = re.sub(r"\s *", " ", text)
             ltext = text
