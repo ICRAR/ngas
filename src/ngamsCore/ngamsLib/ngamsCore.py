@@ -640,11 +640,11 @@ def isoTime2Secs(isoTime):
     timeVector = timePart.split(":")
     hours = int(timeVector[0])
     mins = int(timeVector[1])
-    secs = 0
+    secs = 0.0
     if len(timeVector) > 2:
         secs = float(timeVector[2])
 
-    return days*24*3600 + hours*3600 + mins*60 + secs
+    return float(days*24*3600 + hours*3600 + mins*60) + secs
 
 
 def getBoolean(val):
