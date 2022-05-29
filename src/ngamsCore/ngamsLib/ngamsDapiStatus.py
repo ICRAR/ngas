@@ -53,7 +53,7 @@ class ngamsDapiStatus:
         self.__compression       = ""
         self.__relPath           = ""
         self.__slotId            = ""
-        self.__ioTime            = 0
+        self.__ioTime            = 0.0
         self.__fileExists        = -1
         self.__completeFilename  = ""
         self.crc = None
