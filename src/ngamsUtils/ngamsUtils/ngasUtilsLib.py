@@ -43,7 +43,7 @@ import time
 import six
 
 from ngamsLib.ngamsCore import getHostName, getFileCreationTime, NGAMS_NOT_RUN_STATE, ngamsCopyrightString
-from ngamsLib import ngamsDb
+from ngamsLib import ngamsDb, utils
 from ngamsPClient import ngamsPClient
 
 logger = logging.getLogger(__name__)
@@ -121,6 +121,9 @@ def get_parameter_ngas_resource_file(parameter):
             return value
     return None
 
+def _b64_string(s, encode):
+    f = base64.b64encode if encode else base64.b64decode
+    return utils.b2s(f(six.b(s)), 'utf8')
 
 def encrypt_access_code(access_code):
     """
@@ -129,7 +132,7 @@ def encrypt_access_code(access_code):
     :param access_code: Access Code as typed by the user (string)
     :return: Encoded Access Code (string)
     """
-    return base64.encodestring(access_code)
+    return _b64_string(access_code, True)
 
 
 def decrypt_access_code(encrypted_access_code):
@@ -139,7 +142,7 @@ def decrypt_access_code(encrypted_access_code):
     :param encrypted_access_code: Encrypted Access Code (string)
     :return: Decoded Access Code (string)
     """
-    return base64.decodestring(encrypted_access_code)
+    return _b64_string(encrypted_access_code, False)
 
 
 def check_access_code(access_code):
