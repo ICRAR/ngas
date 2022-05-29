@@ -279,7 +279,7 @@ def start_mirroring_threads(ngams_server, stop_event):
         args = (ngams_server, stop_event)
         logger.debug("Starting Mirroring Thread: %s", thread_id)
         thread_handle = threading.Thread(None, mirroring_thread, thread_id, args)
-        thread_handle.setDaemon(False)
+        thread_handle.daemon = False
         thread_handle.start()
 
 

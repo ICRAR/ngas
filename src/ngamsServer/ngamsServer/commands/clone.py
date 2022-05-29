@@ -828,7 +828,7 @@ def _clone(srvObj,
                 reqPropsObj, None)
         thrName = NGAMS_CLONE_THR + threading.current_thread().getName()
         cloneThread = threading.Thread(None, _cloneThread, thrName, args)
-        cloneThread.setDaemon(0)
+        cloneThread.daemon = False
         cloneThread.start()
     else:
         # Carry out the cloning (directly in this thread) and send reply

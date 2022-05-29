@@ -139,7 +139,7 @@ class ngamsArchiveStressTest(ngamsTestSuite):
             args = (self, n, inc, None)
             THREADS[n] = threading.Thread(None, archiveThread,
                                           "ArchiveThread-%d" % n, args)
-            THREADS[n].setDaemon(0)
+            THREADS[n].daemon = False
             THREADS[n].start()
             THREAD_STAT[n] = None
         startTime = time.time()

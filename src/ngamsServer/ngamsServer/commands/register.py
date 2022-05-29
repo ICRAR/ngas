@@ -652,7 +652,7 @@ def register(srvObj,
                 reqPropsObj, None)
         thrName = NGAMS_REGISTER_THR + threading.current_thread().getName()
         regThread = threading.Thread(None, _registerThread, thrName, args)
-        regThread.setDaemon(0)
+        regThread.daemon = False
         regThread.start()
     else:
         # Carry out the REGISTER Command (directly in this thread) and send

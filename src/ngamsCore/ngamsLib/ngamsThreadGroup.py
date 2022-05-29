@@ -153,7 +153,7 @@ class ngamsThreadGroup:
             thrId = "%s-%d" % (id, n)
             thrObj = threading.Thread(None, self.__threadEncapsulator,
                                       thrId, args)
-            thrObj.setDaemon(0)
+            thrObj.daemon = False
             thrObj.start()
             self.__threadHandles.append(thrObj)
 
@@ -194,7 +194,7 @@ class ngamsThreadGroup:
         """
         activeThreads = 0
         for threadHandle in self.__threadHandles:
-            if (threadHandle.isAlive()): activeThreads += 1
+            if (threadHandle.is_alive()): activeThreads += 1
         return activeThreads
 
 
@@ -349,7 +349,7 @@ class ngamsThreadGroup:
                           "to terminate"
                     raise Exception(msg)
             thrWaitingList[0].join(curTimeout)
-            if (not thrWaitingList[0].isAlive()): del thrWaitingList[0]
+            if (not thrWaitingList[0].is_alive()): del thrWaitingList[0]
             if (thrWaitingList == []):
                 return self
 

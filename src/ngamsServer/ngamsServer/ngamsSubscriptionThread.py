@@ -89,7 +89,7 @@ def startSubscriptionThread(srvObj):
     args = (srvObj, None)
     srvObj._subscriptionThread = threading.Thread(None, subscriptionThread,
                                                   NGAMS_SUBSCRIPTION_THR, args)
-    srvObj._subscriptionThread.setDaemon(0)
+    srvObj._subscriptionThread.daemon = False
     srvObj._subscriptionThread.start()
 
     if (srvObj._deliveryStopSync.isSet()):
@@ -1396,7 +1396,7 @@ def subscriptionThread(srvObj,
                         deliveryThreadRefDic[thrdName] = 1
                         deliveryFileDic[thrdName] = None
                         deliveryThrRef = threading.Thread(None, _deliveryThread, thrdName, args)
-                        deliveryThrRef.setDaemon(0)
+                        deliveryThrRef.daemon = False
                         deliveryThrRef.start()
                         deliveryThreads.append(deliveryThrRef)
 

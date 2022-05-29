@@ -706,7 +706,7 @@ def _data_check_cycle(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt):
                 dbmObjDic, reqFileInfoSem, stats)
         logger.debug("Starting Data Check Sub-Thread: %s", threadName)
         t = threading.Thread(target=_dataCheckSubThread, name=threadName, args=args)
-        t.setDaemon= True
+        t.daemon = True
         t.start()
         threads[threadName] = t
 
