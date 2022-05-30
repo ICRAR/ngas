@@ -40,6 +40,8 @@ import shutil
 import smtplib
 import time
 
+import six
+
 from ngamsLib.ngamsCore import getHostName, getFileCreationTime, NGAMS_NOT_RUN_STATE, ngamsCopyrightString
 from ngamsLib import ngamsDb
 from ngamsPClient import ngamsPClient
@@ -161,7 +163,7 @@ def console_input(message):
     :param message: Message to print (string)
     :return: Information entered by the user (string)
     """
-    return raw_input("INPUT> " + message + " ").strip()
+    return six.input("INPUT> " + message + " ").strip()
 
 
 def get_db_parameters():
@@ -287,7 +289,7 @@ def dcc_message_to_file_list(dcc_message_file, target_file):
                 break
             line_elements = dcc_message_lines[line_num][file_id_index:].split(" ")
             # element_list = cleanList(line_elements)
-            element_list = filter(None, line_elements)
+            element_list = list(filter(None, line_elements))
             file_id = element_list[0]
             file_version = element_list[1]
             disk_id = element_list[2].split(":")[1]
@@ -311,7 +313,7 @@ def dcc_report_to_file_list(dcc_report):
         if line.find("ERROR: File in DB missing on disk") != -1 \
                 or line.find("ERROR: Inconsistent checksum found") != -1:
             # clean_list = cleanList(line_elements)
-            clean_list = filter(None, line.split(" "))
+            clean_list = list(filter(None, line.split(" ")))
             disk_id = clean_list[-1].split(":")[-1]
             file_id = clean_list[-3]
             file_version = clean_list[-2]
