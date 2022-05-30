@@ -149,7 +149,10 @@ def check_access_code(access_code):
 
     :param access_code: Access Code as given by the user (string)
     """
-    decrypted_access_code = decrypt_access_code(get_parameter_ngas_resource_file(NGAS_RC_PAR_ACC_CODE))
+    rc_access_code = get_parameter_ngas_resource_file(NGAS_RC_PAR_ACC_CODE)
+    if rc_access_code is None:
+        raise Exception("No access code defined in RC file!!")
+    decrypted_access_code = decrypt_access_code(rc_access_code)
     if decrypted_access_code == access_code:
         return
     else:
@@ -191,6 +194,9 @@ def send_email(subject, to, message, content_type=None, attachment_name=None):
     :param attachment_name: Name of attachment in mail (string)
     """
     smtp_host = get_parameter_ngas_resource_file(NGAS_RC_PAR_SMTP_HOST)
+    if not smtp_host:
+        print("Error: No SMTP host defined in RC file")
+        return
     email_list = to.split(",")
     from_field = getpass.getuser() + "@" + os.uname()[1].split(".")[0]
     for emailAdr in email_list:
