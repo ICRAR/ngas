@@ -41,6 +41,7 @@ import smtplib
 import time
 
 import six
+from six.moves import input
 
 from ngamsLib.ngamsCore import getHostName, getFileCreationTime, NGAMS_NOT_RUN_STATE, ngamsCopyrightString
 from ngamsLib import ngamsDb, utils
@@ -169,7 +170,7 @@ def console_input(message):
     :param message: Message to print (string)
     :return: Information entered by the user (string)
     """
-    return six.input("INPUT> " + message + " ").strip()
+    return input("INPUT> " + message + " ").strip()
 
 
 def get_db_parameters():
