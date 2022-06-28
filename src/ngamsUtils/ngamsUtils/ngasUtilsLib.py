@@ -72,7 +72,7 @@ def get_ngas_resource_file():
     return os.path.expanduser(NGAS_RC_FILE)
 
 
-def get_parameter_ngas_resource_file(parameter):
+def get_parameter_ngas_resource_file(parameter, required=False):
     """
     Retrieve a parameter from the NGAS resource file.
 
@@ -120,6 +120,8 @@ def get_parameter_ngas_resource_file(parameter):
             if value[0] == "$":
                 value = os.environ[value[1:]]
             return value
+    if required:
+        raise ValueError("No %s parameter defined in NGAS Resource File" % parameter)
     return None
 
 def _b64_string(s, encode):
@@ -179,11 +181,11 @@ def get_db_parameters():
 
     :return: Tuple with the DB parameters (<DB Interface>, <DB Srv>, <DB>, <User>, <Pwd>) (tuple)
     """
-    interface = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_INT)
-    server = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_SRV)
-    db = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_NAME)
-    user = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_USER)
-    password = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_PWD)
+    interface = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_INT, required=True)
+    server = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_SRV, required=True)
+    db = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_NAME, required=True)
+    user = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_USER, required=True)
+    password = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_PWD, required=True)
     return interface, server, db, user, password
 
 
