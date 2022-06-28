@@ -572,7 +572,7 @@ def get_db_connection():
     Open a database connection using property values read from the resource file
     """
     interface, server, db, user, password = get_db_parameters()
-    password = base64.b64decode(password)
+    password = utils.b2s(base64.b64decode(password), 'utf8')
     params = {
         "dsn": db,
         "user": user,
