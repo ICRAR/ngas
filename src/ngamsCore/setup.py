@@ -30,7 +30,12 @@ with open('../../VERSION') as vfile:
             break
 
 # We definitely require this one
-install_requires = ['DBUtils<2', 'six>=1.9', 'requests']
+install_requires = [
+    'DBUtils<2',
+    'six>=1.9',
+    'requests; python_version > "3.6"',
+    'requests<2.28; python_version < "3.6"',
+]
 
 # In python 3.3+ we use os.sendfile, otherwise we require pysendfile.sendfile
 if sys.version_info[0:2] < (3, 3):
