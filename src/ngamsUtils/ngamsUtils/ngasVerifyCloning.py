@@ -321,7 +321,7 @@ def main():
                                     "CLONE_VER_REP_{:s}".format(source_disk_id))
     except Exception as e:
         print("ERROR occurred executing the Clone Verification Tool: \n\n" + str(e) + "\n")
-        print(traceback.print_exc())
+        traceback.print_exc()
         sys.exit(1)
 
 

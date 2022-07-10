@@ -1326,7 +1326,7 @@ def main():
         param_dict = ngasUtilsLib.option_dictionary_to_parameter_dictionary(option_dict)
     except Exception as e:
         print("\nProblem executing the tool:\n\n{:s}\n".format(str(e)))
-        print(traceback.format_exc())
+        traceback.print_exc()
         sys.exit(1)
     else:
         try:
@@ -1337,7 +1337,7 @@ def main():
             if str(e) == "0":
                 sys.exit(0)
             print("\nProblem executing the tool:\n\n{:s}\n".format(str(e)))
-            print(traceback.print_exc())
+            traceback.print_exc()
             sys.exit(1)
 
 
