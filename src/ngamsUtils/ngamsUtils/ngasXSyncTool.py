@@ -528,7 +528,7 @@ def initialize(param_dict):
     else:
         try:
             hash_md5 = hashlib.md5()
-            with open(param_dict[PAR_FILE_LIST]) as fo:
+            with open(param_dict[PAR_FILE_LIST], 'rb') as fo:
                 hash_md5.update(fo.read())
             session_id = hash_md5.hexdigest()
         except Exception as e:
