@@ -149,7 +149,7 @@ EPIP="Failed to install pip packages"
 # and the python installation in Travis doesn't come with the bsddb built-in module.
 # Additionally, in later python versions installing C extensiosn
 # seems to yield unloadable modules (e.g., netifaces.AF_INET could not be loaded).
-PIP_PACKAGES="bsddb3!=6.2.8 python-daemon astropy netifaces"
+PIP_PACKAGES="bsddb3!=6.2.8 python-daemon<=2.3.0 astropy netifaces"
 
 # We need to prepare the database for what's to come later on, and to install
 # the corresponding python module so NGAS can talk to the database
