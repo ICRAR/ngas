@@ -220,6 +220,7 @@ fi
 # as python 3.6/3.7 fails otherwise
 if [ "${TRAVIS_OS_NAME}" = linux ]; then
 	pip install -U setuptools || fail "Can't install latest setuptools"
+	export BERKELEYDB_DIR=/usr
 fi
 
 pip install $PIP_PACKAGES || fail "$EPIP"
