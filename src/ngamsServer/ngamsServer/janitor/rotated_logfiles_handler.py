@@ -97,10 +97,11 @@ def run(srvObj, stopEvt):
             except:
                 logger.exception("Error while handling logfile %s", fname)
 
-    logger.debug("Check if there are old rotated logfiles to remove ...")
     max_rotations = max(min(cfg.getLogRotateCache(), 100), 0)
     logfiles = glob.glob(os.path.join(logdir, 'LOG-ROTATE-*.nglog'))
     logfiles.sort()
-    for f in logfiles[max_rotations:]:
+    to_remove = max(len(logfiles) - max_rotations, 0)
+    logger.info("Found %d old rotated logfiles, will remove oldest %d", len(logfiles), to_remove)
+    for f in logfiles[:to_remove]:
         logger.info("Removing rotated logfile %s", f)
         rmFile(f)
