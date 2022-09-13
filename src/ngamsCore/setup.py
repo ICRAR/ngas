@@ -29,12 +29,13 @@ with open('../../VERSION') as vfile:
             version = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]
             break
 
-# We definitely require this one
+requests_version_constraint = ''
+if sys.version_info <= (3,6):
+    requests_version_constraint = '<2.28'
 install_requires = [
     'DBUtils<2',
     'six>=1.9',
-    'requests; python_version > "3.6"',
-    'requests<2.28; python_version <= "3.6"',
+    'requests' + requests_version_constraint
 ]
 
 # In python 3.3+ we use os.sendfile, otherwise we require pysendfile.sendfile
