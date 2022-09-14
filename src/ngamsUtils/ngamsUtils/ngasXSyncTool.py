@@ -1051,16 +1051,14 @@ def get_cluster_ready_naus(connection, target_cluster):
     :return: List of NAUs (list)
     """
     sql = "select host_id, srv_port from ngas_hosts " \
-          "where cluster_name = '{0}' and host_id in " \
+          "where cluster_name = {0} and host_id in " \
           "(select host_id from ngas_disks where completed = 0 and mounted = 1) order by host_id"
     result = connection.query2(sql, args=(target_cluster,))
-    if result == [[]]:
-        return []
-    else:
-        host_list = []
-        for node in result[0]:
-            host_list.append("{:s}:{:s}".format(node[0], node[1]))
-        return host_list
+    host_list = []
+    for host_id, srv_port in result:
+        host_port = host_id if ":" in host_id else "{}:{}".format(host_id, srv_port)
+        host_list.append(host_port)
+    return host_list
 
 
 def get_cluster_nodes(connection, target_cluster):
@@ -1074,19 +1072,16 @@ def get_cluster_nodes(connection, target_cluster):
                 2. String buffer with comma separated list of hostnames
                 3. String buffer with a comma separated list of host:port pairs (tuple)
     """
-    sql = "select host_id, srv_port from ngas_hosts where cluster_name = '{0}'"
+    sql = "select host_id, srv_port from ngas_hosts where cluster_name = {0}"
     result = connection.query2(sql, args=(target_cluster,))
-    if result == [[]]:
-        return []
-    else:
-        host_list = []
-        host_list_str = ""
-        server_list = ""
-        for node in result[0]:
-            host_list.append("{:s}:{:s}".format(node[0], node[1]))
-            host_list_str += "'{:s}',".format(node[0])
-            server_list += "{:s}:{:s},".format(node[0], node[1])
-        return host_list, host_list_str[:-1], server_list[:-1]
+    host_list = []
+    hosts = []
+    for host_id, srv_port in result:
+        host_port = host_id if ":" in host_id else "{}:{}".format(host_id, srv_port)
+        host_list.append(host_port)
+        host = host_port.split(":")[0]
+        hosts.append(host)
+    return host_list, ",".join(hosts), ",".join(host_list)
 
 
 def check_if_file_in_target_cluster(connection, cluster_nodes, file_id, file_version):
@@ -1168,7 +1163,7 @@ def sync_loop(thread_group_obj):
                 cluster_nodes, cluster_nodes_str, cluster_server_list = \
                     get_cluster_nodes(param_dict[PAR_DB_CON], param_dict[PAR_TARGET_CLUSTER])
                 # naus_server_list = str(cluster_naus)[1:-1].replace("'", "").replace(" ", "")
-                naus_server_list = cluster_naus
+                naus_server_list = cluster_server_list
             elif param_dict[PAR_TARGET_NODES]:
                 naus_server_list = param_dict[PAR_TARGET_NODES]
                 cluster_nodes_str = naus_server_list
