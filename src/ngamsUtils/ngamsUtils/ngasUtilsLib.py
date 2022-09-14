@@ -577,9 +577,8 @@ def get_db_connection():
     interface, server, db, user, password = get_db_parameters()
     password = utils.b2s(base64.b64decode(password), 'utf8')
     params = {
-        "dsn": db,
+        "servername": server,
         "user": user,
-        "password": password,
-        "threaded": True
+        "password": password
     }
-    return ngamsDb.ngamsDb(interface, params)
+    return ngamsDb.ngamsDb(interface, params, use_file_ignore=False)

@@ -691,7 +691,7 @@ def check_file(client, disk_id, file_id, file_version):
     try:
         parameters = [["disk_id", disk_id], ["file_id", file_id], ["file_version", file_version]]
         status = client.get_status(NGAMS_CHECKFILE_CMD, pars=parameters)
-        return status.get_message()
+        return status.getMessage()
     except Exception as e:
         return str(e)
 
@@ -812,7 +812,7 @@ def generate_intermediate_report(thread_group_obj):
     # Add the command line options in the report
     report += 50 * "-" + "\n"
     report += "Command Line Options:\n\n"
-    param_list = param_dict.keys()
+    param_list = list(param_dict.keys())
     param_list.sort()
     tmp_param_dict = {}
     for param in param_list:
@@ -843,7 +843,7 @@ def generate_report(thread_group_obj):
     # Generate list of files that failed to be synchronized (if any)
     error_report = ""
     param_dict[FAILED_DBM_NAME].initKeyPtr()
-    error_format = "{:-32s} {:-32s} {:-15s} {:s}\n"
+    error_format = "{:<32} {:<32} {:<15} {}\n"
     while True:
         key, sync_req = param_dict[FAILED_DBM_NAME].getNext()
         if not key:
@@ -1037,7 +1037,7 @@ def clone_file(client, sync_req):
         logger.debug("Leaving clone_file() (OK)")
         return status
     except Exception as e:
-        status = ngamsStatus.ngamsStatus().setStatus(NGAMS_FAILURE).set_message(str(e))
+        status = ngamsStatus.ngamsStatus().setStatus(NGAMS_FAILURE).setMessage(str(e))
         logger.debug("Leaving clone_file() (ERROR)")
         return status
 
@@ -1212,7 +1212,7 @@ def sync_loop(thread_group_obj):
                 status = clone_file(client, sync_req)
                 if status.getStatus() == NGAMS_FAILURE:
                     error_msg = "Error handling Synchronization Request: {:s}. Error: {:s}"
-                    error_msg = error_msg.format(sync_req.get_summary(), status.get_message())
+                    error_msg = error_msg.format(sync_req.get_summary(), status.getMessage())
                     logger.warning(error_msg)
                 else:
                     logger.info("Successfully cloned Synchronization Request: %s.", sync_req.get_summary())

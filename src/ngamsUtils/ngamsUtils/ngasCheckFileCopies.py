@@ -41,12 +41,10 @@ For each file found on the disk, the following output is generated:
 - whereby, Good Copies refer to copies marked as being OK in the DB.
 """
 
-import base64
 import logging
 import os
 import sys
 
-from ngamsLib import ngamsDb
 from ngamsLib import ngamsDbCore
 from ngamsLib import ngamsLib
 from . import ngasUtilsLib
@@ -66,15 +64,7 @@ def check_copies(disk_id, notification_email):
     :param disk_id: ID of disk for which to check files (string)
     :param notification_email: Comma separated list of recipients of the report generated (string)
     """
-    interface, server, db, user, password = ngasUtilsLib.get_db_parameters()
-    password = base64.b64decode(password)
-    params = {
-        "dsn": db,
-        "user": user,
-        "password": password,
-        "threaded": True
-    }
-    connection = ngamsDb.ngamsDb(interface, params)
+    connection = ngasUtilsLib.get_db_connection()
 
     # Get the information about the files on the referenced disk
     logger.info("Retrieving info about files on disk: %s ...", disk_id)
