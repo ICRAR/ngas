@@ -462,15 +462,12 @@ def _get_cluster_nodes(connection, cluster_id):
     :param cluster_id: NGAS Cluster ID (string)
     :return: List of NGAS Host IDs of the nodes in the cluster (list)
     """
-    sql = "select host_id from ngas_hosts where cluster_name='{0}'"
+    sql = "select host_id from ngas_hosts where cluster_name={0} and srv_state = 'ONLINE'"
     result = connection.query2(sql, args=(cluster_id,))
-    if len(result) == 0:
-        return []
-    else:
-        node_list = []
-        for node in result[0]:
-            node_list.append(node[0])
-        return node_list
+    node_list = []
+    for res in result:
+        node_list.append(res[0])
+    return node_list
 
 
 def get_timestamp(seconds_since_epoch=None):
@@ -1072,7 +1069,7 @@ def get_cluster_nodes(connection, target_cluster):
                 2. String buffer with comma separated list of hostnames
                 3. String buffer with a comma separated list of host:port pairs (tuple)
     """
-    sql = "select host_id, srv_port from ngas_hosts where cluster_name = {0}"
+    sql = "select host_id, srv_port from ngas_hosts where cluster_name = {0} and srv_state = 'ONLINE'"
     result = connection.query2(sql, args=(target_cluster,))
     host_list = []
     hosts = []
