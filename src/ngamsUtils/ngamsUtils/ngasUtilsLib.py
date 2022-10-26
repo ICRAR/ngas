@@ -39,8 +39,10 @@ import os
 import shutil
 import smtplib
 import time
+import json
 
 import six
+from six.moves import input
 
 from ngamsLib.ngamsCore import getHostName, getFileCreationTime, NGAMS_NOT_RUN_STATE, ngamsCopyrightString
 from ngamsLib import ngamsDb, utils
@@ -52,10 +54,8 @@ NGAS_RC_FILE = "~/.ngas"
 
 NGAS_RC_PAR_ACC_CODE = "AccessCode"
 NGAS_RC_PAR_DB_INT = "DbInterface"
-NGAS_RC_PAR_DB_SRV = "DbServer"
-NGAS_RC_PAR_DB_USER = "DbUser"
-NGAS_RC_PAR_DB_PWD = "DbPassword"
-NGAS_RC_PAR_DB_NAME = "DbName"
+NGAS_RC_PAR_DB_PARAMS = "DbParameters"
+NGAS_RC_PAR_DB_USE_FILE_IGNORE = "DbUseFileIgnore"
 NGAS_RC_PAR_SMTP_HOST = "SmtpHost"
 NGAS_RC_PAR_NOTIF_EMAIL = "EmailNotification"
 NGAS_RC_PAR_HOST = "NgasHost"
@@ -71,7 +71,7 @@ def get_ngas_resource_file():
     return os.path.expanduser(NGAS_RC_FILE)
 
 
-def get_parameter_ngas_resource_file(parameter):
+def get_parameter_ngas_resource_file(parameter, required=False):
     """
     Retrieve a parameter from the NGAS resource file.
 
@@ -119,6 +119,8 @@ def get_parameter_ngas_resource_file(parameter):
             if value[0] == "$":
                 value = os.environ[value[1:]]
             return value
+    if required:
+        raise ValueError("No %s parameter defined in NGAS Resource File" % parameter)
     return None
 
 def _b64_string(s, encode):
@@ -169,21 +171,21 @@ def console_input(message):
     :param message: Message to print (string)
     :return: Information entered by the user (string)
     """
-    return six.input("INPUT> " + message + " ").strip()
+    return input("INPUT> " + message + " ").strip()
 
 
 def get_db_parameters():
     """
-    Extract the DB parameters from the NGAS resource file. The DB password is decrypted.
+    Extract the DB parameters from the NGAS resource file.
 
-    :return: Tuple with the DB parameters (<DB Interface>, <DB Srv>, <DB>, <User>, <Pwd>) (tuple)
+    :return: Tuple with the DB parameters (Interface: str, Parameters: dict, UseFileIgnore: bool)
     """
-    interface = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_INT)
-    server = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_SRV)
-    db = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_NAME)
-    user = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_USER)
-    password = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_PWD)
-    return interface, server, db, user, password
+    interface = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_INT, required=True)
+    params_str = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_PARAMS, required=True)
+    params = json.loads(params_str)
+    use_file_ignore_str = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_USE_FILE_IGNORE, required=False)
+    use_file_ignore = True if use_file_ignore_str is None or use_file_ignore_str in ('yes', 'true') else False
+    return interface, params, use_file_ignore
 
 
 def send_email(subject, to, message, content_type=None, attachment_name=None):
@@ -571,12 +573,5 @@ def get_db_connection():
     """
     Open a database connection using property values read from the resource file
     """
-    interface, server, db, user, password = get_db_parameters()
-    password = base64.b64decode(password)
-    params = {
-        "dsn": db,
-        "user": user,
-        "password": password,
-        "threaded": True
-    }
-    return ngamsDb.ngamsDb(interface, params)
+    interface, params, use_file_ignore = get_db_parameters()
+    return ngamsDb.ngamsDb(interface, params, use_file_ignore=use_file_ignore)

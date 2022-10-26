@@ -462,15 +462,12 @@ def _get_cluster_nodes(connection, cluster_id):
     :param cluster_id: NGAS Cluster ID (string)
     :return: List of NGAS Host IDs of the nodes in the cluster (list)
     """
-    sql = "select host_id from ngas_hosts where cluster_name='{0}'"
+    sql = "select host_id from ngas_hosts where cluster_name = {0} and srv_port is not NULL"
     result = connection.query2(sql, args=(cluster_id,))
-    if len(result) == 0:
-        return []
-    else:
-        node_list = []
-        for node in result[0]:
-            node_list.append(node[0])
-        return node_list
+    node_list = []
+    for res in result:
+        node_list.append(res[0])
+    return node_list
 
 
 def get_timestamp(seconds_since_epoch=None):
@@ -528,7 +525,7 @@ def initialize(param_dict):
     else:
         try:
             hash_md5 = hashlib.md5()
-            with open(param_dict[PAR_FILE_LIST]) as fo:
+            with open(param_dict[PAR_FILE_LIST], 'rb') as fo:
                 hash_md5.update(fo.read())
             session_id = hash_md5.hexdigest()
         except Exception as e:
@@ -691,7 +688,7 @@ def check_file(client, disk_id, file_id, file_version):
     try:
         parameters = [["disk_id", disk_id], ["file_id", file_id], ["file_version", file_version]]
         status = client.get_status(NGAMS_CHECKFILE_CMD, pars=parameters)
-        return status.get_message()
+        return status.getMessage()
     except Exception as e:
         return str(e)
 
@@ -812,7 +809,7 @@ def generate_intermediate_report(thread_group_obj):
     # Add the command line options in the report
     report += 50 * "-" + "\n"
     report += "Command Line Options:\n\n"
-    param_list = param_dict.keys()
+    param_list = list(param_dict.keys())
     param_list.sort()
     tmp_param_dict = {}
     for param in param_list:
@@ -843,7 +840,7 @@ def generate_report(thread_group_obj):
     # Generate list of files that failed to be synchronized (if any)
     error_report = ""
     param_dict[FAILED_DBM_NAME].initKeyPtr()
-    error_format = "{:-32s} {:-32s} {:-15s} {:s}\n"
+    error_format = "{:<32} {:<32} {:<15} {}\n"
     while True:
         key, sync_req = param_dict[FAILED_DBM_NAME].getNext()
         if not key:
@@ -1037,7 +1034,7 @@ def clone_file(client, sync_req):
         logger.debug("Leaving clone_file() (OK)")
         return status
     except Exception as e:
-        status = ngamsStatus.ngamsStatus().setStatus(NGAMS_FAILURE).set_message(str(e))
+        status = ngamsStatus.ngamsStatus().setStatus(NGAMS_FAILURE).setMessage(str(e))
         logger.debug("Leaving clone_file() (ERROR)")
         return status
 
@@ -1051,16 +1048,14 @@ def get_cluster_ready_naus(connection, target_cluster):
     :return: List of NAUs (list)
     """
     sql = "select host_id, srv_port from ngas_hosts " \
-          "where cluster_name = '{0}' and host_id in " \
+          "where cluster_name = {0} and host_id in " \
           "(select host_id from ngas_disks where completed = 0 and mounted = 1) order by host_id"
     result = connection.query2(sql, args=(target_cluster,))
-    if result == [[]]:
-        return []
-    else:
-        host_list = []
-        for node in result[0]:
-            host_list.append("{:s}:{:s}".format(node[0], node[1]))
-        return host_list
+    host_list = []
+    for host_id, srv_port in result:
+        host_port = host_id if ":" in host_id else "{}:{}".format(host_id, srv_port)
+        host_list.append(host_port)
+    return host_list
 
 
 def get_cluster_nodes(connection, target_cluster):
@@ -1074,19 +1069,13 @@ def get_cluster_nodes(connection, target_cluster):
                 2. String buffer with comma separated list of hostnames
                 3. String buffer with a comma separated list of host:port pairs (tuple)
     """
-    sql = "select host_id, srv_port from ngas_hosts where cluster_name = '{0}'"
+    sql = "select host_id, srv_port from ngas_hosts where cluster_name = {0} and srv_port is not NULL"
     result = connection.query2(sql, args=(target_cluster,))
-    if result == [[]]:
-        return []
-    else:
-        host_list = []
-        host_list_str = ""
-        server_list = ""
-        for node in result[0]:
-            host_list.append("{:s}:{:s}".format(node[0], node[1]))
-            host_list_str += "'{:s}',".format(node[0])
-            server_list += "{:s}:{:s},".format(node[0], node[1])
-        return host_list, host_list_str[:-1], server_list[:-1]
+    host_list = []
+    for host_id, srv_port in result:
+        host_port = host_id if ":" in host_id else "{}:{}".format(host_id, srv_port)
+        host_list.append(host_port)
+    return host_list
 
 
 def check_if_file_in_target_cluster(connection, cluster_nodes, file_id, file_version):
@@ -1165,16 +1154,14 @@ def sync_loop(thread_group_obj):
             cluster_nodes_str = ""
             if param_dict[PAR_TARGET_CLUSTER]:
                 cluster_naus = get_cluster_ready_naus(param_dict[PAR_DB_CON], param_dict[PAR_TARGET_CLUSTER])
-                cluster_nodes, cluster_nodes_str, cluster_server_list = \
-                    get_cluster_nodes(param_dict[PAR_DB_CON], param_dict[PAR_TARGET_CLUSTER])
-                # naus_server_list = str(cluster_naus)[1:-1].replace("'", "").replace(" ", "")
-                naus_server_list = cluster_naus
+                naus_server_list = ",".join(cluster_naus)
+                cluster_nodes = get_cluster_nodes(param_dict[PAR_DB_CON], param_dict[PAR_TARGET_CLUSTER])
+                cluster_nodes_str = ",".join(cluster_nodes)
             elif param_dict[PAR_TARGET_NODES]:
                 naus_server_list = param_dict[PAR_TARGET_NODES]
                 cluster_nodes_str = naus_server_list
 
             client = ngamsPClient.ngamsPClient(servers=ngasUtilsLib.get_server_list_from_string(naus_server_list))
-            # cluster_naus_status_time = time_now
 
         # Check if file is already in target cluster
         file_version = sync_req.get_file_version()
@@ -1212,7 +1199,7 @@ def sync_loop(thread_group_obj):
                 status = clone_file(client, sync_req)
                 if status.getStatus() == NGAMS_FAILURE:
                     error_msg = "Error handling Synchronization Request: {:s}. Error: {:s}"
-                    error_msg = error_msg.format(sync_req.get_summary(), status.get_message())
+                    error_msg = error_msg.format(sync_req.get_summary(), status.getMessage())
                     logger.warning(error_msg)
                 else:
                     logger.info("Successfully cloned Synchronization Request: %s.", sync_req.get_summary())
@@ -1326,7 +1313,7 @@ def main():
         param_dict = ngasUtilsLib.option_dictionary_to_parameter_dictionary(option_dict)
     except Exception as e:
         print("\nProblem executing the tool:\n\n{:s}\n".format(str(e)))
-        print(traceback.format_exc())
+        traceback.print_exc()
         sys.exit(1)
     else:
         try:
@@ -1337,7 +1324,7 @@ def main():
             if str(e) == "0":
                 sys.exit(0)
             print("\nProblem executing the tool:\n\n{:s}\n".format(str(e)))
-            print(traceback.print_exc())
+            traceback.print_exc()
             sys.exit(1)
 
 

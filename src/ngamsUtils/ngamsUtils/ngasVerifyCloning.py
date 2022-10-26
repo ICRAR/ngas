@@ -65,8 +65,6 @@ INDEX_FILE_VERSION = 6
 INDEX_FILE_SIZE = 7
 INDEX_FILE_STATUS = 8
 INDEX_DISK_ID = 9
-INDEX_FILE_IGNORE = 10
-INDEX_HOST_ID = 11
 
 
 def _get_target_host():
@@ -92,9 +90,8 @@ def _get_file_info1(connection, disk_id):
     """
     logger.info("Entering _get_file_info1() ...")
 
-    # FIXME: support ignore and file_ignore column name
     sql_format = "select nd.slot_id, nd.mount_point, nf.file_name, nf.checksum, nf.checksum_plugin, nf.file_id, " \
-                 "nf.file_version, nf.file_size, nf.file_status, nd.disk_id, nf.file_ignore, nd.host_id " \
+                 "nf.file_version, nf.file_size, nf.file_status, nd.disk_id " \
                  "from ngas_disks nd, ngas_files nf " \
                  "where nf.disk_id='{:s}' and nd.disk_id='{:s}'"
     sql = sql_format.format(disk_id, disk_id)
@@ -114,9 +111,8 @@ def _get_file_info2(connection, host_id, source_disk_id):
     """
     logger.info("Entering _get_file_info2() ...")
 
-    # FIXME: support ignore and file_ignore column name
     sql_format = "select nd.slot_id, nd.mount_point, nf.file_name, nf.checksum, nf.checksum_plugin, nf.file_id, " \
-                 "nf.file_version, nf.file_size, nf.file_status, nd.disk_id, nf.file_ignore, nd.host_id " \
+                 "nf.file_version, nf.file_size, nf.file_status, nd.disk_id " \
                  "from ngas_disks nd, ngas_files nf " \
                  "where nd.host_id='{:s}' " \
                  "and nf.disk_id=nd.disk_id and nf.disk_id!='{:s}'"
@@ -321,7 +317,7 @@ def main():
                                     "CLONE_VER_REP_{:s}".format(source_disk_id))
     except Exception as e:
         print("ERROR occurred executing the Clone Verification Tool: \n\n" + str(e) + "\n")
-        print(traceback.print_exc())
+        traceback.print_exc()
         sys.exit(1)
 
 

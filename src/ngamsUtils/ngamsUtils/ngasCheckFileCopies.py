@@ -41,12 +41,10 @@ For each file found on the disk, the following output is generated:
 - whereby, Good Copies refer to copies marked as being OK in the DB.
 """
 
-import base64
 import logging
 import os
 import sys
 
-from ngamsLib import ngamsDb
 from ngamsLib import ngamsDbCore
 from ngamsLib import ngamsLib
 from . import ngasUtilsLib
@@ -66,15 +64,7 @@ def check_copies(disk_id, notification_email):
     :param disk_id: ID of disk for which to check files (string)
     :param notification_email: Comma separated list of recipients of the report generated (string)
     """
-    interface, server, db, user, password = ngasUtilsLib.get_db_parameters()
-    password = base64.b64decode(password)
-    params = {
-        "dsn": db,
-        "user": user,
-        "password": password,
-        "threaded": True
-    }
-    connection = ngamsDb.ngamsDb(interface, params)
+    connection = ngasUtilsLib.get_db_connection()
 
     # Get the information about the files on the referenced disk
     logger.info("Retrieving info about files on disk: %s ...", disk_id)
@@ -110,11 +100,9 @@ def check_copies(disk_id, notification_email):
             glob_file_dict[file_key] = []
         glob_file_dict[file_key].append(file_info)
 
-    # Order the list according to (1) Number of copies and (2) Alphabetically
-    file_key_list = glob_file_dict.keys()
-    file_key_list.sort()
+    # Group by number of copies
     sort_file_dict = {}
-    for file_key in file_key_list:
+    for file_key in sorted(glob_file_dict):
         file_info_list = glob_file_dict[file_key]
         num_copies = len(file_info_list)
         if num_copies not in sort_file_dict:
@@ -127,13 +115,9 @@ def check_copies(disk_id, notification_email):
     message_format = "{:60.60s} {:7.7s} {:5.5s} {:4.4s}\n"
     report += message_format.format("File ID", "Version", "Total", "Good")
     report += 50 * "-" + "\n"
-    no_file_key_list = sort_file_dict.keys()
-    no_file_key_list.sort()
-    for no_file_key in no_file_key_list:
+    for no_file_key in sorted(sort_file_dict):
         no_file_key_dict = sort_file_dict[no_file_key]
-        file_key_list = no_file_key_dict.keys()
-        file_key_list.sort()
-        for file_key in file_key_list:
+        for file_key in sorted(no_file_key_dict):
             total_copies = 0
             good_copies = 0
             for file_info in no_file_key_dict[file_key]:
@@ -144,7 +128,7 @@ def check_copies(disk_id, notification_email):
             file_version = file_info[ngamsDbCore.SUM1_VERSION]
             report += message_format.format(file_id, str(file_version), str(total_copies), str(good_copies))
 
-    if len(no_file_key_list):
+    if sort_file_dict:
         report += 50 * "-" + "\n\n"
     else:
         report += "No files found on the given disk!\n\n"
