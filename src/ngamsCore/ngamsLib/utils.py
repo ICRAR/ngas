@@ -81,6 +81,7 @@ class Task(object):
     def start(self, *args, **kwargs):
         """Starts the target in the background"""
         bg_task_clazz = threading.Thread if self._mode == Task.THREAD else multiprocessing.Process
+        self.stop_evt.clear()
         args = tuple(args) + (self.stop_evt,)
         if self._mode == Task.PROCESS:
             def target(*targs, **tkwargs):
