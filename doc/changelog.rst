@@ -1,7 +1,7 @@
 Changelog
 =========
 
-.. rubric:: Development version
+.. rubric:: 12.0
 
 * Using ``sendfile(2)`` when POSTing files through HTTP connections.
   This should lower the overhead of using python to perform the transfer,
