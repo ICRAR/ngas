@@ -643,6 +643,10 @@ class ngamsDbCore(object):
         self._use_file_ignore = use_file_ignore
         self._file_ignore_columnname = 'file_ignore' if use_file_ignore else 'ignore'
 
+    @property
+    def file_ignore_columnname(self):
+        return self._file_ignore_columnname
+
     def takeGlobalDbSem(self):
         """
         Acquire access to a critical, global DB interaction.

@@ -54,11 +54,13 @@ NGAMS_JSON_MT = "application/json"
 
 # Dirty trick to get the simple columnnames from these tables
 class columns(object):
-    def __init__(self, definitions):
-        self.as_list = list(map(lambda x: x[0].split('.')[1], definitions))
+    def __init__(self, definitions, replacements={}):
+        self.as_list = []
+        for d in definitions:
+            column_name = d[0].split('.')[1]
+            self.as_list.append(replacements.get(column_name, column_name))
         self.as_sql = ', '.join(self.as_list)
 
-NGAMS_FILES_COLS = columns(ngamsDbCore._ngasFilesDef)
 NGAMS_DISKS_COLS = columns(ngamsDbCore._ngasDisksDef)
 NGAMS_SUBSCR_COLS = columns(ngamsDbCore._ngasSubscribersDef)
 NGAMS_HOST_COLS = columns(ngamsDbCore._ngasHostsDef)
@@ -79,28 +81,33 @@ _LASTVER_LOCATION_SQL = ("SELECT a.host_id, a.mount_point || '/' || b.file_name 
                          "ORDER BY b.file_id")
 
 # query_name: (column_list, SQL statement)
-_query = lambda sql, cols: (cols.as_list, sql % cols.as_sql)
 queries = {
-    "files_list": _query("select %s from ngas_files", NGAMS_FILES_COLS),
-    "subscribers_list": _query("select %s from ngas_subscribers", NGAMS_SUBSCR_COLS),
-    "subscribers_like": _query("select %s from ngas_subscribers where host_id like {0}", NGAMS_SUBSCR_COLS),
-    "disks_list": _query("select %s from ngas_disks", NGAMS_DISKS_COLS),
-    "hosts_list": _query("select %s from ngas_hosts", NGAMS_HOST_COLS),
-    "files_like": _query("select %s from ngas_files where file_id like {0}", NGAMS_FILES_COLS),
-    "files_location": (_LOCATION_COLS, _FILES_LOCATION_SQL),
-    "lastver_location":  (_LOCATION_COLS, _LASTVER_LOCATION_SQL),
-    "files_between": _query(
-        "select %s from ngas_files where ingestion_date between {0} and {1}",
-        NGAMS_FILES_COLS),
-    "files_greater": _query(
-        "select %s from ngas_files where ingestion_date > {0}",
-        NGAMS_FILES_COLS),
-    "files_stats": (('Number of files', 'Total volume [MB]'),
-         "select count(*),sum(uncompressed_file_size)/1048576. as MB from ngas_files"),
-    "files_list_recent":
-        (('file_id', 'file_name', 'file_size', 'ingestion_date'),
-         "select file_id, file_name, file_size, ingestion_date from ngas_files order by ingestion_date desc limit 300"),
 }
+def _initialise_queries(db):
+    NGAMS_FILES_COLS = columns(ngamsDbCore._ngasFilesDef, {'file_ignore': db.file_ignore_columnname})
+    _query = lambda sql, cols: (cols.as_list, sql % cols.as_sql)
+    global queries
+    queries.update({
+        "files_list": _query("select %s from ngas_files", NGAMS_FILES_COLS),
+        "subscribers_list": _query("select %s from ngas_subscribers", NGAMS_SUBSCR_COLS),
+        "subscribers_like": _query("select %s from ngas_subscribers where host_id like {0}", NGAMS_SUBSCR_COLS),
+        "disks_list": _query("select %s from ngas_disks", NGAMS_DISKS_COLS),
+        "hosts_list": _query("select %s from ngas_hosts", NGAMS_HOST_COLS),
+        "files_like": _query("select %s from ngas_files where file_id like {0}", NGAMS_FILES_COLS),
+        "files_location": (_LOCATION_COLS, _FILES_LOCATION_SQL),
+        "lastver_location":  (_LOCATION_COLS, _LASTVER_LOCATION_SQL),
+        "files_between": _query(
+            "select %s from ngas_files where ingestion_date between {0} and {1}",
+            NGAMS_FILES_COLS),
+        "files_greater": _query(
+            "select %s from ngas_files where ingestion_date > {0}",
+            NGAMS_FILES_COLS),
+        "files_stats": (('Number of files', 'Total volume [MB]'),
+             "select count(*),sum(uncompressed_file_size)/1048576. as MB from ngas_files"),
+        "files_list_recent":
+            (('file_id', 'file_name', 'file_size', 'ingestion_date'),
+             "select file_id, file_name, file_size, ingestion_date from ngas_files order by ingestion_date desc limit 300"),
+    })
 
 
 
@@ -180,6 +187,8 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
+    if not queries:
+        _initialise_queries(srvObj.db)
     # Get command parameters.
     if not 'query' in reqPropsObj:
         raise Exception("No query specified. Valid queries are: %s" % (queries.keys(),))
