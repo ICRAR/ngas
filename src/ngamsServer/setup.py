@@ -20,6 +20,7 @@
 #    MA 02111-1307  USA
 #
 import os
+import sys
 
 from setuptools import setup, find_packages
 
@@ -29,12 +30,13 @@ with open('../../VERSION') as vfile:
             version = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]
             break
 
-
+python_daemon_version_constraint = ''
+if sys.version_info <= (3,0):
+    python_daemon_version_constraint = '<=2.3.0'
 install_requires = [
     'ngamsCore',
-    'netifaces',
-    'python-daemon <= 2.3.0; python_version < "3"',
-    'python-daemon; python_version >= "3"',
+    'netifaces',                                                                                                                                            
+    'python-daemon' + python_daemon_version_constraint
 ]
 
 # Users might opt out from depending on crc32c
