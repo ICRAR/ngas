@@ -19,7 +19,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # "@(#) $Id: ngamsGenDapi.py,v 1.3 2010/05/21 12:28:12 jagonzal Exp $"
 #
@@ -67,35 +67,33 @@ import time
 from ngamsLib import ngamsPlugInApi, ngamsLib
 from ngamsLib.ngamsCore import genLog, toiso8601, FMT_DATE_ONLY
 
-
 logger = logging.getLogger(__name__)
 
-TARG_MIME_TYPE  = "target_mime_type"
-FILE_ID         = "file_id"
-COMPRESSION     = "compression"
+TARG_MIME_TYPE = "target_mime_type"
+FILE_ID = "file_id"
+COMPRESSION = "compression"
 COMPRESSION_EXT = "compression_ext"
+UNCOMPRESSED_FILE_SIZE = "uncompressed_file_size"
 
 # Constants.
-NO_COMPRESSION  = "NONE"
+NO_COMPRESSION = "NONE"
+
+
+def get_req_param(reqPropsObj, param, default):
+    return reqPropsObj[param] if param in reqPropsObj else default
 
 
 def extract_compression_params(reqPropsObj, plugin_pars):
+    plugin_pars[COMPRESSION] = get_req_param(reqPropsObj, COMPRESSION, None)
+    plugin_pars[COMPRESSION_EXT] = get_req_param(reqPropsObj, COMPRESSION_EXT, None)
+    plugin_pars[UNCOMPRESSED_FILE_SIZE] = get_req_param(reqPropsObj, UNCOMPRESSED_FILE_SIZE, None)
 
-    plugin_pars[COMPRESSION]     = None
-    plugin_pars[COMPRESSION_EXT] = None
+    if plugin_pars[COMPRESSION] and not (plugin_pars[COMPRESSION_EXT] or plugin_pars[UNCOMPRESSED_FILE_SIZE]):
+        raise Exception(genLog("NGAMS_ER_DAPI", ["Parameter compression requires compression_ext"
+                                                 "or uncompressed_file_size"]))
 
-    if COMPRESSION in reqPropsObj:
-        plugin_pars[COMPRESSION] = reqPropsObj[COMPRESSION]
-    if COMPRESSION_EXT in reqPropsObj:
-        plugin_pars[COMPRESSION_EXT] = reqPropsObj[COMPRESSION_EXT]
-    if ((plugin_pars[COMPRESSION] and plugin_pars[COMPRESSION_EXT] is None) or
-        (not plugin_pars[COMPRESSION] and plugin_pars[COMPRESSION_EXT] is not None)):
-        raise Exception(genLog("NGAMS_ER_DAPI",
-                                ["Parameters compression and compression_ext"
-                                 "must be given together."]))
 
-def handlePars(reqPropsObj,
-               parDic):
+def handlePars(reqPropsObj, parDic):
     """
     Parse/handle the HTTP parameters.
 
@@ -107,33 +105,39 @@ def handlePars(reqPropsObj,
     """
     # Get parameters.
     logger.debug("Get request parameters")
-    parDic[TARG_MIME_TYPE]  = None
-    parDic[FILE_ID]         = None
+    parDic[TARG_MIME_TYPE] = None
+    parDic[FILE_ID] = None
 
-    if (reqPropsObj.hasHttpPar(TARG_MIME_TYPE)):
+    if reqPropsObj.hasHttpPar(TARG_MIME_TYPE):
         parDic[TARG_MIME_TYPE] = reqPropsObj.getHttpPar(TARG_MIME_TYPE)
 
     # If the file_id is not given, we derive it from the name of the URI.
-    if (reqPropsObj.hasHttpPar(FILE_ID)):
+    if reqPropsObj.hasHttpPar(FILE_ID):
         parDic[FILE_ID] = reqPropsObj.getHttpPar(FILE_ID)
-    if (not parDic[FILE_ID]):
-        if (reqPropsObj.getFileUri().find("file_id=") > 0):
+    if not parDic[FILE_ID]:
+        if reqPropsObj.getFileUri().find("file_id=") > 0:
             file_id = reqPropsObj.getFileUri().split("file_id=")[1]
             parDic[FILE_ID] = os.path.basename(file_id)
             logger.info("No file_id given, but found one in the URI: %s", parDic[FILE_ID])
         else:
             parDic[FILE_ID] = os.path.basename(reqPropsObj.getFileUri())
-            logger.info("No file_id given, using basename of fileUri: %s", 
-                 parDic[FILE_ID])
+            logger.info("No file_id given, using basename of fileUri: %s",
+                        parDic[FILE_ID])
 
     extract_compression_params(reqPropsObj, parDic)
 
-def _compress_data(plugin_pars):
-    return plugin_pars[COMPRESSION]
 
-def compressFile(srvObj,
-                 reqPropsObj,
-                 parDic):
+def _compress_data(plugin_pars):
+    return plugin_pars[COMPRESSION] and plugin_pars[COMPRESSION_EXT]
+
+
+def _already_compressed_data(plugin_pars):
+    return plugin_pars[COMPRESSION] and plugin_pars[UNCOMPRESSED_FILE_SIZE]
+
+
+def compress_file(srvObj,
+                  reqPropsObj,
+                  parDic):
     """
     Compress the file if required.
 
@@ -151,21 +155,24 @@ def compressFile(srvObj,
                   (tuple).
     """
     stFn = reqPropsObj.getStagingFilename()
-
-    # If a compression application is specified, apply this.
-    uncomprSize = ngamsPlugInApi.getFileSize(stFn)
+    compression = NO_COMPRESSION
     comprExt = ""
+    uncomprSize = ngamsPlugInApi.getFileSize(stFn)
+    if parDic[TARG_MIME_TYPE]:
+        mime_type = parDic[TARG_MIME_TYPE]
+    else:
+        mime_type = reqPropsObj.getMimeType()
     if _compress_data(parDic):
         logger.debug("Compressing file using: %s ...", parDic[COMPRESSION])
         compCmd = "%s %s" % (parDic[COMPRESSION], stFn)
         compress_start = time.time()
         logger.debug("Compressing file with command: %s", compCmd)
         with open(os.devnull, 'w') as f:
-            exitCode = subprocess.call([parDic[COMPRESSION], stFn], stdout = f, stderr = f)
+            exitCode = subprocess.call([parDic[COMPRESSION], stFn], stdout=f, stderr=f)
         # If the compression fails, assume that it is because the file is not
         # compressible (although it could also be due to lack of disk space).
-        if (exitCode == 0):
-            if (parDic[COMPRESSION_EXT]):
+        if exitCode == 0:
+            if parDic[COMPRESSION_EXT]:
                 stFn = stFn + "." + parDic[COMPRESSION_EXT]
                 comprExt = parDic[COMPRESSION_EXT]
             # Remember to update Staging Filename in the Request Properties
@@ -173,29 +180,26 @@ def compressFile(srvObj,
             reqPropsObj.setStagingFilename(stFn)
 
             # Handle mime-type
-            if (parDic[TARG_MIME_TYPE]):
-                format = parDic[TARG_MIME_TYPE]
+            if parDic[TARG_MIME_TYPE]:
+                mime_type = parDic[TARG_MIME_TYPE]
             else:
-                format = ngamsPlugInApi.determineMimeType(srvObj.getCfg(),
-                                                          stFn)
+                mime_type = ngamsPlugInApi.determineMimeType(srvObj.getCfg(), stFn)
             compression = parDic[COMPRESSION]
 
             logger.debug("File compressed. Time: %.3fs", time.time() - compress_start)
         else:
             # Carry on with the original file. We take the original mime-type
             # as the target mime-type.
-            format = reqPropsObj.getMimeType()
+            mime_type = reqPropsObj.getMimeType()
             compression = NO_COMPRESSION
-    else:
-        # Handle mime-type
-        if (parDic[TARG_MIME_TYPE]):
-            format = parDic[TARG_MIME_TYPE]
-        else:
-            format = reqPropsObj.getMimeType()
-        compression = NO_COMPRESSION
+    elif _already_compressed_data(parDic):
+        logger.debug("Already compressed file: %s %s %d", parDic[COMPRESSION], parDic[COMPRESSION_EXT],
+                     parDic[UNCOMPRESSED_FILE_SIZE])
+        compression = parDic[COMPRESSION]
+        uncomprSize = parDic[UNCOMPRESSED_FILE_SIZE]
 
     archFileSize = ngamsPlugInApi.getFileSize(reqPropsObj.getStagingFilename())
-    return uncomprSize, archFileSize, format, compression, comprExt
+    return uncomprSize, archFileSize, mime_type, compression, comprExt
 
 
 def checkForDblExt(complFilename,
@@ -216,6 +220,7 @@ def checkForDblExt(complFilename,
     complFilename = ngamsLib.remove_duplicated_extension(complFilename)
     relFilename = ngamsLib.remove_duplicated_extension(relFilename)
     return complFilename, relFilename
+
 
 # Signals the server whether this plug-in modifies its incoming contents (or not)
 def modifies_content(srvObj, reqPropsObj):
@@ -240,34 +245,30 @@ def ngamsGenDapi(srvObj,
     # For now the exception handling is pretty basic:
     # If something goes wrong during the handling it is tried to
     # move the temporary file to the Bad Files Area of the disk.
-    logger.debug("Plug-In handling data for file: %s",
-         os.path.basename(reqPropsObj.getFileUri()))
+    baseFilename = os.path.basename(reqPropsObj.getFileUri())
+    logger.debug("Plug-In handling data for file: %s", baseFilename)
     try:
         parDic = {}
         handlePars(reqPropsObj, parDic)
         diskInfo = reqPropsObj.getTargDiskInfo()
-        stgFile = reqPropsObj.getStagingFilename()
-        ext = os.path.splitext(stgFile)[1][1:]
 
         # Generate file information.
         logger.debug("Generate file information")
         dateDir = toiso8601(fmt=FMT_DATE_ONLY)
-        fileVersion, relPath, relFilename,\
-                     complFilename, fileExists =\
-                     ngamsPlugInApi.genFileInfo(srvObj.getDb(),
-                                                srvObj.getCfg(),
-                                                reqPropsObj, diskInfo,
-                                                reqPropsObj.\
-                                                getStagingFilename(),
-                                                parDic[FILE_ID],
-                                                parDic[FILE_ID], [dateDir])
+        fileVersion, relPath, relFilename, complFilename, fileExists = \
+            ngamsPlugInApi.genFileInfo(srvObj.getDb(),
+                                       srvObj.getCfg(),
+                                       reqPropsObj, diskInfo,
+                                       reqPropsObj.getStagingFilename(),
+                                       parDic[FILE_ID],
+                                       baseFilename, [dateDir])
         complFilename, relFilename = checkForDblExt(complFilename,
                                                     relFilename)
 
         # Compress the file if requested.
-        uncomprSize, archFileSize, format, compression, comprExt =\
-                     compressFile(srvObj, reqPropsObj, parDic)
-        if (comprExt != ""):
+        uncomprSize, archFileSize, mime_type, compression, comprExt = \
+            compress_file(srvObj, reqPropsObj, parDic)
+        if comprExt != "":
             complFilename += ".%s" % comprExt
             relFilename += ".%s" % comprExt
 
@@ -275,7 +276,7 @@ def ngamsGenDapi(srvObj,
         return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(),
                                                  relFilename,
                                                  parDic[FILE_ID],
-                                                 fileVersion, format,
+                                                 fileVersion, mime_type,
                                                  archFileSize, uncomprSize,
                                                  compression, relPath,
                                                  diskInfo.getSlotId(),
