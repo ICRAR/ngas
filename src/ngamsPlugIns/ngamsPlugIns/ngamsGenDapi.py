@@ -86,11 +86,12 @@ def get_req_param(reqPropsObj, param, default):
 def extract_compression_params(reqPropsObj, plugin_pars):
     plugin_pars[COMPRESSION] = get_req_param(reqPropsObj, COMPRESSION, None)
     plugin_pars[COMPRESSION_EXT] = get_req_param(reqPropsObj, COMPRESSION_EXT, None)
-    plugin_pars[UNCOMPRESSED_FILE_SIZE] = get_req_param(reqPropsObj, UNCOMPRESSED_FILE_SIZE, None)
+    uncomprSize = get_req_param(reqPropsObj, UNCOMPRESSED_FILE_SIZE, None)
+    plugin_pars[UNCOMPRESSED_FILE_SIZE] = int(uncomprSize) if uncomprSize else None
 
     if plugin_pars[COMPRESSION] and not (plugin_pars[COMPRESSION_EXT] or plugin_pars[UNCOMPRESSED_FILE_SIZE]):
-        raise Exception(genLog("NGAMS_ER_DAPI", ["Parameter compression requires compression_ext"
-                                                 "or uncompressed_file_size"]))
+        raise Exception(genLog("NGAMS_ER_DAPI", ["Parameter 'compression' requires 'compression_ext' "
+                                                 "or 'uncompressed_file_size'"]))
 
 
 def handlePars(reqPropsObj, parDic):
@@ -175,8 +176,7 @@ def compress_file(srvObj,
             if parDic[COMPRESSION_EXT]:
                 stFn = stFn + "." + parDic[COMPRESSION_EXT]
                 comprExt = parDic[COMPRESSION_EXT]
-            # Remember to update Staging Filename in the Request Properties
-            # Object.
+            # Update Staging Filename in the Request Properties Object
             reqPropsObj.setStagingFilename(stFn)
 
             # Handle mime-type
@@ -193,17 +193,16 @@ def compress_file(srvObj,
             mime_type = reqPropsObj.getMimeType()
             compression = NO_COMPRESSION
     elif _already_compressed_data(parDic):
-        logger.debug("Already compressed file: %s %s %d", parDic[COMPRESSION], parDic[COMPRESSION_EXT],
-                     parDic[UNCOMPRESSED_FILE_SIZE])
         compression = parDic[COMPRESSION]
         uncomprSize = parDic[UNCOMPRESSED_FILE_SIZE]
+        logger.debug("Already compressed file: %s '%s' %s '%d'", COMPRESSION, compression,
+                     UNCOMPRESSED_FILE_SIZE, uncomprSize)
 
     archFileSize = ngamsPlugInApi.getFileSize(reqPropsObj.getStagingFilename())
     return uncomprSize, archFileSize, mime_type, compression, comprExt
 
 
-def checkForDblExt(complFilename,
-                   relFilename):
+def checkForDblExt(complFilename, relFilename):
     """
     If if the File ID is derived from the URI, it might be that there is a
     double extension due to the way the ngamsPlugInApi.genFileInfo() generates
@@ -229,8 +228,7 @@ def modifies_content(srvObj, reqPropsObj):
     return _compress_data(plugin_pars)
 
 
-def ngamsGenDapi(srvObj,
-                 reqPropsObj):
+def ngamsGenDapi(srvObj, reqPropsObj):
     """
     Generic Data Archiving Plug-In to handle archiving of any file.
 
