@@ -42,17 +42,15 @@ file_id:            ID of the file in the NGAS archive. If not given, the
                     basename of the URI indicated in the Archive Request is
                     used as File ID (optional).
 
-versioning:         If 1 versioning is on, default is 0 (0|1 [1]).
-
-checksum:           Checksum of the file (optional (*)).
-
-checksum_cmd:       Command to calculate the checksum (optional (*)).
-
 compression:        Command used to compress the file. If not given the file is
                     not compressed (optional (**)).
 
 compression_ext:    Extension resulting from applying the specified compression
                     tool on the file (optional (**)).
+
+uncompressed_file_size: If the file is already compressed, this parameter can be used
+                        to specify the file size before compression so NGAS can save this
+                        information in the DB (optional (**)).
 
 */**: These parameters must be given in pairs, it is not possible only to
       specify one of them.
@@ -83,13 +81,17 @@ def get_req_param(reqPropsObj, param, default):
     return reqPropsObj[param] if param in reqPropsObj else default
 
 
+def is_compression_defined(compression):
+    return compression is not None and compression.upper() != NO_COMPRESSION
+
+
 def extract_compression_params(reqPropsObj, plugin_pars):
     plugin_pars[COMPRESSION] = get_req_param(reqPropsObj, COMPRESSION, None)
     plugin_pars[COMPRESSION_EXT] = get_req_param(reqPropsObj, COMPRESSION_EXT, None)
     uncomprSize = get_req_param(reqPropsObj, UNCOMPRESSED_FILE_SIZE, None)
     plugin_pars[UNCOMPRESSED_FILE_SIZE] = int(uncomprSize) if uncomprSize else None
 
-    if plugin_pars[COMPRESSION] and not (plugin_pars[COMPRESSION_EXT] or plugin_pars[UNCOMPRESSED_FILE_SIZE]):
+    if is_compression_defined(plugin_pars[COMPRESSION]) and not (plugin_pars[COMPRESSION_EXT] or uncomprSize):
         raise Exception(genLog("NGAMS_ER_DAPI", ["Parameter 'compression' requires 'compression_ext' "
                                                  "or 'uncompressed_file_size'"]))
 
@@ -129,11 +131,11 @@ def handlePars(reqPropsObj, parDic):
 
 
 def _compress_data(plugin_pars):
-    return plugin_pars[COMPRESSION] and plugin_pars[COMPRESSION_EXT]
+    return is_compression_defined(plugin_pars[COMPRESSION]) and plugin_pars[COMPRESSION_EXT]
 
 
 def _already_compressed_data(plugin_pars):
-    return plugin_pars[COMPRESSION] and plugin_pars[UNCOMPRESSED_FILE_SIZE]
+    return is_compression_defined(plugin_pars[COMPRESSION]) and plugin_pars[UNCOMPRESSED_FILE_SIZE]
 
 
 def compress_file(srvObj,
