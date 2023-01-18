@@ -9,7 +9,7 @@ In its core it is a HTTP based object storage system. It can be deployed
 on single small servers, or in globally distributed clusters.
 
 NGAS is written in Python, and thus highly portable.
-As of version 11 it supports both Python 2.7 and 3.5+. The implementation
+As of version 11 it supports both Python 2.7 and 3.5+ (support for 2.7 will be removed though). The implementation
 is pure Python, but there are a few dependencies on C libraries as well
 and that may restrict the ability to install it on some of the more exotic
 platforms.

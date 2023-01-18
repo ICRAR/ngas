@@ -17,7 +17,7 @@ Some of its main features are:
  * Disk tracking and offline data transfer
  * High customisation via user-provided plug-ins
 
-NGAS is written in Python 2.7, making it highly portable.
+NGAS is written in Python (3.5+, support for 2.7 will be removed soon), making it highly portable.
 There are a few dependencies on C libraries,
 which may restrict the ability to install it
 on some of the more exotic platforms.
