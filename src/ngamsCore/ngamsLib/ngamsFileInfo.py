@@ -278,7 +278,7 @@ class ngamsFileInfo:
 
         Returns:    Reference to object itself.
         """
-        self.__uncompressedFileSize = size
+        self.__uncompressedFileSize = int(size)
         return self
 
 
