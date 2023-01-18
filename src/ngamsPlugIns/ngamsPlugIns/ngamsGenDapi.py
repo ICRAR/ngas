@@ -77,18 +77,14 @@ UNCOMPRESSED_FILE_SIZE = "uncompressed_file_size"
 NO_COMPRESSION = "NONE"
 
 
-def get_req_param(reqPropsObj, param, default):
-    return reqPropsObj[param] if param in reqPropsObj else default
-
-
 def is_compression_defined(compression):
     return compression is not None and compression.upper() != NO_COMPRESSION
 
 
 def extract_compression_params(reqPropsObj, plugin_pars):
-    plugin_pars[COMPRESSION] = get_req_param(reqPropsObj, COMPRESSION, None)
-    plugin_pars[COMPRESSION_EXT] = get_req_param(reqPropsObj, COMPRESSION_EXT, None)
-    uncomprSize = get_req_param(reqPropsObj, UNCOMPRESSED_FILE_SIZE, None)
+    plugin_pars[COMPRESSION] = reqPropsObj.get(COMPRESSION)
+    plugin_pars[COMPRESSION_EXT] = reqPropsObj.get(COMPRESSION_EXT)
+    uncomprSize = reqPropsObj.get(UNCOMPRESSED_FILE_SIZE)
     plugin_pars[UNCOMPRESSED_FILE_SIZE] = int(uncomprSize) if uncomprSize else None
 
     if is_compression_defined(plugin_pars[COMPRESSION]) and not (plugin_pars[COMPRESSION_EXT] or uncomprSize):
