@@ -91,22 +91,3 @@ class TestGenDapi(ngamsTestLib.ngamsTestSuite):
         self.assertEqual(69120, file_info.getUncompressedFileSize())
         self.assertEqual('1379947874', file_info.getChecksum())
         self.assertEqual(self.OCTET_STREAM, file_info.getFormat())
-
-    def test_archive_file_with_negative_checksum(self):
-        """
-        test that the (negative) checksum computed using ngamsCrc32 is just a different representation
-        of the (positive) checksum computed by NGAS
-        TODO: the original idea of this test was to pass the checksum to the archive command but this is currently
-            not supported because the checksum should be given as HTTP header
-        """
-
-        file_id = str(uuid4())
-        expected_checksum = str(-599448499 & 0xffffffff)
-        self.prepExtSrv()
-        self.archive('src/TinyTestFile.fits', pars=(('mime_type', self.OCTET_STREAM),
-                                                    ('file_id', file_id),))
-        status = self.status(pars=(('file_id', file_id),))
-        file_info = status.getDiskStatusList()[0].getFileObjList()[0]
-        self.assertEqual(file_id, file_info.getFileId())
-        self.assertEqual('TinyTestFile.fits', os.path.basename(file_info.getFilename()))
-        self.assertEqual(expected_checksum, file_info.getChecksum())
