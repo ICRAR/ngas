@@ -42,8 +42,9 @@ from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize, \
     genLog, NGAMS_PROC_FILE, NGAMS_HOST_LOCAL, \
     NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
+    NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint, NGAMS_XML_MT
 from .. import ngamsFileUtils
+import pkg_resources
 
 
 logger = logging.getLogger(__name__)
@@ -246,10 +247,19 @@ def _handleCmdRetrieve(srvObj,
         raise Exception(errMsg)
 
     # Previously this command allowed to retrieve the current logging file,
-    # the configuration file and any internal file. We don't do this anymore
-    # Get query information.
-    if 'ng_log' in reqPropsObj or 'cfg' in reqPropsObj or 'internal' in reqPropsObj:
-        raise Exception("ng_log, cfg and internal parameters not supported anymore")
+    # the configuration file and any internal file. We don't do this anymore;
+    # instead we allow only for the DTD file to be returned (see #103)
+    dtd_requested = reqPropsObj.get("internal", None) == "ngamsStatus.dtd"
+    if ('ng_log' in reqPropsObj or 'cfg' in reqPropsObj
+        or ('internal' in reqPropsObj and not dtd_requested)):
+        raise Exception("ng_log, cfg and internal(!=ngamsStatus.dtd) parameters not supported anymore")
+    elif dtd_requested:
+        httpRef.send_data(
+            pkg_resources.resource_string('ngamsData', 'ngamsStatus.dtd'),
+            NGAMS_XML_MT,
+            fname="ngamsStatus.dtd"
+        )
+        return
 
     # At least file_id must be specified if not an internal file has been
     # requested.
