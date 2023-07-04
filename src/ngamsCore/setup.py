@@ -30,7 +30,7 @@ with open('../../VERSION') as vfile:
             break
 
 requests_version_constraint = ''
-if sys.version_info <= (3,6):
+if sys.version_info[:2] <= (3,6):
     requests_version_constraint = '<2.28'
 install_requires = [
     'DBUtils<2',
