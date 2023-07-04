@@ -75,7 +75,7 @@ coverage report
 # sqlite3 is the default so it needs no special attention
 NGAS_TESTDB=
 if [[ "$DB" == "mysql" ]]; then
-	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="MySQLdb" host="127.0.0.1" db="ngas" user="ngas" passwd="ngas"/>'
+	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="MySQLdb" host="127.0.0.1" database="ngas" user="ngas" password="ngas"/>'
 elif [[ "$DB" == "postgresql" ]]; then
 	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="psycopg2" host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>'
 fi

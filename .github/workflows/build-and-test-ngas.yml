@@ -19,24 +19,18 @@ jobs:
     strategy:
       matrix:
         include:
-        - python: 2.7
+        - python: 3.5
           test_number: 1
-        - python: 2.7
+        - python: 3.6
           db: mysql
           test_number: 2
-        - python: 2.7
+        - python: 3.7
           db: postgresql
           test_number: 3
-        - python: 3.5
-          test_number: 4
-        - python: 3.6
-          test_number: 5
-        - python: 3.7
-          test_number: 6
         - python: 3.8
-          test_number: 7
+          test_number: 4
         - python: 3.9
-          test_number: 8
+          test_number: 5
     runs-on: ubuntu-20.04
 
     steps:
@@ -62,12 +56,6 @@ jobs:
       run: .travis/run_tests.sh
       env:
         DB: ${{ matrix.db }}
-
-    - name: Setup python 3 for coverage data upload
-      if: matrix.python == 2.7
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.7
 
     - name: Install coveralls
       run: pip install 'coverage<5' coveralls

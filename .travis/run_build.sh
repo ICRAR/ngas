@@ -184,10 +184,7 @@ if [[ "$DB" == "mysql" ]]; then
 		 || fail "$ECREAT"
 
 	# Python packages needed
-	PIP_PACKAGES+=" MySQL-python"
-
-	# Needed to compile MySQL-python under python2 in Ubuntu focal
-	sudo wget https://raw.githubusercontent.com/paulfitz/mysql-connector-c/master/include/my_config.h -O /usr/include/mysql/my_config.h
+	PIP_PACKAGES+=" mysqlclient"
 
 elif [[ "$DB" == "postgresql" ]]; then
 
