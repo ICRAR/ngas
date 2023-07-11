@@ -37,6 +37,7 @@ import shutil
 import socket
 import time
 
+import six
 from ngamsLib import ngamsDppiStatus
 from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize, \
     genLog, NGAMS_PROC_FILE, NGAMS_HOST_LOCAL, \
@@ -223,6 +224,12 @@ def genReplyRetrieve(srvObj,
         cleanUpAfterProc(statusObj)
 
 
+_ALLOWED_DTDS = (
+    "ngamsStatus.dtd",
+    "ngamsInternal.dtd",
+    "XmlStd.dtd"
+)
+
 def _handleCmdRetrieve(srvObj,
                        reqPropsObj,
                        httpRef):
@@ -249,13 +256,15 @@ def _handleCmdRetrieve(srvObj,
     # Previously this command allowed to retrieve the current logging file,
     # the configuration file and any internal file. We don't do this anymore;
     # instead we allow only for the DTD file to be returned (see #103)
-    dtd_requested = reqPropsObj.get("internal", None) == "ngamsStatus.dtd"
+    requested_dtd = reqPropsObj.get("internal", None)
     if ('ng_log' in reqPropsObj or 'cfg' in reqPropsObj
-        or ('internal' in reqPropsObj and not dtd_requested)):
+        or ('internal' in reqPropsObj and requested_dtd not in _ALLOWED_DTDS)):
         raise Exception("ng_log, cfg and internal(!=ngamsStatus.dtd) parameters not supported anymore")
-    elif dtd_requested:
+    elif requested_dtd in _ALLOWED_DTDS:
+        dtd_contents = pkg_resources.resource_string('ngamsData', requested_dtd)
+        dtd_contents = dtd_contents.replace(b"DUMMYHOST:DUMMYPORT", six.b(httpRef.host))
         httpRef.send_data(
-            pkg_resources.resource_string('ngamsData', 'ngamsStatus.dtd'),
+            dtd_contents,
             NGAMS_XML_MT,
             fname="ngamsStatus.dtd"
         )
