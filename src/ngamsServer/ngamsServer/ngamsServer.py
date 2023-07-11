@@ -1611,12 +1611,12 @@ class ngamsServer(object):
             ngamsHighLevelLib.updateSrvHostInfo(self.getDb(), self.getHostInfoObj())
         return self
 
-    def get_remote_server_endpoint(self, hostId):
+    def get_remote_server_endpoint(self, hostId=None):
         """
         Return the IP address to which this server should connect to to
-        contact ngams server `hostId`.
+        contact ngams server `hostId`. `hostId` defaults to `self.host_id`
         """
-
+        hostId = hostId or self.host_id
         local_name = getHostName()
         listening_ip = self.getDb().getIpFromHostId(hostId)
 
