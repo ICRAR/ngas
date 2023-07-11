@@ -173,6 +173,15 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
 
+    @property
+    def host(self):
+        """The Host header value, or an internally calculated one"""
+        request_host = self.headers["Host"]
+        if request_host:
+            return request_host
+        return "%s:%d" % self.ngasServer.get_remote_server_endpoint()
+
+
     def version_string(self):
         return self.server_version
 
