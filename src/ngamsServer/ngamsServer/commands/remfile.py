@@ -286,7 +286,7 @@ def handleCmd(srvObj,
 
     # Send reply back to requestor.
     xmlStat = status.genXmlDoc(0, 1, 1, 1, 0)
-    xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
+    xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(xmlStat, httpRef.host)
     httpRef.send_data(six.b(xmlStat), NGAMS_XML_MT)
 
 

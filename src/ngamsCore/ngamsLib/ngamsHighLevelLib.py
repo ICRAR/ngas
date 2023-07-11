@@ -205,7 +205,7 @@ def resolveHostAddress(localHostId,
     return hostInfoDic
 
 
-def addStatusDocTypeXmlDoc(srvObj, xml):
+def addStatusDocTypeXmlDoc(xml, host):
     """
     Generates an XML document (as an ASCII document) with the proper
     document type definition in it, e.g.:
@@ -214,21 +214,15 @@ def addStatusDocTypeXmlDoc(srvObj, xml):
     <!DOCTYPE NgamsStatus SYSTEM
        http://acngast1.hq.eso.org:7777/RETRIEVE?internal=ngamsCfg.dtd>
 
-    srvObj:       Reference to instance of NG/AMS Server Object (ngamsServer).
-
     xmlDoc:       XML document in ASCII format (string).
 
-    rootElName:   Name of the root element. I.e., 'NgamsStatus' above (string).
-
-    dtd:          Name of DTD defining contents of document (string).
+    host:         The host serving this document (string).
 
     Returns:      XML document generated.
     """
 
-    docType = "<!DOCTYPE NgamsStatus SYSTEM \"http://%s:%d/RETRIEVE?internal=ngamsStatus.dtd\">"
-    docType = docType % (ngamsLib.getCompleteHostName(),
-                         srvObj.getCfg().getPortNo())
-    xmlDocList = xml.split("\n")
+    docType = "<!DOCTYPE NgamsStatus SYSTEM \"http://%s/RETRIEVE?internal=ngamsStatus.dtd\">" % host
+    xmlDocList = xml.splitlines()
     xmlDocList = [xmlDocList[0]] + [docType] + xmlDocList[1:]
     return '\n'.join(xmlDocList)
 

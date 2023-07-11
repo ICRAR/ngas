@@ -359,7 +359,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         logger.info("Returning status %s with message %s and HTTP code %d", status, message, code)
 
         status = self.ngasServer.genStatus(status, message)
-        xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, status.genXmlDoc())
+        xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(status.genXmlDoc(), self.host)
         self.send_data(six.b(xml), NGAMS_XML_MT, code=code, message=http_message, hdrs=hdrs)
 
     def send_ingest_status(self, msg, disk_info):
@@ -367,7 +367,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         status = self.ngasServer.genStatus(NGAMS_SUCCESS, msg).addDiskStatus(disk_info).\
                  setReqStatFromReqPropsObj(self.ngas_request)
         xml = status.genXmlDoc(0, 1, 1)
-        xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, xml)
+        xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(xml, self.host)
         self.send_data(six.b(xml), NGAMS_XML_MT)
 
     def proxy_request(self, host_id, host, port, timeout=300):

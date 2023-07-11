@@ -590,7 +590,7 @@ def handleCmd(srvObj,
                                                 genStatesStatus]))
         xmlStat = status.genXmlDoc(genCfgStatus, genDiskStatus, genFileStatus,
                                    genStatesStatus)
-        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
+        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(xmlStat, httpRef.host)
         httpRef.send_data(six.b(xmlStat), NGAMS_XML_MT)
     elif not httpRef.reply_sent:
         httpRef.send_status(msg)

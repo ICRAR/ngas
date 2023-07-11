@@ -621,7 +621,9 @@ def _cloneExec(srvObj,
                                       "CLONE command status report").\
                                       addFileList(cloneStatusFileList)
             statRep = status.genXmlDoc(0, 0, 0, 1, 0)
-            statRep = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, statRep)
+            statRep = ngamsHighLevelLib.addStatusDocTypeXmlDoc(
+                statRep, "%s:%d" % srvObj.get_remote_server_endpoint()
+            )
             mimeType = NGAMS_XML_MT
         else:
             # Generate a 'simple' ASCII report.
@@ -844,7 +846,7 @@ def _clone(srvObj,
     # Send reply if possible.
     if (httpRef):
         xmlStat = status.genXmlDoc(0, 0, 0, 1, 0)
-        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
+        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(xmlStat, httpRef.host)
         httpRef.send_data(six.b(xmlStat), NGAMS_XML_MT)
 
 

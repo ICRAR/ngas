@@ -229,7 +229,7 @@ def handleCmd(srvObj,
     # Send reply back to requestor (if not already done).
     if (not status): return
     xmlStat = status.genXmlDoc(0, 1, 1, 1, 0)
-    xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
+    xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(xmlStat, httpRef.host)
     if (status.getStatus() == NGAMS_SUCCESS):
         httpStat = NGAMS_HTTP_SUCCESS
     else:
