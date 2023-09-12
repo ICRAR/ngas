@@ -56,7 +56,7 @@ def start(args, cfg, pid_path):
     # behavior available when possible)
     pid_file = lockfile.pidlockfile.PIDLockFile
     pid_file_kwargs = {}
-    if 'timeout' in inspect.getargspec(pid_file.__init__).args:
+    if 'timeout' in inspect.getfullargspec(pid_file.__init__).args:
         pid_file_kwargs['timeout'] = 1
 
     # Go, go, go!
