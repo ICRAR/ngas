@@ -872,7 +872,7 @@ def get_checksum_info(variant_or_name):
     elif variant == CHECKSUM_CRC32C:
         if not _crc32c_available:
             raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
-        return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x)[0], _filter_none(lambda x, y: int(x) == int(y)))
+        return checksum_info(0, crc32c.crc32c, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x)[0], _filter_none(lambda x, y: int(x) == int(y)))
     elif variant == CHECKSUM_CRC32Z:
         # A consistent way of using binascii.crc32.
         return checksum_info(0, binascii.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x)[0], _filter_none(lambda x, y: int(x) == int(y)))
