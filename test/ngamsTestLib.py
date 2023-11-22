@@ -563,7 +563,9 @@ class SenderHandler(object):
 
     def handle_event(self, evt):
 
-        # pickle evt as a normal tuple and send it over to the test runner
+        # pickle evt as a normal tuple and send it over to the test runner,
+        # except that the server object needs to be removed
+        evt = ngamsServer.archive_event(evt.disk_id, evt.file_id, evt.file_version, None)
         evt = pickle.dumps(tuple(evt))
 
         # send this to the notification_srv

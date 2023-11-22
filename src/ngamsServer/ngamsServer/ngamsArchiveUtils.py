@@ -1253,7 +1253,7 @@ def finish_archive_request(srv, req, http_ref, plugin_result, disk_info):
     http_ref.send_ingest_status(msg, disk_info)
 
     # After a successful archiving we notify the archive event subscribers
-    srv.fire_archive_event(plugin_result.getFileId(), plugin_result.getFileVersion())
+    srv.fire_archive_event(disk_info.getDiskId(), plugin_result.getFileId(), plugin_result.getFileVersion())
 
 def findTargetNode(stream, srvObj, mimeType):
     """
