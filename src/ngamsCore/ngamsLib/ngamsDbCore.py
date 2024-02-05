@@ -594,7 +594,8 @@ class ngamsDbCore(object):
                  createSnapshot = 1,
                  maxpoolcons = 6,
                  use_file_ignore=True,
-                 session_sql=None):
+                 session_sql=None,
+                 use_prepared_statement=True):
         """
         Creates a new ngamsDbCore object using ``interface`` as the underlying
         PEP-249-compliant database connection driver. Connections creation
@@ -642,6 +643,7 @@ class ngamsDbCore(object):
 
         self._use_file_ignore = use_file_ignore
         self._file_ignore_columnname = 'file_ignore' if use_file_ignore else 'ignore'
+        self._use_prepared_statement = use_prepared_statement
 
     @property
     def file_ignore_columnname(self):
@@ -818,6 +820,10 @@ class ngamsDbCore(object):
         return data
 
     def _prepare_query(self, sql, args):
+
+        if not self._use_prepared_statement:
+            markers = ["'{}'" if isinstance(arg, str) else "{}" for arg in args]
+            return sql.format(*markers).format(*args), ()
 
         # Depending on the database vendor and its declared paramstyle
         # we will need to escape '%' literals so they are not considered
