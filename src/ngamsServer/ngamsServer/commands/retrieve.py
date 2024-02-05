@@ -37,13 +37,15 @@ import shutil
 import socket
 import time
 
+import six
 from ngamsLib import ngamsDppiStatus
 from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize, \
     genLog, NGAMS_PROC_FILE, NGAMS_HOST_LOCAL, \
     NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
+    NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint, NGAMS_XML_MT
 from .. import ngamsFileUtils
+import pkg_resources
 
 
 logger = logging.getLogger(__name__)
@@ -222,6 +224,12 @@ def genReplyRetrieve(srvObj,
         cleanUpAfterProc(statusObj)
 
 
+_ALLOWED_DTDS = (
+    "ngamsStatus.dtd",
+    "ngamsInternal.dtd",
+    "XmlStd.dtd"
+)
+
 def _handleCmdRetrieve(srvObj,
                        reqPropsObj,
                        httpRef):
@@ -246,10 +254,21 @@ def _handleCmdRetrieve(srvObj,
         raise Exception(errMsg)
 
     # Previously this command allowed to retrieve the current logging file,
-    # the configuration file and any internal file. We don't do this anymore
-    # Get query information.
-    if 'ng_log' in reqPropsObj or 'cfg' in reqPropsObj or 'internal' in reqPropsObj:
-        raise Exception("ng_log, cfg and internal parameters not supported anymore")
+    # the configuration file and any internal file. We don't do this anymore;
+    # instead we allow only for the DTD file to be returned (see #103)
+    requested_dtd = reqPropsObj.get("internal", None)
+    if ('ng_log' in reqPropsObj or 'cfg' in reqPropsObj
+        or ('internal' in reqPropsObj and requested_dtd not in _ALLOWED_DTDS)):
+        raise Exception("ng_log, cfg and internal(!=ngamsStatus.dtd) parameters not supported anymore")
+    elif requested_dtd in _ALLOWED_DTDS:
+        dtd_contents = pkg_resources.resource_string('ngamsData', requested_dtd)
+        dtd_contents = dtd_contents.replace(b"DUMMYHOST:DUMMYPORT", six.b(httpRef.host))
+        httpRef.send_data(
+            dtd_contents,
+            NGAMS_XML_MT,
+            fname="ngamsStatus.dtd"
+        )
+        return
 
     # At least file_id must be specified if not an internal file has been
     # requested.

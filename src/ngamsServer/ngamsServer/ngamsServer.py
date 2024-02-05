@@ -173,6 +173,15 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
 
+    @property
+    def host(self):
+        """The Host header value, or an internally calculated one"""
+        request_host = self.headers["Host"]
+        if request_host:
+            return request_host
+        return "%s:%d" % self.ngasServer.get_remote_server_endpoint()
+
+
     def version_string(self):
         return self.server_version
 
@@ -350,7 +359,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         logger.info("Returning status %s with message %s and HTTP code %d", status, message, code)
 
         status = self.ngasServer.genStatus(status, message)
-        xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, status.genXmlDoc())
+        xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(status.genXmlDoc(), self.host)
         self.send_data(six.b(xml), NGAMS_XML_MT, code=code, message=http_message, hdrs=hdrs)
 
     def send_ingest_status(self, msg, disk_info):
@@ -358,7 +367,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         status = self.ngasServer.genStatus(NGAMS_SUCCESS, msg).addDiskStatus(disk_info).\
                  setReqStatFromReqPropsObj(self.ngas_request)
         xml = status.genXmlDoc(0, 1, 1)
-        xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, xml)
+        xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(xml, self.host)
         self.send_data(six.b(xml), NGAMS_XML_MT)
 
     def proxy_request(self, host_id, host, port, timeout=300):
@@ -1611,12 +1620,12 @@ class ngamsServer(object):
             ngamsHighLevelLib.updateSrvHostInfo(self.getDb(), self.getHostInfoObj())
         return self
 
-    def get_remote_server_endpoint(self, hostId):
+    def get_remote_server_endpoint(self, hostId=None):
         """
         Return the IP address to which this server should connect to to
-        contact ngams server `hostId`.
+        contact ngams server `hostId`. `hostId` defaults to `self.host_id`
         """
-
+        hostId = hostId or self.host_id
         local_name = getHostName()
         listening_ip = self.getDb().getIpFromHostId(hostId)
 

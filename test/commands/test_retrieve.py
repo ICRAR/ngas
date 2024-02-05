@@ -512,3 +512,12 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         self.assertEqual(file_size, piece_by_piece.tell())
         self.assertEqual(full.getvalue(), piece_by_piece.getvalue())
+
+    def test_internal(self):
+        """RETRIEVE?internal only supported with ngamsStatus.dtd"""
+        self.prepExtSrv()
+        received_dtd = tmp_path("received.tmp.dtd")
+        self.retrieve("dummy", pars=(("internal", "ngamsStatus.dtd"),), targetFile=received_dtd)
+        self.retrieve_fail("dummy", pars=(("internal", "COPYRIGHT"),))
+        self.retrieve_fail("dummy", pars=(("internal", "cfg"),))
+        self.retrieve_fail("dummy", pars=(("internal", "log"),))
