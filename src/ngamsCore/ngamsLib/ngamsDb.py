@@ -83,6 +83,7 @@ def from_config(cfg, maxpool=None):
     maxpool  = maxpool or cfg.getDbMaxPoolCons()
     sess_sql = cfg.getDbSessionSql()
     use_file_ignore = cfg.getDbUseFileIgnore()
+    use_prepared_statement = cfg.getDbUsePreparedStatement()
 
     # HACK, HACK, HACK
     # The sqlite3 doesn't allow by default to make call to objects created on
@@ -103,4 +104,4 @@ def from_config(cfg, maxpool=None):
     logger.debug(msg, creSnap, __params_for_log(drvPars))
     return ngamsDb(driver, parameters = drvPars, createSnapshot = creSnap,
                    maxpoolcons = maxpool, use_file_ignore=use_file_ignore,
-                   session_sql=sess_sql)
+                   session_sql=sess_sql, use_prepared_statement=use_prepared_statement)
