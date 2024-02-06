@@ -644,6 +644,7 @@ class ngamsDbCore(object):
         self._use_file_ignore = use_file_ignore
         self._file_ignore_columnname = 'file_ignore' if use_file_ignore else 'ignore'
         self._use_prepared_statement = use_prepared_statement
+        logger.info("UsePreparedStatement: %s", self._use_prepared_statement)
 
     @property
     def file_ignore_columnname(self):
