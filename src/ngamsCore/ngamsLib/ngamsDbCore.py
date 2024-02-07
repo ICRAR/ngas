@@ -824,8 +824,8 @@ class ngamsDbCore(object):
 
         if not self._use_prepared_statement:
             markers = ["'{}'" if isinstance(arg, str) else "NULL" if arg is None else "{}" for arg in args]
-            args = [arg.replace("'", "''") for arg in args]
-            args = list(filter(lambda x: x is not None, args))
+            args = list(filter(lambda arg: arg is not None, args))
+            args = [arg.replace("'", "''") if isinstance(arg, str) else arg for arg in args]
             return sql.format(*markers).format(*args), ()
 
         # Depending on the database vendor and its declared paramstyle
