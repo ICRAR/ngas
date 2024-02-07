@@ -33,7 +33,7 @@ jobs:
           test_number: 5
         - python: 3.9
           db: mysql
-          prep_stmt: false
+          sql_mode: no_prepared_statement
           test_number: 6
     runs-on: ubuntu-20.04
 
@@ -60,7 +60,7 @@ jobs:
       run: .travis/run_tests.sh
       env:
         DB: ${{ matrix.db }}
-        USE_PREPARED_STATEMENT: ${{ matrix.prep_stmt }}
+        SQL_MODE: ${{ matrix.sql_mode }}
 
     - name: Install coveralls
       run: pip install 'coverage<5' coveralls
