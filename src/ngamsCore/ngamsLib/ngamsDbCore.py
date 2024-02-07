@@ -826,7 +826,7 @@ class ngamsDbCore(object):
             markers = ["'{}'" if isinstance(arg, str) else "NULL" if arg is None else "{}" for arg in args]
             args = list(filter(lambda arg: arg is not None, args))
             args = [arg.replace("'", "''") if isinstance(arg, str) else arg for arg in args]
-            return sql.format(*markers).format(*args), ()
+            return sql.format(*markers).format(*args), None
 
         # Depending on the database vendor and its declared paramstyle
         # we will need to escape '%' literals so they are not considered
