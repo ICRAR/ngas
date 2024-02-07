@@ -31,6 +31,10 @@ jobs:
           test_number: 4
         - python: 3.9
           test_number: 5
+        - python: 3.9
+          db: mysql
+          prep_stmt: false
+          test_number: 6
     runs-on: ubuntu-20.04
 
     steps:
@@ -51,6 +55,7 @@ jobs:
       run: VIRTUAL_ENV=${pythonLocation} SKIP_BBCP=1 TRAVIS_BUILD_DIR=$PWD .travis/run_build.sh
       env:
         DB: ${{ matrix.db }}
+        USE_PREPARED_STATEMENT: ${{ matrix.prep_stmt }}
 
     - name: Run NGAS tests
       run: .travis/run_tests.sh

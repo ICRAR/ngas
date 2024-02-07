@@ -76,6 +76,9 @@ coverage report
 NGAS_TESTDB=
 if [[ "$DB" == "mysql" ]]; then
 	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="MySQLdb" host="127.0.0.1" database="ngas" user="ngas" password="ngas"/>'
+  if [[ "$USE_PREPARED_STATEMENT" == "false" ]]; then
+    NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="MySQLdb" UsePreparedStatement="false" host="127.0.0.1" database="ngas" user="ngas" password="ngas"/>'
+  fi
 elif [[ "$DB" == "postgresql" ]]; then
 	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="psycopg2" host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>'
 fi
