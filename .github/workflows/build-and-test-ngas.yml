@@ -55,12 +55,12 @@ jobs:
       run: VIRTUAL_ENV=${pythonLocation} SKIP_BBCP=1 TRAVIS_BUILD_DIR=$PWD .travis/run_build.sh
       env:
         DB: ${{ matrix.db }}
-        USE_PREPARED_STATEMENT: ${{ matrix.prep_stmt }}
 
     - name: Run NGAS tests
       run: .travis/run_tests.sh
       env:
         DB: ${{ matrix.db }}
+        USE_PREPARED_STATEMENT: ${{ matrix.prep_stmt }}
 
     - name: Install coveralls
       run: pip install 'coverage<5' coveralls
