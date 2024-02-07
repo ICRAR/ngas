@@ -454,7 +454,10 @@ class ngamsDbCursor(object):
         try:
             self.conn = pool.connection()
             self.cursor = self.conn.cursor()
-            self.cursor.execute(query, args)
+            if args:
+                self.cursor.execute(query, args)
+            else:
+                self.cursor.execute(query)
         except:
             self.close()
             raise
