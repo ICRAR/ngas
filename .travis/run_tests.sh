@@ -71,16 +71,14 @@ coverage run -p <(echo $import_statements) || fail "Importing plugins and utilit
 coverage combine || fail "Failed to combine coverage information"
 coverage report
 
+use_prepared_statements_attr='UsePreparedStatements="'${USE_PREPARED_STATEMENTS:-true}'"'
 # These are the user/dbname/passwd that we created on run_build
 # sqlite3 is the default so it needs no special attention
 NGAS_TESTDB=
 if [[ "$DB" == "mysql" ]]; then
-	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="MySQLdb" host="127.0.0.1" database="ngas" user="ngas" password="ngas"/>'
-  if [[ "$SQL_MODE" == "no_prepared_statement" ]]; then
-    NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="MySQLdb" UsePreparedStatements="false" host="127.0.0.1" database="ngas" user="ngas" password="ngas"/>'
-  fi
+	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="MySQLdb" '$use_prepared_statements_attr' host="127.0.0.1" database="ngas" user="ngas" password="ngas"/>'
 elif [[ "$DB" == "postgresql" ]]; then
-	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="psycopg2" host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>'
+	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="psycopg2" '$use_prepared_statements_attr' host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>'
 fi
 export NGAS_TESTDB
 
