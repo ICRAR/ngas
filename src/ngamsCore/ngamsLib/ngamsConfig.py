@@ -932,7 +932,7 @@ class ngamsConfig:
         for attr in dbEl.getAttrList():
             name = str(attr.getName())
             val = attr.getValue()
-            if name in ('Id', 'Interface', 'Snapshot', 'UseFileIgnore', 'MaxPoolConnections', 'UsePreparedStatement'):
+            if name in ('Id', 'Interface', 'Snapshot', 'UseFileIgnore', 'MaxPoolConnections', 'UsePreparedStatements'):
                 continue
 
             # Simple casting before saving
@@ -962,12 +962,12 @@ class ngamsConfig:
             return True
         return val
 
-    def getDbUsePreparedStatement(self):
+    def getDbUsePreparedStatements(self):
         """
         Indicates whether to use prepared statements (default) or call SQL directly
         from the application source code in a way that combines code and data"
         """
-        val = self.getVal("Db[1].UsePreparedStatement")
+        val = self.getVal("Db[1].UsePreparedStatements")
         if val is not None:
             val = boolean_value(val)
         if val is None:
