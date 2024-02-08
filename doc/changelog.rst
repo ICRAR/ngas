@@ -1,6 +1,12 @@
 Changelog
 =========
 
+.. rubric:: Development
+
+* Added new DB configuration parameter ``UsePreparedStatements`` to indicate whether to use
+  prepared statements (default) or call SQL directly from the application source code
+  in a way that combines code and data.
+
 .. rubric:: 12.0
 
 * Using ``sendfile(2)`` when POSTing files through HTTP connections.

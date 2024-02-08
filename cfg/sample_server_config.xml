@@ -206,6 +206,12 @@ passwords will be expressed literally.
 	    The Snapshot attribute should be considered unsafe, and (unless you
 	    know exactly what you are doing) should be left set to "0".
 
+	    The UsePreparedStatements attribute indicates whether NGAS should use
+	    prepared statements (parameterized queries) or call SQL directly from
+	    the application source code in a way that combines code and data. Prepared
+	    statements are generally more efficient and secure, therefore this attribute
+	    defaults to "true".
+
 	    Any other parameter will be used verbatim as keyword arguments
 	    to the connect method of the PEP-249 driver.
 
@@ -218,7 +224,7 @@ passwords will be expressed literally.
 	          password="password"/>
 	-->
 	<Db Id="Db-Element" Snapshot="0" Interface="sqlite3"
-	    MaxPoolConnections="5" UseFileIgnore="true"
+	    MaxPoolConnections="5" UseFileIgnore="true" UsePreparedStatements="true"
 	    database="/tmp/ngas.sqlite"/>
 
 	<!--
