@@ -442,6 +442,15 @@ def cleanSrvList(srvList):
     return srvList
 
 
+def _execute(cursor, query, args):
+    # Some drivers complain when an empty argument list/tuple is passed
+    # so let's avoid it
+    if args:
+        cursor.execute(query, args)
+    else:
+        cursor.execute(query)
+
+
 class ngamsDbCursor(object):
     """
     A class representing a cursor over which a query is run and where results
@@ -454,10 +463,7 @@ class ngamsDbCursor(object):
         try:
             self.conn = pool.connection()
             self.cursor = self.conn.cursor()
-            if args:
-                self.cursor.execute(query, args)
-            else:
-                self.cursor.execute(query)
+            _execute(self.cursor, query, args)
         except:
             self.close()
             raise
@@ -566,13 +572,7 @@ class transaction(object):
         cursor = self.cursor
 
         with ngamsDbTimer(self.db_core, sql):
-
-            # Some drivers complain when an empty argument list/tuple is passed
-            # so let's avoid it
-            if not args:
-                cursor.execute(sql)
-            else:
-                cursor.execute(sql, args)
+            _execute(cursor, sql, args)
 
             # From PEP-249, regarding .description:
             # This attribute will be None for operations that do not return
