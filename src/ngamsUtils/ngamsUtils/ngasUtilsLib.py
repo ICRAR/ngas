@@ -56,6 +56,7 @@ NGAS_RC_PAR_ACC_CODE = "AccessCode"
 NGAS_RC_PAR_DB_INT = "DbInterface"
 NGAS_RC_PAR_DB_PARAMS = "DbParameters"
 NGAS_RC_PAR_DB_USE_FILE_IGNORE = "DbUseFileIgnore"
+NGAS_RC_PAR_DB_USE_PREPARED_STATEMENTS = "DbUsePreparedStatements"
 NGAS_RC_PAR_SMTP_HOST = "SmtpHost"
 NGAS_RC_PAR_NOTIF_EMAIL = "EmailNotification"
 NGAS_RC_PAR_HOST = "NgasHost"
@@ -185,7 +186,9 @@ def get_db_parameters():
     params = json.loads(params_str)
     use_file_ignore_str = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_USE_FILE_IGNORE, required=False)
     use_file_ignore = True if use_file_ignore_str is None or use_file_ignore_str in ('yes', 'true') else False
-    return interface, params, use_file_ignore
+    use_prepared_statements_str = get_parameter_ngas_resource_file(NGAS_RC_PAR_DB_USE_PREPARED_STATEMENTS, required=False)
+    use_prepared_statements = True if use_prepared_statements_str is None or use_prepared_statements_str in ('yes', 'true') else False
+    return interface, params, use_file_ignore, use_prepared_statements
 
 
 def send_email(subject, to, message, content_type=None, attachment_name=None):
@@ -573,5 +576,6 @@ def get_db_connection():
     """
     Open a database connection using property values read from the resource file
     """
-    interface, params, use_file_ignore = get_db_parameters()
-    return ngamsDb.ngamsDb(interface, params, use_file_ignore=use_file_ignore)
+    interface, params, use_file_ignore, use_prepared_statements = get_db_parameters()
+    return ngamsDb.ngamsDb(interface, params, use_file_ignore=use_file_ignore,
+                           use_prepared_statements=use_prepared_statements)
