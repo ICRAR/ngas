@@ -59,6 +59,7 @@ NGAS_RC_PAR_DB_USE_FILE_IGNORE = "DbUseFileIgnore"
 NGAS_RC_PAR_DB_USE_PREPARED_STATEMENTS = "DbUsePreparedStatements"
 NGAS_RC_PAR_SMTP_HOST = "SmtpHost"
 NGAS_RC_PAR_NOTIF_EMAIL = "EmailNotification"
+NGAS_RC_PAR_EMAIL_FROM = "EmailFrom"
 NGAS_RC_PAR_HOST = "NgasHost"
 NGAS_RC_PAR_PORT = "NgasPort"
 
@@ -206,7 +207,9 @@ def send_email(subject, to, message, content_type=None, attachment_name=None):
         print("Error: No SMTP host defined in RC file")
         return
     email_list = to.split(",")
-    from_field = getpass.getuser() + "@" + os.uname()[1].split(".")[0]
+    from_field = get_parameter_ngas_resource_file(NGAS_RC_PAR_EMAIL_FROM)
+    if not from_field:
+        from_field = getpass.getuser() + "@" + os.uname()[1].split(".")[0]
     for emailAdr in email_list:
         try:
             hdr = "Subject: " + subject + "\n"
